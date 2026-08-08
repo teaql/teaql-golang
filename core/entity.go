@@ -163,8 +163,6 @@ func BaseEntityDataFromRecord(record Record) (*BaseEntityData, error) {
 	if idVal, ok := record["id"]; ok {
 		if id, ok := idVal.TryU64(); ok {
 			b.Id = id
-		} else if idI, ok := idVal.TryI64(); ok && idI >= 0 {
-			b.Id = uint64(idI)
 		} else {
 			return nil, NewEntityError("BaseEntity", fmt.Sprintf("invalid id field: %v", idVal))
 		}

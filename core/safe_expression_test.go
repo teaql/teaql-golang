@@ -108,3 +108,47 @@ func TestSafeExpressionCallbacksOnlyRunForTheirMatchingBranch(t *testing.T) {
 	assert.Equal(t, 1, missingNullCalls)
 	assert.Equal(t, 0, missingValueCalls)
 }
+
+func TestSafeExpressionOrElseAndIsNotNull(t *testing.T) {
+	present := ValueSafeExpression(42)
+	assert.Equal(t, 42, present.OrElse(0))
+	assert.True(t, present.IsNotNull())
+	assert.False(t, present.IsNull())
+
+	missing := NewSafeExpression((any)(nil), func(root any) (int, bool) {
+		return 0, false
+	})
+	assert.Equal(t, 0, missing.OrElse(0))
+	assert.False(t, missing.IsNotNull())
+	assert.True(t, missing.IsNull())
+}
+
+func TestApplySafeExpressionMissingBranch(t *testing.T) {
+	missing := NewSafeExpression((any)(nil), func(root any) (int, bool) {
+		return 0, false
+	})
+
+	applied := ApplySafeExpression(missing, func(val int) string {
+		return "test"
+	})
+	val, ok := applied.Eval()
+	assert.False(t, ok)
+	assert.Equal(t, "", val)
+
+	appliedOpt := ApplyOptionalSafeExpression(missing, func(val int) (string, bool) {
+		return "test", true
+	})
+	valOpt, okOpt := appliedOpt.Eval()
+	assert.False(t, okOpt)
+	assert.Equal(t, "", valOpt)
+}
+
+func TestApplySafeExpressionSuccessBranch(t *testing.T) {
+	present := ValueSafeExpression(42)
+	applied := ApplySafeExpression(present, func(val int) string {
+		return "success"
+	})
+	val, ok := applied.Eval()
+	assert.True(t, ok)
+	assert.Equal(t, "success", val)
+}

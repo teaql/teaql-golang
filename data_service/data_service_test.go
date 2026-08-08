@@ -60,4 +60,16 @@ func TestMutationRequestTraceAndCommentAccessors(t *testing.T) {
 	reqEmpty := &InsertMutation{Cmd: insertEmpty}
 	assert.Equal(t, 0, len(reqEmpty.TraceChain()))
 	assert.Nil(t, reqEmpty.Comment())
+
+	updateEmpty := core.NewUpdateCommand("User", core.ValI64(1))
+	reqEmptyUpdate := &UpdateMutation{Cmd: updateEmpty}
+	assert.Nil(t, reqEmptyUpdate.Comment())
+
+	deleteEmpty := core.NewDeleteCommand("User", core.ValI64(1))
+	reqEmptyDelete := &DeleteMutation{Cmd: deleteEmpty}
+	assert.Nil(t, reqEmptyDelete.Comment())
+
+	recoverEmpty := core.NewRecoverCommand("User", core.ValI64(1), 1)
+	reqEmptyRecover := &RecoverMutation{Cmd: recoverEmpty}
+	assert.Nil(t, reqEmptyRecover.Comment())
 }

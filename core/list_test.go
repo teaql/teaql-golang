@@ -50,3 +50,32 @@ func TestSmartListMergeByKeepsOnePositionForRepeatedIncomingKeys(t *testing.T) {
 		{Id: 2, Value: "final two"},
 	}, items.Data)
 }
+
+func TestSmartListAdditionalMethods(t *testing.T) {
+	items := NewSmartList([]TestItem{
+		{Id: 1, Value: "one"},
+	})
+	
+	items.WithTotalCount(100)
+	assert.Equal(t, uint64(100), *items.TotalCount)
+	
+	items.WithAggregation("sum", ValI64(50))
+	assert.Equal(t, ValI64(50), items.Aggregations["sum"])
+	
+	items.WithSummary("avg", ValI64(5))
+	assert.Equal(t, ValI64(5), items.Summary["avg"])
+	
+	facetList := NewSmartList([]Record{})
+	items.WithFacet("tags", facetList)
+	assert.Equal(t, facetList, items.Facets["tags"])
+	
+	items.Push(TestItem{Id: 2, Value: "two"})
+	assert.Equal(t, 2, items.Len())
+	
+	items.Extend([]TestItem{
+		{Id: 3, Value: "three"},
+		{Id: 4, Value: "four"},
+	})
+	assert.Equal(t, 4, items.Len())
+	assert.Equal(t, "four", items.Data[3].Value)
+}

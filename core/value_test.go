@@ -176,3 +176,32 @@ func assertTryTimestamp(t *testing.T, v Value, expected int64, ok bool) {
 		assert.Equal(t, expected, val)
 	}
 }
+
+func TestValue_ValTypedNull(t *testing.T) {
+	v := ValTypedNull(TypeI64)
+	assert.Equal(t, TypeI64, v.V.(DataType))
+}
+
+func TestValue_TryText_RejectsNonString(t *testing.T) {
+	v := ValI64(42)
+	s, ok := v.TryText()
+	assert.False(t, ok)
+	assert.Equal(t, "", s)
+}
+
+func TestValue_TryBool(t *testing.T) {
+	vTrue := ValBool(true)
+	b, ok := vTrue.TryBool()
+	assert.True(t, ok)
+	assert.True(t, b)
+
+	vFalse := ValBool(false)
+	b, ok = vFalse.TryBool()
+	assert.True(t, ok)
+	assert.False(t, b)
+
+	vInvalid := ValI64(1)
+	b, ok = vInvalid.TryBool()
+	assert.False(t, ok)
+	assert.False(t, b)
+}

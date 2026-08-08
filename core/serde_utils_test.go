@@ -70,3 +70,9 @@ func TestTrimmedOptionalStringKeepsWhitespaceOnlyInputAsSomeEmpty(t *testing.T) 
 	assert.Equal(t, TrimmedString("value"), fields.Required)
 	assert.Equal(t, NewTrimmedString(""), fields.Optional)
 }
+
+func TestTrimmedStringUnmarshalError(t *testing.T) {
+	var ts TrimmedString
+	err := ts.UnmarshalJSON([]byte(`{"invalid":`)) // Invalid JSON string
+	assert.Error(t, err)
+}

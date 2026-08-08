@@ -65,3 +65,47 @@ func TestXlsBlockContextMatchesJavaNavigationModel(t *testing.T) {
 	props := b0["properties"].(map[string]any)
 	assert.Equal(t, true, props["bold"])
 }
+
+func TestXlsAdditional(t *testing.T) {
+	b := NewXlsBlock("page1", 10, 20, "val")
+	b.Region(1, 2, 3, 4)
+	assert.Equal(t, int32(1), b.Left)
+	assert.Equal(t, int32(2), b.Top)
+	assert.Equal(t, int32(3), b.Right)
+	assert.Equal(t, int32(4), b.Bottom)
+
+	// test span with negative w, h
+	b.Span(0, 0)
+	assert.Equal(t, int32(1), b.Right)
+	assert.Equal(t, int32(2), b.Bottom)
+	
+	b.WithValue("newVal")
+	assert.Equal(t, "newVal", b.Value)
+	
+	b.SetProperty("prop1", "pval")
+	assert.Equal(t, "pval", b.Properties["prop1"])
+	
+	styleBlock := NewXlsBlock("page1", 0, 0, nil)
+	b.Style(styleBlock)
+	assert.Equal(t, styleBlock, b.StyleReferBlock)
+	
+	bJson := b.ToJsonValue()
+	assert.Equal(t, "newVal", bJson["value"])
+	
+	ctx := NewXlsBlockBuildContext("page2", -1, -2)
+	assert.Equal(t, int32(0), ctx.X)
+	assert.Equal(t, int32(0), ctx.Y)
+	
+	ctxPage := XlsBlockBuildContextPage("page3")
+	assert.Equal(t, "page3", ctxPage.Page)
+	assert.Equal(t, int32(0), ctxPage.X)
+	
+	page := NewXlsPage("p1")
+	page.PushBlock(b)
+	assert.Equal(t, 1, len(page.Blocks))
+	
+	wb := NewXlsWorkbook()
+	wb.PushPage(page)
+	assert.Equal(t, 1, len(wb.Pages))
+}
+

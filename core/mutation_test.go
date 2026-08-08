@@ -22,3 +22,22 @@ func TestMutationCommands(t *testing.T) {
 	assert.Equal(t, int64(2), *deleteCmd.ExpectedVersion)
 	assert.False(t, deleteCmd.SoftDelete)
 }
+
+func TestBatchCommands(t *testing.T) {
+	batchInsert := NewBatchInsertCommand("User")
+	assert.Equal(t, "User", batchInsert.Entity)
+	assert.Empty(t, batchInsert.BatchValues)
+
+	batchUpdate := NewBatchUpdateCommand("User", []string{"name", "age"})
+	assert.Equal(t, "User", batchUpdate.Entity)
+	assert.Equal(t, []string{"name", "age"}, batchUpdate.UpdateFields)
+	assert.Empty(t, batchUpdate.BatchValues)
+}
+
+func TestRecoverCommand(t *testing.T) {
+	recoverCmd := NewRecoverCommand("User", ValI64(10), 5)
+	assert.Equal(t, "User", recoverCmd.Entity)
+	assert.Equal(t, int64(10), recoverCmd.Id.V)
+	assert.Equal(t, int64(5), recoverCmd.ExpectedVersion)
+}
+

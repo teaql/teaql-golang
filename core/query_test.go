@@ -38,3 +38,108 @@ func TestSelectQueryAggregationCache(t *testing.T) {
 	assert.True(t, q.AggregationCache.Propagate)
 	assert.Equal(t, uint64(10000), q.AggregationCache.PropagateCacheExpiredMillis)
 }
+
+func TestQueryAllMethods(t *testing.T) {
+	q := NewSelectQuery("TestEntity")
+
+	expr := ExprEq("status", ValText("active"))
+	
+	// NamedExpr
+	ne := NewNamedExpr("alias", expr)
+	assert.Equal(t, "alias", ne.Alias)
+
+	// OrderBy
+	assert.Equal(t, SortAsc, OrderAsc("f").Direction)
+	assert.Equal(t, SortAsc, OrderByExpr(expr, SortAsc).Direction)
+	assert.Equal(t, SortAsc, OrderAscExpr(expr).Direction)
+	assert.Equal(t, SortDesc, OrderDescExpr(expr).Direction)
+	assert.Equal(t, SortAsc, OrderAscGbk("f").Direction)
+	assert.Equal(t, SortDesc, OrderDescGbk("f").Direction)
+
+	// Aggregates
+	assert.Equal(t, AggCount, NewAggregate(AggCount, "f", "a").Function)
+	assert.Equal(t, AggCount, AggCountAlias("a").Function)
+	assert.Equal(t, AggCount, AggCountField("f", "a").Function)
+	assert.Equal(t, AggSum, AggSumAlias("f", "a").Function)
+	assert.Equal(t, AggAvg, AggAvgAlias("f", "a").Function)
+	assert.Equal(t, AggMin, AggMinAlias("f", "a").Function)
+	assert.Equal(t, AggMax, AggMaxAlias("f", "a").Function)
+	assert.Equal(t, AggStddev, AggStddevAlias("f", "a").Function)
+	assert.Equal(t, AggStddevPop, AggStddevPopAlias("f", "a").Function)
+	assert.Equal(t, AggVarSamp, AggVarSampAlias("f", "a").Function)
+	assert.Equal(t, AggVarPop, AggVarPopAlias("f", "a").Function)
+	assert.Equal(t, AggBitAnd, AggBitAndAlias("f", "a").Function)
+	assert.Equal(t, AggBitOr, AggBitOrAlias("f", "a").Function)
+	assert.Equal(t, AggBitXor, AggBitXorAlias("f", "a").Function)
+
+	// Relations
+	assert.Equal(t, "rel", NewRelationAggregate("rel", "a", q, true).RelationName)
+	assert.Equal(t, "prop", NewRawSqlProjection("prop", "sql").PropertyName)
+	assert.Equal(t, "prop", NewObjectGroupBy("prop", "store", q).PropertyName)
+	assert.Equal(t, 1000, DefaultStreamConfig().ChunkSize)
+
+	// Query builder methods
+	q.Projects("p1", "p2")
+	q.ProjectExpr("alias1", expr)
+	q.ProjectRaw("alias2", "raw1")
+	q.DynamicPropertyRaw("dyn1", "raw2")
+	q.WithSearchWithText("search")
+	
+	q.Filter = nil
+	q.AndFilter(expr)
+	q.Filter = nil
+	q.OrFilter(expr)
+	q.OrFilter(expr)
+
+	q.WithHaving(expr)
+	q.Having = nil
+	q.AndHaving(expr)
+	q.AndHaving(expr)
+	q.Having = nil
+	q.OrHaving(expr)
+	q.OrHaving(expr)
+
+	q.OrderAsc("o1")
+	q.OrderExprAsc(expr)
+	q.OrderExprDesc(expr)
+	q.OrderGbkAsc("o2")
+	q.OrderGbkDesc("o3")
+	
+	q.WithGroupBy("g1")
+	
+	q.Aggregate(AggCountAlias("c1"))
+	q.Count("c2")
+	q.CountField("f1", "c3")
+	q.Sum("f2", "s1")
+	q.Avg("f3", "a1")
+	q.Min("f4", "m1")
+	q.Max("f5", "m2")
+	q.Stddev("f6", "s2")
+	q.StddevPop("f7", "s3")
+	q.VarSamp("f8", "v1")
+	q.VarPop("f9", "v2")
+	q.BitAnd("f10", "b1")
+	q.BitOr("f11", "b2")
+	q.BitXor("f12", "b3")
+
+	q.AggregationCache = nil
+	q.EnableAggregationCache()
+	q.AggregationCache = nil
+	q.PropagateAggregationCache(100)
+
+	q.WithComment("comment")
+	q.WithRawSql("raw")
+	q.WithRawSqlSearchCriteria("raw_crit")
+	q.WithObjectGroupBy("og1", "og2", q)
+	q.ChildEnhancement(q)
+	
+	q.RelationQuery("rel2", q)
+	
+	q.Slice = nil
+	q.Limit(5)
+	
+	q.Stream(500)
+	assert.Equal(t, 500, q.StreamConfig.ChunkSize)
+	q.StreamDefault()
+	assert.Equal(t, 1000, q.StreamConfig.ChunkSize)
+}

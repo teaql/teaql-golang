@@ -98,3 +98,18 @@ func TestEntityDescriptorBuilderAndLookups(t *testing.T) {
 	assert.Contains(t, names, "name")
 	assert.Contains(t, names, "version")
 }
+
+func TestRelationDescriptorAttachDeleteMissing(t *testing.T) {
+	rel := NewRelationDescriptor("orders", "Order").
+		Attach().
+		DeleteMissing()
+	assert.True(t, rel.IsAttach)
+	assert.True(t, rel.IsDeleteMissing)
+}
+
+func TestEntityDescriptorMissingIdVersion(t *testing.T) {
+	entity := NewEntityDescriptor("User")
+	// no id or version property added
+	assert.Nil(t, entity.IdProperty())
+	assert.Nil(t, entity.VersionProperty())
+}
