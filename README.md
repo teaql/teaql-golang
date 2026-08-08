@@ -1,28 +1,28 @@
 # TeaQL Golang
 
-TeaQL-Golang 是 TeaQL 的 Go 语言实现版本，由 Rust 版本 (teaql-rs) 完整迁移而来。它保持了与 Rust 版完全一致的设计理念、核心架构和功能特性，旨在为 Go 开发者提供同样高效、一致且强大的跨数据库抽象与云原生集成体验。
+TeaQL-Golang is the Go implementation of the TeaQL framework, fully migrated from its original Rust version (teaql-rs). It maintains the exact same design philosophy, core architecture, and feature set as the Rust version, aiming to provide Go developers with an equally efficient, consistent, and powerful cross-database abstraction and cloud-native integration experience.
 
-## 特性
+## Features
 
-- **核心架构 (Core)**：完善的实体映射抽象 (`EntityDescriptor`, `PropertyDescriptor`, `Value`) 和类型系统。
-- **SQL 方言生成器 (SQL Dialect)**：支持构建基于 AST 的强类型 SQL 查询与修改指令，内置并抽象了跨数据库方言能力。
-- **丰富的 Providers**：
+- **Core Architecture (`core`)**: Comprehensive entity mapping abstraction (`EntityDescriptor`, `PropertyDescriptor`, `Value`) and a robust type system.
+- **SQL Dialect Generator (`sql`)**: Supports building AST-based strongly typed SQL queries and mutation commands, with built-in abstraction for cross-database dialects.
+- **Rich Database Providers**:
   - `provider-sqlite`
   - `provider-postgres`
   - `provider-mysql`
   - `provider-meilisearch`
   - `provider-linux`
-- **统一运行时 (Runtime)**：支持上下文管理、错误处理、事件生命周期监控以及内置安全注册表机制。
-- **缓存与 Web**：
-  - 内置 Redis 集成 (`cache/redis`)，支持无缝分布式缓存。
-  - 标准化 Gin Web 封装 (`web/gin`)，对齐原生遗留接口数据响应格式。
-- **云原生就绪 (Cloud)**：
-  - 提供 `ServiceRegistry`、`ServiceDiscovery` 与 `HealthIndicator` 标准抽象。
-  - 开箱即用的 `Actuator` 监控，及可灵活拔插的 Nacos / Consul 组件。
+- **Unified Runtime (`runtime`)**: Supports context management, error handling, event lifecycle monitoring, and a built-in security registry mechanism.
+- **Cache and Web Integration**:
+  - Built-in Redis integration (`cache/redis`) for seamless distributed caching.
+  - Standardized Gin Web wrapper (`web/gin`), aligning perfectly with legacy API data response formats.
+- **Cloud-Native Ready (`cloud`)**:
+  - Provides standard abstractions for `ServiceRegistry`, `ServiceDiscovery`, and `HealthIndicator`.
+  - Out-of-the-box `Actuator` monitoring and plug-and-play components for Nacos and Consul.
 
-## 快速开始
+## Quick Start
 
-在 `examples/basic/main.go` 中提供了一个开箱即用的 SQLite 应用示例：
+A ready-to-use SQLite application example is provided in `examples/basic/main.go`:
 
 ```go
 package main
@@ -43,14 +43,14 @@ import (
 )
 
 func main() {
-	// 初始化方言和连接
+	// Initialize dialect and connection
 	dialect := &teaql_sql.DefaultSqlDialect{Dialect: &sqlite.SqliteDialect{}}
 	db, err := sql.Open("sqlite3", ":memory:")
 	if err != nil {
 		log.Fatal(err)
 	}
 	
-	// 初始化上下文模块
+	// Initialize context module
 	module := runtime.NewRuntimeModule()
 	orderDesc := core.NewEntityDescriptor("Order").
 		TableName("orders").
@@ -58,15 +58,15 @@ func main() {
 		Property(core.NewPropertyDescriptor("name", core.TypeText).ColumnName("name"))
 	module.Entity(orderDesc)
 	
-	// 初始化执行器
+	// Initialize data service executor
 	transport := sqlite.NewSqliteMutationExecutor(db)
 	executor := runtime.NewSqlDataServiceExecutor(transport, dialect.Dialect, module.Metadata)
 
-	// 创建表并执行
+	// Create table and execute DDL
 	createSql, _ := dialect.CompileCreateTable(orderDesc)
 	db.Exec(createSql)
 
-	// 插入数据并查询
+	// Insert data and query
 	insertCmd := core.NewInsertCommand("Order").Value("id", core.ValU64(1)).Value("name", core.ValText("Tea"))
 	executor.Mutate(context.Background(), &data_service.InsertMutation{Cmd: insertCmd})
 
@@ -77,26 +77,32 @@ func main() {
 }
 ```
 
-运行示例：
+Run the example:
 ```bash
 go run ./examples/basic
 ```
 
-## 架构对应关系
+## Architecture Mapping
 
-| Rust (teaql-rs)                   | Go (teaql-golang)                 | 状态 |
-|-----------------------------------|-----------------------------------|------|
-| `teaql-core`                      | `core`                            | 完成 |
-| `teaql-sql`                       | `sql`                             | 完成 |
-| `teaql-runtime`                   | `runtime` & `data_service`        | 完成 |
-| `teaql-provider-sqlite`           | `provider/sqlite`                 | 完成 |
-| `teaql-provider-postgres`         | `provider/postgres`               | 完成 |
-| `teaql-provider-mysql`            | `provider/mysql`                  | 完成 |
-| `teaql-provider-meilisearch`      | `provider/meilisearch`            | 完成 |
-| `teaql-provider-linux`            | `provider/linux`                  | 完成 |
-| `teaql-cache-integration-redis`   | `cache/redis`                     | 完成 |
-| `teaql-web-integration-axum`      | `web/gin`                         | 完成 |
-| `teaql-cloud-*`                   | `cloud/core`, `cloud/nacos`, 等   | 完成 |
+| Rust (teaql-rs)                   | Go (teaql-golang)                 | Status |
+|-----------------------------------|-----------------------------------|--------|
+| `teaql-core`                      | `core`                            | Done   |
+| `teaql-sql`                       | `sql`                             | Done   |
+| `teaql-runtime`                   | `runtime` & `data_service`        | Done   |
+| `teaql-provider-sqlite`           | `provider/sqlite`                 | Done   |
+| `teaql-provider-postgres`         | `provider/postgres`               | Done   |
+| `teaql-provider-mysql`            | `provider/mysql`                  | Done   |
+| `teaql-provider-meilisearch`      | `provider/meilisearch`            | Done   |
+| `teaql-provider-linux`            | `provider/linux`                  | Done   |
+| `teaql-cache-integration-redis`   | `cache/redis`                     | Done   |
+| `teaql-web-integration-axum`      | `web/gin`                         | Done   |
+| `teaql-cloud-*`                   | `cloud/core`, `cloud/nacos`, etc. | Done   |
 
-## 许可证
-本项目在协议范围内开源使用。
+## License
+
+This project is licensed under the [Apache License, Version 2.0](LICENSE).
+You may not use this file except in compliance with the License. You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the specific language governing permissions and limitations under the License.
