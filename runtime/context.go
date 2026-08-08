@@ -1,0 +1,72 @@
+package runtime
+
+import (
+	"context"
+
+	"github.com/teaql/teaql-golang/core"
+	"github.com/teaql/teaql-golang/data_service"
+)
+
+type GraphNode struct {
+	Entity string
+	Values core.Record
+}
+
+type UserContext struct {
+	context.Context
+	EventSink      RawAuditEventSink
+	Metadata       MetadataStore
+	EntityRegistry EntityRegistry
+	Behaviors      EntityDataServiceBehaviorRegistry
+
+	initialGraphs []*GraphNode
+	resources     map[string]interface{}
+}
+
+func NewUserContext() *UserContext {
+	return &UserContext{
+		Context:   context.Background(),
+		resources: make(map[string]interface{}),
+	}
+}
+
+func (c *UserContext) InitialGraphs() []*GraphNode {
+	return c.initialGraphs
+}
+
+func (c *UserContext) SetInitialGraphs(graphs []*GraphNode) {
+	c.initialGraphs = graphs
+}
+
+func (c *UserContext) AllEntities() []*core.EntityDescriptor {
+	if c.Metadata != nil {
+		return c.Metadata.AllEntities()
+	}
+	return nil
+}
+
+func (c *UserContext) Entity(name string) *core.EntityDescriptor {
+	if c.Metadata != nil {
+		return c.Metadata.Entity(name)
+	}
+	return nil
+}
+
+func (c *UserContext) SetSchemaProvider(provider data_service.SchemaProvider) {
+	// For compatibility with old interface, though MetadataStore replaces it
+}
+
+func (c *UserContext) InsertResource(name string, resource interface{}) {
+	c.resources[name] = resource
+}
+
+func (c *UserContext) GetResource(name string) interface{} {
+	return c.resources[name]
+}
+
+func (c *UserContext) SendEvent(event *RawAuditEvent) error {
+	if c.EventSink != nil {
+		return c.EventSink.OnEvent(c, event)
+	}
+	return nil
+}

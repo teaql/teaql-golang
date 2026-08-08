@@ -1,0 +1,316 @@
+package sql
+
+import (
+	"context"
+	"fmt"
+	"time"
+
+	"github.com/teaql/teaql-golang/core"
+	ds "github.com/teaql/teaql-golang/data_service"
+)
+
+type SqlTransport interface {
+	FetchAllSql(ctx context.Context, query *CompiledQuery) ([]core.Record, error)
+	ExecuteSql(ctx context.Context, query *CompiledQuery) (uint64, error)
+}
+
+type SqlTransactionTransport interface {
+	SqlTransport
+	BeginSql(ctx context.Context) (SqlTransactionTransportTx, error)
+}
+
+type SqlTransactionTransportTx interface {
+	SqlTransport
+	SqlTransaction
+}
+
+type SqlTransaction interface {
+	CommitSql(ctx context.Context) error
+	RollbackSql(ctx context.Context) error
+}
+
+type SqlDataServiceExecutor struct {
+	Dialect        SqlDialect
+	Transport      SqlTransport
+	SchemaProvider ds.SchemaProvider
+}
+
+func NewSqlDataServiceExecutor(dialect SqlDialect, transport SqlTransport, schemaProvider ds.SchemaProvider) *SqlDataServiceExecutor {
+	return &SqlDataServiceExecutor{
+		Dialect:        dialect,
+		Transport:      transport,
+		SchemaProvider: schemaProvider,
+	}
+}
+
+func (e *SqlDataServiceExecutor) Capabilities() ds.DataServiceCapabilities {
+	_, isTxTransport := e.Transport.(SqlTransactionTransport)
+	return ds.DataServiceCapabilities{
+		Query:         true,
+		Mutation:      true,
+		Transaction:   isTxTransport,
+		Schema:        false,
+		IdGeneration:  false,
+		BatchMutation: true,
+		Returning:     false,
+	}
+}
+
+func (e *SqlDataServiceExecutor) Query(ctx context.Context, request *ds.QueryRequest) (*ds.QueryResult, error) {
+	entityDesc := e.SchemaProvider.GetEntity(request.Query.Entity)
+	if entityDesc == nil {
+		return nil, fmt.Errorf("SQL compile error: unknown entity %s", request.Query.Entity)
+	}
+
+	defaultDialect := &DefaultSqlDialect{Dialect: e.Dialect}
+	compiled, err := defaultDialect.CompileSelect(entityDesc, request.Query)
+	if err != nil {
+		return nil, fmt.Errorf("SQL compile error: %w", err)
+	}
+
+	start := time.Now()
+	rows, err := e.Transport.FetchAllSql(ctx, compiled)
+	if err != nil {
+		return nil, fmt.Errorf("Transport error: %w", err)
+	}
+	end := time.Now()
+
+	count := len(rows)
+	debugQuery := compiled.DebugSql(e.Dialect.Kind())
+
+	metadata := ds.ExecutionMetadata{
+		Backend:          "sql",
+		Operation:        ds.OpQuery,
+		StartedAt:        start,
+		EndedAt:          end,
+		AffectedRows:     nil,
+		ResultCount:      &count,
+		TraceChain:       request.TraceChain,
+		Comment:          request.Comment,
+		BackendRequestId: nil,
+		DebugQuery:       &debugQuery,
+	}
+
+	return &ds.QueryResult{
+		Rows:     rows,
+		Metadata: metadata,
+	}, nil
+}
+
+func (e *SqlDataServiceExecutor) Mutate(ctx context.Context, request ds.MutationRequest) (*ds.MutationResult, error) {
+	switch req := request.(type) {
+	case *ds.BatchMutation:
+		var totalAffected uint64 = 0
+		start := time.Now()
+		for _, m := range req.Mutations {
+			res, err := e.Mutate(ctx, m)
+			if err != nil {
+				return nil, err
+			}
+			totalAffected += res.AffectedRows
+		}
+		end := time.Now()
+		return &ds.MutationResult{
+			AffectedRows:    totalAffected,
+			GeneratedValues: make(core.Record),
+			Metadata: ds.ExecutionMetadata{
+				Backend:          "sql",
+				Operation:        ds.OpBatch,
+				StartedAt:        start,
+				EndedAt:          end,
+				AffectedRows:     &totalAffected,
+				ResultCount:      nil,
+				TraceChain:       []*core.TraceNode{},
+				Comment:          nil,
+				BackendRequestId: nil,
+				DebugQuery:       nil,
+			},
+		}, nil
+	}
+
+	var entityName string
+	switch req := request.(type) {
+	case *ds.InsertMutation:
+		entityName = req.Cmd.Entity
+	case *ds.UpdateMutation:
+		entityName = req.Cmd.Entity
+	case *ds.DeleteMutation:
+		entityName = req.Cmd.Entity
+	case *ds.RecoverMutation:
+		entityName = req.Cmd.Entity
+	}
+
+	entityDesc := e.SchemaProvider.GetEntity(entityName)
+	if entityDesc == nil {
+		return nil, fmt.Errorf("SQL compile error: unknown entity %s", entityName)
+	}
+
+	defaultDialect := &DefaultSqlDialect{Dialect: e.Dialect}
+	var compiled *CompiledQuery
+	var err error
+	var operation ds.DataServiceOperation
+
+	switch req := request.(type) {
+	case *ds.InsertMutation:
+		compiled, err = defaultDialect.CompileInsert(entityDesc, req.Cmd)
+		operation = ds.OpInsert
+	case *ds.UpdateMutation:
+		compiled, err = defaultDialect.CompileUpdate(entityDesc, req.Cmd)
+		operation = ds.OpUpdate
+	case *ds.DeleteMutation:
+		compiled, err = defaultDialect.CompileDelete(entityDesc, req.Cmd)
+		operation = ds.OpDelete
+	case *ds.RecoverMutation:
+		compiled, err = defaultDialect.CompileRecover(entityDesc, req.Cmd)
+		operation = ds.OpRecover
+	}
+
+	if err != nil {
+		return nil, fmt.Errorf("SQL compile error: %w", err)
+	}
+
+	start := time.Now()
+	affectedRows, err := e.Transport.ExecuteSql(ctx, compiled)
+	if err != nil {
+		return nil, fmt.Errorf("Transport error: %w", err)
+	}
+	end := time.Now()
+
+	debugQuery := compiled.DebugSql(e.Dialect.Kind())
+
+	var traceChain []*core.TraceNode
+	if len(request.TraceChain()) > 0 {
+		traceChain = make([]*core.TraceNode, len(request.TraceChain()))
+		for i, v := range request.TraceChain() {
+			node := *v
+			traceChain[i] = &node
+		}
+	} else {
+		traceChain = []*core.TraceNode{}
+	}
+
+	var comment *string
+	if request.Comment() != nil {
+		c := *request.Comment()
+		comment = &c
+	}
+
+	metadata := ds.ExecutionMetadata{
+		Backend:          "sql",
+		Operation:        operation,
+		StartedAt:        start,
+		EndedAt:          end,
+		AffectedRows:     &affectedRows,
+		ResultCount:      nil,
+		TraceChain:       traceChain,
+		Comment:          comment,
+		BackendRequestId: nil,
+		DebugQuery:       &debugQuery,
+	}
+
+	return &ds.MutationResult{
+		AffectedRows:    affectedRows,
+		GeneratedValues: make(core.Record),
+		Metadata:        metadata,
+	}, nil
+}
+
+func (e *SqlDataServiceExecutor) QueryStream(ctx context.Context, request *ds.QueryRequest, chunkSize int) ([]*ds.StreamChunk, error) {
+	result, err := e.Query(ctx, request)
+	if err != nil {
+		return nil, err
+	}
+
+	var chunks []*ds.StreamChunk
+	var currentChunk []core.Record
+	chunkIndex := 0
+
+	for _, row := range result.Rows {
+		currentChunk = append(currentChunk, row)
+		if len(currentChunk) >= chunkSize {
+			chunks = append(chunks, &ds.StreamChunk{
+				Rows:       currentChunk,
+				ChunkIndex: chunkIndex,
+				IsLast:     false,
+			})
+			currentChunk = nil
+			chunkIndex++
+		}
+	}
+
+	chunks = append(chunks, &ds.StreamChunk{
+		Rows:       currentChunk,
+		ChunkIndex: chunkIndex,
+		IsLast:     true,
+	})
+
+	return chunks, nil
+}
+
+func (e *SqlDataServiceExecutor) Begin(ctx context.Context) (ds.Transaction, error) {
+	txTransport, ok := e.Transport.(SqlTransactionTransport)
+	if !ok {
+		return nil, fmt.Errorf("transport does not support transactions")
+	}
+
+	tx, err := txTransport.BeginSql(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("Transport error: %w", err)
+	}
+
+	return &SqlDataServiceTransaction{
+		Dialect:        e.Dialect,
+		Transport:      tx,
+		SchemaProvider: e.SchemaProvider,
+	}, nil
+}
+
+type SqlDataServiceTransaction struct {
+	Dialect        SqlDialect
+	Transport      SqlTransactionTransportTx
+	SchemaProvider ds.SchemaProvider
+}
+
+func (t *SqlDataServiceTransaction) Capabilities() ds.DataServiceCapabilities {
+	return ds.DataServiceCapabilities{
+		Query:         true,
+		Mutation:      true,
+		Transaction:   false,
+		Schema:        false,
+		IdGeneration:  false,
+		BatchMutation: true,
+		Returning:     false,
+	}
+}
+
+func (t *SqlDataServiceTransaction) Query(ctx context.Context, request *ds.QueryRequest) (*ds.QueryResult, error) {
+	executor := &SqlDataServiceExecutor{
+		Dialect:        t.Dialect,
+		Transport:      t.Transport,
+		SchemaProvider: t.SchemaProvider,
+	}
+	return executor.Query(ctx, request)
+}
+
+func (t *SqlDataServiceTransaction) Mutate(ctx context.Context, request ds.MutationRequest) (*ds.MutationResult, error) {
+	executor := &SqlDataServiceExecutor{
+		Dialect:        t.Dialect,
+		Transport:      t.Transport,
+		SchemaProvider: t.SchemaProvider,
+	}
+	return executor.Mutate(ctx, request)
+}
+
+func (t *SqlDataServiceTransaction) Commit(ctx context.Context) error {
+	if err := t.Transport.CommitSql(ctx); err != nil {
+		return fmt.Errorf("Transport error: %w", err)
+	}
+	return nil
+}
+
+func (t *SqlDataServiceTransaction) Rollback(ctx context.Context) error {
+	if err := t.Transport.RollbackSql(ctx); err != nil {
+		return fmt.Errorf("Transport error: %w", err)
+	}
+	return nil
+}
