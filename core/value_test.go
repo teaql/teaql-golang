@@ -177,9 +177,36 @@ func assertTryTimestamp(t *testing.T, v Value, expected int64, ok bool) {
 	}
 }
 
-func TestValue_ValTypedNull(t *testing.T) {
+func TestValueTypedNull(t *testing.T) {
 	v := ValTypedNull(TypeI64)
-	assert.Equal(t, TypeI64, v.V.(DataType))
+	assert.Equal(t, TypeI64, v.V)
+}
+
+func TestValueExtensions(t *testing.T) {
+	v1 := ValI64(123)
+	id, _ := v1.EntityIdValue()
+	assert.Equal(t, "", id) // int64 stub returns empty string for now
+	assert.False(t, v1.TeaqlIsEmpty())
+	
+	v2 := ValText("hello")
+	id2, _ := v2.EntityIdValue()
+	assert.Equal(t, "hello", id2)
+	assert.False(t, v2.TeaqlIsEmpty())
+	
+	v3 := ValText("")
+	assert.True(t, v3.TeaqlIsEmpty())
+	
+	v4 := ValNull()
+	assert.True(t, v4.TeaqlIsEmpty())
+	
+	v5 := Value{V: map[string]any{"a": 1}}
+	obj, ok := v5.Object()
+	assert.True(t, ok)
+	assert.Equal(t, 1, obj["a"])
+	assert.False(t, v5.TeaqlIsEmpty())
+	
+	v6 := Value{V: map[string]any{}}
+	assert.True(t, v6.TeaqlIsEmpty())
 }
 
 func TestValue_TryText_RejectsNonString(t *testing.T) {
