@@ -29,7 +29,7 @@ func (s *RuntimeDataService) FetchAll(ctx context.Context, query *core.SelectQue
 	req := &data_service.QueryRequest{
 		Query:      query,
 		TraceChain: query.TraceChain,
-		Comment:    query.Comment,
+		Comment:    query.CommentText,
 	}
 
 	res, err := qExec.Query(ctx, req)

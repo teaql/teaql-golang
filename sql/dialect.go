@@ -195,14 +195,14 @@ func (d *DefaultSqlDialect) CompileAddColumn(entity *core.EntityDescriptor, prop
 
 func (d *DefaultSqlDialect) CompileSelect(entity *core.EntityDescriptor, query *core.SelectQuery) (*CompiledQuery, error) {
 	var params []core.Value
-	sql, err := d.compileSelectSql(entity, query, &params)
+	resultSql, err := d.compileSelectSql(entity, query, &params)
 	if err != nil {
 		return nil, err
 	}
 	return &CompiledQuery{
-		Sql:     sql,
+		Sql:     resultSql,
 		Params:  params,
-		Comment: query.Comment,
+		Comment: query.CommentText,
 	}, nil
 }
 

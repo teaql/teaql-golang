@@ -1,18 +1,19 @@
-package core
+package runtime
 
 import (
 	"testing"
 	"github.com/stretchr/testify/assert"
+	"github.com/teaql/teaql-golang/core"
 )
 
 func TestGraphNodeOperations(t *testing.T) {
-	node := &GraphNode{Entity: "User", Values: make(Record)}
+	node := &GraphNode{Entity: "User", Values: make(core.Record)}
 	
-	node.Values["id"] = Value{V: int64(123)}
+	node.Values["id"] = core.Value{V: int64(123)}
 	assert.Equal(t, int64(123), node.Id())
 	
 	child := node.Child("posts")
-	child.Values["id"] = Value{V: int64(1)}
+	child.Values["id"] = core.Value{V: int64(1)}
 	
 	child2 := node.Reference("comments", int64(456))
 	assert.Equal(t, int64(456), child2.Id())
@@ -24,9 +25,9 @@ func TestGraphNodeOperations(t *testing.T) {
 	node.Remove("comments")
 	assert.Nil(t, node.Relations()["comments"])
 	
-	assert.Equal(t, EntityGraphOpSave, node.Operation())
+	assert.Equal(t, core.EntityGraphOpSave, node.Operation())
 	node.IsDeleted = true
-	assert.Equal(t, EntityGraphOpDelete, node.Operation())
+	assert.Equal(t, core.EntityGraphOpDelete, node.Operation())
 	
 	node.Comment("this is a test")
 	assert.Equal(t, "this is a test", node.CommentText)

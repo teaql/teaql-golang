@@ -227,7 +227,7 @@ type SelectQuery struct {
 	GroupBy                []string
 	Relations              []*RelationLoad
 	AggregationCache       *AggregationCacheOptions
-	Comment                *string
+	CommentText                *string
 	TraceChain             []*TraceNode
 	RawSql                 *string
 	RawSqlSearchCriteria   []string
@@ -441,7 +441,7 @@ func (q *SelectQuery) PropagateAggregationCache(cacheExpiredMillis uint64) *Sele
 }
 
 func (q *SelectQuery) Comment(comment string) *SelectQuery {
-	q.Comment = &comment
+	q.CommentText = &comment
 	q.TraceChain = append(q.TraceChain, NewTraceNode(q.Entity, nil, comment))
 	return q
 }

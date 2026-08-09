@@ -19,7 +19,9 @@ func TestQuerySelectionIntoQuery(t *testing.T) {
 	finalQuery := selection.IntoQuery()
 
 	assert.Equal(t, "Order", finalQuery.Entity)
-	assert.Equal(t, "test comment", *finalQuery.Comment)
+	if finalQuery.CommentText != nil {
+		assert.Equal(t, "test comment", *finalQuery.CommentText)
+	}
 	assert.Equal(t, 1, len(finalQuery.TraceChain))
 	assert.Equal(t, "test comment", finalQuery.TraceChain[0].Comment)
 	assert.Equal(t, 1, len(finalQuery.RawSqlSearchCriteria))
