@@ -38,7 +38,7 @@ type RawAuditEvent struct {
 	TraceChain    []*core.TraceNode
 }
 
-func NewCreatedEvent(entity string, values core.Record) *RawAuditEvent {
+func Created(entity string, values core.Record) *RawAuditEvent {
 	changes := make([]*EntityPropertyChange, 0, len(values))
 	for k, v := range values {
 		val := v
@@ -61,7 +61,7 @@ func NewCreatedEvent(entity string, values core.Record) *RawAuditEvent {
 	}
 }
 
-func NewUpdatedEvent(entity string, values core.Record) *RawAuditEvent {
+func Updated(entity string, values core.Record) *RawAuditEvent {
 	updatedFields := make([]string, 0, len(values))
 	for k := range values {
 		updatedFields = append(updatedFields, k)
@@ -80,7 +80,7 @@ func NewUpdatedEvent(entity string, values core.Record) *RawAuditEvent {
 	}
 }
 
-func NewUpdatedWithOldValuesEvent(entity string, values core.Record, oldValues *core.Record, newValues core.Record, updatedFields []string) *RawAuditEvent {
+func UpdatedWithOldValues(entity string, values core.Record, oldValues *core.Record, newValues core.Record, updatedFields []string) *RawAuditEvent {
 	changes := changesForFields(oldValues, &newValues, updatedFields)
 	return &RawAuditEvent{
 		Kind:          RawAuditEventKindUpdated,
@@ -94,7 +94,7 @@ func NewUpdatedWithOldValuesEvent(entity string, values core.Record, oldValues *
 	}
 }
 
-func NewDeletedEvent(entity string, id core.Value, expectedVersion *int64) *RawAuditEvent {
+func Deleted(entity string, id core.Value, expectedVersion *int64) *RawAuditEvent {
 	values := core.Record{"id": id}
 	if expectedVersion != nil {
 		values["version"] = core.ValI64(*expectedVersion)
@@ -111,8 +111,8 @@ func NewDeletedEvent(entity string, id core.Value, expectedVersion *int64) *RawA
 	}
 }
 
-func NewDeletedWithOldValuesEvent(entity string, id core.Value, expectedVersion *int64, oldValues *core.Record) *RawAuditEvent {
-	event := NewDeletedEvent(entity, id, expectedVersion)
+func DeletedWithOldValues(entity string, id core.Value, expectedVersion *int64, oldValues *core.Record) *RawAuditEvent {
+	event := Deleted(entity, id, expectedVersion)
 	if oldValues != nil {
 		changes := make([]*EntityPropertyChange, 0, len(*oldValues))
 		for k, v := range *oldValues {
@@ -129,7 +129,7 @@ func NewDeletedWithOldValuesEvent(entity string, id core.Value, expectedVersion 
 	return event
 }
 
-func NewRecoveredEvent(entity string, id core.Value, expectedVersion int64) *RawAuditEvent {
+func Recovered(entity string, id core.Value, expectedVersion int64) *RawAuditEvent {
 	values := core.Record{
 		"id":      id,
 		"version": core.ValI64(expectedVersion),
@@ -146,7 +146,7 @@ func NewRecoveredEvent(entity string, id core.Value, expectedVersion int64) *Raw
 	}
 }
 
-func NewRecoveredWithOldValuesEvent(entity string, id core.Value, expectedVersion int64, oldValues *core.Record) *RawAuditEvent {
+func RecoveredWithOldValues(entity string, id core.Value, expectedVersion int64, oldValues *core.Record) *RawAuditEvent {
 	recoveredVersion := -expectedVersion + 1
 	var newValues core.Record
 	if oldValues != nil {
@@ -160,14 +160,14 @@ func NewRecoveredWithOldValuesEvent(entity string, id core.Value, expectedVersio
 	newValues["id"] = id
 	newValues["version"] = core.ValI64(recoveredVersion)
 
-	event := NewRecoveredEvent(entity, id, expectedVersion)
+	event := Recovered(entity, id, expectedVersion)
 	event.OldValues = oldValues
 	event.NewValues = &newValues
 	event.Changes = changesForFields(oldValues, &newValues, []string{"version"})
 	return event
 }
 
-func NewSchemaCreatedEvent(entity, tableName string, fieldCount int) *RawAuditEvent {
+func SchemaCreated(entity, tableName string, fieldCount int) *RawAuditEvent {
 	values := core.Record{
 		"table_name":  core.ValText(tableName),
 		"field_count": core.ValI64(int64(fieldCount)),
@@ -193,13 +193,13 @@ func NewSchemaCreatedEvent(entity, tableName string, fieldCount int) *RawAuditEv
 	}
 }
 
-func NewSchemaVerifiedEvent(entity, tableName string, fieldCount int) *RawAuditEvent {
-	event := NewSchemaCreatedEvent(entity, tableName, fieldCount)
+func SchemaVerified(entity, tableName string, fieldCount int) *RawAuditEvent {
+	event := SchemaCreated(entity, tableName, fieldCount)
 	event.Kind = RawAuditEventKindSchemaVerified
 	return event
 }
 
-func NewFieldAddedEvent(entity, tableName, fieldName string) *RawAuditEvent {
+func FieldAdded(entity, tableName, fieldName string) *RawAuditEvent {
 	values := core.Record{
 		"table_name": core.ValText(tableName),
 		"field_name": core.ValText(fieldName),
@@ -225,7 +225,7 @@ func NewFieldAddedEvent(entity, tableName, fieldName string) *RawAuditEvent {
 	}
 }
 
-func NewDataSeededEvent(entity, tableName string, inserted, updated int) *RawAuditEvent {
+func DataSeeded(entity, tableName string, inserted, updated int) *RawAuditEvent {
 	values := core.Record{
 		"table_name": core.ValText(tableName),
 		"inserted":   core.ValI64(int64(inserted)),

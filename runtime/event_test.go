@@ -29,7 +29,7 @@ func TestEntityPropertyChange(t *testing.T) {
 
 func TestRawAuditEventCreated(t *testing.T) {
 	values := core.Record{"a": core.ValI64(1)}
-	event := NewCreatedEvent("User", values)
+	event := Created("User", values)
 	if event.Kind != RawAuditEventKindCreated {
 		t.Errorf("Expected Kind Created")
 	}
@@ -65,7 +65,7 @@ func TestRawAuditEventCreated(t *testing.T) {
 
 func TestRawAuditEventUpdated(t *testing.T) {
 	values := core.Record{"a": core.ValI64(2)}
-	event := NewUpdatedEvent("User", values)
+	event := Updated("User", values)
 	if event.Kind != RawAuditEventKindUpdated {
 		t.Errorf("Expected Kind Updated")
 	}
@@ -94,7 +94,7 @@ func TestRawAuditEventUpdatedWithOldValues(t *testing.T) {
 	oldValues := core.Record{"a": core.ValI64(1)}
 	newValues := core.Record{"a": core.ValI64(2)}
 	
-	event := NewUpdatedWithOldValuesEvent("User", values, &oldValues, newValues, []string{"a"})
+	event := UpdatedWithOldValues("User", values, &oldValues, newValues, []string{"a"})
 	if event.Kind != RawAuditEventKindUpdated {
 		t.Errorf("Expected Kind Updated")
 	}
@@ -112,7 +112,7 @@ func TestRawAuditEventUpdatedWithOldValues(t *testing.T) {
 
 func TestRawAuditEventDeleted(t *testing.T) {
 	expectedVersion := int64(1)
-	event := NewDeletedEvent("User", core.ValI64(10), &expectedVersion)
+	event := Deleted("User", core.ValI64(10), &expectedVersion)
 	if event.Kind != RawAuditEventKindDeleted {
 		t.Errorf("Expected Kind Deleted")
 	}
@@ -126,7 +126,7 @@ func TestRawAuditEventDeleted(t *testing.T) {
 
 func TestRawAuditEventDeletedWithOldValues(t *testing.T) {
 	oldValues := core.Record{"name": core.ValText("Alice")}
-	event := NewDeletedWithOldValuesEvent("User", core.ValI64(10), nil, &oldValues)
+	event := DeletedWithOldValues("User", core.ValI64(10), nil, &oldValues)
 	if event.Kind != RawAuditEventKindDeleted {
 		t.Errorf("Expected Kind Deleted")
 	}
@@ -143,7 +143,7 @@ func TestRawAuditEventDeletedWithOldValues(t *testing.T) {
 }
 
 func TestRawAuditEventRecovered(t *testing.T) {
-	event := NewRecoveredEvent("User", core.ValI64(10), 1)
+	event := Recovered("User", core.ValI64(10), 1)
 	if event.Kind != RawAuditEventKindRecovered {
 		t.Errorf("Expected Kind Recovered")
 	}
@@ -154,7 +154,7 @@ func TestRawAuditEventRecovered(t *testing.T) {
 
 func TestRawAuditEventRecoveredWithOldValues(t *testing.T) {
 	oldValues := core.Record{"name": core.ValText("Alice")}
-	event := NewRecoveredWithOldValuesEvent("User", core.ValI64(10), 2, &oldValues)
+	event := RecoveredWithOldValues("User", core.ValI64(10), 2, &oldValues)
 	if event.Kind != RawAuditEventKindRecovered {
 		t.Errorf("Expected Kind Recovered")
 	}
@@ -174,7 +174,7 @@ func TestRawAuditEventRecoveredWithOldValues(t *testing.T) {
 }
 
 func TestRawAuditEventSchemaCreated(t *testing.T) {
-	event := NewSchemaCreatedEvent("System", "users", 5)
+	event := SchemaCreated("System", "users", 5)
 	if event.Kind != RawAuditEventKindSchemaCreated {
 		t.Errorf("Expected Kind SchemaCreated")
 	}
@@ -187,14 +187,14 @@ func TestRawAuditEventSchemaCreated(t *testing.T) {
 }
 
 func TestRawAuditEventSchemaVerified(t *testing.T) {
-	event := NewSchemaVerifiedEvent("System", "users", 5)
+	event := SchemaVerified("System", "users", 5)
 	if event.Kind != RawAuditEventKindSchemaVerified {
 		t.Errorf("Expected Kind SchemaVerified")
 	}
 }
 
 func TestRawAuditEventFieldAdded(t *testing.T) {
-	event := NewFieldAddedEvent("System", "users", "age")
+	event := FieldAdded("System", "users", "age")
 	if event.Kind != RawAuditEventKindFieldAdded {
 		t.Errorf("Expected Kind FieldAdded")
 	}
@@ -204,7 +204,7 @@ func TestRawAuditEventFieldAdded(t *testing.T) {
 }
 
 func TestRawAuditEventDataSeeded(t *testing.T) {
-	event := NewDataSeededEvent("System", "users", 10, 2)
+	event := DataSeeded("System", "users", 10, 2)
 	if event.Kind != RawAuditEventKindDataSeeded {
 		t.Errorf("Expected Kind DataSeeded")
 	}
@@ -283,7 +283,7 @@ func TestBuildSafeEvent(t *testing.T) {
 		"age":     core.ValI64(30),
 		"_hidden": core.ValI64(1),
 	}
-	event := NewCreatedEvent("User", values)
+	event := Created("User", values)
 	safeEvent := event.BuildSafeEvent([]string{"pwd"}, ptr(20))
 
 	if safeEvent.Kind != RawAuditEventKindCreated {
@@ -323,7 +323,7 @@ func TestInMemoryRawAuditEventSink(t *testing.T) {
 	inMemory.Register(sink1)
 
 	ctx := &UserContext{}
-	event := NewSchemaVerifiedEvent("Sys", "t", 1)
+	event := SchemaVerified("Sys", "t", 1)
 	err := inMemory.OnEvent(ctx, event)
 	if err != nil {
 		t.Errorf("Expected no error")
@@ -338,7 +338,7 @@ func TestInMemoryWithSink(t *testing.T) {
 	inMemory := NewInMemoryRawAuditEventSink().WithSink(sink1)
 
 	ctx := &UserContext{}
-	event := NewSchemaVerifiedEvent("Sys", "t", 1)
+	event := SchemaVerified("Sys", "t", 1)
 	err := inMemory.OnEvent(ctx, event)
 	if err != nil {
 		t.Errorf("Expected no error")
@@ -349,12 +349,12 @@ func TestInMemoryWithSink(t *testing.T) {
 }
 
 func TestDeletedEventEdges(t *testing.T) {
-	event1 := NewDeletedEvent("User", core.ValI64(1), nil)
+	event1 := Deleted("User", core.ValI64(1), nil)
 	if _, ok := event1.Values["version"]; ok {
 		t.Errorf("Expected version to not exist")
 	}
 
-	event2 := NewDeletedWithOldValuesEvent("User", core.ValI64(1), nil, nil)
+	event2 := DeletedWithOldValues("User", core.ValI64(1), nil, nil)
 	if event2.OldValues != nil {
 		t.Errorf("Expected OldValues nil")
 	}
@@ -364,7 +364,7 @@ func TestDeletedEventEdges(t *testing.T) {
 }
 
 func TestRecoveredWithOldValuesNone(t *testing.T) {
-	event := NewRecoveredWithOldValuesEvent("User", core.ValI64(1), 2, nil)
+	event := RecoveredWithOldValues("User", core.ValI64(1), 2, nil)
 	if event.OldValues != nil {
 		t.Errorf("Expected OldValues nil")
 	}
@@ -386,7 +386,7 @@ func TestLimitAuditValueEdges(t *testing.T) {
 
 func TestBuildSafeEventDeleted(t *testing.T) {
 	oldValues := core.Record{"name": core.ValText("Alice")}
-	event := NewDeletedWithOldValuesEvent("User", core.ValI64(1), nil, &oldValues)
+	event := DeletedWithOldValues("User", core.ValI64(1), nil, &oldValues)
 	
 	safeEvent := event.BuildSafeEvent([]string{}, nil)
 	if len(safeEvent.Fields) != 1 {

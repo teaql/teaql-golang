@@ -440,7 +440,7 @@ func (q *SelectQuery) PropagateAggregationCache(cacheExpiredMillis uint64) *Sele
 	return q
 }
 
-func (q *SelectQuery) WithComment(comment string) *SelectQuery {
+func (q *SelectQuery) Comment(comment string) *SelectQuery {
 	q.Comment = &comment
 	q.TraceChain = append(q.TraceChain, NewTraceNode(q.Entity, nil, comment))
 	return q

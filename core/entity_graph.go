@@ -24,7 +24,7 @@ type EntityGraphBuilder struct {
 	node *EntityGraphNode
 }
 
-func (b *EntityGraphBuilder) WithComment(comment string) *EntityGraphBuilder {
+func (b *EntityGraphBuilder) Comment(comment string) *EntityGraphBuilder {
 	b.node.Comment = &comment
 	return b
 }

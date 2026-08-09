@@ -127,7 +127,7 @@ func TestQueryAllMethods(t *testing.T) {
 	q.AggregationCache = nil
 	q.PropagateAggregationCache(100)
 
-	q.WithComment("comment")
+	q.Comment("comment")
 	q.WithRawSql("raw")
 	q.WithRawSqlSearchCriteria("raw_crit")
 	q.WithObjectGroupBy("og1", "og2", q)

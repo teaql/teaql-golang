@@ -209,7 +209,7 @@ func ApplyRelationSelections(query *SelectQuery, selections []*RelationSelection
 
 func ApplyRuntimeMetadata(query *SelectQuery, options *QueryOptions, childEnhancements []*QuerySelection) *SelectQuery {
 	if options.Comment != nil {
-		query.WithComment(*options.Comment)
+		query.Comment(*options.Comment)
 	}
 	query.RawSql = options.RawSql
 	query.RawSqlSearchCriteria = append(query.RawSqlSearchCriteria, options.RawSqlSearchCriteria...)

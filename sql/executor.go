@@ -9,6 +9,28 @@ import (
 	ds "github.com/teaql/teaql-golang/data_service"
 )
 
+type SqlExecutorError struct {
+	CompileError   error
+	TransportError error
+}
+
+func (e *SqlExecutorError) Error() string {
+	if e.CompileError != nil {
+		return fmt.Sprintf("SQL compile error: %v", e.CompileError)
+	}
+	if e.TransportError != nil {
+		return fmt.Sprintf("Transport error: %v", e.TransportError)
+	}
+	return "unknown SqlExecutorError"
+}
+
+func (e *SqlExecutorError) Unwrap() error {
+	if e.CompileError != nil {
+		return e.CompileError
+	}
+	return e.TransportError
+}
+
 type SqlTransport interface {
 	FetchAllSql(ctx context.Context, query *CompiledQuery) ([]core.Record, error)
 	ExecuteSql(ctx context.Context, query *CompiledQuery) (uint64, error)
@@ -59,19 +81,19 @@ func (e *SqlDataServiceExecutor) Capabilities() ds.DataServiceCapabilities {
 func (e *SqlDataServiceExecutor) Query(ctx context.Context, request *ds.QueryRequest) (*ds.QueryResult, error) {
 	entityDesc := e.SchemaProvider.GetEntity(request.Query.Entity)
 	if entityDesc == nil {
-		return nil, fmt.Errorf("SQL compile error: unknown entity %s", request.Query.Entity)
+		return nil, &SqlExecutorError{CompileError: fmt.Errorf("unknown entity %s", request.Query.Entity)}
 	}
 
 	defaultDialect := &DefaultSqlDialect{Dialect: e.Dialect}
 	compiled, err := defaultDialect.CompileSelect(entityDesc, request.Query)
 	if err != nil {
-		return nil, fmt.Errorf("SQL compile error: %w", err)
+		return nil, &SqlExecutorError{CompileError: err}
 	}
 
 	start := time.Now()
 	rows, err := e.Transport.FetchAllSql(ctx, compiled)
 	if err != nil {
-		return nil, fmt.Errorf("Transport error: %w", err)
+		return nil, &SqlExecutorError{TransportError: err}
 	}
 	end := time.Now()
 
@@ -142,7 +164,7 @@ func (e *SqlDataServiceExecutor) Mutate(ctx context.Context, request ds.Mutation
 
 	entityDesc := e.SchemaProvider.GetEntity(entityName)
 	if entityDesc == nil {
-		return nil, fmt.Errorf("SQL compile error: unknown entity %s", entityName)
+		return nil, &SqlExecutorError{CompileError: fmt.Errorf("unknown entity %s", entityName)}
 	}
 
 	defaultDialect := &DefaultSqlDialect{Dialect: e.Dialect}
@@ -166,13 +188,13 @@ func (e *SqlDataServiceExecutor) Mutate(ctx context.Context, request ds.Mutation
 	}
 
 	if err != nil {
-		return nil, fmt.Errorf("SQL compile error: %w", err)
+		return nil, &SqlExecutorError{CompileError: err}
 	}
 
 	start := time.Now()
 	affectedRows, err := e.Transport.ExecuteSql(ctx, compiled)
 	if err != nil {
-		return nil, fmt.Errorf("Transport error: %w", err)
+		return nil, &SqlExecutorError{TransportError: err}
 	}
 	end := time.Now()
 
@@ -255,7 +277,7 @@ func (e *SqlDataServiceExecutor) Begin(ctx context.Context) (ds.Transaction, err
 
 	tx, err := txTransport.BeginSql(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("Transport error: %w", err)
+		return nil, &SqlExecutorError{TransportError: err}
 	}
 
 	return &SqlDataServiceTransaction{
@@ -303,14 +325,14 @@ func (t *SqlDataServiceTransaction) Mutate(ctx context.Context, request ds.Mutat
 
 func (t *SqlDataServiceTransaction) Commit(ctx context.Context) error {
 	if err := t.Transport.CommitSql(ctx); err != nil {
-		return fmt.Errorf("Transport error: %w", err)
+		return &SqlExecutorError{TransportError: err}
 	}
 	return nil
 }
 
 func (t *SqlDataServiceTransaction) Rollback(ctx context.Context) error {
 	if err := t.Transport.RollbackSql(ctx); err != nil {
-		return fmt.Errorf("Transport error: %w", err)
+		return &SqlExecutorError{TransportError: err}
 	}
 	return nil
 }

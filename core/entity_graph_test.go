@@ -69,10 +69,10 @@ func TestEntityGraphBuilderAnnotationsAndChildOperations(t *testing.T) {
 	entity2 := &DummyEntity{Record: rec2}
 
 	graph := NewEntityGraph(entity1).
-		WithComment("Parent creation").
+		Comment("Parent creation").
 		Child("dummy_items",
 			NewEntityGraph(entity2).
-				WithComment("Child deletion").
+				Comment("Child deletion").
 				Delete(),
 		).
 		Build()

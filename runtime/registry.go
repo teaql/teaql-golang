@@ -13,6 +13,14 @@ type EntityRegistry interface {
 	Contains(entity string) bool
 }
 
+type RequestPolicy interface {
+	EnforceSelect(ctx *UserContext, query *core.SelectQuery) error
+	EnforceInsert(ctx *UserContext, command *core.InsertCommand) error
+	EnforceUpdate(ctx *UserContext, command *core.UpdateCommand) error
+	EnforceDelete(ctx *UserContext, command *core.DeleteCommand) error
+	EnforceRecover(ctx *UserContext, command *core.RecoverCommand) error
+}
+
 type EntityDataServiceBehavior interface {
 	BeforeSelect(ctx *UserContext, query *core.SelectQuery) error
 	BeforeInsert(ctx *UserContext, command *core.InsertCommand) error
@@ -125,6 +133,8 @@ type RuntimeModule struct {
 	Metadata       *InMemoryMetadataStore
 	EntityRegistry *InMemoryEntityRegistry
 	Behaviors      *InMemoryEntityDataServiceBehaviorRegistry
+	EventSinks     *InMemoryRawAuditEventSink
+	InitialGraphs  []*GraphNode
 }
 
 func NewRuntimeModule() *RuntimeModule {
@@ -132,6 +142,8 @@ func NewRuntimeModule() *RuntimeModule {
 		Metadata:       NewInMemoryMetadataStore(),
 		EntityRegistry: NewInMemoryEntityRegistry(),
 		Behaviors:      NewInMemoryEntityDataServiceBehaviorRegistry(),
+		EventSinks:     NewInMemoryRawAuditEventSink(),
+		InitialGraphs:  make([]*GraphNode, 0),
 	}
 }
 
@@ -148,11 +160,39 @@ func (m *RuntimeModule) EntityWithBehavior(descriptor *core.EntityDescriptor, be
 	return m
 }
 
+func (m *RuntimeModule) Descriptor(descriptor *core.EntityDescriptor) *RuntimeModule {
+	m.EntityRegistry.Register(descriptor.Name)
+	m.Metadata.Register(descriptor)
+	return m
+}
+
+func (m *RuntimeModule) Behavior(entity string, behavior EntityDataServiceBehavior) *RuntimeModule {
+	m.Behaviors.Register(entity, behavior)
+	return m
+}
+
+func (m *RuntimeModule) EventSink(sink RawAuditEventSink) *RuntimeModule {
+	m.EventSinks.Register(sink)
+	return m
+}
+
+func (m *RuntimeModule) InitialGraph(graph *GraphNode) *RuntimeModule {
+	m.InitialGraphs = append(m.InitialGraphs, graph)
+	return m
+}
+
+func (m *RuntimeModule) AddInitialGraphs(graphs []*GraphNode) *RuntimeModule {
+	m.InitialGraphs = append(m.InitialGraphs, graphs...)
+	return m
+}
+
 // ApplyTo sets the module's registries into the given UserContext
 func (m *RuntimeModule) ApplyTo(ctx *UserContext) {
 	ctx.Metadata = m.Metadata
 	ctx.EntityRegistry = m.EntityRegistry
 	ctx.Behaviors = m.Behaviors
+	ctx.EventSink = m.EventSinks
+	ctx.SetInitialGraphs(m.InitialGraphs)
 }
 
 func (m *RuntimeModule) IntoContext() *UserContext {
