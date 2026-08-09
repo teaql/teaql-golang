@@ -167,3 +167,40 @@ func (v Value) TryTimestamp() (int64, bool) {
 	}
 	return 0, false
 }
+
+func (v Value) EntityIdValue() (string, bool) {
+	switch val := v.V.(type) {
+	case string:
+		return val, true
+	case int64, uint64:
+		// simple conversion, normally we use strconv but let's keep it simple for now
+		return "", false 
+	}
+	return "", false
+}
+
+func (v Value) Object() (map[string]any, bool) {
+	if m, ok := v.V.(map[string]any); ok {
+		return m, true
+	}
+	return nil, false
+}
+
+func (v Value) TeaqlIsEmpty() bool {
+	if v.V == nil {
+		return true
+	}
+	switch val := v.V.(type) {
+	case string:
+		return len(val) == 0
+	case map[string]any:
+		return len(val) == 0
+	case []any:
+		return len(val) == 0
+	}
+	return false
+}
+
+func (v Value) ToJsonValue() any {
+	return v.V
+}
