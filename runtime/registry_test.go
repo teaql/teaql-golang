@@ -106,3 +106,27 @@ func TestRuntimeModule(t *testing.T) {
 	assert.NotNil(t, ctx2)
 	assert.NotNil(t, ctx2.Metadata)
 }
+
+func TestRuntimeModule_MoreBuilders(t *testing.T) {
+	desc := &core.EntityDescriptor{
+		Name:    "TestEntity2",
+		TabName: "test_entity_2",
+	}
+	behavior := &DummyBehavior{}
+
+	sink := &MockRawAuditEventSink{}
+	node := &GraphNode{Entity: "TestEntity2"}
+	nodes := []*GraphNode{{Entity: "TestEntity3"}}
+
+	module := NewRuntimeModule().
+		Descriptor(desc).
+		Behavior("TestEntity2", behavior).
+		EventSink(sink).
+		InitialGraph(node).
+		AddInitialGraphs(nodes)
+
+	ctx := module.IntoContext()
+	assert.NotNil(t, ctx)
+	assert.Equal(t, 2, len(ctx.InitialGraphs()))
+	assert.True(t, module.EntityRegistry.Contains("TestEntity2"))
+}

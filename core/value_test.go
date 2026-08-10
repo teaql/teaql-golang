@@ -232,3 +232,40 @@ func TestValue_TryBool(t *testing.T) {
 	assert.False(t, ok)
 	assert.False(t, b)
 }
+
+func TestValue_MoreCoverage(t *testing.T) {
+	// EntityIdValue other types
+	vInt := ValI64(10)
+	id, ok := vInt.EntityIdValue()
+	assert.False(t, ok)
+	assert.Equal(t, "", id)
+
+	vUint := ValU64(10)
+	id, ok = vUint.EntityIdValue()
+	assert.False(t, ok)
+	assert.Equal(t, "", id)
+
+	vBool := ValBool(true)
+	id, ok = vBool.EntityIdValue()
+	assert.False(t, ok)
+	assert.Equal(t, "", id)
+
+	// Object other type
+	vStr := ValText("not object")
+	obj, ok := vStr.Object()
+	assert.False(t, ok)
+	assert.Nil(t, obj)
+
+	// TeaqlIsEmpty slices
+	vSliceEmpty := Value{V: []any{}}
+	assert.True(t, vSliceEmpty.TeaqlIsEmpty())
+
+	vSliceFull := Value{V: []any{1}}
+	assert.False(t, vSliceFull.TeaqlIsEmpty())
+
+	vOther := ValI64(0)
+	assert.False(t, vOther.TeaqlIsEmpty())
+
+	// ToJsonValue
+	assert.Equal(t, "test", ValText("test").ToJsonValue())
+}

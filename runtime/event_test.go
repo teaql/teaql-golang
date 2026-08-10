@@ -1,6 +1,7 @@
 package runtime
 
 import (
+	"errors"
 	"reflect"
 	"testing"
 
@@ -410,5 +411,22 @@ func TestChangesForFieldsNone(t *testing.T) {
 	}
 	if changes[0].NewValue != nil {
 		t.Errorf("Expected NewValue nil")
+	}
+}
+
+type ErrorSink struct {}
+func (s *ErrorSink) OnEvent(ctx *UserContext, event *RawAuditEvent) error {
+	return errors.New("test error")
+}
+
+func TestInMemoryRawAuditEventSink_Error(t *testing.T) {
+	inMemory := NewInMemoryRawAuditEventSink()
+	inMemory.Register(&ErrorSink{})
+
+	ctx := &UserContext{}
+	event := SchemaVerified("Sys", "t", 1)
+	err := inMemory.OnEvent(ctx, event)
+	if err == nil {
+		t.Errorf("Expected error from sink")
 	}
 }
