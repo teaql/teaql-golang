@@ -140,7 +140,7 @@ func (e *PgMutationExecutor) FetchAllSql(ctx context.Context, query *teaql_sql.C
 	if err != nil {
 		return nil, err
 	}
-	rows, err := e.db.QueryContext(ctx, query.SqlComment(), params...)
+	rows, err := e.db.QueryContext(ctx, query.SqlWithComment(), params...)
 	if err != nil {
 		return nil, err
 	}
@@ -179,7 +179,7 @@ func (e *PgMutationExecutor) ExecuteSql(ctx context.Context, query *teaql_sql.Co
 	if err != nil {
 		return 0, err
 	}
-	res, err := e.db.ExecContext(ctx, query.SqlComment(), params...)
+	res, err := e.db.ExecContext(ctx, query.SqlWithComment(), params...)
 	if err != nil {
 		return 0, err
 	}
@@ -207,7 +207,7 @@ func (e *PgTransactionExecutor) FetchAllSql(ctx context.Context, query *teaql_sq
 	if err != nil {
 		return nil, err
 	}
-	rows, err := e.tx.QueryContext(ctx, query.SqlComment(), params...)
+	rows, err := e.tx.QueryContext(ctx, query.SqlWithComment(), params...)
 	if err != nil {
 		return nil, err
 	}
@@ -246,7 +246,7 @@ func (e *PgTransactionExecutor) ExecuteSql(ctx context.Context, query *teaql_sql
 	if err != nil {
 		return 0, err
 	}
-	res, err := e.tx.ExecContext(ctx, query.SqlComment(), params...)
+	res, err := e.tx.ExecContext(ctx, query.SqlWithComment(), params...)
 	if err != nil {
 		return 0, err
 	}
