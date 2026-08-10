@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"log"
 	"strings"
 
 	_ "github.com/mattn/go-sqlite3"
@@ -85,6 +86,7 @@ func (e *SqliteMutationExecutor) FetchAllSql(ctx context.Context, query *teaql_s
 	if err != nil {
 		return nil, err
 	}
+	log.Printf("SQL: %s | Params: %v\n", query.SqlWithComment(), params)
 	rows, err := e.db.QueryContext(ctx, query.SqlWithComment(), params...)
 	if err != nil {
 		return nil, err
@@ -124,6 +126,7 @@ func (e *SqliteMutationExecutor) ExecuteSql(ctx context.Context, query *teaql_sq
 	if err != nil {
 		return 0, err
 	}
+	log.Printf("SQL: %s | Params: %v\n", query.SqlWithComment(), params)
 	res, err := e.db.ExecContext(ctx, query.SqlWithComment(), params...)
 	if err != nil {
 		return 0, err
@@ -152,6 +155,7 @@ func (e *SqliteTransactionExecutor) FetchAllSql(ctx context.Context, query *teaq
 	if err != nil {
 		return nil, err
 	}
+	log.Printf("SQL (Tx): %s | Params: %v\n", query.SqlWithComment(), params)
 	rows, err := e.tx.QueryContext(ctx, query.SqlWithComment(), params...)
 	if err != nil {
 		return nil, err
@@ -191,6 +195,7 @@ func (e *SqliteTransactionExecutor) ExecuteSql(ctx context.Context, query *teaql
 	if err != nil {
 		return 0, err
 	}
+	log.Printf("SQL (Tx): %s | Params: %v\n", query.SqlWithComment(), params)
 	res, err := e.tx.ExecContext(ctx, query.SqlWithComment(), params...)
 	if err != nil {
 		return 0, err

@@ -71,7 +71,8 @@ func (e *TfpEndpoint) HandleQuery(ctx context.Context, payload []byte) (map[stri
 		q.WithGroupBy(g)
 	}
 	// Note: Filter is skipped in this mock mapper for simplicity
-
+	// Inject implicit soft delete filter: version > 0
+	q.WithFilter(core.ExprGt("version", core.Value{V: int64(0)}))
 	if tfpQuery.CommentText != nil {
 		q.Comment(*tfpQuery.CommentText)
 	}
@@ -127,6 +128,20 @@ func (e *TfpEndpoint) HandleMutation(ctx context.Context, payload []byte) (map[s
 		idVal = core.ValNull()
 	}
 
+	var expectedVersion *int64
+	if v, ok := tfpMut.Payload["version"]; ok {
+		switch val := v.(type) {
+		case float64:
+			ver := int64(val)
+			expectedVersion = &ver
+		case int:
+			ver := int64(val)
+			expectedVersion = &ver
+		case int64:
+			expectedVersion = &val
+		}
+	}
+
 	switch tfpMut.Action {
 	case "Create":
 		mutReq = &data_service.InsertMutation{
@@ -139,19 +154,21 @@ func (e *TfpEndpoint) HandleMutation(ctx context.Context, payload []byte) (map[s
 	case "Update":
 		mutReq = &data_service.UpdateMutation{
 			Cmd: &core.UpdateCommand{
-				Entity:     tfpMut.Entity,
-				Id:         idVal,
-				Values:     record,
-				TraceChain: trace,
+				Entity:          tfpMut.Entity,
+				Id:              idVal,
+				ExpectedVersion: expectedVersion,
+				Values:          record,
+				TraceChain:      trace,
 			},
 		}
 	case "Delete":
 		mutReq = &data_service.DeleteMutation{
 			Cmd: &core.DeleteCommand{
-				Entity:     tfpMut.Entity,
-				Id:         idVal,
-				SoftDelete: true,
-				TraceChain: trace,
+				Entity:          tfpMut.Entity,
+				Id:              idVal,
+				ExpectedVersion: expectedVersion,
+				SoftDelete:      true,
+				TraceChain:      trace,
 			},
 		}
 	case "Recover":
