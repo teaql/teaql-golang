@@ -461,3 +461,87 @@ func (c *UserContext) WithUserIdentifierOption(val any) *UserContext {
 	return c
 }
 
+// ==========================================
+// Context Attribute
+// ==========================================
+func (c *UserContext) PutAttribute(key string, value any) {
+}
+
+func (c *UserContext) GetAttribute(key string) any {
+	return nil
+}
+
+// ==========================================
+// Local Cache
+// ==========================================
+func (c *UserContext) PutToLocalCache(key string, value any, timeToLiveInSeconds ...int) {
+}
+
+func (c *UserContext) GetFromLocalCache(key string) any {
+	return nil
+}
+
+func (c *UserContext) RemoveFromLocalCache(key string) {
+}
+
+// ==========================================
+// Remote Cache
+// ==========================================
+
+type RemoteCacheProvider interface {
+	PutToRemoteCache(ctx context.Context, key string, value any, timeToLiveInSeconds ...int)
+	GetFromRemoteCache(ctx context.Context, key string) any
+	RemoveFromRemoteCache(ctx context.Context, key string)
+}
+
+func (c *UserContext) PutToRemoteCache(key string, value any, timeToLiveInSeconds ...int) {
+	if provider, ok := c.GetResource("RemoteCacheProvider").(RemoteCacheProvider); ok {
+		provider.PutToRemoteCache(c.Context, key, value, timeToLiveInSeconds...)
+	}
+}
+
+func (c *UserContext) GetFromRemoteCache(key string) any {
+	if provider, ok := c.GetResource("RemoteCacheProvider").(RemoteCacheProvider); ok {
+		return provider.GetFromRemoteCache(c.Context, key)
+	}
+	return nil
+}
+
+func (c *UserContext) RemoveFromRemoteCache(key string) {
+	if provider, ok := c.GetResource("RemoteCacheProvider").(RemoteCacheProvider); ok {
+		provider.RemoveFromRemoteCache(c.Context, key)
+	}
+}
+
+// ==========================================
+// Local Lock
+// ==========================================
+func (c *UserContext) TryLocalLock(key string, timeoutMillis int64, expireMillis int64) bool {
+	return true
+}
+
+func (c *UserContext) UnlockLocal(key string) {
+}
+
+// ==========================================
+// Remote Lock
+// ==========================================
+
+type RemoteLockProvider interface {
+	TryRemoteLock(ctx context.Context, key string, timeoutMillis int64, expireMillis int64) bool
+	UnlockRemote(ctx context.Context, key string)
+}
+
+func (c *UserContext) TryRemoteLock(key string, timeoutMillis int64, expireMillis int64) bool {
+	if provider, ok := c.GetResource("RemoteLockProvider").(RemoteLockProvider); ok {
+		return provider.TryRemoteLock(c.Context, key, timeoutMillis, expireMillis)
+	}
+	return true
+}
+
+func (c *UserContext) UnlockRemote(key string) {
+	if provider, ok := c.GetResource("RemoteLockProvider").(RemoteLockProvider); ok {
+		provider.UnlockRemote(c.Context, key)
+	}
+}
+
