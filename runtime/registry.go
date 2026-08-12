@@ -195,7 +195,7 @@ func (m *RuntimeModule) ApplyTo(ctx *UserContext) {
 	ctx.Metadata = m.Metadata
 	ctx.EntityRegistry = m.EntityRegistry
 	ctx.Behaviors = m.Behaviors
-	ctx.EventSink = m.EventSinks
+	ctx.setStandardAuditEventSink(m.EventSinks)
 	ctx.SetInitialGraphs(m.InitialGraphs)
 }
 

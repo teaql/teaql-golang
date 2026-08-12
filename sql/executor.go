@@ -230,11 +230,19 @@ func (e *SqlDataServiceExecutor) Mutate(ctx context.Context, request ds.Mutation
 		DebugQuery:       &debugQuery,
 	}
 
-	return &ds.MutationResult{
+	result := &ds.MutationResult{
 		AffectedRows:    affectedRows,
 		GeneratedValues: make(core.Record),
 		Metadata:        metadata,
-	}, nil
+	}
+	if emitter, ok := ctx.(interface {
+		EmitMutationAudit(ds.MutationRequest, *ds.MutationResult) error
+	}); ok {
+		if err := emitter.EmitMutationAudit(request, result); err != nil {
+			return nil, err
+		}
+	}
+	return result, nil
 }
 
 func (e *SqlDataServiceExecutor) QueryStream(ctx context.Context, request *ds.QueryRequest, chunkSize int) ([]*ds.StreamChunk, error) {

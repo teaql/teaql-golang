@@ -80,7 +80,15 @@ func (e *SqlDataServiceExecutor) Mutate(ctx context.Context, request data_servic
 		return nil, err
 	}
 
-	return &data_service.MutationResult{
+	result := &data_service.MutationResult{
 		AffectedRows: affected,
-	}, nil
+	}
+	if emitter, ok := ctx.(interface {
+		EmitMutationAudit(data_service.MutationRequest, *data_service.MutationResult) error
+	}); ok {
+		if err := emitter.EmitMutationAudit(request, result); err != nil {
+			return nil, err
+		}
+	}
+	return result, nil
 }

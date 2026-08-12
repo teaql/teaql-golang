@@ -461,6 +461,6 @@ func (s *InMemoryRawAuditEventSink) OnEvent(ctx *UserContext, event *RawAuditEve
 	return nil
 }
 
-type SafeAuditEventSink interface {
+type AppAuditEventSink interface {
 	OnSafeEvent(ctx *UserContext, event *SafeAuditEvent) error
 }

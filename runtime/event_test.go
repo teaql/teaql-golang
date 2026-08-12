@@ -5,7 +5,9 @@ import (
 	"reflect"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/teaql/teaql-golang/core"
+	"github.com/teaql/teaql-golang/data_service"
 )
 
 func ptr[T any](v T) *T { return &v }
@@ -94,7 +96,7 @@ func TestRawAuditEventUpdatedWithOldValues(t *testing.T) {
 	values := core.Record{"a": core.ValI64(2)}
 	oldValues := core.Record{"a": core.ValI64(1)}
 	newValues := core.Record{"a": core.ValI64(2)}
-	
+
 	event := UpdatedWithOldValues("User", values, &oldValues, newValues, []string{"a"})
 	if event.Kind != RawAuditEventKindUpdated {
 		t.Errorf("Expected Kind Updated")
@@ -388,7 +390,7 @@ func TestLimitAuditValueEdges(t *testing.T) {
 func TestBuildSafeEventDeleted(t *testing.T) {
 	oldValues := core.Record{"name": core.ValText("Alice")}
 	event := DeletedWithOldValues("User", core.ValI64(1), nil, &oldValues)
-	
+
 	safeEvent := event.BuildSafeEvent([]string{}, nil)
 	if len(safeEvent.Fields) != 1 {
 		t.Fatalf("Expected 1 field")
@@ -414,7 +416,8 @@ func TestChangesForFieldsNone(t *testing.T) {
 	}
 }
 
-type ErrorSink struct {}
+type ErrorSink struct{}
+
 func (s *ErrorSink) OnEvent(ctx *UserContext, event *RawAuditEvent) error {
 	return errors.New("test error")
 }
@@ -429,4 +432,31 @@ func TestInMemoryRawAuditEventSink_Error(t *testing.T) {
 	if err == nil {
 		t.Errorf("Expected error from sink")
 	}
+}
+
+type capturingAppAuditSink struct{ events []*SafeAuditEvent }
+
+func (s *capturingAppAuditSink) OnSafeEvent(_ *UserContext, event *SafeAuditEvent) error {
+	s.events = append(s.events, event)
+	return nil
+}
+
+func TestMutationAuditEmitsIndependentRawAndMaskedAppEvents(t *testing.T) {
+	raw := &MockRawAuditEventSink{}
+	app := &capturingAppAuditSink{}
+	descriptor := core.NewEntityDescriptor("User").AuditMaskFields([]string{"email"})
+	ctx := NewRuntimeModule().Entity(descriptor).EventSink(raw).IntoContext().WithAppAuditEventSink(app)
+	trace := []*core.TraceNode{{Comment: "approved change"}}
+	request := &data_service.InsertMutation{Cmd: &core.InsertCommand{
+		Entity: "User", Values: core.Record{"email": core.ValText("person@example.invalid")}, TraceChain: trace,
+	}}
+
+	err := ctx.EmitMutationAudit(request, &data_service.MutationResult{AffectedRows: 1})
+	assert.NoError(t, err)
+	assert.Len(t, raw.events, 1)
+	assert.Equal(t, "person@example.invalid", raw.events[0].Changes[0].NewValue.V)
+	assert.Equal(t, "approved change", raw.events[0].TraceChain[0].Comment)
+	assert.Len(t, app.events, 1)
+	assert.True(t, app.events[0].Fields[0].Masked)
+	assert.NotEqual(t, "person@example.invalid", *app.events[0].Fields[0].Value)
 }
