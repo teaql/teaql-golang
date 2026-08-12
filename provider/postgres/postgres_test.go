@@ -1,11 +1,13 @@
 package postgres
 
 import (
-	"testing"
 	"context"
 	"database/sql"
-	
+	"testing"
+	"time"
+
 	_ "github.com/mattn/go-sqlite3"
+	"github.com/shopspring/decimal"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/teaql/teaql-golang/core"
@@ -79,17 +81,17 @@ func TestPgMutationExecutorLogic(t *testing.T) {
 	// BeginSql
 	txExec, err := exec.BeginSql(ctx)
 	assert.NoError(t, err)
-	
+
 	affected, err = txExec.ExecuteSql(ctx, queryExec)
 	assert.NoError(t, err)
 	assert.Equal(t, uint64(1), affected)
-	
+
 	records, err = txExec.FetchAllSql(ctx, queryFetch)
 	assert.NoError(t, err)
 	assert.Equal(t, 3, len(records)) // +1 from txExec
 
 	assert.NoError(t, txExec.CommitSql(ctx))
-	
+
 	txExec2, _ := exec.BeginSql(ctx)
 	assert.NoError(t, txExec2.RollbackSql(ctx))
 
@@ -137,6 +139,15 @@ func TestBindPgValue(t *testing.T) {
 	val, err = bindPgValue(core.ValF64(1.23))
 	assert.NoError(t, err)
 	assert.Equal(t, 1.23, val)
+
+	val, err = bindPgValue(core.ValDecimal(decimal.RequireFromString("123.450")))
+	assert.NoError(t, err)
+	assert.Equal(t, "123.45", val)
+
+	date := time.Date(2026, time.January, 6, 0, 0, 0, 0, time.UTC)
+	val, err = bindPgValue(core.ValDate(date))
+	assert.NoError(t, err)
+	assert.Equal(t, date, val)
 }
 
 func TestDecodePgRow(t *testing.T) {

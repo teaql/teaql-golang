@@ -2,9 +2,9 @@ package sql
 
 import (
 	"fmt"
-	"testing"
 	"github.com/stretchr/testify/assert"
 	"github.com/teaql/teaql-golang/core"
+	"testing"
 )
 
 type TestDialect struct{}
@@ -70,7 +70,7 @@ func TestQuotesIdentifiersOnlyWhenNeeded(t *testing.T) {
 func TestCompilesSelectWithFiltersOrderAndLimit(t *testing.T) {
 	dialect := &TestDialect{}
 	defaultDialect := &DefaultSqlDialect{Dialect: dialect}
-	
+
 	query := core.NewSelectQuery("Order").
 		Project("id").
 		Project("name").
@@ -78,17 +78,34 @@ func TestCompilesSelectWithFiltersOrderAndLimit(t *testing.T) {
 		OrderDesc("id").
 		Limit(10).
 		Offset(5)
-		
+
 	compiled, err := defaultDialect.CompileSelect(entity(), query)
 	assert.NoError(t, err)
 	assert.Equal(t, "SELECT \"id\", \"name\" FROM \"orders\" WHERE (\"name\" = $1) ORDER BY \"id\" DESC LIMIT 10 OFFSET 5", compiled.Sql)
 	assert.Equal(t, []core.Value{core.ValText("A")}, compiled.Params)
 }
 
+func TestCompilesPartitionedRelationLimitPerParent(t *testing.T) {
+	dialect := &DefaultSqlDialect{Dialect: &TestDialect{}}
+	query := core.NewSelectQuery("OrderLine").
+		Project("id").
+		Project("order_id").
+		Project("name").
+		WithFilter(core.ExprInList("order_id", []core.Value{core.ValU64(11), core.ValU64(12)})).
+		OrderDesc("id").
+		Page(1, 3).
+		PartitionByField("order_id")
+
+	compiled, err := dialect.CompileSelect(lineEntity(), query)
+	assert.NoError(t, err)
+	assert.Equal(t, "SELECT * FROM (SELECT \"id\", \"order_id\", \"name\", ROW_NUMBER() OVER (PARTITION BY \"order_id\" ORDER BY \"id\" DESC) AS \"__teaql_partition_rank\" FROM \"orderline\" WHERE (\"order_id\" IN ($1, $2))) AS \"__teaql_partitioned\" WHERE \"__teaql_partition_rank\" > 1 AND \"__teaql_partition_rank\" <= 4 ORDER BY \"__teaql_partition_rank\"", compiled.Sql)
+	assert.Equal(t, []core.Value{core.ValU64(11), core.ValU64(12)}, compiled.Params)
+}
+
 func TestCompilesAggregateProjection(t *testing.T) {
 	dialect := &TestDialect{}
 	defaultDialect := &DefaultSqlDialect{Dialect: dialect}
-	
+
 	query := core.NewSelectQuery("Order").CountField("id", "count")
 	compiled, err := defaultDialect.CompileSelect(entity(), query)
 	assert.NoError(t, err)
@@ -98,7 +115,7 @@ func TestCompilesAggregateProjection(t *testing.T) {
 func TestCompilesGroupedAggregateAndExtendedPredicates(t *testing.T) {
 	dialect := &TestDialect{}
 	defaultDialect := &DefaultSqlDialect{Dialect: dialect}
-	
+
 	query := core.NewSelectQuery("Order").
 		WithGroupBy("name").
 		Count("total").
@@ -110,10 +127,10 @@ func TestCompilesGroupedAggregateAndExtendedPredicates(t *testing.T) {
 				AndExpr(core.ExprIsNotNullNode("name")),
 		).
 		OrderAsc("name")
-		
+
 	compiled, err := defaultDialect.CompileSelect(entity(), query)
 	assert.NoError(t, err)
-	
+
 	assert.Equal(t, "SELECT \"name\", COUNT(*) AS \"total\", SUM(\"version\") AS \"versionSum\" FROM \"orders\" WHERE ((\"version\" BETWEEN $1 AND $2) AND (\"name\" NOT LIKE $3) AND (\"name\" NOT IN ($4, $5)) AND (\"name\" IS NOT NULL)) GROUP BY \"name\" ORDER BY \"name\" ASC", compiled.Sql)
 	assert.Equal(t, []core.Value{core.ValI64(1), core.ValI64(9), core.ValText("tmp%"), core.ValText("x"), core.ValText("y")}, compiled.Params)
 }
@@ -121,7 +138,7 @@ func TestCompilesGroupedAggregateAndExtendedPredicates(t *testing.T) {
 func TestCompilesInsertUpdateDeleteAndRecover(t *testing.T) {
 	dialect := &TestDialect{}
 	defaultDialect := &DefaultSqlDialect{Dialect: dialect}
-	
+
 	insertCmd := core.NewInsertCommand("Order").Value("id", core.ValU64(1)).Value("name", core.ValText("A"))
 	insert, err := defaultDialect.CompileInsert(entity(), insertCmd)
 	assert.NoError(t, err)
@@ -129,17 +146,17 @@ func TestCompilesInsertUpdateDeleteAndRecover(t *testing.T) {
 	// Since order isn't guaranteed by map, let's just check length and contains.
 	assert.Contains(t, insert.Sql, "INSERT INTO \"orders\" (")
 	assert.Equal(t, 2, len(insert.Params))
-	
+
 	updateCmd := core.NewUpdateCommand("Order", core.ValU64(1)).WithExpectedVersion(3).Value("name", core.ValText("B"))
 	update, err := defaultDialect.CompileUpdate(entity(), updateCmd)
 	assert.NoError(t, err)
 	assert.Equal(t, "UPDATE \"orders\" SET \"name\" = $1, \"version\" = $2 WHERE \"id\" = $3 AND \"version\" = $4", update.Sql)
-	
+
 	deleteCmd := core.NewDeleteCommand("Order", core.ValU64(1)).WithExpectedVersion(3)
 	deleteSql, err := defaultDialect.CompileDelete(entity(), deleteCmd)
 	assert.NoError(t, err)
 	assert.Equal(t, "UPDATE \"orders\" SET \"version\" = $1 WHERE \"id\" = $2 AND \"version\" = $3", deleteSql.Sql)
-	
+
 	recoverCmd := core.NewRecoverCommand("Order", core.ValU64(1), -4)
 	recoverSql, err := defaultDialect.CompileRecover(entity(), recoverCmd)
 	assert.NoError(t, err)
@@ -149,29 +166,29 @@ func TestCompilesInsertUpdateDeleteAndRecover(t *testing.T) {
 func TestDefaultDialect_Schema(t *testing.T) {
 	dialect := &TestDialect{}
 	defaultDialect := &DefaultSqlDialect{Dialect: dialect}
-	
+
 	sqls := defaultDialect.SchemaSetupSqls()
 	assert.Equal(t, 0, len(sqls))
-	
+
 	typeSql, err := defaultDialect.SchemaTypeSql(core.TypeU64, core.NewPropertyDescriptor("id", core.TypeU64))
 	assert.NoError(t, err)
 	assert.Equal(t, "INTEGER", typeSql)
-	
+
 	colSql, err := defaultDialect.ColumnDefinitionSql(core.NewPropertyDescriptor("id", core.TypeU64).ColumnName("id").NotNull())
 	assert.NoError(t, err)
 	assert.Equal(t, "\"id\" TEST NOT NULL", colSql)
-	
+
 	createTable, err := defaultDialect.CompileCreateTable(entity())
 	assert.NoError(t, err)
 	assert.Contains(t, createTable, "CREATE TABLE IF NOT EXISTS \"orders\"")
-	
+
 	idxSqls, err := defaultDialect.SchemaIndexesSqls(entity())
 	assert.NoError(t, err)
 	assert.Equal(t, 1, len(idxSqls))
-	
+
 	defaultVal := defaultDialect.FallbackDefaultValueSql(core.TypeU64)
 	assert.Equal(t, "0", defaultVal)
-	
+
 	addColumn, err := defaultDialect.CompileAddColumn(entity(), core.NewPropertyDescriptor("new_col", core.TypeText).ColumnName("new_col"))
 	assert.NoError(t, err)
 	assert.Contains(t, addColumn, "ALTER TABLE \"orders\" ADD COLUMN \"new_col\"")
@@ -180,21 +197,21 @@ func TestDefaultDialect_Schema(t *testing.T) {
 func TestDefaultDialect_BatchInsertUpdate(t *testing.T) {
 	dialect := &TestDialect{}
 	defaultDialect := &DefaultSqlDialect{Dialect: dialect}
-	
+
 	batchInsert := core.NewBatchInsertCommand("Order")
 	batchInsert.BatchValues = append(batchInsert.BatchValues, core.Record{"id": core.ValU64(1), "name": core.ValText("A")})
 	batchInsert.BatchValues = append(batchInsert.BatchValues, core.Record{"id": core.ValU64(2), "name": core.ValText("B")})
-	
+
 	insertSql, err := defaultDialect.CompileBatchInsert(entity(), batchInsert)
 	assert.NoError(t, err)
 	assert.Contains(t, insertSql.Sql, "INSERT INTO \"orders\"")
-	
+
 	batchUpdate := core.NewBatchUpdateCommand("Order", []string{"name"})
 	batchUpdate.BatchIds = append(batchUpdate.BatchIds, core.ValU64(1), core.ValU64(2))
 	batchUpdate.BatchValues = append(batchUpdate.BatchValues, core.Record{"name": core.ValText("C")}, core.Record{"name": core.ValText("D")})
 	v1 := int64(1)
 	batchUpdate.BatchExpectedVersions = append(batchUpdate.BatchExpectedVersions, &v1, &v1)
-	
+
 	updateSql, err := defaultDialect.CompileBatchUpdate(entity(), batchUpdate)
 	assert.NoError(t, err)
 	assert.Contains(t, updateSql.Sql, "UPDATE \"orders\" SET")
@@ -203,20 +220,20 @@ func TestDefaultDialect_BatchInsertUpdate(t *testing.T) {
 func TestDefaultDialect_Expressions(t *testing.T) {
 	dialect := &TestDialect{}
 	defaultDialect := &DefaultSqlDialect{Dialect: dialect}
-	
+
 	// Test function compilation (like Gbk)
 	gbkQuery := core.NewSelectQuery("Order").WithFilter(core.ExprEq(core.ExprGbk(core.ExprColumnNode("name")).Column, core.ValText("a")))
 	// Wait, ExprEq takes (string, Value). We need ExprEqNode(left, right)
-	
+
 	// Let's use ExprFunctionNode manually
 	funcExpr := core.ExprGbk(core.ExprColumnNode("name"))
 	eqExpr := core.ExprBinaryNode(funcExpr, core.OpEq, core.ExprValueNode(core.ValText("a")))
 	gbkQuery = core.NewSelectQuery("Order").WithFilter(eqExpr)
-	
+
 	compiled, err := defaultDialect.CompileSelect(entity(), gbkQuery)
 	assert.NoError(t, err)
 	assert.Contains(t, compiled.Sql, "convert_to(\"name\", 'GBK')")
-	
+
 	// Test Subquery
 	subq := core.NewSelectQuery("OrderLine").Project("order_id").WithFilter(core.ExprEq("id", core.ValU64(1)))
 	subqExpr := core.ExprInSubQuery("id", lineEntity(), subq, "order_id")
@@ -225,4 +242,3 @@ func TestDefaultDialect_Expressions(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Contains(t, compiled2.Sql, "\"id\" IN (SELECT \"order_id\" FROM \"orderline\" WHERE (\"id\" = $1))")
 }
-

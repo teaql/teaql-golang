@@ -215,27 +215,28 @@ func DefaultStreamConfig() *StreamConfig {
 }
 
 type SelectQuery struct {
-	Entity                 string
-	Projection             []string
-	ExprProjection         []*NamedExpr
-	SearchWithText         *string
-	Filter                 *Expr
-	Having                 *Expr
-	OrderBy                []*OrderBy
-	Slice                  *Slice
-	Aggregates             []*Aggregate
-	GroupBy                []string
-	Relations              []*RelationLoad
-	AggregationCache       *AggregationCacheOptions
-	CommentText                *string
-	TraceChain             []*TraceNode
-	RawSql                 *string
-	RawSqlSearchCriteria   []string
-	DynamicProperties      []*RawSqlProjection
-	RawProjections         []*RawSqlProjection
-	ObjectGroupBys         []*ObjectGroupBy
-	ChildEnhancements      []*SelectQuery
-	StreamConfig           *StreamConfig
+	Entity               string
+	Projection           []string
+	ExprProjection       []*NamedExpr
+	SearchWithText       *string
+	Filter               *Expr
+	Having               *Expr
+	OrderBy              []*OrderBy
+	Slice                *Slice
+	PartitionBy          *string
+	Aggregates           []*Aggregate
+	GroupBy              []string
+	Relations            []*RelationLoad
+	AggregationCache     *AggregationCacheOptions
+	CommentText          *string
+	TraceChain           []*TraceNode
+	RawSql               *string
+	RawSqlSearchCriteria []string
+	DynamicProperties    []*RawSqlProjection
+	RawProjections       []*RawSqlProjection
+	ObjectGroupBys       []*ObjectGroupBy
+	ChildEnhancements    []*SelectQuery
+	StreamConfig         *StreamConfig
 }
 
 func NewSelectQuery(entity string) *SelectQuery {
@@ -446,6 +447,10 @@ func (q *SelectQuery) Comment(comment string) *SelectQuery {
 	return q
 }
 
+func (q *SelectQuery) WithComment(comment string) *SelectQuery {
+	return q.Comment(comment)
+}
+
 func (q *SelectQuery) WithRawSql(rawSql string) *SelectQuery {
 	q.RawSql = &rawSql
 	return q
@@ -494,6 +499,13 @@ func (q *SelectQuery) Offset(offset uint64) *SelectQuery {
 
 func (q *SelectQuery) Page(offset, limit uint64) *SelectQuery {
 	return q.Offset(offset).Limit(limit)
+}
+
+// PartitionByField scopes Slice independently to each distinct field value.
+// Relation loading sets this automatically for the reverse foreign key.
+func (q *SelectQuery) PartitionByField(field string) *SelectQuery {
+	q.PartitionBy = &field
+	return q
 }
 
 func (q *SelectQuery) Stream(chunkSize int) *SelectQuery {

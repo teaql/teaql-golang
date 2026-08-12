@@ -47,12 +47,13 @@ func TestValue_TryDecimal_AcceptsDecimalIntegerAndTextVariants(t *testing.T) {
 	uMax := decimal.NewFromUint64(math.MaxUint64)
 	assertTryDecimal(t, ValU64(math.MaxUint64), uMax, true)
 	assertTryDecimal(t, ValText("123.450"), d, true)
+	assertTryDecimal(t, ValF64(136.25), decimal.NewFromFloat(136.25), true)
 }
 
 func TestValue_TryDecimal_RejectsInvalidTextAndUnrelatedVariants(t *testing.T) {
 	assertTryDecimal(t, ValText("not-a-decimal"), decimal.Zero, false)
 	assertTryDecimal(t, ValBool(true), decimal.Zero, false)
-	assertTryDecimal(t, ValF64(1.5), decimal.Zero, false)
+	assertTryDecimal(t, ValF64(math.NaN()), decimal.Zero, false)
 	assertTryDecimal(t, ValNull(), decimal.Zero, false)
 }
 
@@ -74,7 +75,7 @@ func TestValue_TryDate_AcceptsDateAndIsoDateText(t *testing.T) {
 	leapDay := time.Date(2024, 2, 29, 0, 0, 0, 0, time.UTC)
 	assertTryDate(t, ValDate(leapDay), leapDay, true)
 	assertTryDate(t, ValText("2024-02-29"), leapDay, true)
-	
+
 	millis := leapDay.UnixMilli()
 	assertTryDate(t, ValI64(millis), leapDay, true)
 	assertTryDate(t, ValU64(uint64(millis)), leapDay, true)
@@ -89,14 +90,14 @@ func TestValue_TryDate_RejectsInvalidDatesAndUnrelatedVariants(t *testing.T) {
 func TestValue_TryTimestamp_AcceptsTimestampAndSupportedTextFormats(t *testing.T) {
 	utcTime, _ := time.Parse(time.RFC3339, "2024-01-02T03:04:05Z")
 	utcTimestamp := utcTime.UnixMilli()
-	
+
 	offsetTime, _ := time.Parse(time.RFC3339, "2024-01-02T03:04:05+08:00")
 	offsetTimestamp := offsetTime.UTC().UnixMilli()
-	
+
 	// "2024-01-02 03:04:05" parsed as UTC
 	naiveTime, _ := time.Parse("2006-01-02 15:04:05", "2024-01-02 03:04:05")
 	naiveTimestamp := naiveTime.UnixMilli()
-	
+
 	// "2024-01-02" parsed as UTC midnight
 	midnightTime, _ := time.Parse("2006-01-02", "2024-01-02")
 	midnightTimestamp := midnightTime.UnixMilli()
@@ -105,7 +106,7 @@ func TestValue_TryTimestamp_AcceptsTimestampAndSupportedTextFormats(t *testing.T
 	assertTryTimestamp(t, ValText("2024-01-02T03:04:05+08:00"), offsetTimestamp, true)
 	assertTryTimestamp(t, ValText("2024-01-02 03:04:05"), naiveTimestamp, true)
 	assertTryTimestamp(t, ValText("2024-01-02"), midnightTimestamp, true)
-	
+
 	assertTryTimestamp(t, ValI64(utcTimestamp), utcTimestamp, true)
 	assertTryTimestamp(t, ValU64(uint64(utcTimestamp)), utcTimestamp, true)
 }
@@ -113,13 +114,12 @@ func TestValue_TryTimestamp_AcceptsTimestampAndSupportedTextFormats(t *testing.T
 func TestValue_TryTimestamp_NormalizesOffsetsAndRejectsInvalidInput(t *testing.T) {
 	expectedTime, _ := time.Parse(time.RFC3339, "2024-01-01T19:04:05Z")
 	expectedUtc := expectedTime.UnixMilli()
-	
+
 	assertTryTimestamp(t, ValText("2024-01-02T03:04:05+08:00"), expectedUtc, true)
 	assertTryTimestamp(t, ValText("2024-13-40 25:61:61"), 0, false)
 	assertTryTimestamp(t, ValBool(true), 0, false)
 	assertTryTimestamp(t, ValNull(), 0, false)
 }
-
 
 // --- Test Helpers ---
 

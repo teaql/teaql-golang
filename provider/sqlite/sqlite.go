@@ -6,8 +6,10 @@ import (
 	"fmt"
 	"log"
 	"strings"
+	"time"
 
 	_ "github.com/mattn/go-sqlite3"
+	"github.com/shopspring/decimal"
 
 	"github.com/teaql/teaql-golang/core"
 	teaql_sql "github.com/teaql/teaql-golang/sql"
@@ -236,6 +238,8 @@ func bindSqliteValue(value core.Value) (interface{}, error) {
 		return nil, nil
 	}
 	switch v := value.V.(type) {
+	case core.DataType:
+		return nil, nil
 	case bool:
 		if v {
 			return int64(1), nil
@@ -247,11 +251,18 @@ func bindSqliteValue(value core.Value) (interface{}, error) {
 		return int64(v), nil
 	case float64:
 		return v, nil
+	case decimal.Decimal:
+		// SQLite NUMERIC affinity coerces a canonical numeric string while the
+		// driver cannot bind Decimal structs directly.
+		return v.String(), nil
+	case time.Time:
+		// TeaQL time.Time values are dates (timestamps use epoch milliseconds).
+		// Match SQLite DATE text storage so inclusive bounds include the day.
+		return v.Format("2006-01-02"), nil
 	case string:
 		return v, nil
-	// You might need to handle decimal, date, timestamp carefully based on how they're stored in V.
 	}
-	return nil, fmt.Errorf("unsupported sqlite bind value type")
+	return nil, fmt.Errorf("unsupported sqlite bind value type %T", value.V)
 }
 
 func decodeSqliteRow(cols []string, colTypes []*sql.ColumnType, vals []interface{}) (core.Record, error) {

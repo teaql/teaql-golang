@@ -80,6 +80,10 @@ func (s *InMemoryMetadataStore) Entity(name string) *core.EntityDescriptor {
 	return s.entities[name]
 }
 
+func (s *InMemoryMetadataStore) GetEntity(name string) *core.EntityDescriptor {
+	return s.Entity(name)
+}
+
 func (s *InMemoryMetadataStore) AllEntities() []*core.EntityDescriptor {
 	var list []*core.EntityDescriptor
 	// to avoid duplicates if keyed by both table and name, filter by unique pointers

@@ -3,10 +3,14 @@ package sqlite
 import (
 	"context"
 	"database/sql"
+	"fmt"
 	"testing"
+	"time"
 
 	_ "github.com/mattn/go-sqlite3"
+	"github.com/shopspring/decimal"
 	"github.com/teaql/teaql-golang/core"
+	"github.com/teaql/teaql-golang/runtime"
 	teaql_sql "github.com/teaql/teaql-golang/sql"
 )
 
@@ -72,6 +76,19 @@ func TestSqliteDialect(t *testing.T) {
 	}
 	if res != `ALTER TABLE test ADD COLUMN col1 INTEGER` {
 		t.Errorf("Unexpected add column sql: %s", res)
+	}
+}
+
+func TestBindSqliteValueSupportsTypedNullDecimalAndTime(t *testing.T) {
+	if value, err := bindSqliteValue(core.ValTypedNull(core.TypeDecimal)); err != nil || value != nil {
+		t.Fatalf("typed null binding = %#v, %v", value, err)
+	}
+	if value, err := bindSqliteValue(core.ValDecimal(decimal.RequireFromString("123.450"))); err != nil || value != "123.45" {
+		t.Fatalf("decimal binding = %#v, %v", value, err)
+	}
+	want := time.Date(2026, 1, 2, 3, 4, 5, 0, time.UTC)
+	if value, err := bindSqliteValue(core.ValDate(want)); err != nil || value != "2026-01-02" {
+		t.Fatalf("time binding = %#v, %v", value, err)
 	}
 }
 
@@ -165,6 +182,71 @@ func TestSqliteMutationExecutor(t *testing.T) {
 	_, err = exec.FetchAllSql(ctx, queryFetch)
 	if err == nil {
 		t.Errorf("Expected error for FetchAllSql on closed db")
+	}
+}
+
+func TestRelationLimitIsAppliedPerParent(t *testing.T) {
+	db, err := sql.Open("sqlite3", ":memory:")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer db.Close()
+	for _, statement := range []string{
+		"CREATE TABLE orders (id INTEGER PRIMARY KEY, version INTEGER)",
+		"CREATE TABLE orderline (id INTEGER PRIMARY KEY, order_id INTEGER, name TEXT)",
+		"INSERT INTO orders VALUES (11, 1), (12, 1)",
+	} {
+		if _, err := db.Exec(statement); err != nil {
+			t.Fatal(err)
+		}
+	}
+	for _, orderID := range []int{11, 12} {
+		for index := 1; index <= 5; index++ {
+			id := orderID*100 + index
+			if _, err := db.Exec("INSERT INTO orderline VALUES (?, ?, ?)", id, orderID, fmt.Sprintf("line-%d", id)); err != nil {
+				t.Fatal(err)
+			}
+		}
+	}
+
+	metadata := runtime.NewInMemoryMetadataStore()
+	metadata.Register(core.NewEntityDescriptor("Order").TableName("orders").
+		Property(core.NewPropertyDescriptor("id", core.TypeU64).Id().NotNull()).
+		Property(core.NewPropertyDescriptor("version", core.TypeI64).Version().NotNull()).
+		Relation(core.NewRelationDescriptor("lines", "OrderLine").LocalKey("id").ForeignKey("order_id").Many()))
+	metadata.Register(core.NewEntityDescriptor("OrderLine").TableName("orderline").
+		Property(core.NewPropertyDescriptor("id", core.TypeU64).Id().NotNull()).
+		Property(core.NewPropertyDescriptor("order_id", core.TypeU64).NotNull()).
+		Property(core.NewPropertyDescriptor("name", core.TypeText)))
+
+	transport := NewSqliteMutationExecutor(db)
+	executor := teaql_sql.NewSqlDataServiceExecutor(&SqliteDialect{}, transport, metadata)
+	service := runtime.NewRuntimeDataService(metadata, executor)
+	query := core.NewSelectQuery("Order").OrderAsc("id").RelationQuery(
+		"lines",
+		core.NewSelectQuery("OrderLine").Project("id").Project("name").OrderDesc("id").Limit(3),
+	)
+	rows, err := service.FetchAll(context.Background(), query)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(rows) != 2 {
+		t.Fatalf("expected 2 parents, got %d", len(rows))
+	}
+	for _, parent := range rows {
+		value, ok := parent["lines"]
+		if !ok {
+			t.Fatal("missing lines relation")
+		}
+		lines, ok := value.V.([]core.Record)
+		if !ok || len(lines) != 3 {
+			t.Fatalf("expected 3 lines per parent, got %#v", value.V)
+		}
+		for _, line := range lines {
+			if _, leaked := line["__teaql_partition_rank"]; leaked {
+				t.Fatal("internal partition rank leaked into relation payload")
+			}
+		}
 	}
 }
 

@@ -5,8 +5,10 @@ import (
 	"database/sql"
 	"fmt"
 	"strings"
+	"time"
 
 	_ "github.com/go-sql-driver/mysql"
+	"github.com/shopspring/decimal"
 
 	"github.com/teaql/teaql-golang/core"
 	teaql_sql "github.com/teaql/teaql-golang/sql"
@@ -226,6 +228,10 @@ func bindMysqlValue(value core.Value) (interface{}, error) {
 		return nil, nil
 	}
 	switch v := value.V.(type) {
+	case core.DataType:
+		// ValTypedNull keeps the intended database type in Value.V. Drivers
+		// still need an actual nil parameter; SQL metadata carries the type.
+		return nil, nil
 	case bool:
 		return v, nil
 	case int64:
@@ -234,10 +240,14 @@ func bindMysqlValue(value core.Value) (interface{}, error) {
 		return int64(v), nil
 	case float64:
 		return v, nil
+	case decimal.Decimal:
+		return v.String(), nil
+	case time.Time:
+		return v, nil
 	case string:
 		return v, nil
 	}
-	return nil, fmt.Errorf("unsupported mysql bind value type")
+	return nil, fmt.Errorf("unsupported mysql bind value type %T", value.V)
 }
 
 func decodeMysqlRow(cols []string, colTypes []*sql.ColumnType, vals []interface{}) (core.Record, error) {

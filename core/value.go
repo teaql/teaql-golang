@@ -30,17 +30,17 @@ type Value struct {
 
 // --- Constructors ---
 
-func ValNull() Value { return Value{nil} }
-func ValBool(b bool) Value { return Value{b} }
-func ValI64(i int64) Value { return Value{i} }
-func ValU64(u uint64) Value { return Value{u} }
-func ValF64(f float64) Value { return Value{f} }
+func ValNull() Value                     { return Value{nil} }
+func ValBool(b bool) Value               { return Value{b} }
+func ValI64(i int64) Value               { return Value{i} }
+func ValU64(u uint64) Value              { return Value{u} }
+func ValF64(f float64) Value             { return Value{f} }
 func ValDecimal(d decimal.Decimal) Value { return Value{d} }
-func ValText(s string) Value { return Value{s} }
-func ValJson(j any) Value { return Value{j} }
-func ValDate(d time.Time) Value { return Value{d} } // Stores date without time
-func ValTimestamp(t int64) Value { return Value{t} } // Unix timestamp in milliseconds
-func ValTypedNull(t DataType) Value { return Value{t} }
+func ValText(s string) Value             { return Value{s} }
+func ValJson(j any) Value                { return Value{j} }
+func ValDate(d time.Time) Value          { return Value{d} } // Stores date without time
+func ValTimestamp(t int64) Value         { return Value{t} } // Unix timestamp in milliseconds
+func ValTypedNull(t DataType) Value      { return Value{t} }
 
 // --- Methods ---
 
@@ -88,6 +88,11 @@ func (v Value) TryDecimal() (decimal.Decimal, bool) {
 		return decimal.NewFromInt(val), true
 	case uint64:
 		return decimal.NewFromUint64(val), true
+	case float64:
+		if math.IsNaN(val) || math.IsInf(val, 0) {
+			return decimal.Zero, false
+		}
+		return decimal.NewFromFloat(val), true
 	case string:
 		d, err := decimal.NewFromString(val)
 		if err == nil {
@@ -141,6 +146,32 @@ func (v Value) TryDate() (time.Time, bool) {
 		if val <= math.MaxInt64 {
 			t := time.UnixMilli(int64(val)).UTC()
 			return time.Date(t.Year(), t.Month(), t.Day(), 0, 0, 0, 0, time.UTC), true
+		}
+	}
+	return time.Time{}, false
+}
+
+func (v Value) TryTime() (time.Time, bool) {
+	switch val := v.V.(type) {
+	case time.Time:
+		return val, true
+	case string:
+		if t, err := time.Parse(time.RFC3339, val); err == nil {
+			return t.UTC(), true
+		}
+		if t, err := time.Parse("2006-01-02 15:04:05", val); err == nil {
+			return t.UTC(), true
+		}
+		if t, err := time.Parse("2006-01-02", val); err == nil {
+			return t.UTC(), true
+		}
+	case int64:
+		t := time.UnixMilli(val).UTC()
+		return t, true
+	case uint64:
+		if val <= math.MaxInt64 {
+			t := time.UnixMilli(int64(val)).UTC()
+			return t, true
 		}
 	}
 	return time.Time{}, false

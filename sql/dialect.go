@@ -46,7 +46,7 @@ func needsQuotedIdentifier(ident string) bool {
 	if ident == "" || isSqlKeyword(ident) {
 		return true
 	}
-	
+
 	runes := []rune(ident)
 	if len(runes) > 0 {
 		first := runes[0]
@@ -125,7 +125,7 @@ func (d *DefaultSqlDialect) CompileCreateTable(entity *core.EntityDescriptor) (s
 		}
 		columns = append(columns, colDef)
 	}
-	
+
 	tableName := d.Dialect.QuoteIdent(entity.TabName)
 	return fmt.Sprintf("CREATE TABLE IF NOT EXISTS %s (%s)", tableName, strings.Join(columns, ", ")), nil
 }
@@ -142,7 +142,7 @@ func (d *DefaultSqlDialect) SchemaIndexesSqls(entity *core.EntityDescriptor) ([]
 		if idCol != nil {
 			idColName = idCol.ColName
 		}
-		
+
 		idxName := fmt.Sprintf("PK_%s_ID_VERSION", tableNameUpper)
 		sqls = append(sqls, fmt.Sprintf("CREATE UNIQUE INDEX IF NOT EXISTS %s ON %s (%s, %s)",
 			d.Dialect.QuoteIdent(idxName),
@@ -215,6 +215,26 @@ func (d *DefaultSqlDialect) compileSelectSql(entity *core.EntityDescriptor, quer
 	if err != nil {
 		return "", err
 	}
+	partitioned := query.PartitionBy != nil && query.Slice != nil
+	if partitioned {
+		partitionColumn, err := d.columnSql(entity, *query.PartitionBy)
+		if err != nil {
+			return "", err
+		}
+		windowOrder := ""
+		if len(query.OrderBy) > 0 {
+			var orderByParts []string
+			for _, order := range query.OrderBy {
+				orderSql, err := d.orderBySql(entity, order, params)
+				if err != nil {
+					return "", err
+				}
+				orderByParts = append(orderByParts, orderSql)
+			}
+			windowOrder = " ORDER BY " + strings.Join(orderByParts, ", ")
+		}
+		projection += fmt.Sprintf(", ROW_NUMBER() OVER (PARTITION BY %s%s) AS %s", partitionColumn, windowOrder, d.Dialect.QuoteIdent("__teaql_partition_rank"))
+	}
 
 	sqlBuilder := strings.Builder{}
 	sqlBuilder.WriteString(fmt.Sprintf("SELECT %s FROM %s", projection, d.Dialect.QuoteIdent(entity.TabName)))
@@ -246,6 +266,15 @@ func (d *DefaultSqlDialect) compileSelectSql(entity *core.EntityDescriptor, quer
 	if len(whereParts) > 0 {
 		sqlBuilder.WriteString(" WHERE ")
 		sqlBuilder.WriteString(strings.Join(whereParts, " AND "))
+	}
+
+	if partitioned {
+		rank := d.Dialect.QuoteIdent("__teaql_partition_rank")
+		predicates := []string{fmt.Sprintf("%s > %d", rank, query.Slice.Offset)}
+		if query.Slice.Limit != nil {
+			predicates = append(predicates, fmt.Sprintf("%s <= %d", rank, query.Slice.Offset+*query.Slice.Limit))
+		}
+		return fmt.Sprintf("SELECT * FROM (%s) AS %s WHERE %s ORDER BY %s", sqlBuilder.String(), d.Dialect.QuoteIdent("__teaql_partitioned"), strings.Join(predicates, " AND "), rank), nil
 	}
 
 	if len(query.GroupBy) > 0 {
@@ -316,9 +345,9 @@ func (d *DefaultSqlDialect) CompileInsert(entity *core.EntityDescriptor, command
 	}
 
 	return &CompiledQuery{
-		Sql: fmt.Sprintf("INSERT INTO %s (%s) VALUES (%s)", 
-			d.Dialect.QuoteIdent(entity.TabName), 
-			strings.Join(columns, ", "), 
+		Sql: fmt.Sprintf("INSERT INTO %s (%s) VALUES (%s)",
+			d.Dialect.QuoteIdent(entity.TabName),
+			strings.Join(columns, ", "),
 			strings.Join(placeholders, ", ")),
 		Params: params,
 	}, nil
@@ -367,9 +396,9 @@ func (d *DefaultSqlDialect) CompileBatchInsert(entity *core.EntityDescriptor, co
 	}
 
 	return &CompiledQuery{
-		Sql: fmt.Sprintf("INSERT INTO %s (%s) VALUES %s", 
-			d.Dialect.QuoteIdent(entity.TabName), 
-			strings.Join(columnNames, ", "), 
+		Sql: fmt.Sprintf("INSERT INTO %s (%s) VALUES %s",
+			d.Dialect.QuoteIdent(entity.TabName),
+			strings.Join(columnNames, ", "),
 			strings.Join(valuesClauses, ", ")),
 		Params: params,
 	}, nil
@@ -423,9 +452,9 @@ func (d *DefaultSqlDialect) CompileUpdate(entity *core.EntityDescriptor, command
 	}
 
 	return &CompiledQuery{
-		Sql: fmt.Sprintf("UPDATE %s SET %s WHERE %s", 
-			d.Dialect.QuoteIdent(entity.TabName), 
-			strings.Join(assignments, ", "), 
+		Sql: fmt.Sprintf("UPDATE %s SET %s WHERE %s",
+			d.Dialect.QuoteIdent(entity.TabName),
+			strings.Join(assignments, ", "),
 			strings.Join(predicates, " AND ")),
 		Params: params,
 	}, nil
@@ -463,17 +492,17 @@ func (d *DefaultSqlDialect) CompileBatchUpdate(entity *core.EntityDescriptor, co
 			}
 			params = append(params, id)
 			idPh := d.Dialect.Placeholder(len(params))
-			
+
 			params = append(params, val)
 			valPh := d.Dialect.Placeholder(len(params))
-			
+
 			caseParts = append(caseParts, fmt.Sprintf("WHEN %s THEN %s", idPh, valPh))
 		}
-		
+
 		caseParts = append(caseParts, fmt.Sprintf("ELSE %s END", d.Dialect.QuoteIdent(property.ColName)))
 		setClauses = append(setClauses, fmt.Sprintf("%s = %s", d.Dialect.QuoteIdent(property.ColName), strings.Join(caseParts, " ")))
 	}
-	
+
 	hasVersions := false
 	versionProperty := entity.VersionProperty()
 	if versionProperty != nil {
@@ -482,17 +511,17 @@ func (d *DefaultSqlDialect) CompileBatchUpdate(entity *core.EntityDescriptor, co
 			if expVerOpt != nil {
 				hasVersions = true
 				id := command.BatchIds[i]
-				
+
 				params = append(params, id)
 				idPh := d.Dialect.Placeholder(len(params))
-				
+
 				params = append(params, core.ValI64(*expVerOpt+1))
 				valPh := d.Dialect.Placeholder(len(params))
-				
+
 				caseParts = append(caseParts, fmt.Sprintf("WHEN %s THEN %s", idPh, valPh))
 			}
 		}
-		
+
 		if hasVersions {
 			caseParts = append(caseParts, fmt.Sprintf("ELSE %s END", d.Dialect.QuoteIdent(versionProperty.ColName)))
 			setClauses = append(setClauses, fmt.Sprintf("%s = %s", d.Dialect.QuoteIdent(versionProperty.ColName), strings.Join(caseParts, " ")))
@@ -508,7 +537,7 @@ func (d *DefaultSqlDialect) CompileBatchUpdate(entity *core.EntityDescriptor, co
 		params = append(params, id)
 		inPlaceholders = append(inPlaceholders, d.Dialect.Placeholder(len(params)))
 	}
-	
+
 	predicates := []string{fmt.Sprintf("%s IN (%s)", d.Dialect.QuoteIdent(idProperty.ColName), strings.Join(inPlaceholders, ", "))}
 
 	if hasVersions {
@@ -516,13 +545,13 @@ func (d *DefaultSqlDialect) CompileBatchUpdate(entity *core.EntityDescriptor, co
 		for i, expVerOpt := range command.BatchExpectedVersions {
 			if expVerOpt != nil {
 				id := command.BatchIds[i]
-				
+
 				params = append(params, id)
 				idPh := d.Dialect.Placeholder(len(params))
-				
+
 				params = append(params, core.ValI64(*expVerOpt))
 				valPh := d.Dialect.Placeholder(len(params))
-				
+
 				caseParts = append(caseParts, fmt.Sprintf("WHEN %s THEN %s", idPh, valPh))
 			}
 		}
@@ -531,9 +560,9 @@ func (d *DefaultSqlDialect) CompileBatchUpdate(entity *core.EntityDescriptor, co
 	}
 
 	return &CompiledQuery{
-		Sql: fmt.Sprintf("UPDATE %s SET %s WHERE %s", 
-			d.Dialect.QuoteIdent(entity.TabName), 
-			strings.Join(setClauses, ", "), 
+		Sql: fmt.Sprintf("UPDATE %s SET %s WHERE %s",
+			d.Dialect.QuoteIdent(entity.TabName),
+			strings.Join(setClauses, ", "),
 			strings.Join(predicates, " AND ")),
 		Params: params,
 	}, nil
@@ -568,10 +597,10 @@ func (d *DefaultSqlDialect) CompileDelete(entity *core.EntityDescriptor, command
 		}
 
 		return &CompiledQuery{
-			Sql: fmt.Sprintf("UPDATE %s SET %s = %s WHERE %s", 
-				d.Dialect.QuoteIdent(entity.TabName), 
-				d.Dialect.QuoteIdent(versionProperty.ColName), 
-				d.Dialect.Placeholder(1), 
+			Sql: fmt.Sprintf("UPDATE %s SET %s = %s WHERE %s",
+				d.Dialect.QuoteIdent(entity.TabName),
+				d.Dialect.QuoteIdent(versionProperty.ColName),
+				d.Dialect.Placeholder(1),
 				strings.Join(predicates, " AND ")),
 			Params: params,
 		}, nil
@@ -590,7 +619,7 @@ func (d *DefaultSqlDialect) CompileDelete(entity *core.EntityDescriptor, command
 	}
 
 	return &CompiledQuery{
-		Sql: fmt.Sprintf("DELETE FROM %s WHERE %s", d.Dialect.QuoteIdent(entity.TabName), strings.Join(predicates, " AND ")),
+		Sql:    fmt.Sprintf("DELETE FROM %s WHERE %s", d.Dialect.QuoteIdent(entity.TabName), strings.Join(predicates, " AND ")),
 		Params: params,
 	}, nil
 }
@@ -694,7 +723,7 @@ func (d *DefaultSqlDialect) selectProjection(entity *core.EntityDescriptor, quer
 
 func (d *DefaultSqlDialect) aggregateProjection(entity *core.EntityDescriptor, query *core.SelectQuery, params *[]core.Value) (string, error) {
 	var parts []string
-	
+
 	contains := func(slice []string, val string) bool {
 		for _, item := range slice {
 			if item == val {
@@ -762,18 +791,30 @@ func (d *DefaultSqlDialect) aggregateCallSql(function core.AggregateFunction, fi
 
 func (d *DefaultSqlDialect) aggregateFunctionSql(function core.AggregateFunction) string {
 	switch function {
-	case core.AggCount: return "COUNT"
-	case core.AggSum: return "SUM"
-	case core.AggAvg: return "AVG"
-	case core.AggMin: return "MIN"
-	case core.AggMax: return "MAX"
-	case core.AggStddev: return "STDDEV"
-	case core.AggStddevPop: return "STDDEV_POP"
-	case core.AggVarSamp: return "VAR_SAMP"
-	case core.AggVarPop: return "VAR_POP"
-	case core.AggBitAnd: return "BIT_AND"
-	case core.AggBitOr: return "BIT_OR"
-	case core.AggBitXor: return "BIT_XOR"
+	case core.AggCount:
+		return "COUNT"
+	case core.AggSum:
+		return "SUM"
+	case core.AggAvg:
+		return "AVG"
+	case core.AggMin:
+		return "MIN"
+	case core.AggMax:
+		return "MAX"
+	case core.AggStddev:
+		return "STDDEV"
+	case core.AggStddevPop:
+		return "STDDEV_POP"
+	case core.AggVarSamp:
+		return "VAR_SAMP"
+	case core.AggVarPop:
+		return "VAR_POP"
+	case core.AggBitAnd:
+		return "BIT_AND"
+	case core.AggBitOr:
+		return "BIT_OR"
+	case core.AggBitXor:
+		return "BIT_XOR"
 	}
 	return "UNKNOWN"
 }
@@ -802,14 +843,22 @@ func (d *DefaultSqlDialect) compileExpr(entity *core.EntityDescriptor, expr *cor
 		}
 		opStr := ""
 		switch op {
-		case core.OpEq: opStr = "="
-		case core.OpNe: opStr = "!="
-		case core.OpGt: opStr = ">"
-		case core.OpGte: opStr = ">="
-		case core.OpLt: opStr = "<"
-		case core.OpLte: opStr = "<="
-		case core.OpLike: opStr = "LIKE"
-		case core.OpNotLike: opStr = "NOT LIKE"
+		case core.OpEq:
+			opStr = "="
+		case core.OpNe:
+			opStr = "!="
+		case core.OpGt:
+			opStr = ">"
+		case core.OpGte:
+			opStr = ">="
+		case core.OpLt:
+			opStr = "<"
+		case core.OpLte:
+			opStr = "<="
+		case core.OpLike:
+			opStr = "LIKE"
+		case core.OpNotLike:
+			opStr = "NOT LIKE"
 		}
 		return fmt.Sprintf("(%s %s %s)", lhs, opStr, rhs), nil
 	case core.ExprTypeSubQuery:
@@ -872,17 +921,28 @@ func (d *DefaultSqlDialect) compileFunction(entity *core.EntityDescriptor, funct
 			return "COUNT(*)", nil
 		}
 		return d.compileSingleArgFunction(entity, "COUNT", args, params)
-	case core.FuncSum: return d.compileSingleArgFunction(entity, "SUM", args, params)
-	case core.FuncAvg: return d.compileSingleArgFunction(entity, "AVG", args, params)
-	case core.FuncMin: return d.compileSingleArgFunction(entity, "MIN", args, params)
-	case core.FuncMax: return d.compileSingleArgFunction(entity, "MAX", args, params)
-	case core.FuncStddev: return d.compileSingleArgFunction(entity, "STDDEV", args, params)
-	case core.FuncStddevPop: return d.compileSingleArgFunction(entity, "STDDEV_POP", args, params)
-	case core.FuncVarSamp: return d.compileSingleArgFunction(entity, "VAR_SAMP", args, params)
-	case core.FuncVarPop: return d.compileSingleArgFunction(entity, "VAR_POP", args, params)
-	case core.FuncBitAnd: return d.compileSingleArgFunction(entity, "BIT_AND", args, params)
-	case core.FuncBitOr: return d.compileSingleArgFunction(entity, "BIT_OR", args, params)
-	case core.FuncBitXor: return d.compileSingleArgFunction(entity, "BIT_XOR", args, params)
+	case core.FuncSum:
+		return d.compileSingleArgFunction(entity, "SUM", args, params)
+	case core.FuncAvg:
+		return d.compileSingleArgFunction(entity, "AVG", args, params)
+	case core.FuncMin:
+		return d.compileSingleArgFunction(entity, "MIN", args, params)
+	case core.FuncMax:
+		return d.compileSingleArgFunction(entity, "MAX", args, params)
+	case core.FuncStddev:
+		return d.compileSingleArgFunction(entity, "STDDEV", args, params)
+	case core.FuncStddevPop:
+		return d.compileSingleArgFunction(entity, "STDDEV_POP", args, params)
+	case core.FuncVarSamp:
+		return d.compileSingleArgFunction(entity, "VAR_SAMP", args, params)
+	case core.FuncVarPop:
+		return d.compileSingleArgFunction(entity, "VAR_POP", args, params)
+	case core.FuncBitAnd:
+		return d.compileSingleArgFunction(entity, "BIT_AND", args, params)
+	case core.FuncBitOr:
+		return d.compileSingleArgFunction(entity, "BIT_OR", args, params)
+	case core.FuncBitXor:
+		return d.compileSingleArgFunction(entity, "BIT_XOR", args, params)
 	}
 	return "", ErrInvalidFunctionArguments(fmt.Sprintf("unknown function: %v", function))
 }
@@ -912,9 +972,12 @@ func (d *DefaultSqlDialect) compileSubquery(entity *core.EntityDescriptor, left 
 	}
 	operator := ""
 	switch op {
-	case core.OpIn, core.OpInLarge: operator = "IN"
-	case core.OpNotIn, core.OpNotInLarge: operator = "NOT IN"
-	default: return "", ErrInvalidSubQueryOperator(fmt.Sprintf("%v", op))
+	case core.OpIn, core.OpInLarge:
+		operator = "IN"
+	case core.OpNotIn, core.OpNotInLarge:
+		operator = "NOT IN"
+	default:
+		return "", ErrInvalidSubQueryOperator(fmt.Sprintf("%v", op))
 	}
 	subquery, err := d.compileSelectSql(subEntity, query, params)
 	if err != nil {
@@ -942,8 +1005,10 @@ func (d *DefaultSqlDialect) compileIn(entity *core.EntityDescriptor, left *core.
 	}
 	operator := ""
 	switch op {
-	case core.OpIn, core.OpInLarge: operator = "IN"
-	case core.OpNotIn, core.OpNotInLarge: operator = "NOT IN"
+	case core.OpIn, core.OpInLarge:
+		operator = "IN"
+	case core.OpNotIn, core.OpNotInLarge:
+		operator = "NOT IN"
 	}
 
 	if right.Type == core.ExprTypeValue {

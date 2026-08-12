@@ -2,9 +2,12 @@ package mysql
 
 import (
 	"testing"
+	"time"
+
 	"context"
 	"database/sql"
-	
+	"github.com/shopspring/decimal"
+
 	_ "github.com/mattn/go-sqlite3"
 
 	"github.com/stretchr/testify/assert"
@@ -46,17 +49,17 @@ func TestMysqlMutationExecutorLogic(t *testing.T) {
 	// BeginSql
 	txExec, err := exec.BeginSql(ctx)
 	assert.NoError(t, err)
-	
+
 	affected, err = txExec.ExecuteSql(ctx, queryExec)
 	assert.NoError(t, err)
 	assert.Equal(t, uint64(1), affected)
-	
+
 	records, err = txExec.FetchAllSql(ctx, queryFetch)
 	assert.NoError(t, err)
 	assert.Equal(t, 3, len(records)) // +1 from txExec
 
 	assert.NoError(t, txExec.CommitSql(ctx))
-	
+
 	txExec2, _ := exec.BeginSql(ctx)
 	assert.NoError(t, txExec2.RollbackSql(ctx))
 
@@ -104,6 +107,15 @@ func TestBindMysqlValue(t *testing.T) {
 	val, err = bindMysqlValue(core.ValF64(1.23))
 	assert.NoError(t, err)
 	assert.Equal(t, 1.23, val)
+
+	val, err = bindMysqlValue(core.ValDecimal(decimal.RequireFromString("123.450")))
+	assert.NoError(t, err)
+	assert.Equal(t, "123.45", val)
+
+	wantTime := time.Date(2026, 1, 2, 3, 4, 5, 0, time.UTC)
+	val, err = bindMysqlValue(core.ValDate(wantTime))
+	assert.NoError(t, err)
+	assert.Equal(t, wantTime, val)
 }
 
 func TestDecodeMysqlRow(t *testing.T) {
@@ -211,5 +223,3 @@ func TestMysqlDialect(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, "ALTER TABLE test ADD COLUMN col BIGINT", res)
 }
-
-
