@@ -48,15 +48,33 @@ func main() {
 	var platformID uint64
 	if len(platforms.Data) == 0 {
 		now := time.Date(2026, 8, 13, 9, 0, 0, 0, time.UTC)
-		platform := commerce_platform.NewCommercePlatform().UpdateName("Northwind Demo").UpdateCreateTime(now).UpdateUpdateTime(now)
+		platform := commerce_platform.NewCommercePlatform().
+			UpdateName("Northwind Demo").
+			UpdateCreateTime(now).
+			UpdateUpdateTime(now)
 		must(platform.AuditAs("Create quick-start commerce platform").Save(ctx))
 		platformID = platform.Id()
-		buyer := customer.NewCustomer().UpdateName("Acme Retail").UpdateEmail("masked-in-quick-start").UpdateCommercePlatformId(platform.Id()).UpdateCreateTime(now).UpdateUpdateTime(now)
+		buyer := customer.NewCustomer().
+			UpdateName("Acme Retail").
+			UpdateEmail("masked-in-quick-start").
+			UpdateCommercePlatformId(platform.Id()).
+			UpdateCreateTime(now).
+			UpdateUpdateTime(now)
 		must(buyer.AuditAs("Create masked quick-start customer").Save(ctx))
-		pending := order_status.NewOrderStatus().UpdateName("Pending").UpdateCode("PENDING").UpdateColor("#F97316").UpdateDisplayOrder(decimal.NewFromInt(10)).UpdateCommercePlatformId(platform.Id())
+		pending := order_status.NewOrderStatus().
+			UpdateName("Pending").
+			UpdateCode("PENDING").
+			UpdateColor("#F97316").
+			UpdateDisplayOrder(decimal.NewFromInt(10)).
+			UpdateCommercePlatformId(platform.Id())
 		must(pending.AuditAs("Create quick-start pending status").Save(ctx))
 		orderDate := time.Date(2026, 8, 12, 0, 0, 0, 0, time.UTC)
-		order := customer_order.NewCustomerOrder().UpdateOrderNumber("WEB-2026-001").UpdateOrderDate(orderDate).UpdateTotalAmount(decimal.RequireFromString("129.95")).UpdateCustomerId(buyer.Id()).UpdateCommercePlatformId(platform.Id())
+		order := customer_order.NewCustomerOrder().
+			UpdateOrderNumber("WEB-2026-001").
+			UpdateOrderDate(orderDate).
+			UpdateTotalAmount(decimal.RequireFromString("129.95")).
+			UpdateCustomerId(buyer.Id()).
+			UpdateCommercePlatformId(platform.Id())
 		// The generated constant transition uses the stable status id from the model.
 		order.UpdateStatusToPending()
 		must(order.AuditAs("Create deterministic quick-start order").Save(ctx))
@@ -79,7 +97,12 @@ func main() {
 		Comment("Check idempotent quick-start preset").Purpose("Persist the operator's reusable search").ExecuteForList(ctx)
 	must(err)
 	if len(presets.Data) == 0 {
-		preset := order_search_preset.NewOrderSearchPreset().UpdateName("Pending web orders").UpdateFilterJson(`{"order_number":"WEB-"}`).UpdateRequestId("quick-start-pending-orders").UpdateOwnerUserId("quick-start-user").UpdateCommercePlatformId(platformID)
+		preset := order_search_preset.NewOrderSearchPreset().
+			UpdateName("Pending web orders").
+			UpdateFilterJson(`{"order_number":"WEB-"}`).
+			UpdateRequestId("quick-start-pending-orders").
+			UpdateOwnerUserId("quick-start-user").
+			UpdateCommercePlatformId(platformID)
 		must(preset.AuditAs("Save idempotent quick-start search preset").Save(ctx))
 		fmt.Printf("[mutation] saved preset #%d\n", preset.Id())
 	} else {

@@ -27,9 +27,16 @@ Change `WithOrderNumberContaining`, add generated ordering, or select generated 
 `ExecuteForStream` invokes the callback once per generated entity while the provider cursor remains open:
 
 ```go
-err := request.Comment("export orders").Purpose("reviewed export").ExecuteForStream(ctx, 500, func(order *customerorder.CustomerOrder) error {
-    return writeOrder(order)
-})
+err := request.
+	Comment("export orders").
+	Purpose("reviewed export").
+	ExecuteForStream(
+		ctx,
+		500,
+		func(order *customerorder.CustomerOrder) error {
+			return writeOrder(order)
+		},
+	)
 ```
 
 Returning an error stops iteration and closes the cursor. The chunk size is an internal fetch bound. **Caution:** normally keep the default-scale value (1,000). Relation or aggregate enhancement is rejected for streaming; use a root query or `ExecuteForList`. Ordinary TFP federation does not emulate a stream.
