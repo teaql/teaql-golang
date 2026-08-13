@@ -8,13 +8,13 @@ import (
 )
 
 type DataServiceCapabilities struct {
-	Query        bool
-	Mutation     bool
-	Transaction  bool
-	Schema       bool
-	IdGeneration bool
+	Query         bool
+	Mutation      bool
+	Transaction   bool
+	Schema        bool
+	IdGeneration  bool
 	BatchMutation bool
-	Returning    bool
+	Returning     bool
 }
 
 type QueryRequest struct {
@@ -36,8 +36,9 @@ type MutationRequest interface {
 type InsertMutation struct {
 	Cmd *core.InsertCommand
 }
+
 func (m *InsertMutation) TraceChain() []*core.TraceNode { return m.Cmd.TraceChain }
-func (m *InsertMutation) Comment() *string { 
+func (m *InsertMutation) Comment() *string {
 	if len(m.Cmd.TraceChain) > 0 {
 		return &m.Cmd.TraceChain[len(m.Cmd.TraceChain)-1].Comment
 	}
@@ -47,8 +48,9 @@ func (m *InsertMutation) Comment() *string {
 type UpdateMutation struct {
 	Cmd *core.UpdateCommand
 }
+
 func (m *UpdateMutation) TraceChain() []*core.TraceNode { return m.Cmd.TraceChain }
-func (m *UpdateMutation) Comment() *string { 
+func (m *UpdateMutation) Comment() *string {
 	if len(m.Cmd.TraceChain) > 0 {
 		return &m.Cmd.TraceChain[len(m.Cmd.TraceChain)-1].Comment
 	}
@@ -58,8 +60,9 @@ func (m *UpdateMutation) Comment() *string {
 type DeleteMutation struct {
 	Cmd *core.DeleteCommand
 }
+
 func (m *DeleteMutation) TraceChain() []*core.TraceNode { return m.Cmd.TraceChain }
-func (m *DeleteMutation) Comment() *string { 
+func (m *DeleteMutation) Comment() *string {
 	if len(m.Cmd.TraceChain) > 0 {
 		return &m.Cmd.TraceChain[len(m.Cmd.TraceChain)-1].Comment
 	}
@@ -69,8 +72,9 @@ func (m *DeleteMutation) Comment() *string {
 type RecoverMutation struct {
 	Cmd *core.RecoverCommand
 }
+
 func (m *RecoverMutation) TraceChain() []*core.TraceNode { return m.Cmd.TraceChain }
-func (m *RecoverMutation) Comment() *string { 
+func (m *RecoverMutation) Comment() *string {
 	if len(m.Cmd.TraceChain) > 0 {
 		return &m.Cmd.TraceChain[len(m.Cmd.TraceChain)-1].Comment
 	}
@@ -80,8 +84,9 @@ func (m *RecoverMutation) Comment() *string {
 type BatchMutation struct {
 	Mutations []MutationRequest
 }
+
 func (m *BatchMutation) TraceChain() []*core.TraceNode { return nil }
-func (m *BatchMutation) Comment() *string { return nil }
+func (m *BatchMutation) Comment() *string              { return nil }
 
 type MutationResult struct {
 	AffectedRows    uint64
@@ -90,6 +95,7 @@ type MutationResult struct {
 }
 
 type DataServiceOperation string
+
 const (
 	OpQuery   DataServiceOperation = "Query"
 	OpInsert  DataServiceOperation = "Insert"
@@ -130,7 +136,7 @@ type StreamChunk struct {
 
 type StreamQueryExecutor interface {
 	DataServiceExecutor
-	QueryStream(ctx context.Context, request *QueryRequest, chunkSize int) ([]*StreamChunk, error)
+	QueryStream(ctx context.Context, request *QueryRequest, chunkSize int, yield func(*StreamChunk) error) error
 }
 
 type MutationExecutor interface {

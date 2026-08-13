@@ -33,6 +33,9 @@ func (e *SqlDataServiceExecutor) Capabilities() data_service.DataServiceCapabili
 }
 
 func (e *SqlDataServiceExecutor) Query(ctx context.Context, request *data_service.QueryRequest) (*data_service.QueryResult, error) {
+	if err := request.Query.PrepareForList(); err != nil {
+		return nil, err
+	}
 	entity := e.metadata.Entity(request.Query.Entity)
 	if entity == nil {
 		return nil, fmt.Errorf("entity not found: %s", request.Query.Entity)
