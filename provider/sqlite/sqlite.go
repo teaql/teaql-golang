@@ -290,6 +290,10 @@ func decodeSqliteRow(cols []string, colTypes []*sql.ColumnType, vals []interface
 			record[colName] = core.ValText(string(v))
 		case string:
 			record[colName] = core.ValText(v)
+		case time.Time:
+			// go-sqlite3 decodes DATE/TIMESTAMP columns as time.Time. Preserve the
+			// value so generated date and timestamp accessors can convert it.
+			record[colName] = core.Value{V: v}
 		}
 	}
 	return record, nil

@@ -92,6 +92,18 @@ func TestBindSqliteValueSupportsTypedNullDecimalAndTime(t *testing.T) {
 	}
 }
 
+func TestDecodeSqliteRowPreservesDriverTime(t *testing.T) {
+	want := time.Date(2026, 8, 12, 0, 0, 0, 0, time.UTC)
+	record, err := decodeSqliteRow([]string{"order_date"}, nil, []interface{}{want})
+	if err != nil {
+		t.Fatal(err)
+	}
+	got, ok := record["order_date"].TryDate()
+	if !ok || !got.Equal(want) {
+		t.Fatalf("decoded date = %v, %v; want %v", got, ok, want)
+	}
+}
+
 func TestSqliteMutationExecutor(t *testing.T) {
 	db, err := sql.Open("sqlite3", ":memory:")
 	if err != nil {
