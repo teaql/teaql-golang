@@ -1,6 +1,9 @@
 package core
 
-import "fmt"
+import (
+	"fmt"
+	"strings"
+)
 
 type SortDirection int
 
@@ -212,6 +215,11 @@ type StreamConfig struct {
 	ChunkSize int
 }
 
+type ContinuousPageFetchOptions struct {
+	Namespace  string `json:"-"`
+	TTLSeconds uint64 `json:"-"`
+}
+
 func DefaultStreamConfig() *StreamConfig {
 	return &StreamConfig{ChunkSize: 1000}
 }
@@ -240,6 +248,7 @@ type SelectQuery struct {
 	ObjectGroupBys       []*ObjectGroupBy
 	ChildEnhancements    []*SelectQuery
 	StreamConfig         *StreamConfig
+	ContinuousPageFetch  *ContinuousPageFetchOptions `json:"-"`
 }
 
 func NewSelectQuery(entity string) *SelectQuery {
@@ -538,6 +547,21 @@ func (q *SelectQuery) Offset(offset uint64) *SelectQuery {
 
 func (q *SelectQuery) Page(offset, limit uint64) *SelectQuery {
 	return q.Offset(offset).Limit(limit)
+}
+
+func (q *SelectQuery) OptimizeForContinuousPageFetch() *SelectQuery {
+	return q.OptimizeForContinuousPageFetchWith("default", 600)
+}
+
+func (q *SelectQuery) OptimizeForContinuousPageFetchWith(namespace string, ttlSeconds uint64) *SelectQuery {
+	if strings.TrimSpace(namespace) == "" {
+		panic("continuous page namespace must not be empty")
+	}
+	if ttlSeconds == 0 {
+		panic("continuous page ttlSeconds must be positive")
+	}
+	q.ContinuousPageFetch = &ContinuousPageFetchOptions{Namespace: namespace, TTLSeconds: ttlSeconds}
+	return q
 }
 
 // PartitionByField scopes Slice independently to each distinct field value.

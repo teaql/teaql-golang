@@ -22,6 +22,32 @@ Change `WithOrderNumberContaining`, add generated ordering, or select generated 
 
 `ExecuteForList` protects the service by applying a default hard limit of 10,000 rows. A requested page size above that ceiling fails explicitly. Trusted application code can call `HardLimit(...)` to override the outer-query ceiling. **Caution:** most applications should not override it; do so only for a reviewed, exceptional requirement. This setting does not describe streaming execution.
 
+### Continuous browsing optimization
+
+For an explicitly browse-only screen ordered solely by the unique `id`, local server code can
+opt in to transparent seek pagination without changing `ExecuteForList`:
+
+```go
+orders, err := Q.CustomerOrders().
+    OrderByIdDesc().
+    Offset(1000).
+    Limit(20).
+    OptimizeForContinuousPageFetchWith("recent-orders", 60).
+    Comment("Load the next browse page").
+    Purpose("Browse recent orders").
+    ExecuteForList(ctx)
+```
+
+After a preceding page has registered its boundary, the runtime can replace the next offset with
+`id < boundary` for descending order, or `id > boundary` for ascending order. A missing, expired,
+invalid, or unavailable cursor safely falls back to the original offset query. Inspect
+`ctx.ContinuousPagePlan()` and `ctx.ContinuousPageCursorID()` when debugging.
+
+**Caution:** this is a hallucination-tolerant performance optimization for continuous browsing.
+Concurrent inserts or updates can make page membership differ from exact offset pagination. Do not
+use it for business workflows, reconciliation, exports, or other exact-result processing. It is a
+local runtime hint and cannot be supplied or overridden through TeaQL federation JSON.
+
 ### Streaming large root queries
 
 `ExecuteForStream` invokes the callback once per generated entity while the provider cursor remains open:

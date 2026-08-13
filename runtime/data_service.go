@@ -2,11 +2,26 @@ package runtime
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
+	"encoding/json"
 	"fmt"
+	"time"
 
 	"github.com/teaql/teaql-golang/core"
 	"github.com/teaql/teaql-golang/data_service"
 )
+
+type continuousPageExecution struct {
+	queryKey       string
+	entity         string
+	direction      core.SortDirection
+	pageSize       uint64
+	originalOffset uint64
+	ttlSeconds     uint64
+	optimized      bool
+	seekCursorID   string
+}
 
 type RuntimeDataService struct {
 	metadata MetadataStore
@@ -21,14 +36,115 @@ func NewRuntimeDataService(metadata MetadataStore, executor data_service.DataSer
 }
 
 func (s *RuntimeDataService) FetchAll(ctx context.Context, query *core.SelectQuery) ([]core.Record, error) {
-	rows, err := s.fetchRows(ctx, query)
+	prepared := cloneSelectQuery(query, query.Entity)
+	if err := prepared.PrepareForList(); err != nil {
+		return nil, err
+	}
+	executionQuery, continuous := s.prepareContinuousPage(ctx, prepared)
+	rows, err := s.fetchRows(ctx, executionQuery)
 	if err != nil {
 		return nil, err
 	}
-	if err := s.enhanceRelations(ctx, rows, query); err != nil {
+	if err := s.enhanceRelations(ctx, rows, executionQuery); err != nil {
 		return nil, err
 	}
+	s.registerContinuousPage(ctx, continuous, rows)
 	return rows, nil
+}
+
+func (s *RuntimeDataService) prepareContinuousPage(ctx context.Context, query *core.SelectQuery) (*core.SelectQuery, *continuousPageExecution) {
+	userCtx, ok := ctx.(*UserContext)
+	if !ok || query.ContinuousPageFetch == nil {
+		if ok {
+			userCtx.ObserveContinuousPage("DISABLED", "")
+		}
+		return query, nil
+	}
+	options := query.ContinuousPageFetch
+	if query.Slice == nil || query.Slice.Limit == nil || *query.Slice.Limit == 0 {
+		userCtx.ObserveContinuousPage("OFFSET_FALLBACK:INVALID_SLICE", "")
+		return query, nil
+	}
+	if query.PartitionBy != nil || len(query.Aggregates) > 0 || len(query.GroupBy) > 0 {
+		userCtx.ObserveContinuousPage("OFFSET_FALLBACK:UNSUPPORTED_QUERY_SHAPE", "")
+		return query, nil
+	}
+	if len(query.OrderBy) != 1 || query.OrderBy[0].Field != "id" || query.OrderBy[0].Expr != nil {
+		userCtx.ObserveContinuousPage("OFFSET_FALLBACK:ORDER_NOT_SEEKABLE_ID", "")
+		return query, nil
+	}
+	queryKey := continuousPageQueryKey(userCtx, query, options.Namespace)
+	execution := &continuousPageExecution{
+		queryKey: queryKey, entity: query.Entity, direction: query.OrderBy[0].Direction,
+		pageSize: *query.Slice.Limit, originalOffset: query.Slice.Offset,
+		ttlSeconds: options.TTLSeconds,
+	}
+	if query.Slice.Offset == 0 {
+		userCtx.ObserveContinuousPage("OFFSET_FALLBACK:FIRST_PAGE", "")
+		return query, execution
+	}
+	cursor, err := userCtx.ContinuousPageCursorStore().GetContinuousPageCursor(ctx, queryKey, query.Slice.Offset)
+	if err != nil {
+		userCtx.ObserveContinuousPage("OFFSET_FALLBACK:STORE_UNAVAILABLE", "")
+		return query, execution
+	}
+	if cursor == nil {
+		userCtx.ObserveContinuousPage("OFFSET_FALLBACK:CACHE_MISS", "")
+		return query, execution
+	}
+	if cursor.Entity != query.Entity || cursor.Direction != execution.direction ||
+		cursor.PageSize != execution.pageSize || cursor.NextOffset != execution.originalOffset ||
+		!cursor.ExpiresAt.After(time.Now()) {
+		userCtx.ObserveContinuousPage("OFFSET_FALLBACK:CURSOR_INVALID", "")
+		return query, execution
+	}
+	query.Slice.Offset = 0
+	seek := core.ExprGt("id", cursor.Boundary)
+	if execution.direction == core.SortDesc {
+		seek = core.ExprLt("id", cursor.Boundary)
+	}
+	if query.Filter == nil {
+		query.Filter = seek
+	} else {
+		query.Filter = core.ExprAndNode(query.Filter, seek)
+	}
+	execution.optimized, execution.seekCursorID = true, cursor.CursorID
+	userCtx.ObserveContinuousPage("CURSOR_SEEK", cursor.CursorID)
+	return query, execution
+}
+
+func (s *RuntimeDataService) registerContinuousPage(ctx context.Context, execution *continuousPageExecution, rows []core.Record) {
+	userCtx, ok := ctx.(*UserContext)
+	if !ok || execution == nil || uint64(len(rows)) != execution.pageSize || len(rows) == 0 {
+		return
+	}
+	boundary, ok := rows[len(rows)-1]["id"]
+	if !ok {
+		return
+	}
+	cursor := &ContinuousPageCursor{
+		CursorID: fmt.Sprintf("cpg_%x", time.Now().UnixNano()), QueryKey: execution.queryKey,
+		Entity: execution.entity, Direction: execution.direction, Boundary: boundary,
+		PageSize: execution.pageSize, NextOffset: execution.originalOffset + uint64(len(rows)),
+		ExpiresAt: time.Now().Add(time.Duration(execution.ttlSeconds) * time.Second),
+	}
+	if err := userCtx.ContinuousPageCursorStore().PutContinuousPageCursor(ctx, cursor); err != nil {
+		userCtx.ObserveContinuousPage("OFFSET_FALLBACK:STORE_UNAVAILABLE", "")
+	} else if execution.optimized {
+		userCtx.ObserveContinuousPage("CURSOR_SEEK", execution.seekCursorID)
+	} else if execution.originalOffset == 0 {
+		userCtx.ObserveContinuousPage("OFFSET_FALLBACK:FIRST_PAGE", "")
+	}
+}
+
+func continuousPageQueryKey(ctx *UserContext, query *core.SelectQuery, namespace string) string {
+	normalized := cloneSelectQuery(query, query.Entity)
+	normalized.Slice.Offset = 0
+	normalized.CommentText = nil
+	normalized.TraceChain = nil
+	payload, _ := json.Marshal(normalized)
+	digest := sha256.Sum256(append([]byte(namespace+"|"+ctx.userIdentifier+"|"), payload...))
+	return "teaql:continuous-page:v1:" + hex.EncodeToString(digest[:])
 }
 
 func (s *RuntimeDataService) fetchRows(ctx context.Context, query *core.SelectQuery) ([]core.Record, error) {

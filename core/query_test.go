@@ -41,6 +41,19 @@ func TestPrepareForListHardLimit(t *testing.T) {
 	assert.NotContains(t, string(payload), "HardLimit")
 }
 
+func TestContinuousPageFetchIsExplicitLocalAndValidated(t *testing.T) {
+	query := NewSelectQuery("Order")
+	assert.Nil(t, query.ContinuousPageFetch)
+	query.OptimizeForContinuousPageFetchWith("recent-orders", 30)
+	assert.Equal(t, "recent-orders", query.ContinuousPageFetch.Namespace)
+	assert.Equal(t, uint64(30), query.ContinuousPageFetch.TTLSeconds)
+	payload, err := json.Marshal(query)
+	assert.NoError(t, err)
+	assert.NotContains(t, string(payload), "ContinuousPage")
+	assert.Panics(t, func() { NewSelectQuery("Order").OptimizeForContinuousPageFetchWith(" ", 30) })
+	assert.Panics(t, func() { NewSelectQuery("Order").OptimizeForContinuousPageFetchWith("orders", 0) })
+}
+
 func TestSelectQueryAggregationCache(t *testing.T) {
 	q := NewSelectQuery("Order").EnableAggregationCacheFor(5000).PropagateAggregationCache(10000)
 

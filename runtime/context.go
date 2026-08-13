@@ -2,10 +2,85 @@ package runtime
 
 import (
 	"context"
+	"fmt"
+	"sync"
+	"time"
 
 	"github.com/teaql/teaql-golang/core"
 	"github.com/teaql/teaql-golang/data_service"
 )
+
+type ContinuousPageCursor struct {
+	CursorID   string
+	QueryKey   string
+	Entity     string
+	Direction  core.SortDirection
+	Boundary   core.Value
+	PageSize   uint64
+	NextOffset uint64
+	ExpiresAt  time.Time
+}
+
+type ContinuousPageCursorStore interface {
+	GetContinuousPageCursor(ctx context.Context, queryKey string, targetOffset uint64) (*ContinuousPageCursor, error)
+	PutContinuousPageCursor(ctx context.Context, cursor *ContinuousPageCursor) error
+	InvalidateContinuousPageCursor(ctx context.Context, queryKey string) error
+}
+
+type InMemoryContinuousPageCursorStore struct {
+	mu         sync.Mutex
+	cursors    map[string]*ContinuousPageCursor
+	maxEntries int
+}
+
+func NewInMemoryContinuousPageCursorStore() *InMemoryContinuousPageCursorStore {
+	return &InMemoryContinuousPageCursorStore{cursors: make(map[string]*ContinuousPageCursor), maxEntries: 4096}
+}
+
+func continuousPageCheckpointKey(queryKey string, offset uint64) string {
+	return fmt.Sprintf("%s:%d", queryKey, offset)
+}
+
+func (s *InMemoryContinuousPageCursorStore) GetContinuousPageCursor(_ context.Context, queryKey string, targetOffset uint64) (*ContinuousPageCursor, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	key := continuousPageCheckpointKey(queryKey, targetOffset)
+	cursor := s.cursors[key]
+	if cursor != nil && !cursor.ExpiresAt.After(time.Now()) {
+		delete(s.cursors, key)
+		return nil, nil
+	}
+	return cursor, nil
+}
+
+func (s *InMemoryContinuousPageCursorStore) PutContinuousPageCursor(_ context.Context, cursor *ContinuousPageCursor) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if len(s.cursors) >= s.maxEntries {
+		var oldestKey string
+		var oldest time.Time
+		for key, value := range s.cursors {
+			if oldestKey == "" || value.ExpiresAt.Before(oldest) {
+				oldestKey, oldest = key, value.ExpiresAt
+			}
+		}
+		delete(s.cursors, oldestKey)
+	}
+	s.cursors[continuousPageCheckpointKey(cursor.QueryKey, cursor.NextOffset)] = cursor
+	return nil
+}
+
+func (s *InMemoryContinuousPageCursorStore) InvalidateContinuousPageCursor(_ context.Context, queryKey string) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	prefix := queryKey + ":"
+	for key := range s.cursors {
+		if len(key) >= len(prefix) && key[:len(prefix)] == prefix {
+			delete(s.cursors, key)
+		}
+	}
+	return nil
+}
 
 type DataStore interface {
 	Get(ctx context.Context, key string) (core.Value, bool)
@@ -108,17 +183,54 @@ type UserContext struct {
 	EntityRegistry EntityRegistry
 	Behaviors      EntityDataServiceBehaviorRegistry
 
-	initialGraphs     []*GraphNode
-	resources         map[string]interface{}
-	standardAuditSink RawAuditEventSink
-	appAuditSink      AppAuditEventSink
+	initialGraphs             []*GraphNode
+	resources                 map[string]interface{}
+	standardAuditSink         RawAuditEventSink
+	appAuditSink              AppAuditEventSink
+	continuousPageCursorStore ContinuousPageCursorStore
+	continuousPageMu          sync.Mutex
+	continuousPagePlan        string
+	continuousPageCursorID    string
+	userIdentifier            string
 }
 
 func NewUserContext() *UserContext {
 	return &UserContext{
-		Context:   context.Background(),
-		resources: make(map[string]interface{}),
+		Context:                   context.Background(),
+		resources:                 make(map[string]interface{}),
+		continuousPageCursorStore: NewInMemoryContinuousPageCursorStore(),
+		continuousPagePlan:        "DISABLED",
+		userIdentifier:            "main",
 	}
+}
+
+func (c *UserContext) SetContinuousPageCursorStore(store ContinuousPageCursorStore) {
+	if store == nil {
+		panic("continuous page cursor store must not be nil")
+	}
+	c.continuousPageCursorStore = store
+}
+
+func (c *UserContext) ContinuousPageCursorStore() ContinuousPageCursorStore {
+	return c.continuousPageCursorStore
+}
+
+func (c *UserContext) ObserveContinuousPage(plan, cursorID string) {
+	c.continuousPageMu.Lock()
+	defer c.continuousPageMu.Unlock()
+	c.continuousPagePlan, c.continuousPageCursorID = plan, cursorID
+}
+
+func (c *UserContext) ContinuousPagePlan() string {
+	c.continuousPageMu.Lock()
+	defer c.continuousPageMu.Unlock()
+	return c.continuousPagePlan
+}
+
+func (c *UserContext) ContinuousPageCursorID() string {
+	c.continuousPageMu.Lock()
+	defer c.continuousPageMu.Unlock()
+	return c.continuousPageCursorID
 }
 
 func (c *UserContext) InitialGraphs() []*GraphNode {
@@ -410,6 +522,11 @@ func (c *UserContext) SetTraceId(val any) {
 
 func (c *UserContext) SetUserIdentifier(val any) {
 	c.resources["set_user_identifier"] = val
+	if value, ok := val.(string); ok {
+		c.userIdentifier = value
+	} else if val == nil {
+		c.userIdentifier = ""
+	}
 }
 
 func (c *UserContext) SetUserIdentifierOption(val any) {
@@ -437,7 +554,7 @@ func (c *UserContext) TranslateCheckResults(args ...any) {
 }
 
 func (c *UserContext) UserIdentifier(args ...any) any {
-	return nil
+	return c.userIdentifier
 }
 
 func (c *UserContext) WithCheckerRegistry(val any) *UserContext {
@@ -511,7 +628,7 @@ func (c *UserContext) WithTraceId(val any) *UserContext {
 }
 
 func (c *UserContext) WithUserIdentifier(val any) *UserContext {
-	c.resources["with_user_identifier"] = val
+	c.SetUserIdentifier(val)
 	return c
 }
 
