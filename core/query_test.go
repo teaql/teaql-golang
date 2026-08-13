@@ -1,8 +1,9 @@
 package core
 
 import (
-	"testing"
+	"encoding/json"
 	"github.com/stretchr/testify/assert"
+	"testing"
 )
 
 func TestSelectQueryBuilder(t *testing.T) {
@@ -29,9 +30,20 @@ func TestSelectQueryBuilder(t *testing.T) {
 	assert.Equal(t, ExprTypeAnd, q.Filter.Type)
 }
 
+func TestPrepareForListHardLimit(t *testing.T) {
+	q := NewSelectQuery("Order")
+	assert.NoError(t, q.PrepareForList())
+	assert.Equal(t, uint64(10000), *q.Slice.Limit)
+	assert.Error(t, NewSelectQuery("Order").Limit(10001).PrepareForList())
+	assert.NoError(t, NewSelectQuery("Order").Limit(10001).SetHardLimit(20000).PrepareForList())
+	payload, err := json.Marshal(NewSelectQuery("Order").SetHardLimit(20000))
+	assert.NoError(t, err)
+	assert.NotContains(t, string(payload), "HardLimit")
+}
+
 func TestSelectQueryAggregationCache(t *testing.T) {
 	q := NewSelectQuery("Order").EnableAggregationCacheFor(5000).PropagateAggregationCache(10000)
-	
+
 	assert.NotNil(t, q.AggregationCache)
 	assert.True(t, q.AggregationCache.Enabled)
 	assert.Equal(t, uint64(5000), q.AggregationCache.CacheExpiredMillis)
@@ -43,7 +55,7 @@ func TestQueryAllMethods(t *testing.T) {
 	q := NewSelectQuery("TestEntity")
 
 	expr := ExprEq("status", ValText("active"))
-	
+
 	// NamedExpr
 	ne := NewNamedExpr("alias", expr)
 	assert.Equal(t, "alias", ne.Alias)
@@ -84,7 +96,7 @@ func TestQueryAllMethods(t *testing.T) {
 	q.ProjectRaw("alias2", "raw1")
 	q.DynamicPropertyRaw("dyn1", "raw2")
 	q.WithSearchWithText("search")
-	
+
 	q.Filter = nil
 	q.AndFilter(expr)
 	q.Filter = nil
@@ -104,9 +116,9 @@ func TestQueryAllMethods(t *testing.T) {
 	q.OrderExprDesc(expr)
 	q.OrderGbkAsc("o2")
 	q.OrderGbkDesc("o3")
-	
+
 	q.WithGroupBy("g1")
-	
+
 	q.Aggregate(AggCountAlias("c1"))
 	q.Count("c2")
 	q.CountField("f1", "c3")
@@ -132,12 +144,12 @@ func TestQueryAllMethods(t *testing.T) {
 	q.WithRawSqlSearchCriteria("raw_crit")
 	q.WithObjectGroupBy("og1", "og2", q)
 	q.ChildEnhancement(q)
-	
+
 	q.RelationQuery("rel2", q)
-	
+
 	q.Slice = nil
 	q.Limit(5)
-	
+
 	q.Stream(500)
 	assert.Equal(t, 500, q.StreamConfig.ChunkSize)
 	q.StreamDefault()

@@ -1,5 +1,7 @@
 package core
 
+import "fmt"
+
 type SortDirection int
 
 const (
@@ -215,6 +217,7 @@ func DefaultStreamConfig() *StreamConfig {
 }
 
 type SelectQuery struct {
+	HardLimit            uint64 `json:"-"`
 	Entity               string
 	Projection           []string
 	ExprProjection       []*NamedExpr
@@ -241,6 +244,7 @@ type SelectQuery struct {
 
 func NewSelectQuery(entity string) *SelectQuery {
 	return &SelectQuery{
+		HardLimit:            10000,
 		Entity:               entity,
 		Projection:           make([]string, 0),
 		ExprProjection:       make([]*NamedExpr, 0),
@@ -255,6 +259,41 @@ func NewSelectQuery(entity string) *SelectQuery {
 		ObjectGroupBys:       make([]*ObjectGroupBy, 0),
 		ChildEnhancements:    make([]*SelectQuery, 0),
 	}
+}
+
+func (q *SelectQuery) SetHardLimit(limit uint64) *SelectQuery {
+	if limit == 0 {
+		panic("hard limit must be positive")
+	}
+	q.HardLimit = limit
+	return q
+}
+
+// PrepareForList applies the materialized-list ceiling. Streaming paths must not call it.
+func (q *SelectQuery) PrepareForList() error { return q.prepareForList(q.HardLimit) }
+
+func (q *SelectQuery) prepareForList(ceiling uint64) error {
+	if q.Slice == nil {
+		q.Slice = &Slice{}
+	}
+	if q.Slice.Limit == nil {
+		q.Slice.Limit = &ceiling
+	} else if *q.Slice.Limit > ceiling {
+		return fmt.Errorf("QUERY_HARD_LIMIT_EXCEEDED: requested limit %d exceeds hard limit %d", *q.Slice.Limit, ceiling)
+	}
+	for _, relation := range q.Relations {
+		if relation.Query != nil {
+			if err := relation.Query.prepareForList(10000); err != nil {
+				return err
+			}
+		}
+	}
+	for _, child := range q.ChildEnhancements {
+		if err := child.prepareForList(10000); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func (q *SelectQuery) Project(field string) *SelectQuery {

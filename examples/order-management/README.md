@@ -18,3 +18,6 @@ The trace must contain both comment and purpose, followed by `WEB-2026-001`, `20
 ## Customize it
 
 Change `WithOrderNumberContaining`, add generated ordering, or select generated relations in `main.go`. Read the generated request before using another operator. Handwritten policy stays in `golang-app-console`; regenerate `golang-lib-core`. The shared model is not required to run the example.
+### Materialized-list hard limit
+
+`ExecuteForList` protects the service by applying a default hard limit of 10,000 rows. A requested page size above that ceiling fails explicitly. Trusted application code can call `HardLimit(...)` to override the outer-query ceiling. **Caution:** most applications should not override it; do so only for a reviewed, exceptional requirement. This setting does not describe streaming execution.
