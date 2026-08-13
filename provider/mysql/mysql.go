@@ -120,6 +120,55 @@ func (e *MysqlMutationExecutor) FetchAllSql(ctx context.Context, query *teaql_sq
 	return records, nil
 }
 
+func (e *MysqlMutationExecutor) StreamSql(ctx context.Context, query *teaql_sql.CompiledQuery, chunkSize int, yield func([]core.Record) error) error {
+	params, err := bindValues(query.Params)
+	if err != nil {
+		return err
+	}
+	rows, err := e.db.QueryContext(ctx, query.SqlWithComment(), params...)
+	if err != nil {
+		return err
+	}
+	defer rows.Close()
+	cols, err := rows.Columns()
+	if err != nil {
+		return err
+	}
+	colTypes, err := rows.ColumnTypes()
+	if err != nil {
+		return err
+	}
+	chunk := make([]core.Record, 0, chunkSize)
+	for rows.Next() {
+		vals := make([]interface{}, len(cols))
+		ptrs := make([]interface{}, len(cols))
+		for i := range vals {
+			ptrs[i] = &vals[i]
+		}
+		if err := rows.Scan(ptrs...); err != nil {
+			return err
+		}
+		record, err := decodeMysqlRow(cols, colTypes, vals)
+		if err != nil {
+			return err
+		}
+		chunk = append(chunk, record)
+		if len(chunk) == chunkSize {
+			if err := yield(chunk); err != nil {
+				return err
+			}
+			chunk = make([]core.Record, 0, chunkSize)
+		}
+	}
+	if err := rows.Err(); err != nil {
+		return err
+	}
+	if len(chunk) > 0 {
+		return yield(chunk)
+	}
+	return nil
+}
+
 func (e *MysqlMutationExecutor) ExecuteSql(ctx context.Context, query *teaql_sql.CompiledQuery) (uint64, error) {
 	params, err := bindValues(query.Params)
 	if err != nil {

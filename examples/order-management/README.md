@@ -21,3 +21,15 @@ Change `WithOrderNumberContaining`, add generated ordering, or select generated 
 ### Materialized-list hard limit
 
 `ExecuteForList` protects the service by applying a default hard limit of 10,000 rows. A requested page size above that ceiling fails explicitly. Trusted application code can call `HardLimit(...)` to override the outer-query ceiling. **Caution:** most applications should not override it; do so only for a reviewed, exceptional requirement. This setting does not describe streaming execution.
+
+### Streaming large root queries
+
+`ExecuteForStream` invokes the callback once per generated entity while the provider cursor remains open:
+
+```go
+err := request.Comment("export orders").Purpose("reviewed export").ExecuteForStream(ctx, 500, func(order *customerorder.CustomerOrder) error {
+    return writeOrder(order)
+})
+```
+
+Returning an error stops iteration and closes the cursor. The chunk size is an internal fetch bound. **Caution:** normally keep the default-scale value (1,000). Relation or aggregate enhancement is rejected for streaming; use a root query or `ExecuteForList`. Ordinary TFP federation does not emulate a stream.

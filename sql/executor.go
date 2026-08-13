@@ -36,6 +36,12 @@ type SqlTransport interface {
 	ExecuteSql(ctx context.Context, query *CompiledQuery) (uint64, error)
 }
 
+// SqlStreamingTransport owns the database cursor until StreamSql returns.
+// Returning an error from yield stops consumption and releases the cursor.
+type SqlStreamingTransport interface {
+	StreamSql(ctx context.Context, query *CompiledQuery, chunkSize int, yield func([]core.Record) error) error
+}
+
 type SqlTransactionTransport interface {
 	SqlTransport
 	BeginSql(ctx context.Context) (SqlTransactionTransportTx, error)
@@ -245,36 +251,44 @@ func (e *SqlDataServiceExecutor) Mutate(ctx context.Context, request ds.Mutation
 	return result, nil
 }
 
-func (e *SqlDataServiceExecutor) QueryStream(ctx context.Context, request *ds.QueryRequest, chunkSize int) ([]*ds.StreamChunk, error) {
-	result, err := e.Query(ctx, request)
-	if err != nil {
-		return nil, err
+func (e *SqlDataServiceExecutor) QueryStream(ctx context.Context, request *ds.QueryRequest, chunkSize int, yield func(*ds.StreamChunk) error) error {
+	if chunkSize <= 0 {
+		return fmt.Errorf("chunk size must be positive")
 	}
-
-	var chunks []*ds.StreamChunk
-	var currentChunk []core.Record
+	if len(request.Query.Relations) != 0 || len(request.Query.ChildEnhancements) != 0 || len(request.Query.ObjectGroupBys) != 0 {
+		return fmt.Errorf("streaming relation or aggregate enhancement is not supported; stream a root query or use ExecuteForList")
+	}
+	transport, ok := e.Transport.(SqlStreamingTransport)
+	if !ok {
+		return fmt.Errorf("streaming query is not supported by this transport")
+	}
+	entityDesc := e.SchemaProvider.GetEntity(request.Query.Entity)
+	if entityDesc == nil {
+		return fmt.Errorf("unknown entity %s", request.Query.Entity)
+	}
+	compiled, err := (&DefaultSqlDialect{Dialect: e.Dialect}).CompileSelect(entityDesc, request.Query)
+	if err != nil {
+		return err
+	}
 	chunkIndex := 0
-
-	for _, row := range result.Rows {
-		currentChunk = append(currentChunk, row)
-		if len(currentChunk) >= chunkSize {
-			chunks = append(chunks, &ds.StreamChunk{
-				Rows:       currentChunk,
-				ChunkIndex: chunkIndex,
-				IsLast:     false,
-			})
-			currentChunk = nil
+	var pending []core.Record
+	err = transport.StreamSql(ctx, compiled, chunkSize, func(rows []core.Record) error {
+		if pending != nil {
+			if err := yield(&ds.StreamChunk{Rows: pending, ChunkIndex: chunkIndex, IsLast: false}); err != nil {
+				return err
+			}
 			chunkIndex++
 		}
-	}
-
-	chunks = append(chunks, &ds.StreamChunk{
-		Rows:       currentChunk,
-		ChunkIndex: chunkIndex,
-		IsLast:     true,
+		pending = rows
+		return nil
 	})
-
-	return chunks, nil
+	if err != nil {
+		return err
+	}
+	if pending != nil {
+		return yield(&ds.StreamChunk{Rows: pending, ChunkIndex: chunkIndex, IsLast: true})
+	}
+	return nil
 }
 
 func (e *SqlDataServiceExecutor) Begin(ctx context.Context) (ds.Transaction, error) {

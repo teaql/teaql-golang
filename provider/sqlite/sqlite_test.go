@@ -197,6 +197,41 @@ func TestSqliteMutationExecutor(t *testing.T) {
 	}
 }
 
+func TestStreamSqlUsesBoundedChunksAndStopsOnConsumerError(t *testing.T) {
+	db, err := sql.Open("sqlite3", ":memory:")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer db.Close()
+	if _, err = db.Exec("CREATE TABLE stream_fixture(id INTEGER); INSERT INTO stream_fixture VALUES (1), (2), (3), (4), (5)"); err != nil {
+		t.Fatal(err)
+	}
+	exec := NewSqliteMutationExecutor(db)
+	query := &teaql_sql.CompiledQuery{Sql: "SELECT id FROM stream_fixture ORDER BY id"}
+	var sizes []int
+	if err = exec.StreamSql(context.Background(), query, 2, func(rows []core.Record) error {
+		sizes = append(sizes, len(rows))
+		return nil
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if fmt.Sprint(sizes) != "[2 2 1]" {
+		t.Fatalf("chunk sizes = %v", sizes)
+	}
+
+	consumerErr := fmt.Errorf("stop consuming")
+	err = exec.StreamSql(context.Background(), query, 2, func(_ []core.Record) error {
+		return consumerErr
+	})
+	if err != consumerErr {
+		t.Fatalf("consumer error = %v", err)
+	}
+	var count int
+	if err = db.QueryRow("SELECT count(*) FROM stream_fixture").Scan(&count); err != nil || count != 5 {
+		t.Fatalf("database unusable after early stop: count=%d err=%v", count, err)
+	}
+}
+
 func TestRelationLimitIsAppliedPerParent(t *testing.T) {
 	db, err := sql.Open("sqlite3", ":memory:")
 	if err != nil {
