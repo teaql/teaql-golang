@@ -192,6 +192,7 @@ type UserContext struct {
 	continuousPagePlan        string
 	continuousPageCursorID    string
 	userIdentifier            string
+	requestPolicy             RequestPolicy
 }
 
 func NewUserContext() *UserContext {
@@ -344,7 +345,8 @@ func (c *UserContext) ClearInStore(args ...any) any {
 }
 
 func (c *UserContext) ClearRequestPolicy(args ...any) any {
-	return nil
+	c.requestPolicy = nil
+	return c
 }
 
 func (c *UserContext) ClearSqlLogs(args ...any) any {
@@ -505,7 +507,15 @@ func (c *UserContext) SetMetadata(val any) {
 }
 
 func (c *UserContext) SetRequestPolicy(val any) {
-	c.resources["set_request_policy"] = val
+	if val == nil {
+		c.requestPolicy = nil
+		return
+	}
+	policy, ok := val.(RequestPolicy)
+	if !ok {
+		panic("request policy must implement runtime.RequestPolicy")
+	}
+	c.requestPolicy = policy
 }
 
 func (c *UserContext) SetSqlLogOptions(val any) {
@@ -603,8 +613,20 @@ func (c *UserContext) WithModule(val any) *UserContext {
 }
 
 func (c *UserContext) WithRequestPolicy(val any) *UserContext {
-	c.resources["with_request_policy"] = val
+	c.SetRequestPolicy(val)
 	return c
+}
+
+// PrepareQuery snapshots a request and applies trusted authorization exactly
+// once before callers derive row and aggregate executions from it.
+func (c *UserContext) PrepareQuery(query *core.SelectQuery) (*core.SelectQuery, error) {
+	prepared := query.Clone()
+	if c.requestPolicy != nil {
+		if err := c.requestPolicy.EnforceSelect(c, prepared); err != nil {
+			return nil, err
+		}
+	}
+	return prepared, nil
 }
 
 func (c *UserContext) WithSchemaProvider(val any) *UserContext {

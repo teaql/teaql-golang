@@ -225,7 +225,6 @@ func DefaultStreamConfig() *StreamConfig {
 }
 
 type SelectQuery struct {
-	HardLimit            uint64 `json:"-"`
 	Entity               string
 	Projection           []string
 	ExprProjection       []*NamedExpr
@@ -253,7 +252,6 @@ type SelectQuery struct {
 
 func NewSelectQuery(entity string) *SelectQuery {
 	return &SelectQuery{
-		HardLimit:            10000,
 		Entity:               entity,
 		Projection:           make([]string, 0),
 		ExprProjection:       make([]*NamedExpr, 0),
@@ -270,16 +268,8 @@ func NewSelectQuery(entity string) *SelectQuery {
 	}
 }
 
-func (q *SelectQuery) SetHardLimit(limit uint64) *SelectQuery {
-	if limit == 0 {
-		panic("hard limit must be positive")
-	}
-	q.HardLimit = limit
-	return q
-}
-
 // PrepareForList applies the materialized-list ceiling. Streaming paths must not call it.
-func (q *SelectQuery) PrepareForList() error { return q.prepareForList(q.HardLimit) }
+func (q *SelectQuery) PrepareForList() error { return q.prepareForList(10000) }
 
 func (q *SelectQuery) prepareForList(ceiling uint64) error {
 	if q.Slice == nil {
@@ -426,6 +416,58 @@ func (q *SelectQuery) Count(alias string) *SelectQuery {
 
 func (q *SelectQuery) CountField(field, alias string) *SelectQuery {
 	return q.Aggregate(AggCountField(field, alias))
+}
+
+// Clone returns an execution-independent query snapshot. Expression nodes are
+// immutable; all mutable collections and nested relation queries are copied.
+func (q *SelectQuery) Clone() *SelectQuery {
+	if q == nil {
+		return nil
+	}
+	clone := *q
+	clone.Projection = append([]string(nil), q.Projection...)
+	clone.ExprProjection = append([]*NamedExpr(nil), q.ExprProjection...)
+	clone.OrderBy = append([]*OrderBy(nil), q.OrderBy...)
+	clone.Aggregates = append([]*Aggregate(nil), q.Aggregates...)
+	clone.GroupBy = append([]string(nil), q.GroupBy...)
+	clone.TraceChain = append([]*TraceNode(nil), q.TraceChain...)
+	clone.RawSqlSearchCriteria = append([]string(nil), q.RawSqlSearchCriteria...)
+	clone.DynamicProperties = append([]*RawSqlProjection(nil), q.DynamicProperties...)
+	clone.RawProjections = append([]*RawSqlProjection(nil), q.RawProjections...)
+	clone.ObjectGroupBys = append([]*ObjectGroupBy(nil), q.ObjectGroupBys...)
+	clone.ChildEnhancements = append([]*SelectQuery(nil), q.ChildEnhancements...)
+	if q.Slice != nil {
+		copied := *q.Slice
+		clone.Slice = &copied
+	}
+	clone.Relations = make([]*RelationLoad, 0, len(q.Relations))
+	for _, relation := range q.Relations {
+		copied := *relation
+		if relation.Query != nil {
+			copied.Query = relation.Query.Clone()
+		}
+		clone.Relations = append(clone.Relations, &copied)
+	}
+	return &clone
+}
+
+// ForExactCount preserves only the authorized row predicate and replaces all
+// row-shaping state with a single framework-owned count aggregation.
+func (q *SelectQuery) ForExactCount(alias string) *SelectQuery {
+	count := q.Clone()
+	count.Projection = nil
+	count.ExprProjection = nil
+	count.OrderBy = nil
+	count.Slice = nil
+	count.PartitionBy = nil
+	count.Aggregates = []*Aggregate{AggCountField("id", alias)}
+	count.GroupBy = nil
+	count.Relations = nil
+	count.DynamicProperties = nil
+	count.RawProjections = nil
+	count.ObjectGroupBys = nil
+	count.ChildEnhancements = nil
+	return count
 }
 
 func (q *SelectQuery) Sum(field, alias string) *SelectQuery {

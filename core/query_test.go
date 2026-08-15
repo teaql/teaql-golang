@@ -35,10 +35,23 @@ func TestPrepareForListHardLimit(t *testing.T) {
 	assert.NoError(t, q.PrepareForList())
 	assert.Equal(t, uint64(10000), *q.Slice.Limit)
 	assert.Error(t, NewSelectQuery("Order").Limit(10001).PrepareForList())
-	assert.NoError(t, NewSelectQuery("Order").Limit(10001).SetHardLimit(20000).PrepareForList())
-	payload, err := json.Marshal(NewSelectQuery("Order").SetHardLimit(20000))
+	payload, err := json.Marshal(NewSelectQuery("Order"))
 	assert.NoError(t, err)
 	assert.NotContains(t, string(payload), "HardLimit")
+}
+
+func TestForExactCountDropsRowShape(t *testing.T) {
+	q := NewSelectQuery("Order").Project("name").OrderAsc("id").Page(4, 2)
+	q.AndFilter(ExprEq("active", ValBool(true))).Relation("owner")
+	count := q.ForExactCount("__teaql_total")
+	assert.NotNil(t, count.Filter)
+	assert.Empty(t, count.Projection)
+	assert.Empty(t, count.OrderBy)
+	assert.Nil(t, count.Slice)
+	assert.Empty(t, count.Relations)
+	assert.Len(t, count.Aggregates, 1)
+	assert.Equal(t, "__teaql_total", count.Aggregates[0].Alias)
+	assert.NotNil(t, q.Slice)
 }
 
 func TestContinuousPageFetchIsExplicitLocalAndValidated(t *testing.T) {
