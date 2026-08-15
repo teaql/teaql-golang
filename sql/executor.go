@@ -109,6 +109,8 @@ func (e *SqlDataServiceExecutor) Query(ctx context.Context, request *ds.QueryReq
 	metadata := ds.ExecutionMetadata{
 		Backend:          "sql",
 		Operation:        ds.OpQuery,
+		ParameterizedSQL: compiled.Sql,
+		Parameters:       append([]core.Value(nil), compiled.Params...),
 		StartedAt:        start,
 		EndedAt:          end,
 		AffectedRows:     nil,
@@ -117,6 +119,9 @@ func (e *SqlDataServiceExecutor) Query(ctx context.Context, request *ds.QueryReq
 		Comment:          request.Comment,
 		BackendRequestId: nil,
 		DebugQuery:       &debugQuery,
+	}
+	if recorder, ok := ctx.(interface{ RecordExecutionMetadata(ds.ExecutionMetadata) }); ok {
+		recorder.RecordExecutionMetadata(metadata)
 	}
 
 	return &ds.QueryResult{
@@ -226,6 +231,8 @@ func (e *SqlDataServiceExecutor) Mutate(ctx context.Context, request ds.Mutation
 	metadata := ds.ExecutionMetadata{
 		Backend:          "sql",
 		Operation:        operation,
+		ParameterizedSQL: compiled.Sql,
+		Parameters:       append([]core.Value(nil), compiled.Params...),
 		StartedAt:        start,
 		EndedAt:          end,
 		AffectedRows:     &affectedRows,
@@ -234,6 +241,9 @@ func (e *SqlDataServiceExecutor) Mutate(ctx context.Context, request ds.Mutation
 		Comment:          comment,
 		BackendRequestId: nil,
 		DebugQuery:       &debugQuery,
+	}
+	if recorder, ok := ctx.(interface{ RecordExecutionMetadata(ds.ExecutionMetadata) }); ok {
+		recorder.RecordExecutionMetadata(metadata)
 	}
 
 	result := &ds.MutationResult{

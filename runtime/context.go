@@ -187,12 +187,81 @@ type UserContext struct {
 	resources                 map[string]interface{}
 	standardAuditSink         RawAuditEventSink
 	appAuditSink              AppAuditEventSink
+	runtimeTelemetrySink      RuntimeTelemetrySink
 	continuousPageCursorStore ContinuousPageCursorStore
 	continuousPageMu          sync.Mutex
 	continuousPagePlan        string
 	continuousPageCursorID    string
 	userIdentifier            string
 	requestPolicy             RequestPolicy
+}
+
+type RuntimeTelemetrySink interface {
+	RecordExecutionMetadata(data_service.ExecutionMetadata)
+}
+
+type SQLExecutionEvidenceMode int
+
+const (
+	SQLExecutionEvidenceAll SQLExecutionEvidenceMode = iota
+	SQLExecutionEvidenceQuery
+	SQLExecutionEvidenceMutation
+	SQLExecutionEvidenceDisabled
+)
+
+type SQLExecutionEvidenceStore struct {
+	mu      sync.Mutex
+	mode    SQLExecutionEvidenceMode
+	entries []data_service.ExecutionMetadata
+}
+
+func NewSQLExecutionEvidenceStore() *SQLExecutionEvidenceStore {
+	return &SQLExecutionEvidenceStore{mode: SQLExecutionEvidenceAll}
+}
+
+func (s *SQLExecutionEvidenceStore) RecordExecutionMetadata(metadata data_service.ExecutionMetadata) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	isQuery := metadata.Operation == data_service.OpQuery
+	if s.mode == SQLExecutionEvidenceDisabled ||
+		(s.mode == SQLExecutionEvidenceQuery && !isQuery) ||
+		(s.mode == SQLExecutionEvidenceMutation && isQuery) {
+		return
+	}
+	metadata.Parameters = append([]core.Value(nil), metadata.Parameters...)
+	s.entries = append(s.entries, metadata)
+}
+
+func (s *SQLExecutionEvidenceStore) setMode(mode SQLExecutionEvidenceMode) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.mode, s.entries = mode, nil
+}
+
+func (s *SQLExecutionEvidenceStore) EnableAll()      { s.setMode(SQLExecutionEvidenceAll) }
+func (s *SQLExecutionEvidenceStore) EnableQuery()    { s.setMode(SQLExecutionEvidenceQuery) }
+func (s *SQLExecutionEvidenceStore) EnableMutation() { s.setMode(SQLExecutionEvidenceMutation) }
+func (s *SQLExecutionEvidenceStore) Disable()        { s.setMode(SQLExecutionEvidenceDisabled) }
+func (s *SQLExecutionEvidenceStore) Snapshot() []data_service.ExecutionMetadata {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	result := make([]data_service.ExecutionMetadata, len(s.entries))
+	copy(result, s.entries)
+	for i := range result {
+		result[i].Parameters = append([]core.Value(nil), result[i].Parameters...)
+	}
+	return result
+}
+
+func (c *UserContext) WithRuntimeTelemetrySink(sink RuntimeTelemetrySink) *UserContext {
+	c.runtimeTelemetrySink = sink
+	return c
+}
+
+func (c *UserContext) RecordExecutionMetadata(metadata data_service.ExecutionMetadata) {
+	if c.runtimeTelemetrySink != nil {
+		c.runtimeTelemetrySink.RecordExecutionMetadata(metadata)
+	}
 }
 
 func NewUserContext() *UserContext {

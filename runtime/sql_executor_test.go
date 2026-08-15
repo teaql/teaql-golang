@@ -3,6 +3,7 @@ package runtime_test
 import (
 	"context"
 	"errors"
+	"strings"
 	"testing"
 
 	"github.com/teaql/teaql-golang/core"
@@ -268,4 +269,71 @@ func TestSqlDataServiceExecutor_Mutate(t *testing.T) {
 			t.Fatal("expected transport error, got nil")
 		}
 	})
+}
+
+func TestSqlExecutionEvidenceIsParameterizedAndFilterable(t *testing.T) {
+	meta := runtime.NewInMemoryMetadataStore()
+	meta.Register(&core.EntityDescriptor{
+		Name: "User", TabName: "users",
+		Properties: []*core.PropertyDescriptor{
+			{Name: "id", ColName: "id", DataType: core.TypeText, IsId: true},
+			{Name: "name", ColName: "name", DataType: core.TypeText},
+		},
+	})
+	store := runtime.NewSQLExecutionEvidenceStore()
+	ctx := runtime.NewUserContext().WithRuntimeTelemetrySink(store)
+	exec := runtime.NewSqlDataServiceExecutor(
+		&mockTransport{records: []core.Record{{"id": core.ValText("1")}}, affected: 1},
+		&mockDialect{}, meta)
+
+	_, err := exec.Mutate(ctx, &data_service.InsertMutation{Cmd: &core.InsertCommand{
+		Entity: "User", Values: core.Record{"id": core.ValText("1"), "name": core.ValText("secret-value")},
+	}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, err = exec.Query(ctx, &data_service.QueryRequest{Query: &core.SelectQuery{
+		Entity: "User", Filter: core.ExprEq("name", core.ValText("secret-value")),
+	}})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	entries := store.Snapshot()
+	if len(entries) != 2 {
+		t.Fatalf("expected insert and query evidence, got %d", len(entries))
+	}
+	for _, entry := range entries {
+		if entry.ParameterizedSQL == "" {
+			t.Fatal("missing parameterized SQL")
+		}
+		if len(entry.Parameters) == 0 {
+			t.Fatal("missing structured parameters")
+		}
+		if strings.Contains(entry.ParameterizedSQL, "secret-value") {
+			t.Fatal("secret leaked into SQL")
+		}
+	}
+	if entries[0].AffectedRows == nil || entries[1].ResultCount == nil {
+		t.Fatal("missing outcome metadata")
+	}
+
+	store.EnableQuery()
+	if len(store.Snapshot()) != 0 {
+		t.Fatal("mode change did not clear evidence")
+	}
+	_, err = exec.Mutate(ctx, &data_service.InsertMutation{Cmd: &core.InsertCommand{
+		Entity: "User", Values: core.Record{"id": core.ValText("2"), "name": core.ValText("ignored")},
+	}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(store.Snapshot()) != 0 {
+		t.Fatal("query mode captured mutation")
+	}
+	store.EnableMutation()
+	store.Disable()
+	if len(store.Snapshot()) != 0 {
+		t.Fatal("disable did not clear evidence")
+	}
 }

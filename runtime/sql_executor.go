@@ -3,7 +3,9 @@ package runtime
 import (
 	"context"
 	"fmt"
+	"time"
 
+	"github.com/teaql/teaql-golang/core"
 	"github.com/teaql/teaql-golang/data_service"
 	teaql_sql "github.com/teaql/teaql-golang/sql"
 )
@@ -46,14 +48,26 @@ func (e *SqlDataServiceExecutor) Query(ctx context.Context, request *data_servic
 		return nil, err
 	}
 
+	startedAt := time.Now()
 	records, err := e.transport.FetchAllSql(ctx, compiled)
 	if err != nil {
 		return nil, err
 	}
 
-	return &data_service.QueryResult{
-		Rows: records,
-	}, nil
+	resultCount := len(records)
+	debugQuery := compiled.DebugSql(e.dialect.Dialect.Kind())
+	metadata := data_service.ExecutionMetadata{
+		Backend: "sql", Operation: data_service.OpQuery,
+		ParameterizedSQL: compiled.Sql, Parameters: append([]core.Value(nil), compiled.Params...),
+		StartedAt: startedAt, EndedAt: time.Now(), ResultCount: &resultCount,
+		TraceChain: request.TraceChain, Comment: request.Comment, DebugQuery: &debugQuery,
+	}
+	if recorder, ok := ctx.(interface {
+		RecordExecutionMetadata(data_service.ExecutionMetadata)
+	}); ok {
+		recorder.RecordExecutionMetadata(metadata)
+	}
+	return &data_service.QueryResult{Rows: records, Metadata: metadata}, nil
 }
 
 func (e *SqlDataServiceExecutor) Mutate(ctx context.Context, request data_service.MutationRequest) (*data_service.MutationResult, error) {
@@ -78,14 +92,32 @@ func (e *SqlDataServiceExecutor) Mutate(ctx context.Context, request data_servic
 		return nil, err
 	}
 
+	startedAt := time.Now()
 	affected, err := e.transport.ExecuteSql(ctx, compiled)
 	if err != nil {
 		return nil, err
 	}
 
-	result := &data_service.MutationResult{
-		AffectedRows: affected,
+	operation := data_service.OpInsert
+	switch request.(type) {
+	case *data_service.UpdateMutation:
+		operation = data_service.OpUpdate
+	case *data_service.DeleteMutation:
+		operation = data_service.OpDelete
 	}
+	debugQuery := compiled.DebugSql(e.dialect.Dialect.Kind())
+	metadata := data_service.ExecutionMetadata{
+		Backend: "sql", Operation: operation,
+		ParameterizedSQL: compiled.Sql, Parameters: append([]core.Value(nil), compiled.Params...),
+		StartedAt: startedAt, EndedAt: time.Now(), AffectedRows: &affected,
+		TraceChain: request.TraceChain(), Comment: request.Comment(), DebugQuery: &debugQuery,
+	}
+	if recorder, ok := ctx.(interface {
+		RecordExecutionMetadata(data_service.ExecutionMetadata)
+	}); ok {
+		recorder.RecordExecutionMetadata(metadata)
+	}
+	result := &data_service.MutationResult{AffectedRows: affected, Metadata: metadata}
 	if emitter, ok := ctx.(interface {
 		EmitMutationAudit(data_service.MutationRequest, *data_service.MutationResult) error
 	}); ok {

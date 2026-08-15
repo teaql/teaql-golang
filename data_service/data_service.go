@@ -109,6 +109,8 @@ const (
 type ExecutionMetadata struct {
 	Backend          string
 	Operation        DataServiceOperation
+	ParameterizedSQL string
+	Parameters       []core.Value
 	StartedAt        time.Time
 	EndedAt          time.Time
 	AffectedRows     *uint64
