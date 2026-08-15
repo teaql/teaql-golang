@@ -3,6 +3,7 @@ package runtime
 import (
 	"context"
 	"fmt"
+	"strings"
 	"sync"
 	"time"
 
@@ -684,6 +685,50 @@ func (c *UserContext) WithModule(val any) *UserContext {
 func (c *UserContext) WithRequestPolicy(val any) *UserContext {
 	c.SetRequestPolicy(val)
 	return c
+}
+
+// WithTrustedTenant installs application-owned tenancy outside generated and
+// federated request payloads.
+func (c *UserContext) WithTrustedTenant(tenant string) *UserContext {
+	if strings.TrimSpace(tenant) == "" {
+		panic("trusted tenant is required")
+	}
+	c.InsertResource("trustedTenant", tenant)
+	return c
+}
+
+func (c *UserContext) TrustedTenant() (string, error) {
+	tenant, ok := c.GetResource("trustedTenant").(string)
+	if !ok || strings.TrimSpace(tenant) == "" {
+		return "", fmt.Errorf("trusted tenant is required")
+	}
+	return tenant, nil
+}
+
+// RuntimeReadiness verifies the same provider installed by generated startup.
+// Generated startup owns schema creation; readiness then performs a real ping
+// when the provider exposes PingContext.
+func (c *UserContext) RuntimeReadiness() error {
+	if c.Metadata == nil {
+		return fmt.Errorf("metadata is required")
+	}
+	if c.requestPolicy == nil {
+		return fmt.Errorf("request policy is required")
+	}
+	if _, err := c.TrustedTenant(); err != nil {
+		return err
+	}
+	if c.GetResource("dataService") == nil {
+		return fmt.Errorf("dataService is required")
+	}
+	if provider, ok := c.GetResource("db").(interface {
+		PingContext(context.Context) error
+	}); ok {
+		if err := provider.PingContext(c); err != nil {
+			return fmt.Errorf("provider readiness: %w", err)
+		}
+	}
+	return nil
 }
 
 // PrepareQuery snapshots a request and applies trusted authorization exactly
