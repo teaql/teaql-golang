@@ -83,6 +83,23 @@ func (s *InMemoryContinuousPageCursorStore) InvalidateContinuousPageCursor(_ con
 	return nil
 }
 
+type localCacheEntry struct {
+	value     any
+	expiresAt time.Time
+}
+
+var processLocalCache sync.Map
+
+type localLockEntry struct {
+	owner     *UserContext
+	expiresAt time.Time
+}
+
+var processLocalLocks = struct {
+	sync.Mutex
+	entries map[string]localLockEntry
+}{entries: make(map[string]localLockEntry)}
+
 type DataStore interface {
 	Get(ctx context.Context, key string) (core.Value, bool)
 	Put(ctx context.Context, key string, value core.Value, timeoutSeconds *uint64)
@@ -787,13 +804,28 @@ func (c *UserContext) GetAttribute(key string) any {
 // Local Cache
 // ==========================================
 func (c *UserContext) PutToLocalCache(key string, value any, timeToLiveInSeconds ...int) {
+	entry := localCacheEntry{value: value}
+	if len(timeToLiveInSeconds) > 0 && timeToLiveInSeconds[0] > 0 {
+		entry.expiresAt = time.Now().Add(time.Duration(timeToLiveInSeconds[0]) * time.Second)
+	}
+	processLocalCache.Store(key, entry)
 }
 
 func (c *UserContext) GetFromLocalCache(key string) any {
-	return nil
+	value, ok := processLocalCache.Load(key)
+	if !ok {
+		return nil
+	}
+	entry := value.(localCacheEntry)
+	if !entry.expiresAt.IsZero() && !time.Now().Before(entry.expiresAt) {
+		processLocalCache.Delete(key)
+		return nil
+	}
+	return entry.value
 }
 
 func (c *UserContext) RemoveFromLocalCache(key string) {
+	processLocalCache.Delete(key)
 }
 
 // ==========================================
@@ -829,10 +861,37 @@ func (c *UserContext) RemoveFromRemoteCache(key string) {
 // Local Lock
 // ==========================================
 func (c *UserContext) TryLocalLock(key string, timeoutMillis int64, expireMillis int64) bool {
-	return true
+	if timeoutMillis < 0 {
+		timeoutMillis = 0
+	}
+	deadline := time.Now().Add(time.Duration(timeoutMillis) * time.Millisecond)
+	for {
+		now := time.Now()
+		processLocalLocks.Lock()
+		entry, exists := processLocalLocks.entries[key]
+		if !exists || (!entry.expiresAt.IsZero() && !now.Before(entry.expiresAt)) || entry.owner == c {
+			expiresAt := time.Time{}
+			if expireMillis > 0 {
+				expiresAt = now.Add(time.Duration(expireMillis) * time.Millisecond)
+			}
+			processLocalLocks.entries[key] = localLockEntry{owner: c, expiresAt: expiresAt}
+			processLocalLocks.Unlock()
+			return true
+		}
+		processLocalLocks.Unlock()
+		if timeoutMillis <= 0 || !time.Now().Before(deadline) {
+			return false
+		}
+		time.Sleep(time.Millisecond)
+	}
 }
 
 func (c *UserContext) UnlockLocal(key string) {
+	processLocalLocks.Lock()
+	if entry, exists := processLocalLocks.entries[key]; exists && entry.owner == c {
+		delete(processLocalLocks.entries, key)
+	}
+	processLocalLocks.Unlock()
 }
 
 // ==========================================

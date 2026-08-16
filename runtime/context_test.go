@@ -2,10 +2,59 @@ package runtime
 
 import (
 	"context"
+	"fmt"
 	"testing"
+	"time"
 
 	"github.com/teaql/teaql-golang/core"
 )
+
+func TestUserContextLocalCacheSharedRemoveAndTTL(t *testing.T) {
+	first := NewUserContext()
+	second := NewUserContext()
+	key := fmt.Sprintf("local-cache-%d", time.Now().UnixNano())
+
+	first.PutToLocalCache(key, "value")
+	if got := second.GetFromLocalCache(key); got != "value" {
+		t.Fatalf("expected shared value, got %v", got)
+	}
+	second.RemoveFromLocalCache(key)
+	if got := first.GetFromLocalCache(key); got != nil {
+		t.Fatalf("expected removed value, got %v", got)
+	}
+
+	first.PutToLocalCache(key, "temporary", 1)
+	time.Sleep(1100 * time.Millisecond)
+	if got := second.GetFromLocalCache(key); got != nil {
+		t.Fatalf("expected expired value, got %v", got)
+	}
+}
+
+func TestUserContextLocalLockOwnershipTimeoutAndLeaseExpiry(t *testing.T) {
+	first := NewUserContext()
+	second := NewUserContext()
+	key := fmt.Sprintf("local-lock-%d", time.Now().UnixNano())
+
+	if !first.TryLocalLock(key, 0, 50) {
+		t.Fatal("first owner should acquire lock")
+	}
+	if second.TryLocalLock(key, 0, 50) {
+		t.Fatal("second owner should not acquire held lock")
+	}
+	second.UnlockLocal(key)
+	if second.TryLocalLock(key, 0, 50) {
+		t.Fatal("non-owner unlock must not release lock")
+	}
+	time.Sleep(60 * time.Millisecond)
+	if !second.TryLocalLock(key, 0, 50) {
+		t.Fatal("second owner should acquire expired lock")
+	}
+	second.UnlockLocal(key)
+	if !first.TryLocalLock(key, 0, 50) {
+		t.Fatal("first owner should acquire released lock")
+	}
+	first.UnlockLocal(key)
+}
 
 // MockMetadataStore implements MetadataStore for testing.
 type MockMetadataStore struct {

@@ -2,30 +2,58 @@ package nacos
 
 import (
 	"context"
+	"fmt"
+	"net/http"
+	"net/http/httptest"
 	"testing"
-	"github.com/stretchr/testify/assert"
+
 	"github.com/teaql/teaql-golang/cloud/core"
 )
 
-func TestNacosCloud(t *testing.T) {
-	n := NewNacosCloud(&NacosConfig{ServerAddrs: []string{"localhost:8848"}})
-	
+func TestNacosCloudUsesRealHTTPAPI(t *testing.T) {
+	requests := map[string]int{}
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		requests[r.Method+" "+r.URL.Path]++
+		switch r.URL.Path {
+		case "/nacos/v1/ns/instance":
+			if err := r.ParseForm(); err != nil || r.Form.Get("serviceName") != "orders" || r.Form.Get("ip") != "10.0.0.7" {
+				http.Error(w, "bad instance request", http.StatusBadRequest)
+				return
+			}
+			fmt.Fprint(w, "ok")
+		case "/nacos/v1/ns/instance/list":
+			fmt.Fprint(w, `{"hosts":[{"ip":"10.0.0.7","port":8080,"healthy":true,"metadata":{"zone":"a"}}]}`)
+		case "/nacos/v1/cs/configs":
+			fmt.Fprint(w, "feature=true")
+		case "/nacos/v1/console/health/readiness":
+			fmt.Fprint(w, `{"status":"UP"}`)
+		default:
+			http.NotFound(w, r)
+		}
+	}))
+	defer server.Close()
+
+	cloud := NewNacosCloud(&NacosConfig{ServerAddrs: []string{server.URL}, NamespaceId: "tenant-a", Group: "APP", HTTPClient: server.Client()})
+	instance := &core.ServiceInstance{ServiceId: "orders", Host: "10.0.0.7", Port: 8080, Metadata: map[string]string{"zone": "a"}}
 	ctx := context.Background()
-	instance := &core.ServiceInstance{ServiceId: "test-service"}
-	
-	err := n.Register(ctx, instance)
-	assert.NoError(t, err)
-	
-	err = n.Deregister(ctx, instance)
-	assert.NoError(t, err)
-	
-	instances, err := n.GetInstances(ctx, "test-service")
-	assert.Nil(t, instances)
-	assert.NoError(t, err)
-	
-	cfg, err := n.GetConfig(ctx, "data", "group")
-	assert.Equal(t, "", cfg)
-	assert.NoError(t, err)
-	
-	assert.Equal(t, core.Up, n.Health())
+	if err := cloud.Register(ctx, instance); err != nil {
+		t.Fatal(err)
+	}
+	if err := cloud.Deregister(ctx, instance); err != nil {
+		t.Fatal(err)
+	}
+	instances, err := cloud.GetInstances(ctx, "orders")
+	if err != nil || len(instances) != 1 || instances[0].Host != "10.0.0.7" {
+		t.Fatalf("instances=%v err=%v", instances, err)
+	}
+	config, err := cloud.GetConfig(ctx, "orders.yaml", "APP")
+	if err != nil || config != "feature=true" {
+		t.Fatalf("config=%q err=%v", config, err)
+	}
+	if cloud.Health() != core.Up {
+		t.Fatal("expected UP")
+	}
+	if requests["POST /nacos/v1/ns/instance"] != 1 || requests["DELETE /nacos/v1/ns/instance"] != 1 {
+		t.Fatalf("requests=%v", requests)
+	}
 }
