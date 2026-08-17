@@ -61,6 +61,7 @@ type SqlDataServiceExecutor struct {
 	Dialect        SqlDialect
 	Transport      SqlTransport
 	SchemaProvider ds.SchemaProvider
+	transactional  bool
 }
 
 func NewSqlDataServiceExecutor(dialect SqlDialect, transport SqlTransport, schemaProvider ds.SchemaProvider) *SqlDataServiceExecutor {
@@ -131,6 +132,25 @@ func (e *SqlDataServiceExecutor) Query(ctx context.Context, request *ds.QueryReq
 }
 
 func (e *SqlDataServiceExecutor) Mutate(ctx context.Context, request ds.MutationRequest) (*ds.MutationResult, error) {
+	if transport, ok := e.Transport.(SqlTransactionTransport); ok {
+		tx, err := transport.BeginSql(ctx)
+		if err != nil {
+			return nil, &SqlExecutorError{TransportError: err}
+		}
+		if tx != nil {
+			transactional := NewSqlDataServiceExecutor(e.Dialect, tx, e.SchemaProvider)
+			transactional.transactional = true
+			result, err := transactional.Mutate(ctx, request)
+			if err != nil {
+				_ = tx.RollbackSql(ctx)
+				return nil, err
+			}
+			if err := tx.CommitSql(ctx); err != nil {
+				return nil, &SqlExecutorError{TransportError: err}
+			}
+			return result, nil
+		}
+	}
 	switch req := request.(type) {
 	case *ds.BatchMutation:
 		var totalAffected uint64 = 0
@@ -250,6 +270,34 @@ func (e *SqlDataServiceExecutor) Mutate(ctx context.Context, request ds.Mutation
 		AffectedRows:    affectedRows,
 		GeneratedValues: make(core.Record),
 		Metadata:        metadata,
+	}
+	var persistedID core.Value
+	readPersisted := e.transactional && affectedRows == 1
+	switch req := request.(type) {
+	case *ds.InsertMutation:
+		persistedID, readPersisted = req.Cmd.Values["id"], readPersisted && req.Cmd.Values["id"].V != nil
+	case *ds.UpdateMutation:
+		persistedID = req.Cmd.Id
+	case *ds.DeleteMutation:
+		persistedID = req.Cmd.Id
+		readPersisted = readPersisted && req.Cmd.SoftDelete
+	case *ds.RecoverMutation:
+		persistedID = req.Cmd.Id
+	}
+	if readPersisted {
+		query := core.NewSelectQuery(entityName).WithFilter(core.ExprEq("id", persistedID))
+		readback, compileErr := defaultDialect.CompileSelect(entityDesc, query)
+		if compileErr != nil {
+			return nil, &SqlExecutorError{CompileError: compileErr}
+		}
+		rows, fetchErr := e.Transport.FetchAllSql(ctx, readback)
+		if fetchErr != nil {
+			return nil, &SqlExecutorError{TransportError: fetchErr}
+		}
+		if len(rows) != 1 {
+			return nil, fmt.Errorf("persisted %s record could not be read back", entityName)
+		}
+		result.PersistedRecord = rows[0]
 	}
 	if emitter, ok := ctx.(interface {
 		EmitMutationAudit(ds.MutationRequest, *ds.MutationResult) error

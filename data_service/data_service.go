@@ -91,6 +91,7 @@ func (m *BatchMutation) Comment() *string              { return nil }
 type MutationResult struct {
 	AffectedRows    uint64
 	GeneratedValues core.Record
+	PersistedRecord core.Record
 	Metadata        ExecutionMetadata
 }
 
