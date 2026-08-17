@@ -2,9 +2,9 @@ package sql
 
 import (
 	"fmt"
-	"strings"
 	"github.com/shopspring/decimal"
 	"github.com/teaql/teaql-golang/core"
+	"strings"
 )
 
 type DatabaseKind int
@@ -45,13 +45,13 @@ func (q *CompiledQuery) DebugSql(kind DatabaseKind) string {
 func replacePostgresPlaceholders(sql string, params []core.Value) string {
 	var output strings.Builder
 	output.Grow(len(sql))
-	
+
 	inString := false
 	chars := []rune(sql)
-	
+
 	for i := 0; i < len(chars); i++ {
 		ch := chars[i]
-		
+
 		if ch == '\'' {
 			output.WriteRune('\'')
 			if inString && i+1 < len(chars) && chars[i+1] == '\'' {
@@ -62,7 +62,7 @@ func replacePostgresPlaceholders(sql string, params []core.Value) string {
 			}
 			continue
 		}
-		
+
 		if !inString && ch == '$' && i+1 < len(chars) && chars[i+1] >= '0' && chars[i+1] <= '9' {
 			idxStr := ""
 			j := i + 1
@@ -90,14 +90,14 @@ func replacePostgresPlaceholders(sql string, params []core.Value) string {
 func replacePositionalPlaceholders(sql string, params []core.Value, kind DatabaseKind) string {
 	var output strings.Builder
 	output.Grow(len(sql))
-	
+
 	inString := false
 	chars := []rune(sql)
 	paramIdx := 0
-	
+
 	for i := 0; i < len(chars); i++ {
 		ch := chars[i]
-		
+
 		if ch == '\'' {
 			output.WriteRune('\'')
 			if inString && i+1 < len(chars) && chars[i+1] == '\'' {
@@ -108,7 +108,7 @@ func replacePositionalPlaceholders(sql string, params []core.Value, kind Databas
 			}
 			continue
 		}
-		
+
 		if !inString && ch == '?' {
 			if paramIdx < len(params) {
 				output.WriteString(sqlLiteral(params[paramIdx], kind))

@@ -1,10 +1,10 @@
 package sql
 
 import (
-	"testing"
 	"github.com/shopspring/decimal"
 	"github.com/stretchr/testify/assert"
 	"github.com/teaql/teaql-golang/core"
+	"testing"
 )
 
 func TestCompiledQuerySqlWithComment(t *testing.T) {
@@ -18,7 +18,7 @@ func TestCompiledQuerySqlWithComment(t *testing.T) {
 	comment2 := "attempt to close */ comment early"
 	q.Comment = &comment2
 	assert.Equal(t, "/* attempt to close * / comment early */ SELECT * FROM users", q.SqlWithComment())
-	
+
 	// without comment
 	q2 := CompiledQuery{Sql: "SELECT 1"}
 	assert.Equal(t, "SELECT 1", q2.SqlWithComment())
@@ -29,15 +29,25 @@ func TestCompiledQueryDebugSqlPostgres(t *testing.T) {
 		Sql:    "SELECT * FROM users WHERE name = $1 AND age > $2 AND id = $10",
 		Params: []core.Value{core.ValText("John O'Connor"), core.ValI64(18), core.ValNull(), core.ValNull(), core.ValNull(), core.ValNull(), core.ValNull(), core.ValNull(), core.ValNull(), core.ValI64(999)},
 	}
-	
+
 	debug := q.DebugSql(DatabaseKindPostgreSQL)
 	assert.Equal(t, "SELECT * FROM users WHERE name = 'John O''Connor' AND age > 18 AND id = 999", debug)
-	
+
 	q2 := CompiledQuery{
-		Sql: "SELECT '$1' $99", // string escaping and out of bounds
+		Sql:    "SELECT '$1' $99", // string escaping and out of bounds
 		Params: []core.Value{},
 	}
 	assert.Equal(t, "SELECT '$1' $99", q2.DebugSql(DatabaseKindPostgreSQL))
+}
+
+func TestDebugSqlRendersCopyPasteStatementWithSharedSemantics(t *testing.T) {
+	query := CompiledQuery{
+		Sql:    "SELECT * FROM school WHERE name = $1 AND active = $2 AND phone IS $3 AND repeated = $1 AND note = '$2'",
+		Params: []core.Value{core.ValText("O'Brien School"), core.ValBool(true), core.ValNull()},
+	}
+	assert.Equal(t,
+		"SELECT * FROM school WHERE name = 'O''Brien School' AND active = TRUE AND phone IS NULL AND repeated = 'O''Brien School' AND note = '$2'",
+		query.DebugSql(DatabaseKindPostgreSQL))
 }
 
 func TestCompiledQueryDebugSqlPositional(t *testing.T) {
@@ -45,17 +55,17 @@ func TestCompiledQueryDebugSqlPositional(t *testing.T) {
 		Sql:    "SELECT * FROM users WHERE name = ? AND age > ?",
 		Params: []core.Value{core.ValText("John O'Connor"), core.ValI64(18)},
 	}
-	
+
 	debugSqlite := q.DebugSql(DatabaseKindSQLite)
 	assert.Equal(t, "SELECT * FROM users WHERE name = 'John O''Connor' AND age > 18", debugSqlite)
-	
+
 	debugMysql := q.DebugSql(DatabaseKindMySQL)
 	assert.Equal(t, "SELECT * FROM users WHERE name = 'John O''Connor' AND age > 18", debugMysql)
-	
+
 	// extra placeholders
 	q2 := CompiledQuery{Sql: "SELECT ?, ?", Params: []core.Value{core.ValI64(1)}}
 	assert.Equal(t, "SELECT 1, ?", q2.DebugSql(DatabaseKindSQLite))
-	
+
 	// single quote open
 	q3 := CompiledQuery{Sql: "SELECT '", Params: []core.Value{core.ValI64(1)}}
 	assert.Equal(t, "SELECT '", q3.DebugSql(DatabaseKindSQLite))
@@ -66,16 +76,16 @@ func TestCompiledQueryDebugSqlPositionalIgnoresStringQuotes(t *testing.T) {
 		Sql:    "SELECT * FROM users WHERE name = '?' AND age > ?",
 		Params: []core.Value{core.ValI64(18)},
 	}
-	
+
 	debugSqlite := q.DebugSql(DatabaseKindSQLite)
 	assert.Equal(t, "SELECT * FROM users WHERE name = '?' AND age > 18", debugSqlite)
-	
+
 	q2 := CompiledQuery{
 		Sql:    "SELECT * FROM users WHERE name = '?' '' AND age > ?",
 		Params: []core.Value{core.ValI64(18)},
 	}
 	assert.Equal(t, "SELECT * FROM users WHERE name = '?' '' AND age > 18", q2.DebugSql(DatabaseKindSQLite))
-	
+
 	// extra placeholders in sql without enough params
 	q3 := CompiledQuery{Sql: "SELECT ?, ?", Params: []core.Value{core.ValI64(1)}}
 	assert.Equal(t, "SELECT 1, ?", q3.DebugSql(DatabaseKindSQLite))
@@ -88,7 +98,7 @@ func TestCompiledQueryDebugSqlPostgresEdge(t *testing.T) {
 
 	q2 := CompiledQuery{Sql: "SELECT $", Params: []core.Value{}}
 	assert.Equal(t, "SELECT $", q2.DebugSql(DatabaseKindPostgreSQL))
-	
+
 	q3 := CompiledQuery{Sql: "SELECT 'a''", Params: []core.Value{}}
 	assert.Equal(t, "SELECT 'a''", q3.DebugSql(DatabaseKindPostgreSQL))
 }
@@ -117,9 +127,9 @@ func TestSqlLiteral(t *testing.T) {
 		{core.Value{V: []core.Value{core.ValI64(1), core.ValI64(2)}}, DatabaseKindPostgreSQL, "ARRAY[1, 2]"},
 		{core.Value{V: []core.Value{core.ValI64(1), core.ValI64(2)}}, DatabaseKindSQLite, "(1, 2)"},
 		{core.Value{V: core.Record{"id": core.ValI64(1)}}, DatabaseKindPostgreSQL, "'map[id:1]'"}, // rough json
-		{core.Value{V: timeValue()}, DatabaseKindPostgreSQL, "'{}'"}, // fallback
+		{core.Value{V: timeValue()}, DatabaseKindPostgreSQL, "'{}'"},                              // fallback
 	}
-	
+
 	for _, tt := range tests {
 		assert.Equal(t, tt.want, sqlLiteral(tt.val, tt.kind))
 	}
@@ -127,6 +137,7 @@ func TestSqlLiteral(t *testing.T) {
 
 // Just a dummy struct to trigger default fallback
 type dummyStruct struct{}
+
 func timeValue() dummyStruct { return dummyStruct{} }
 
 func TestErrors(t *testing.T) {
