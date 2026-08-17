@@ -190,6 +190,28 @@ func (m *RuntimeModule) AddInitialGraphs(graphs []*GraphNode) *RuntimeModule {
 	return m
 }
 
+// And creates a composed manifest without modifying either input module.
+func (m *RuntimeModule) And(other *RuntimeModule) *RuntimeModule {
+	combined := NewRuntimeModule()
+	for _, descriptor := range m.Metadata.AllEntities() {
+		combined.Entity(descriptor)
+	}
+	for _, descriptor := range other.Metadata.AllEntities() {
+		combined.Entity(descriptor)
+	}
+	for entity, behavior := range m.Behaviors.behaviors {
+		combined.Behavior(entity, behavior)
+	}
+	for entity, behavior := range other.Behaviors.behaviors {
+		combined.Behavior(entity, behavior)
+	}
+	for _, sink := range append(append([]RawAuditEventSink{}, m.EventSinks.Sinks...), other.EventSinks.Sinks...) {
+		combined.EventSink(sink)
+	}
+	combined.InitialGraphs = append(append([]*GraphNode{}, m.InitialGraphs...), other.InitialGraphs...)
+	return combined
+}
+
 // ApplyTo sets the module's registries into the given UserContext
 func (m *RuntimeModule) ApplyTo(ctx *UserContext) {
 	ctx.Metadata = m.Metadata
@@ -202,5 +224,11 @@ func (m *RuntimeModule) ApplyTo(ctx *UserContext) {
 func (m *RuntimeModule) IntoContext() *UserContext {
 	ctx := NewUserContext()
 	m.ApplyTo(ctx)
+	return ctx
+}
+
+// Install applies a passive manifest. Schema installation remains an explicit provider call.
+func (ctx *UserContext) Install(module *RuntimeModule) *UserContext {
+	module.ApplyTo(ctx)
 	return ctx
 }

@@ -130,3 +130,11 @@ func TestRuntimeModule_MoreBuilders(t *testing.T) {
 	assert.Equal(t, 2, len(ctx.InitialGraphs()))
 	assert.True(t, module.EntityRegistry.Contains("TestEntity2"))
 }
+
+func TestRuntimeModule_ComposeAndInstall(t *testing.T) {
+	first := NewRuntimeModule().Entity(&core.EntityDescriptor{Name: "First", TabName: "first"})
+	second := NewRuntimeModule().Entity(&core.EntityDescriptor{Name: "Second", TabName: "second"})
+	ctx := NewUserContext().Install(first.And(second))
+	assert.True(t, ctx.EntityRegistry.Contains("First"))
+	assert.True(t, ctx.EntityRegistry.Contains("Second"))
+}
