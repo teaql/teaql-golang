@@ -102,6 +102,9 @@ func TestExportsQueryTraceMetricAndLogThroughOTLPHTTP(t *testing.T) {
 			completion["teaql.cache.result"] = "hit"
 		}
 		scope.Success(completion)
+		_, failedScope := runtime.StartRuntimeOperation(context, telemetry,
+			runtime.NewRuntimeOperation(operation.family, operation.name+".failure", operation.attributes))
+		failedScope.Failure("ConformanceProbeError")
 	}
 	if expectExportFailure {
 		require.Error(t, logs.err)
