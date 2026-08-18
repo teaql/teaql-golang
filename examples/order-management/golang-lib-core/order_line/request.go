@@ -1,5 +1,3 @@
-
-
 package order_line
 
 import (
@@ -552,15 +550,13 @@ func (r *OrderLineRequest) OrderByVersionDesc() *OrderLineRequest {
 	return r
 }
 
-
-
-func (e *ExecutableOrderLineRequest) NewEntity(ctx *runtime.UserContext) *OrderLine {
+func (e *ExecutableOrderLineRequest) NewEntity(context *runtime.UserContext) *OrderLine {
 	entity := NewOrderLine()
 	return entity
 }
 
-func (e *ExecutableOrderLineRequest) ExecuteForOne(ctx *runtime.UserContext) (*OrderLine, error) {
-	list, err := e.ExecuteForList(ctx)
+func (e *ExecutableOrderLineRequest) ExecuteForOne(context *runtime.UserContext) (*OrderLine, error) {
+	list, err := e.ExecuteForList(context)
 	if err != nil {
 		return nil, err
 	}
@@ -570,8 +566,8 @@ func (e *ExecutableOrderLineRequest) ExecuteForOne(ctx *runtime.UserContext) (*O
 	return list.Data[0], nil
 }
 
-func (e *ExecutableOrderLineRequest) ExecuteForList(ctx *runtime.UserContext) (*core.SmartList[*OrderLine], error) {
-	rows, err := e.ExecuteRecords(ctx)
+func (e *ExecutableOrderLineRequest) ExecuteForList(context *runtime.UserContext) (*core.SmartList[*OrderLine], error) {
+	rows, err := e.ExecuteRecords(context)
 	if err != nil {
 		return nil, err
 	}
@@ -587,14 +583,14 @@ func (e *ExecutableOrderLineRequest) ExecuteForList(ctx *runtime.UserContext) (*
 	return core.NewSmartList(results), nil
 }
 
-func (e *ExecutableOrderLineRequest) ExecuteRecords(ctx *runtime.UserContext) ([]core.Record, error) {
+func (e *ExecutableOrderLineRequest) ExecuteRecords(context *runtime.UserContext) ([]core.Record, error) {
 	r := e.request
 	if strings.TrimSpace(r.purposeText) == "" || strings.TrimSpace(r.commentText) == "" {
 		return nil, fmt.Errorf("security audit failure: Comment() and Purpose() must be called before ExecuteForList()")
 	}
 	r.Query.Comment(fmt.Sprintf("comment=%s; purpose=%s", r.commentText, r.purposeText))
 
-	dsRaw := ctx.GetResource("dataService")
+	dsRaw := context.GetResource("dataService")
 	if dsRaw == nil {
 		return nil, fmt.Errorf("dataService not found in UserContext")
 	}
@@ -604,7 +600,7 @@ func (e *ExecutableOrderLineRequest) ExecuteRecords(ctx *runtime.UserContext) ([
 		return nil, fmt.Errorf("dataService does not implement data_service.QueryExecutor")
 	}
 
-	rows, err := runtime.NewRuntimeDataService(ctx.Metadata, ds).FetchAll(ctx, r.Query)
+	rows, err := runtime.NewRuntimeDataService(context.Metadata, ds).FetchAll(context, r.Query)
 	if err != nil {
 		return nil, err
 	}

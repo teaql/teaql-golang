@@ -1,7 +1,7 @@
 package meilisearch
 
 import (
-	"context"
+	stdcontext "context"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -46,7 +46,7 @@ func TestMeilisearchProvider(t *testing.T) {
 		t.Errorf("Expected Mutation capability to be true")
 	}
 
-	ctx := context.Background()
+	context := stdcontext.Background()
 	searchStr := "test"
 
 	// Test Query
@@ -56,7 +56,7 @@ func TestMeilisearchProvider(t *testing.T) {
 			SearchWithText: &searchStr,
 		},
 	}
-	res, err := provider.Query(ctx, queryReq)
+	res, err := provider.Query(context, queryReq)
 	if err != nil {
 		t.Fatalf("Unexpected error for query: %v", err)
 	}
@@ -74,7 +74,7 @@ func TestMeilisearchProvider(t *testing.T) {
 			Values: core.Record{"id": core.ValI64(1)},
 		},
 	}
-	mutRes, err := provider.Mutate(ctx, insertMut)
+	mutRes, err := provider.Mutate(context, insertMut)
 	if err != nil {
 		t.Fatalf("Unexpected error for mutate: %v", err)
 	}
@@ -84,7 +84,7 @@ func TestMeilisearchProvider(t *testing.T) {
 
 	// Test Unsupported Mutation
 	unsupportedMut := &data_service.UpdateMutation{}
-	_, err = provider.Mutate(ctx, unsupportedMut)
+	_, err = provider.Mutate(context, unsupportedMut)
 	if err == nil {
 		t.Errorf("Expected error for unsupported mutation")
 	}
@@ -99,7 +99,7 @@ func TestMeilisearchProviderErrors(t *testing.T) {
 	defer server.Close()
 
 	provider := NewMeilisearchProvider(server.URL, nil)
-	ctx := context.Background()
+	context := stdcontext.Background()
 
 	// Query error
 	queryReq := &data_service.QueryRequest{
@@ -107,7 +107,7 @@ func TestMeilisearchProviderErrors(t *testing.T) {
 			Entity: "movies",
 		},
 	}
-	_, err := provider.Query(ctx, queryReq)
+	_, err := provider.Query(context, queryReq)
 	if err == nil {
 		t.Errorf("Expected error for bad request on query")
 	}
@@ -119,7 +119,7 @@ func TestMeilisearchProviderErrors(t *testing.T) {
 			Values: core.Record{"id": core.ValI64(1)},
 		},
 	}
-	_, err = provider.Mutate(ctx, insertMut)
+	_, err = provider.Mutate(context, insertMut)
 	if err == nil {
 		t.Errorf("Expected error for bad request on mutate")
 	}
@@ -142,14 +142,14 @@ func (errorReader) Close() error { return nil }
 
 func TestMeilisearchProviderEdgeCases(t *testing.T) {
 	provider := NewMeilisearchProvider("http://localhost:7700", nil)
-	ctx := context.Background()
+	context := stdcontext.Background()
 
-	// 1. NewRequestWithContext error (invalid method/url, but method is hardcoded, so use canceled ctx and invalid url)
+	// 1. NewRequestWithContext error (invalid method/url, but method is hardcoded, so use canceled context and invalid url)
 	provider.host = "http:// \x00 invalid url"
 	queryReq := &data_service.QueryRequest{
 		Query: &core.SelectQuery{Entity: "movies"},
 	}
-	_, err := provider.Query(ctx, queryReq)
+	_, err := provider.Query(context, queryReq)
 	if err == nil {
 		t.Errorf("Expected error from NewRequestWithContext in Query")
 	}
@@ -157,7 +157,7 @@ func TestMeilisearchProviderEdgeCases(t *testing.T) {
 	insertMut := &data_service.InsertMutation{
 		Cmd: &core.InsertCommand{Entity: "movies"},
 	}
-	_, err = provider.Mutate(ctx, insertMut)
+	_, err = provider.Mutate(context, insertMut)
 	if err == nil {
 		t.Errorf("Expected error from NewRequestWithContext in Mutate")
 	}
@@ -169,7 +169,7 @@ func TestMeilisearchProviderEdgeCases(t *testing.T) {
 			return nil, context.DeadlineExceeded
 		},
 	}
-	_, err = provider.Query(ctx, queryReq)
+	_, err = provider.Query(context, queryReq)
 	if err == nil {
 		t.Errorf("Expected error from client.Do")
 	}
@@ -183,7 +183,7 @@ func TestMeilisearchProviderEdgeCases(t *testing.T) {
 			}, nil
 		},
 	}
-	_, err = provider.Query(ctx, queryReq)
+	_, err = provider.Query(context, queryReq)
 	if err == nil {
 		t.Errorf("Expected error from io.ReadAll")
 	}
@@ -197,15 +197,15 @@ func TestMeilisearchProviderEdgeCases(t *testing.T) {
 			}, nil
 		},
 	}
-	_, err = provider.Query(ctx, queryReq)
+	_, err = provider.Query(context, queryReq)
 	if err == nil {
 		t.Errorf("Expected error from json.Unmarshal")
 	}
 }
 
 type errReader2 struct{}
+
 func (errReader2) Read(p []byte) (n int, err error) {
 	return 0, context.DeadlineExceeded
 }
 func (errReader2) Close() error { return nil }
-

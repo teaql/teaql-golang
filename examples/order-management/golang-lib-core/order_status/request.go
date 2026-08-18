@@ -1,5 +1,3 @@
-
-
 package order_status
 
 import (
@@ -473,13 +471,13 @@ func (r *OrderStatusRequest) SelectCustomerOrderListWith(child *customer_order.C
 	return r
 }
 
-func (e *ExecutableOrderStatusRequest) NewEntity(ctx *runtime.UserContext) *OrderStatus {
+func (e *ExecutableOrderStatusRequest) NewEntity(context *runtime.UserContext) *OrderStatus {
 	entity := NewOrderStatus()
 	return entity
 }
 
-func (e *ExecutableOrderStatusRequest) ExecuteForOne(ctx *runtime.UserContext) (*OrderStatus, error) {
-	list, err := e.ExecuteForList(ctx)
+func (e *ExecutableOrderStatusRequest) ExecuteForOne(context *runtime.UserContext) (*OrderStatus, error) {
+	list, err := e.ExecuteForList(context)
 	if err != nil {
 		return nil, err
 	}
@@ -489,8 +487,8 @@ func (e *ExecutableOrderStatusRequest) ExecuteForOne(ctx *runtime.UserContext) (
 	return list.Data[0], nil
 }
 
-func (e *ExecutableOrderStatusRequest) ExecuteForList(ctx *runtime.UserContext) (*core.SmartList[*OrderStatus], error) {
-	rows, err := e.ExecuteRecords(ctx)
+func (e *ExecutableOrderStatusRequest) ExecuteForList(context *runtime.UserContext) (*core.SmartList[*OrderStatus], error) {
+	rows, err := e.ExecuteRecords(context)
 	if err != nil {
 		return nil, err
 	}
@@ -503,25 +501,30 @@ func (e *ExecutableOrderStatusRequest) ExecuteForList(ctx *runtime.UserContext) 
 		}
 		if relationValue, selected := rec["customerOrderList"]; selected {
 			childRecords, ok := relationValue.V.([]core.Record)
-				if !ok { return nil, fmt.Errorf("relation customerOrderList has unexpected runtime type %T", relationValue.V) }
-				for _, childRecord := range childRecords {
-					childEntity := customer_order.NewCustomerOrder()
-					if err := childEntity.FromRecord(childRecord); err != nil { return nil, err }
-					entity.CustomerOrderList().Add(childEntity)
-				}}
+			if !ok {
+				return nil, fmt.Errorf("relation customerOrderList has unexpected runtime type %T", relationValue.V)
+			}
+			for _, childRecord := range childRecords {
+				childEntity := customer_order.NewCustomerOrder()
+				if err := childEntity.FromRecord(childRecord); err != nil {
+					return nil, err
+				}
+				entity.CustomerOrderList().Add(childEntity)
+			}
+		}
 		results = append(results, entity)
 	}
 	return core.NewSmartList(results), nil
 }
 
-func (e *ExecutableOrderStatusRequest) ExecuteRecords(ctx *runtime.UserContext) ([]core.Record, error) {
+func (e *ExecutableOrderStatusRequest) ExecuteRecords(context *runtime.UserContext) ([]core.Record, error) {
 	r := e.request
 	if strings.TrimSpace(r.purposeText) == "" || strings.TrimSpace(r.commentText) == "" {
 		return nil, fmt.Errorf("security audit failure: Comment() and Purpose() must be called before ExecuteForList()")
 	}
 	r.Query.Comment(fmt.Sprintf("comment=%s; purpose=%s", r.commentText, r.purposeText))
 
-	dsRaw := ctx.GetResource("dataService")
+	dsRaw := context.GetResource("dataService")
 	if dsRaw == nil {
 		return nil, fmt.Errorf("dataService not found in UserContext")
 	}
@@ -531,7 +534,7 @@ func (e *ExecutableOrderStatusRequest) ExecuteRecords(ctx *runtime.UserContext) 
 		return nil, fmt.Errorf("dataService does not implement data_service.QueryExecutor")
 	}
 
-	rows, err := runtime.NewRuntimeDataService(ctx.Metadata, ds).FetchAll(ctx, r.Query)
+	rows, err := runtime.NewRuntimeDataService(context.Metadata, ds).FetchAll(context, r.Query)
 	if err != nil {
 		return nil, err
 	}

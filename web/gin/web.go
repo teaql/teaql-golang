@@ -68,28 +68,28 @@ type WebRequestInfo struct {
 
 func GinMiddleware(module *runtime.RuntimeModule) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		ctx := module.IntoContext()
-		
+		context := module.IntoContext()
+
 		clientIp := c.ClientIP()
 		userAgent := c.Request.UserAgent()
-		
+
 		info := &WebRequestInfo{
 			ClientIp:   &clientIp,
 			UserAgent:  &userAgent,
 			RequestUri: c.Request.RequestURI,
 			Method:     c.Request.Method,
 		}
-		
-		ctx.InsertResource("WebRequestInfo", info)
-		
+
+		context.InsertResource("WebRequestInfo", info)
+
 		userId := c.GetHeader("X-User-Id")
 		if userId != "" {
-			// ctx.SetUserIdentifier(userId)
-			ctx.InsertResource("UserId", userId)
+			// context.SetUserIdentifier(userId)
+			context.InsertResource("UserId", userId)
 		}
-		
-		c.Set("TeaContext", ctx)
-		
+
+		c.Set("TeaContext", context)
+
 		c.Next()
 	}
 }
@@ -99,8 +99,8 @@ func GetTeaContext(c *gin.Context) (*runtime.UserContext, bool) {
 	if !ok {
 		return nil, false
 	}
-	ctx, ok := val.(*runtime.UserContext)
-	return ctx, ok
+	context, ok := val.(*runtime.UserContext)
+	return context, ok
 }
 
 // Convert core.Record to standard map

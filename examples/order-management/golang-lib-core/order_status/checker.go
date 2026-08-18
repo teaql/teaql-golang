@@ -5,7 +5,7 @@ import (
 )
 
 type OrderStatusCheckerLogic interface {
-	CheckAndFix(ctx *runtime.UserContext, entity *OrderStatus, status any, location any, results any)
+	CheckAndFix(context *runtime.UserContext, entity *OrderStatus, status any, location any, results any)
 	Required(value bool, field string, location any, results any)
 	RequiredText(value string, field string, location any, results any)
 	MinStringLength(value string, field string, minLen int, location any, results any)
@@ -14,11 +14,15 @@ type OrderStatusCheckerLogic interface {
 
 type NoopOrderStatusChecker struct{}
 
-func (c *NoopOrderStatusChecker) CheckAndFix(ctx *runtime.UserContext, entity *OrderStatus, status any, location any, results any) {}
+func (c *NoopOrderStatusChecker) CheckAndFix(context *runtime.UserContext, entity *OrderStatus, status any, location any, results any) {
+}
 func (c *NoopOrderStatusChecker) Required(value bool, field string, location any, results any) {}
-func (c *NoopOrderStatusChecker) RequiredText(value string, field string, location any, results any) {}
-func (c *NoopOrderStatusChecker) MinStringLength(value string, field string, minLen int, location any, results any) {}
-func (c *NoopOrderStatusChecker) MaxStringLength(value string, field string, maxLen int, location any, results any) {}
+func (c *NoopOrderStatusChecker) RequiredText(value string, field string, location any, results any) {
+}
+func (c *NoopOrderStatusChecker) MinStringLength(value string, field string, minLen int, location any, results any) {
+}
+func (c *NoopOrderStatusChecker) MaxStringLength(value string, field string, maxLen int, location any, results any) {
+}
 
 type OrderStatusChecker struct {
 	logic OrderStatusCheckerLogic
@@ -30,8 +34,8 @@ func NewOrderStatusChecker(logic OrderStatusCheckerLogic) *OrderStatusChecker {
 	}
 }
 
-func (c *OrderStatusChecker) CheckAndFixTyped(ctx *runtime.UserContext, entity *OrderStatus, status any, location any, results any) {
+func (c *OrderStatusChecker) CheckAndFixTyped(context *runtime.UserContext, entity *OrderStatus, status any, location any, results any) {
 	if c.logic != nil {
-		c.logic.CheckAndFix(ctx, entity, status, location, results)
+		c.logic.CheckAndFix(context, entity, status, location, results)
 	}
 }

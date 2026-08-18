@@ -1,7 +1,7 @@
 package runtime
 
 import (
-	"context"
+	stdcontext "context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -52,7 +52,7 @@ type ToolDescriptor interface{ ToolID() string }
 func (t ToolToken[T]) ToolID() string { return t.ID }
 
 type Tools struct {
-	ctx       *UserContext
+	context   *UserContext
 	policy    ToolPolicy
 	providers map[string]ToolProvider
 }
@@ -77,7 +77,7 @@ func GetTool[T any](tools *Tools, token ToolToken[T]) (T, error) {
 	if !tools.policy.allows(token.ID, token.Risk) {
 		return zero, fmt.Errorf("tool denied by policy: %s", token.ID)
 	}
-	value, ok := provider.Create(tools.ctx).(T)
+	value, ok := provider.Create(tools.context).(T)
 	if !ok {
 		return zero, fmt.Errorf("tool provider type mismatch: %s", token.ID)
 	}
@@ -85,13 +85,13 @@ func GetTool[T any](tools *Tools, token ToolToken[T]) (T, error) {
 }
 
 type ContextToolsBuilder struct {
-	ctx       *UserContext
+	context   *UserContext
 	policy    ToolPolicy
 	providers []ToolProvider
 }
 
-func NewContextTools(ctx *UserContext) *ContextToolsBuilder {
-	return &ContextToolsBuilder{ctx: ctx, policy: StandardToolPolicy()}
+func NewContextTools(context *UserContext) *ContextToolsBuilder {
+	return &ContextToolsBuilder{context: context, policy: StandardToolPolicy()}
 }
 func (b *ContextToolsBuilder) Policy(policy ToolPolicy) *ContextToolsBuilder {
 	b.policy = policy
@@ -106,11 +106,11 @@ func (b *ContextToolsBuilder) Build() *Tools {
 	for _, provider := range b.providers {
 		providers[provider.ToolID()] = provider
 	}
-	return &Tools{ctx: b.ctx, policy: b.policy, providers: providers}
+	return &Tools{context: b.context, policy: b.policy, providers: providers}
 }
 
 type HTTPTransport interface {
-	Do(context.Context, string, string, []byte) (int, []byte, error)
+	Do(stdcontext.Context, string, string, []byte) (int, []byte, error)
 }
 type HTTPTool interface {
 	Get(string) *HTTPIntentPhase
@@ -156,11 +156,11 @@ type ExecutableHTTPTool struct {
 	intent      string
 }
 
-func (e *ExecutableHTTPTool) Execute(ctx context.Context) (string, error) {
+func (e *ExecutableHTTPTool) Execute(context stdcontext.Context) (string, error) {
 	if strings.TrimSpace(e.intent) == "" {
 		return "", errors.New("HTTP tool execution requires non-empty intent")
 	}
-	status, body, err := e.transport.Do(ctx, e.method, e.url, e.body)
+	status, body, err := e.transport.Do(context, e.method, e.url, e.body)
 	if err != nil {
 		return "", err
 	}

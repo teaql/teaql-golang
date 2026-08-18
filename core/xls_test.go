@@ -1,13 +1,13 @@
 package core
 
 import (
-	"testing"
 	"github.com/stretchr/testify/assert"
+	"testing"
 )
 
 func TestXlsBlockContextMatchesJavaNavigationModel(t *testing.T) {
 	context := NewXlsBlockBuildContext("orders", 2, 3)
-	
+
 	header := context.ToBlock("Order No").
 		AddProperty("bold", true).
 		Span(2, 1)
@@ -59,7 +59,7 @@ func TestXlsBlockContextMatchesJavaNavigationModel(t *testing.T) {
 	assert.Equal(t, "orders", pageJson["name"])
 	blocks := pageJson["blocks"].([]any)
 	assert.Equal(t, 3, len(blocks))
-	
+
 	b0 := blocks[0].(map[string]any)
 	assert.Equal(t, "Order No", b0["value"])
 	props := b0["properties"].(map[string]any)
@@ -78,34 +78,33 @@ func TestXlsAdditional(t *testing.T) {
 	b.Span(0, 0)
 	assert.Equal(t, int32(1), b.Right)
 	assert.Equal(t, int32(2), b.Bottom)
-	
+
 	b.WithValue("newVal")
 	assert.Equal(t, "newVal", b.Value)
-	
+
 	b.SetProperty("prop1", "pval")
 	assert.Equal(t, "pval", b.Properties["prop1"])
-	
+
 	styleBlock := NewXlsBlock("page1", 0, 0, nil)
 	b.Style(styleBlock)
 	assert.Equal(t, styleBlock, b.StyleReferBlock)
-	
+
 	bJson := b.ToJsonValue()
 	assert.Equal(t, "newVal", bJson["value"])
-	
-	ctx := NewXlsBlockBuildContext("page2", -1, -2)
-	assert.Equal(t, int32(0), ctx.X)
-	assert.Equal(t, int32(0), ctx.Y)
-	
+
+	context := NewXlsBlockBuildContext("page2", -1, -2)
+	assert.Equal(t, int32(0), context.X)
+	assert.Equal(t, int32(0), context.Y)
+
 	ctxPage := XlsBlockBuildContextPage("page3")
 	assert.Equal(t, "page3", ctxPage.Page)
 	assert.Equal(t, int32(0), ctxPage.X)
-	
+
 	page := NewXlsPage("p1")
 	page.PushBlock(b)
 	assert.Equal(t, 1, len(page.Blocks))
-	
+
 	wb := NewXlsWorkbook()
 	wb.PushPage(page)
 	assert.Equal(t, 1, len(wb.Pages))
 }
-

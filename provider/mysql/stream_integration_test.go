@@ -1,7 +1,7 @@
 package mysql
 
 import (
-	"context"
+	stdcontext "context"
 	"database/sql"
 	"fmt"
 	"os"
@@ -28,7 +28,7 @@ func TestMysqlStreamSqlRealDatabase(t *testing.T) {
 	executor := NewMysqlMutationExecutor(db)
 	query := &teaqlsql.CompiledQuery{Sql: "SELECT id FROM (SELECT 1 id UNION ALL SELECT 2 UNION ALL SELECT 3 UNION ALL SELECT 4 UNION ALL SELECT 5) fixture ORDER BY id"}
 	var sizes []int
-	err = executor.StreamSql(context.Background(), query, 2, func(rows []core.Record) error { sizes = append(sizes, len(rows)); return nil })
+	err = executor.StreamSql(stdcontext.Background(), query, 2, func(rows []core.Record) error { sizes = append(sizes, len(rows)); return nil })
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -48,9 +48,9 @@ func TestMysqlTemporalDebugSqlRealDatabase(t *testing.T) {
 	}
 	defer db.Close()
 	executor := NewMysqlMutationExecutor(db)
-	ctx := context.Background()
+	context := stdcontext.Background()
 	must := func(q *teaqlsql.CompiledQuery) {
-		if _, e := executor.ExecuteSql(ctx, q); e != nil {
+		if _, e := executor.ExecuteSql(context, q); e != nil {
 			t.Fatal(e)
 		}
 	}
@@ -60,7 +60,7 @@ func TestMysqlTemporalDebugSqlRealDatabase(t *testing.T) {
 	prepared := &teaqlsql.CompiledQuery{Sql: "INSERT INTO teaql_temporal_runtime_fixture VALUES (?, ?, ?)", Params: []core.Value{core.ValI64(1), core.ValDate(time.Date(2024, 2, 29, 0, 0, 0, 0, time.UTC)), core.ValTimestamp(-315521754322)}, Comment: &comment}
 	must(prepared)
 	must(&teaqlsql.CompiledQuery{Sql: strings.Replace(prepared.DebugSql(teaqlsql.DatabaseKindMySQL), "VALUES (1,", "VALUES (2,", 1)})
-	rows, err := executor.FetchAllSql(ctx, &teaqlsql.CompiledQuery{Sql: "SELECT d, t FROM teaql_temporal_runtime_fixture ORDER BY id"})
+	rows, err := executor.FetchAllSql(context, &teaqlsql.CompiledQuery{Sql: "SELECT d, t FROM teaql_temporal_runtime_fixture ORDER BY id"})
 	if err != nil {
 		t.Fatal(err)
 	}

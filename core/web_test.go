@@ -1,9 +1,9 @@
 package core
 
 import (
-	"testing"
-	"github.com/stretchr/testify/assert"
 	"github.com/shopspring/decimal"
+	"github.com/stretchr/testify/assert"
+	"testing"
 )
 
 func TestWebResponseConstructorsAndJsonShape(t *testing.T) {
@@ -59,7 +59,7 @@ func TestWebStyleAndActionBindFrontendMetadata(t *testing.T) {
 	assert.True(t, ok)
 	actionList := ValueToJson(actionVal).([]any)
 	assert.Equal(t, 2, len(actionList))
-	
+
 	action0 := actionList[0].(map[string]any)
 	assert.Equal(t, "switchview", action0["execute"])
 	assert.Equal(t, "detail", action0["target"])
@@ -87,7 +87,7 @@ func TestWebActionAdditional(t *testing.T) {
 		WithComponent("comp").
 		WithWarningMessage("warn").
 		WithRoleForList("role")
-	
+
 	assert.Equal(t, "comp", *wa.Component)
 	assert.Equal(t, "warn", *wa.WarningMessage)
 	assert.Equal(t, "role", *wa.RoleForList)
@@ -95,13 +95,13 @@ func TestWebActionAdditional(t *testing.T) {
 	r := make(Record)
 	wa.BindRecord(r)
 	assert.NotNil(t, r[ActionListKey])
-	
+
 	// Test AppendActionToDynamic with existing non-list json value
 	r2 := make(Record)
 	r2[ActionListKey] = ValJson([]any{map[string]any{"a": 1}})
 	wa.BindRecord(r2)
 	assert.NotNil(t, r2[ActionListKey])
-	
+
 	// Test AppendActionToDynamic with existing string json value
 	r3 := make(Record)
 	r3[ActionListKey] = ValJson("some string")
@@ -141,23 +141,23 @@ type webMockEntity struct {
 	*BaseEntityData
 }
 
-func (m *webMockEntity) EntityName() string { return "Mock" }
+func (m *webMockEntity) EntityName() string                  { return "Mock" }
 func (m *webMockEntity) EntityDescriptor() *EntityDescriptor { return nil }
-func (m *webMockEntity) FromRecord(record Record) error { return nil }
+func (m *webMockEntity) FromRecord(record Record) error      { return nil }
 func (m *webMockEntity) IntoRecord() Record {
 	r := make(Record)
 	r["id"] = ValU64(m.Id)
 	return r
 }
-func (m *webMockEntity) DirtyFields() []string { return nil }
-func (m *webMockEntity) IsMarkedAsDelete() bool { return false }
-func (m *webMockEntity) IsNew() bool { return false }
-func (m *webMockEntity) MarkAsNew() {}
-func (m *webMockEntity) GetComment() *string { return nil }
+func (m *webMockEntity) DirtyFields() []string     { return nil }
+func (m *webMockEntity) IsMarkedAsDelete() bool    { return false }
+func (m *webMockEntity) IsNew() bool               { return false }
+func (m *webMockEntity) MarkAsNew()                {}
+func (m *webMockEntity) GetComment() *string       { return nil }
 func (m *webMockEntity) SetComment(comment string) {}
-func (m *webMockEntity) OriginalValues() Record { return nil }
-func (m *webMockEntity) OnLoaded(context any) {}
-func (m *webMockEntity) IntoJson() any { return nil }
+func (m *webMockEntity) OriginalValues() Record    { return nil }
+func (m *webMockEntity) OnLoaded(context any)      {}
+func (m *webMockEntity) IntoJson() any             { return nil }
 
 func TestValueToJson(t *testing.T) {
 	v1 := ValueToJson(ValI64(1))
@@ -177,8 +177,7 @@ func TestValueToJson(t *testing.T) {
 	v5 := ValueToJson(ValObject(r))
 	m := v5.(map[string]any)
 	assert.Equal(t, int64(3), m["key"])
-    
-    // test nil value
-    assert.Nil(t, ValueToJson(Value{}))
-}
 
+	// test nil value
+	assert.Nil(t, ValueToJson(Value{}))
+}

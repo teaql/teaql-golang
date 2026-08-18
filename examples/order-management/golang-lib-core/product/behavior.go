@@ -9,12 +9,12 @@ type ProductBehavior struct {
 	runtime.DefaultEntityDataServiceBehavior
 }
 
-func (b *ProductBehavior) BeforeInsert(ctx *runtime.UserContext, command *core.InsertCommand) error {
+func (b *ProductBehavior) BeforeInsert(context *runtime.UserContext, command *core.InsertCommand) error {
 	// Custom behavior
 	return nil
 }
 
-func (b *ProductBehavior) BeforeUpdate(ctx *runtime.UserContext, command *core.UpdateCommand) error {
+func (b *ProductBehavior) BeforeUpdate(context *runtime.UserContext, command *core.UpdateCommand) error {
 	// Custom behavior
 	return nil
 }

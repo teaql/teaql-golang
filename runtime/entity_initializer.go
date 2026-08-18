@@ -6,7 +6,7 @@ import "strings"
 // entity creation. Business input must not provide tenant, actor, policy,
 // provider, or audit infrastructure values directly.
 type EntityInitializer interface {
-	InitializeEntity(ctx *UserContext, entityName string, entity any) any
+	InitializeEntity(context *UserContext, entityName string, entity any) any
 }
 
 // InitializeEntity invokes the optional trusted initializer registered in the

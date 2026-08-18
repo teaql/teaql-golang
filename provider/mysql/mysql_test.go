@@ -4,7 +4,7 @@ import (
 	"testing"
 	"time"
 
-	"context"
+	stdcontext "context"
 	"database/sql"
 	"github.com/shopspring/decimal"
 
@@ -26,14 +26,14 @@ func TestMysqlMutationExecutorLogic(t *testing.T) {
 	assert.NoError(t, err)
 
 	exec := NewMysqlMutationExecutor(db)
-	ctx := context.Background()
+	context := stdcontext.Background()
 
 	// ExecuteSql
 	queryExec := &teaql_sql.CompiledQuery{
 		Sql:    "INSERT INTO test VALUES (?, ?)",
 		Params: []core.Value{core.ValI64(2), core.ValText("bar")},
 	}
-	affected, err := exec.ExecuteSql(ctx, queryExec)
+	affected, err := exec.ExecuteSql(context, queryExec)
 	assert.NoError(t, err)
 	assert.Equal(t, uint64(1), affected)
 
@@ -42,52 +42,52 @@ func TestMysqlMutationExecutorLogic(t *testing.T) {
 		Sql:    "SELECT * FROM test",
 		Params: nil,
 	}
-	records, err := exec.FetchAllSql(ctx, queryFetch)
+	records, err := exec.FetchAllSql(context, queryFetch)
 	assert.NoError(t, err)
 	assert.Equal(t, 2, len(records))
 
 	// BeginSql
-	txExec, err := exec.BeginSql(ctx)
+	txExec, err := exec.BeginSql(context)
 	assert.NoError(t, err)
 
-	affected, err = txExec.ExecuteSql(ctx, queryExec)
+	affected, err = txExec.ExecuteSql(context, queryExec)
 	assert.NoError(t, err)
 	assert.Equal(t, uint64(1), affected)
 
-	records, err = txExec.FetchAllSql(ctx, queryFetch)
+	records, err = txExec.FetchAllSql(context, queryFetch)
 	assert.NoError(t, err)
 	assert.Equal(t, 3, len(records)) // +1 from txExec
 
-	assert.NoError(t, txExec.CommitSql(ctx))
+	assert.NoError(t, txExec.CommitSql(context))
 
-	txExec2, _ := exec.BeginSql(ctx)
-	assert.NoError(t, txExec2.RollbackSql(ctx))
+	txExec2, _ := exec.BeginSql(context)
+	assert.NoError(t, txExec2.RollbackSql(context))
 
 	// Errors
 	queryErr := &teaql_sql.CompiledQuery{Sql: "INVALID"}
-	_, err = exec.ExecuteSql(ctx, queryErr)
+	_, err = exec.ExecuteSql(context, queryErr)
 	assert.Error(t, err)
-	_, err = exec.FetchAllSql(ctx, queryErr)
+	_, err = exec.FetchAllSql(context, queryErr)
 	assert.Error(t, err)
-	_, err = txExec2.ExecuteSql(ctx, queryErr)
+	_, err = txExec2.ExecuteSql(context, queryErr)
 	assert.Error(t, err)
-	_, err = txExec2.FetchAllSql(ctx, queryErr)
+	_, err = txExec2.FetchAllSql(context, queryErr)
 	assert.Error(t, err)
 
 	queryBindErr := &teaql_sql.CompiledQuery{Sql: "SELECT 1", Params: []core.Value{{V: struct{}{}}}}
-	_, err = exec.ExecuteSql(ctx, queryBindErr)
+	_, err = exec.ExecuteSql(context, queryBindErr)
 	assert.Error(t, err)
-	_, err = exec.FetchAllSql(ctx, queryBindErr)
+	_, err = exec.FetchAllSql(context, queryBindErr)
 	assert.Error(t, err)
-	_, err = txExec2.ExecuteSql(ctx, queryBindErr)
+	_, err = txExec2.ExecuteSql(context, queryBindErr)
 	assert.Error(t, err)
-	_, err = txExec2.FetchAllSql(ctx, queryBindErr)
+	_, err = txExec2.FetchAllSql(context, queryBindErr)
 	assert.Error(t, err)
 
 	db.Close()
-	_, err = exec.ExecuteSql(ctx, queryExec)
+	_, err = exec.ExecuteSql(context, queryExec)
 	assert.Error(t, err)
-	_, err = exec.FetchAllSql(ctx, queryFetch)
+	_, err = exec.FetchAllSql(context, queryFetch)
 	assert.Error(t, err)
 }
 

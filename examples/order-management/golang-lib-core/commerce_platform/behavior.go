@@ -9,12 +9,12 @@ type CommercePlatformBehavior struct {
 	runtime.DefaultEntityDataServiceBehavior
 }
 
-func (b *CommercePlatformBehavior) BeforeInsert(ctx *runtime.UserContext, command *core.InsertCommand) error {
+func (b *CommercePlatformBehavior) BeforeInsert(context *runtime.UserContext, command *core.InsertCommand) error {
 	// Custom behavior
 	return nil
 }
 
-func (b *CommercePlatformBehavior) BeforeUpdate(ctx *runtime.UserContext, command *core.UpdateCommand) error {
+func (b *CommercePlatformBehavior) BeforeUpdate(context *runtime.UserContext, command *core.UpdateCommand) error {
 	// Custom behavior
 	return nil
 }

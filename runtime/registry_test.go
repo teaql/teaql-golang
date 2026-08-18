@@ -20,24 +20,24 @@ func getDummyDescriptor() *core.EntityDescriptor {
 
 func TestBehaviorDefaults(t *testing.T) {
 	behavior := &DefaultEntityDataServiceBehavior{}
-	ctx := NewUserContext()
+	context := NewUserContext()
 
 	sq := &core.SelectQuery{Entity: "Test"}
-	assert.NoError(t, behavior.BeforeSelect(ctx, sq))
+	assert.NoError(t, behavior.BeforeSelect(context, sq))
 
 	ic := &core.InsertCommand{Entity: "Test"}
-	assert.NoError(t, behavior.BeforeInsert(ctx, ic))
+	assert.NoError(t, behavior.BeforeInsert(context, ic))
 
 	uc := &core.UpdateCommand{Entity: "Test"}
-	assert.NoError(t, behavior.BeforeUpdate(ctx, uc))
+	assert.NoError(t, behavior.BeforeUpdate(context, uc))
 
 	dc := &core.DeleteCommand{Entity: "Test"}
-	assert.NoError(t, behavior.BeforeDelete(ctx, dc))
+	assert.NoError(t, behavior.BeforeDelete(context, dc))
 
 	rc := &core.RecoverCommand{Entity: "Test"}
-	assert.NoError(t, behavior.BeforeRecover(ctx, rc))
+	assert.NoError(t, behavior.BeforeRecover(context, rc))
 
-	assert.Empty(t, behavior.RelationLoads(ctx))
+	assert.Empty(t, behavior.RelationLoads(context))
 }
 
 func TestMetadataRegistryRegisterAndGet(t *testing.T) {
@@ -94,12 +94,12 @@ func TestRuntimeModule(t *testing.T) {
 		Entity(getDummyDescriptor()).
 		EntityWithBehavior(desc, behavior)
 
-	ctx := NewUserContext()
-	module.ApplyTo(ctx)
+	context := NewUserContext()
+	module.ApplyTo(context)
 
-	assert.NotNil(t, ctx.Metadata)
-	assert.NotNil(t, ctx.EntityRegistry)
-	assert.NotNil(t, ctx.Behaviors)
+	assert.NotNil(t, context.Metadata)
+	assert.NotNil(t, context.EntityRegistry)
+	assert.NotNil(t, context.Behaviors)
 
 	// Test intoContext
 	ctx2 := NewRuntimeModule().IntoContext()
@@ -125,16 +125,16 @@ func TestRuntimeModule_MoreBuilders(t *testing.T) {
 		InitialGraph(node).
 		AddInitialGraphs(nodes)
 
-	ctx := module.IntoContext()
-	assert.NotNil(t, ctx)
-	assert.Equal(t, 2, len(ctx.InitialGraphs()))
+	context := module.IntoContext()
+	assert.NotNil(t, context)
+	assert.Equal(t, 2, len(context.InitialGraphs()))
 	assert.True(t, module.EntityRegistry.Contains("TestEntity2"))
 }
 
 func TestRuntimeModule_ComposeAndInstall(t *testing.T) {
 	first := NewRuntimeModule().Entity(&core.EntityDescriptor{Name: "First", TabName: "first"})
 	second := NewRuntimeModule().Entity(&core.EntityDescriptor{Name: "Second", TabName: "second"})
-	ctx := NewUserContext().Install(first.And(second))
-	assert.True(t, ctx.EntityRegistry.Contains("First"))
-	assert.True(t, ctx.EntityRegistry.Contains("Second"))
+	context := NewUserContext().Install(first.And(second))
+	assert.True(t, context.EntityRegistry.Contains("First"))
+	assert.True(t, context.EntityRegistry.Contains("Second"))
 }

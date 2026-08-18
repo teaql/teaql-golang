@@ -1,7 +1,7 @@
 package redis
 
 import (
-	"context"
+	stdcontext "context"
 	"time"
 
 	"github.com/go-redis/redis/v8"
@@ -17,12 +17,12 @@ func NewRedisRemoteLock(client *redis.Client) *RedisRemoteLock {
 	}
 }
 
-func (l *RedisRemoteLock) TryRemoteLock(ctx context.Context, key string, timeoutMillis int64, expireMillis int64) bool {
+func (l *RedisRemoteLock) TryRemoteLock(context stdcontext.Context, key string, timeoutMillis int64, expireMillis int64) bool {
 	deadline := time.Now().Add(time.Duration(timeoutMillis) * time.Millisecond)
 	expire := time.Duration(expireMillis) * time.Millisecond
 
 	for {
-		ok, err := l.client.SetNX(ctx, key, "locked", expire).Result()
+		ok, err := l.client.SetNX(context, key, "locked", expire).Result()
 		if err == nil && ok {
 			return true
 		}
@@ -30,12 +30,12 @@ func (l *RedisRemoteLock) TryRemoteLock(ctx context.Context, key string, timeout
 		if time.Now().After(deadline) {
 			break
 		}
-		
+
 		time.Sleep(10 * time.Millisecond)
 	}
 	return false
 }
 
-func (l *RedisRemoteLock) UnlockRemote(ctx context.Context, key string) {
-	l.client.Del(ctx, key)
+func (l *RedisRemoteLock) UnlockRemote(context stdcontext.Context, key string) {
+	l.client.Del(context, key)
 }

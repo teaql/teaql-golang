@@ -1,7 +1,7 @@
 package runtime
 
 import (
-	"context"
+	stdcontext "context"
 	"fmt"
 	"testing"
 
@@ -10,7 +10,7 @@ import (
 
 type stubHTTPTransport struct{ status int }
 
-func (s stubHTTPTransport) Do(_ context.Context, method, url string, _ []byte) (int, []byte, error) {
+func (s stubHTTPTransport) Do(_ stdcontext.Context, method, url string, _ []byte) (int, []byte, error) {
 	return s.status, []byte(fmt.Sprintf("%s:%s", method, url)), nil
 }
 
@@ -19,7 +19,7 @@ func TestContextToolsPolicyAndNativeHTTPResponse(t *testing.T) {
 		Provider(HTTPToolProvider{Transport: stubHTTPTransport{status: 200}}).Build()
 	httpTool, err := GetTool(tools, HTTPToolToken)
 	require.NoError(t, err)
-	value, err := httpTool.Get("https://example.com").Purpose("status").Execute(context.Background())
+	value, err := httpTool.Get("https://example.com").Purpose("status").Execute(stdcontext.Background())
 	require.NoError(t, err)
 	require.Equal(t, "GET:https://example.com", value)
 }
@@ -34,6 +34,6 @@ func TestContextToolsNegativesAreExplicit(t *testing.T) {
 		Provider(HTTPToolProvider{Transport: stubHTTPTransport{200}}).Build()
 	httpTool, err := GetTool(allowed, HTTPToolToken)
 	require.NoError(t, err)
-	_, err = httpTool.Get("https://example.com").Purpose(" ").Execute(context.Background())
+	_, err = httpTool.Get("https://example.com").Purpose(" ").Execute(stdcontext.Background())
 	require.ErrorContains(t, err, "non-empty intent")
 }

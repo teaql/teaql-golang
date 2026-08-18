@@ -14,46 +14,46 @@ type EntityRegistry interface {
 }
 
 type RequestPolicy interface {
-	EnforceSelect(ctx *UserContext, query *core.SelectQuery) error
-	EnforceInsert(ctx *UserContext, command *core.InsertCommand) error
-	EnforceUpdate(ctx *UserContext, command *core.UpdateCommand) error
-	EnforceDelete(ctx *UserContext, command *core.DeleteCommand) error
-	EnforceRecover(ctx *UserContext, command *core.RecoverCommand) error
+	EnforceSelect(context *UserContext, query *core.SelectQuery) error
+	EnforceInsert(context *UserContext, command *core.InsertCommand) error
+	EnforceUpdate(context *UserContext, command *core.UpdateCommand) error
+	EnforceDelete(context *UserContext, command *core.DeleteCommand) error
+	EnforceRecover(context *UserContext, command *core.RecoverCommand) error
 }
 
 type EntityDataServiceBehavior interface {
-	BeforeSelect(ctx *UserContext, query *core.SelectQuery) error
-	BeforeInsert(ctx *UserContext, command *core.InsertCommand) error
-	BeforeUpdate(ctx *UserContext, command *core.UpdateCommand) error
-	BeforeDelete(ctx *UserContext, command *core.DeleteCommand) error
-	BeforeRecover(ctx *UserContext, command *core.RecoverCommand) error
-	RelationLoads(ctx *UserContext) []string
+	BeforeSelect(context *UserContext, query *core.SelectQuery) error
+	BeforeInsert(context *UserContext, command *core.InsertCommand) error
+	BeforeUpdate(context *UserContext, command *core.UpdateCommand) error
+	BeforeDelete(context *UserContext, command *core.DeleteCommand) error
+	BeforeRecover(context *UserContext, command *core.RecoverCommand) error
+	RelationLoads(context *UserContext) []string
 }
 
 // DefaultEntityDataServiceBehavior provides empty implementations for EntityDataServiceBehavior
 type DefaultEntityDataServiceBehavior struct{}
 
-func (d *DefaultEntityDataServiceBehavior) BeforeSelect(ctx *UserContext, query *core.SelectQuery) error {
+func (d *DefaultEntityDataServiceBehavior) BeforeSelect(context *UserContext, query *core.SelectQuery) error {
 	return nil
 }
 
-func (d *DefaultEntityDataServiceBehavior) BeforeInsert(ctx *UserContext, command *core.InsertCommand) error {
+func (d *DefaultEntityDataServiceBehavior) BeforeInsert(context *UserContext, command *core.InsertCommand) error {
 	return nil
 }
 
-func (d *DefaultEntityDataServiceBehavior) BeforeUpdate(ctx *UserContext, command *core.UpdateCommand) error {
+func (d *DefaultEntityDataServiceBehavior) BeforeUpdate(context *UserContext, command *core.UpdateCommand) error {
 	return nil
 }
 
-func (d *DefaultEntityDataServiceBehavior) BeforeDelete(ctx *UserContext, command *core.DeleteCommand) error {
+func (d *DefaultEntityDataServiceBehavior) BeforeDelete(context *UserContext, command *core.DeleteCommand) error {
 	return nil
 }
 
-func (d *DefaultEntityDataServiceBehavior) BeforeRecover(ctx *UserContext, command *core.RecoverCommand) error {
+func (d *DefaultEntityDataServiceBehavior) BeforeRecover(context *UserContext, command *core.RecoverCommand) error {
 	return nil
 }
 
-func (d *DefaultEntityDataServiceBehavior) RelationLoads(ctx *UserContext) []string {
+func (d *DefaultEntityDataServiceBehavior) RelationLoads(context *UserContext) []string {
 	return nil
 }
 
@@ -213,22 +213,22 @@ func (m *RuntimeModule) And(other *RuntimeModule) *RuntimeModule {
 }
 
 // ApplyTo sets the module's registries into the given UserContext
-func (m *RuntimeModule) ApplyTo(ctx *UserContext) {
-	ctx.Metadata = m.Metadata
-	ctx.EntityRegistry = m.EntityRegistry
-	ctx.Behaviors = m.Behaviors
-	ctx.setStandardAuditEventSink(m.EventSinks)
-	ctx.SetInitialGraphs(m.InitialGraphs)
+func (m *RuntimeModule) ApplyTo(context *UserContext) {
+	context.Metadata = m.Metadata
+	context.EntityRegistry = m.EntityRegistry
+	context.Behaviors = m.Behaviors
+	context.setStandardAuditEventSink(m.EventSinks)
+	context.SetInitialGraphs(m.InitialGraphs)
 }
 
 func (m *RuntimeModule) IntoContext() *UserContext {
-	ctx := NewUserContext()
-	m.ApplyTo(ctx)
-	return ctx
+	context := NewUserContext()
+	m.ApplyTo(context)
+	return context
 }
 
 // Install applies a passive manifest. Schema installation remains an explicit provider call.
-func (ctx *UserContext) Install(module *RuntimeModule) *UserContext {
-	module.ApplyTo(ctx)
-	return ctx
+func (context *UserContext) Install(module *RuntimeModule) *UserContext {
+	module.ApplyTo(context)
+	return context
 }

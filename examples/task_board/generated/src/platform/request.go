@@ -1,5 +1,3 @@
-
-
 package platform
 
 import (
@@ -273,13 +271,13 @@ func (r *PlatformRequest) CountTasks() *PlatformRequest {
 	return r
 }
 
-func (r *PlatformRequest) NewEntity(ctx *runtime.UserContext) *Platform {
+func (r *PlatformRequest) NewEntity(context *runtime.UserContext) *Platform {
 	entity := NewPlatform()
 	return entity
 }
 
-func (r *PlatformRequest) ExecuteForOne(ctx *runtime.UserContext) (*Platform, error) {
-	list, err := r.ExecuteForList(ctx)
+func (r *PlatformRequest) ExecuteForOne(context *runtime.UserContext) (*Platform, error) {
+	list, err := r.ExecuteForList(context)
 	if err != nil {
 		return nil, err
 	}
@@ -289,8 +287,8 @@ func (r *PlatformRequest) ExecuteForOne(ctx *runtime.UserContext) (*Platform, er
 	return list.Data[0], nil
 }
 
-func (r *PlatformRequest) ExecuteForList(ctx *runtime.UserContext) (*core.SmartList[*Platform], error) {
-	dsRaw := ctx.GetResource("dataService")
+func (r *PlatformRequest) ExecuteForList(context *runtime.UserContext) (*core.SmartList[*Platform], error) {
+	dsRaw := context.GetResource("dataService")
 	if dsRaw == nil {
 		return nil, fmt.Errorf("dataService not found in UserContext")
 	}
@@ -304,7 +302,7 @@ func (r *PlatformRequest) ExecuteForList(ctx *runtime.UserContext) (*core.SmartL
 		Query: r.Query,
 	}
 
-	res, err := ds.Query(ctx, req)
+	res, err := ds.Query(context, req)
 	if err != nil {
 		return nil, err
 	}

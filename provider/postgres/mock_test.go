@@ -1,7 +1,7 @@
 package postgres
 
 import (
-	"context"
+	stdcontext "context"
 	"fmt"
 	"testing"
 
@@ -18,12 +18,12 @@ func TestPgErrorsWithMock(t *testing.T) {
 	defer db.Close()
 
 	exec := NewPgMutationExecutor(db)
-	ctx := context.Background()
+	context := stdcontext.Background()
 	query := &teaql_sql.CompiledQuery{Sql: "SELECT * FROM test"}
 
 	// 1. FetchAllSql - rows error
 	mock.ExpectQuery("SELECT \\* FROM test").WillReturnError(fmt.Errorf("query error"))
-	_, err = exec.FetchAllSql(ctx, query)
+	_, err = exec.FetchAllSql(context, query)
 	if err == nil {
 		t.Errorf("Expected query error")
 	}
@@ -33,24 +33,24 @@ func TestPgErrorsWithMock(t *testing.T) {
 	mock.ExpectQuery("SELECT \\* FROM test").WillReturnError(fmt.Errorf("tx query error"))
 	mock.ExpectRollback()
 
-	txExec, _ := exec.BeginSql(ctx)
-	_, err = txExec.FetchAllSql(ctx, query)
+	txExec, _ := exec.BeginSql(context)
+	_, err = txExec.FetchAllSql(context, query)
 	if err == nil {
 		t.Errorf("Expected tx query error")
 	}
-	txExec.RollbackSql(ctx)
+	txExec.RollbackSql(context)
 
 	// Tx ExecuteSql - query error
 	mock.ExpectBegin()
 	mock.ExpectExec("INSERT").WillReturnError(fmt.Errorf("tx exec error"))
 	mock.ExpectRollback()
 
-	txExec2, _ := exec.BeginSql(ctx)
-	_, err = txExec2.ExecuteSql(ctx, &teaql_sql.CompiledQuery{Sql: "INSERT"})
+	txExec2, _ := exec.BeginSql(context)
+	_, err = txExec2.ExecuteSql(context, &teaql_sql.CompiledQuery{Sql: "INSERT"})
 	if err == nil {
 		t.Errorf("Expected tx exec error")
 	}
-	txExec2.RollbackSql(ctx)
+	txExec2.RollbackSql(context)
 
 	dialect := &PostgresDialect{}
 	ent := &core.EntityDescriptor{TabName: "test"}

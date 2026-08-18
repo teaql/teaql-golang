@@ -2,7 +2,7 @@ package consul
 
 import (
 	"bytes"
-	"context"
+	stdcontext "context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -41,7 +41,7 @@ func (c *ConsulCloud) endpoint(path string) string {
 	return strings.TrimRight(base, "/") + path
 }
 
-func (c *ConsulCloud) request(ctx context.Context, method, path string, body any) ([]byte, error) {
+func (c *ConsulCloud) request(context stdcontext.Context, method, path string, body any) ([]byte, error) {
 	var reader io.Reader
 	if body != nil {
 		payload, err := json.Marshal(body)
@@ -50,7 +50,7 @@ func (c *ConsulCloud) request(ctx context.Context, method, path string, body any
 		}
 		reader = bytes.NewReader(payload)
 	}
-	req, err := http.NewRequestWithContext(ctx, method, c.endpoint(path), reader)
+	req, err := http.NewRequestWithContext(context, method, c.endpoint(path), reader)
 	if err != nil {
 		return nil, err
 	}
@@ -75,21 +75,21 @@ func (c *ConsulCloud) request(ctx context.Context, method, path string, body any
 	return payload, nil
 }
 
-func (c *ConsulCloud) Register(ctx context.Context, instance *core.ServiceInstance) error {
-	_, err := c.request(ctx, http.MethodPut, "/v1/agent/service/register", map[string]any{
+func (c *ConsulCloud) Register(context stdcontext.Context, instance *core.ServiceInstance) error {
+	_, err := c.request(context, http.MethodPut, "/v1/agent/service/register", map[string]any{
 		"ID": instance.ServiceId, "Name": instance.ServiceId, "Address": instance.Host,
 		"Port": instance.Port, "Meta": instance.Metadata,
 	})
 	return err
 }
 
-func (c *ConsulCloud) Deregister(ctx context.Context, instance *core.ServiceInstance) error {
-	_, err := c.request(ctx, http.MethodPut, "/v1/agent/service/deregister/"+url.PathEscape(instance.ServiceId), nil)
+func (c *ConsulCloud) Deregister(context stdcontext.Context, instance *core.ServiceInstance) error {
+	_, err := c.request(context, http.MethodPut, "/v1/agent/service/deregister/"+url.PathEscape(instance.ServiceId), nil)
 	return err
 }
 
-func (c *ConsulCloud) GetInstances(ctx context.Context, serviceId string) ([]*core.ServiceInstance, error) {
-	payload, err := c.request(ctx, http.MethodGet, "/v1/health/service/"+url.PathEscape(serviceId)+"?passing=true", nil)
+func (c *ConsulCloud) GetInstances(context stdcontext.Context, serviceId string) ([]*core.ServiceInstance, error) {
+	payload, err := c.request(context, http.MethodGet, "/v1/health/service/"+url.PathEscape(serviceId)+"?passing=true", nil)
 	if err != nil {
 		return nil, err
 	}
@@ -116,9 +116,9 @@ func (c *ConsulCloud) Health() core.HealthStatus {
 	if timeout <= 0 {
 		timeout = 5 * time.Second
 	}
-	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	context, cancel := stdcontext.WithTimeout(stdcontext.Background(), timeout)
 	defer cancel()
-	payload, err := c.request(ctx, http.MethodGet, "/v1/status/leader", nil)
+	payload, err := c.request(context, http.MethodGet, "/v1/status/leader", nil)
 	if err != nil || strings.TrimSpace(string(payload)) == `""` {
 		return core.Down
 	}

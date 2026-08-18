@@ -1,7 +1,7 @@
 package data_service
 
 import (
-	"context"
+	stdcontext "context"
 	"time"
 
 	"github.com/teaql/teaql-golang/core"
@@ -128,7 +128,7 @@ type DataServiceExecutor interface {
 
 type QueryExecutor interface {
 	DataServiceExecutor
-	Query(ctx context.Context, request *QueryRequest) (*QueryResult, error)
+	Query(context stdcontext.Context, request *QueryRequest) (*QueryResult, error)
 }
 
 type StreamChunk struct {
@@ -139,24 +139,24 @@ type StreamChunk struct {
 
 type StreamQueryExecutor interface {
 	DataServiceExecutor
-	QueryStream(ctx context.Context, request *QueryRequest, chunkSize int, yield func(*StreamChunk) error) error
+	QueryStream(context stdcontext.Context, request *QueryRequest, chunkSize int, yield func(*StreamChunk) error) error
 }
 
 type MutationExecutor interface {
 	DataServiceExecutor
-	Mutate(ctx context.Context, request MutationRequest) (*MutationResult, error)
+	Mutate(context stdcontext.Context, request MutationRequest) (*MutationResult, error)
 }
 
 type TransactionExecutor interface {
 	DataServiceExecutor
-	Begin(ctx context.Context) (Transaction, error)
+	Begin(context stdcontext.Context) (Transaction, error)
 }
 
 type Transaction interface {
 	QueryExecutor
 	MutationExecutor
-	Commit(ctx context.Context) error
-	Rollback(ctx context.Context) error
+	Commit(context stdcontext.Context) error
+	Rollback(context stdcontext.Context) error
 }
 
 type SchemaRequest struct {
@@ -169,12 +169,12 @@ type SchemaResult struct {
 
 type SchemaExecutor interface {
 	DataServiceExecutor
-	EnsureSchema(ctx context.Context, request *SchemaRequest) (*SchemaResult, error)
+	EnsureSchema(context stdcontext.Context, request *SchemaRequest) (*SchemaResult, error)
 }
 
 type IdGeneratorExecutor interface {
 	DataServiceExecutor
-	NextId(ctx context.Context, entity string) (uint64, error)
+	NextId(context stdcontext.Context, entity string) (uint64, error)
 }
 
 type SchemaProvider interface {

@@ -1,5 +1,3 @@
-
-
 package task
 
 import (
@@ -265,13 +263,13 @@ func (r *TaskRequest) CountTaskExecutionLogs() *TaskRequest {
 	return r
 }
 
-func (r *TaskRequest) NewEntity(ctx *runtime.UserContext) *Task {
+func (r *TaskRequest) NewEntity(context *runtime.UserContext) *Task {
 	entity := NewTask()
 	return entity
 }
 
-func (r *TaskRequest) ExecuteForOne(ctx *runtime.UserContext) (*Task, error) {
-	list, err := r.ExecuteForList(ctx)
+func (r *TaskRequest) ExecuteForOne(context *runtime.UserContext) (*Task, error) {
+	list, err := r.ExecuteForList(context)
 	if err != nil {
 		return nil, err
 	}
@@ -281,8 +279,8 @@ func (r *TaskRequest) ExecuteForOne(ctx *runtime.UserContext) (*Task, error) {
 	return list.Data[0], nil
 }
 
-func (r *TaskRequest) ExecuteForList(ctx *runtime.UserContext) (*core.SmartList[*Task], error) {
-	dsRaw := ctx.GetResource("dataService")
+func (r *TaskRequest) ExecuteForList(context *runtime.UserContext) (*core.SmartList[*Task], error) {
+	dsRaw := context.GetResource("dataService")
 	if dsRaw == nil {
 		return nil, fmt.Errorf("dataService not found in UserContext")
 	}
@@ -296,7 +294,7 @@ func (r *TaskRequest) ExecuteForList(ctx *runtime.UserContext) (*core.SmartList[
 		Query: r.Query,
 	}
 
-	res, err := ds.Query(ctx, req)
+	res, err := ds.Query(context, req)
 	if err != nil {
 		return nil, err
 	}

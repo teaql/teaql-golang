@@ -9,12 +9,12 @@ type TaskExecutionLogBehavior struct {
 	runtime.DefaultEntityDataServiceBehavior
 }
 
-func (b *TaskExecutionLogBehavior) BeforeInsert(ctx *runtime.UserContext, command *core.InsertCommand) error {
+func (b *TaskExecutionLogBehavior) BeforeInsert(context *runtime.UserContext, command *core.InsertCommand) error {
 	// Custom behavior
 	return nil
 }
 
-func (b *TaskExecutionLogBehavior) BeforeUpdate(ctx *runtime.UserContext, command *core.UpdateCommand) error {
+func (b *TaskExecutionLogBehavior) BeforeUpdate(context *runtime.UserContext, command *core.UpdateCommand) error {
 	// Custom behavior
 	return nil
 }

@@ -1,7 +1,7 @@
 package redis
 
 import (
-	"context"
+	stdcontext "context"
 	"testing"
 
 	"github.com/alicebob/miniredis/v2"
@@ -16,40 +16,40 @@ func TestRedisDataStore(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NotNil(t, ds.Client())
 
-	ctx := context.Background()
+	context := stdcontext.Background()
 
 	// Test Get empty
-	val, ok := ds.Get(ctx, "nonexistent")
+	val, ok := ds.Get(context, "nonexistent")
 	assert.False(t, ok)
 	assert.Equal(t, core.ValNull(), val)
 
 	// Test Put
-	err = ds.Put(ctx, "key1", core.ValText("value1"), nil)
+	err = ds.Put(context, "key1", core.ValText("value1"), nil)
 	assert.NoError(t, err)
 
 	// Test Get existing
-	val, ok = ds.Get(ctx, "key1")
+	val, ok = ds.Get(context, "key1")
 	assert.True(t, ok)
 	assert.Equal(t, "value1", val.V)
 
 	// Test Remove
-	err = ds.Remove(ctx, "key1")
+	err = ds.Remove(context, "key1")
 	assert.NoError(t, err)
 
 	// Test Get after remove
-	val, ok = ds.Get(ctx, "key1")
+	val, ok = ds.Get(context, "key1")
 	assert.False(t, ok)
 
 	// Test timeout
 	timeout := uint64(10)
-	err = ds.Put(ctx, "key2", core.ValF64(123), &timeout)
+	err = ds.Put(context, "key2", core.ValF64(123), &timeout)
 	assert.NoError(t, err)
-	
+
 	// Test Invalid json format
 	s.Set("invalid_json", "{")
-	val, ok = ds.Get(ctx, "invalid_json")
+	val, ok = ds.Get(context, "invalid_json")
 	assert.False(t, ok)
-	
+
 	// Test parse failure for redis URL
 	_, err = NewRedisDataStore("::invalid_url")
 	assert.Error(t, err)
@@ -67,12 +67,12 @@ func TestJsonToCoreValue(t *testing.T) {
 func TestRedisDataStore_MarshalError(t *testing.T) {
 	s := miniredis.RunT(t)
 	ds, _ := NewRedisDataStore("redis://" + s.Addr())
-	err := ds.Put(context.Background(), "key", core.Value{V: make(chan int)}, nil)
+	err := ds.Put(stdcontext.Background(), "key", core.Value{V: make(chan int)}, nil)
 	assert.Error(t, err)
 }
 
 func TestRedisDataStore_PutError(t *testing.T) {
 	ds, _ := NewRedisDataStore("redis://localhost:9999") // invalid server
-	err := ds.Put(context.Background(), "key", core.ValText("a"), nil)
+	err := ds.Put(stdcontext.Background(), "key", core.ValText("a"), nil)
 	assert.Error(t, err) // connection refused
 }

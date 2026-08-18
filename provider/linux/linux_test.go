@@ -1,7 +1,7 @@
 package linux
 
 import (
-	"context"
+	stdcontext "context"
 	"fmt"
 	"testing"
 
@@ -62,8 +62,8 @@ func TestLinuxDataServiceExecutor(t *testing.T) {
 			Entity: "processes",
 		},
 	}
-	ctx := context.Background()
-	result, err := executor.Query(ctx, req)
+	context := stdcontext.Background()
+	result, err := executor.Query(context, req)
 	if err != nil {
 		t.Fatalf("Unexpected error: %v", err)
 	}
@@ -89,7 +89,7 @@ func TestLinuxDataServiceExecutor(t *testing.T) {
 			Entity: "unknown",
 		},
 	}
-	_, err = executor.Query(ctx, reqUnknown)
+	_, err = executor.Query(context, reqUnknown)
 	if err == nil {
 		t.Errorf("Expected error for unknown entity, got nil")
 	}
@@ -105,13 +105,13 @@ func TestLinuxDataServiceExecutor(t *testing.T) {
 			Entity: "error_entity",
 		},
 	}
-	_, err = executor.Query(ctx, reqErr)
+	_, err = executor.Query(context, reqErr)
 	if err == nil {
 		t.Errorf("Expected error from collector, got nil")
 	}
 
 	// Test Mutate
-	_, err = executor.Mutate(ctx, &data_service.InsertMutation{})
+	_, err = executor.Mutate(context, &data_service.InsertMutation{})
 	if err == nil {
 		t.Errorf("Expected error for mutate, got nil")
 	}

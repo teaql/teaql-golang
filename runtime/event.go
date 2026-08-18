@@ -430,7 +430,7 @@ type SafeAuditEvent struct {
 }
 
 type RawAuditEventSink interface {
-	OnEvent(ctx *UserContext, event *RawAuditEvent) error
+	OnEvent(context *UserContext, event *RawAuditEvent) error
 }
 
 type InMemoryRawAuditEventSink struct {
@@ -452,9 +452,9 @@ func (s *InMemoryRawAuditEventSink) WithSink(sink RawAuditEventSink) *InMemoryRa
 	return s
 }
 
-func (s *InMemoryRawAuditEventSink) OnEvent(ctx *UserContext, event *RawAuditEvent) error {
+func (s *InMemoryRawAuditEventSink) OnEvent(context *UserContext, event *RawAuditEvent) error {
 	for _, sink := range s.Sinks {
-		if err := sink.OnEvent(ctx, event); err != nil {
+		if err := sink.OnEvent(context, event); err != nil {
 			return err
 		}
 	}
@@ -462,5 +462,5 @@ func (s *InMemoryRawAuditEventSink) OnEvent(ctx *UserContext, event *RawAuditEve
 }
 
 type AppAuditEventSink interface {
-	OnSafeEvent(ctx *UserContext, event *SafeAuditEvent) error
+	OnSafeEvent(context *UserContext, event *SafeAuditEvent) error
 }

@@ -9,14 +9,14 @@ import (
 	_ "github.com/mattn/go-sqlite3"
 
 	"github.com/teaql/teaql-golang/core"
+	"github.com/teaql/teaql-golang/provider/sqlite"
 	"github.com/teaql/teaql-golang/runtime"
 	teaql_sql "github.com/teaql/teaql-golang/sql"
-	"github.com/teaql/teaql-golang/provider/sqlite"
 
 	"robot-kanban-service-core-workspace/lib/src/platform"
-	"robot-kanban-service-core-workspace/lib/src/task_status"
 	"robot-kanban-service-core-workspace/lib/src/task"
 	"robot-kanban-service-core-workspace/lib/src/task_execution_log"
+	"robot-kanban-service-core-workspace/lib/src/task_status"
 )
 
 func Module() *runtime.RuntimeModule {
@@ -85,17 +85,17 @@ func ServiceRuntimeFromEnv() (*runtime.UserContext, error) {
 	}
 
 	module := ModuleWithBehaviors()
-	ctx := module.IntoContext()
+	context := module.IntoContext()
 
 	dialect := &sqlite.SqliteDialect{}
 	transport := sqlite.NewSqliteMutationExecutor(db)
 	executor := teaql_sql.NewSqlDataServiceExecutor(dialect, transport, &schemaProviderAdapter{module.Metadata})
 
-	ctx.InsertResource("dataService", executor)
-	ctx.InsertResource("db", db)
+	context.InsertResource("dataService", executor)
+	context.InsertResource("db", db)
 
 	// Ensure Schema? SQLite doesn't natively support all migrations here in the minimal driver yet, but we'd call it if it did
 	// For now we assume DB is already there (e.g. from Rust side)
 
-	return ctx, nil
+	return context, nil
 }

@@ -1,5 +1,3 @@
-
-
 package commerce_platform
 
 import (
@@ -12,11 +10,11 @@ import (
 	"github.com/teaql/teaql-golang/data_service"
 	"github.com/teaql/teaql-golang/runtime"
 	"order-management-service-core-workspace/lib/customer"
-	"order-management-service-core-workspace/lib/order_status"
 	"order-management-service-core-workspace/lib/customer_order"
-	"order-management-service-core-workspace/lib/product"
 	"order-management-service-core-workspace/lib/order_line"
 	"order-management-service-core-workspace/lib/order_search_preset"
+	"order-management-service-core-workspace/lib/order_status"
+	"order-management-service-core-workspace/lib/product"
 )
 
 var (
@@ -402,13 +400,13 @@ func (r *CommercePlatformRequest) SelectOrderSearchPresetListWith(child *order_s
 	return r
 }
 
-func (e *ExecutableCommercePlatformRequest) NewEntity(ctx *runtime.UserContext) *CommercePlatform {
+func (e *ExecutableCommercePlatformRequest) NewEntity(context *runtime.UserContext) *CommercePlatform {
 	entity := NewCommercePlatform()
 	return entity
 }
 
-func (e *ExecutableCommercePlatformRequest) ExecuteForOne(ctx *runtime.UserContext) (*CommercePlatform, error) {
-	list, err := e.ExecuteForList(ctx)
+func (e *ExecutableCommercePlatformRequest) ExecuteForOne(context *runtime.UserContext) (*CommercePlatform, error) {
+	list, err := e.ExecuteForList(context)
 	if err != nil {
 		return nil, err
 	}
@@ -418,8 +416,8 @@ func (e *ExecutableCommercePlatformRequest) ExecuteForOne(ctx *runtime.UserConte
 	return list.Data[0], nil
 }
 
-func (e *ExecutableCommercePlatformRequest) ExecuteForList(ctx *runtime.UserContext) (*core.SmartList[*CommercePlatform], error) {
-	rows, err := e.ExecuteRecords(ctx)
+func (e *ExecutableCommercePlatformRequest) ExecuteForList(context *runtime.UserContext) (*core.SmartList[*CommercePlatform], error) {
+	rows, err := e.ExecuteRecords(context)
 	if err != nil {
 		return nil, err
 	}
@@ -432,65 +430,95 @@ func (e *ExecutableCommercePlatformRequest) ExecuteForList(ctx *runtime.UserCont
 		}
 		if relationValue, selected := rec["customerList"]; selected {
 			childRecords, ok := relationValue.V.([]core.Record)
-				if !ok { return nil, fmt.Errorf("relation customerList has unexpected runtime type %T", relationValue.V) }
-				for _, childRecord := range childRecords {
-					childEntity := customer.NewCustomer()
-					if err := childEntity.FromRecord(childRecord); err != nil { return nil, err }
-					entity.CustomerList().Add(childEntity)
-				}}
+			if !ok {
+				return nil, fmt.Errorf("relation customerList has unexpected runtime type %T", relationValue.V)
+			}
+			for _, childRecord := range childRecords {
+				childEntity := customer.NewCustomer()
+				if err := childEntity.FromRecord(childRecord); err != nil {
+					return nil, err
+				}
+				entity.CustomerList().Add(childEntity)
+			}
+		}
 		if relationValue, selected := rec["orderStatusList"]; selected {
 			childRecords, ok := relationValue.V.([]core.Record)
-				if !ok { return nil, fmt.Errorf("relation orderStatusList has unexpected runtime type %T", relationValue.V) }
-				for _, childRecord := range childRecords {
-					childEntity := order_status.NewOrderStatus()
-					if err := childEntity.FromRecord(childRecord); err != nil { return nil, err }
-					entity.OrderStatusList().Add(childEntity)
-				}}
+			if !ok {
+				return nil, fmt.Errorf("relation orderStatusList has unexpected runtime type %T", relationValue.V)
+			}
+			for _, childRecord := range childRecords {
+				childEntity := order_status.NewOrderStatus()
+				if err := childEntity.FromRecord(childRecord); err != nil {
+					return nil, err
+				}
+				entity.OrderStatusList().Add(childEntity)
+			}
+		}
 		if relationValue, selected := rec["customerOrderList"]; selected {
 			childRecords, ok := relationValue.V.([]core.Record)
-				if !ok { return nil, fmt.Errorf("relation customerOrderList has unexpected runtime type %T", relationValue.V) }
-				for _, childRecord := range childRecords {
-					childEntity := customer_order.NewCustomerOrder()
-					if err := childEntity.FromRecord(childRecord); err != nil { return nil, err }
-					entity.CustomerOrderList().Add(childEntity)
-				}}
+			if !ok {
+				return nil, fmt.Errorf("relation customerOrderList has unexpected runtime type %T", relationValue.V)
+			}
+			for _, childRecord := range childRecords {
+				childEntity := customer_order.NewCustomerOrder()
+				if err := childEntity.FromRecord(childRecord); err != nil {
+					return nil, err
+				}
+				entity.CustomerOrderList().Add(childEntity)
+			}
+		}
 		if relationValue, selected := rec["productList"]; selected {
 			childRecords, ok := relationValue.V.([]core.Record)
-				if !ok { return nil, fmt.Errorf("relation productList has unexpected runtime type %T", relationValue.V) }
-				for _, childRecord := range childRecords {
-					childEntity := product.NewProduct()
-					if err := childEntity.FromRecord(childRecord); err != nil { return nil, err }
-					entity.ProductList().Add(childEntity)
-				}}
+			if !ok {
+				return nil, fmt.Errorf("relation productList has unexpected runtime type %T", relationValue.V)
+			}
+			for _, childRecord := range childRecords {
+				childEntity := product.NewProduct()
+				if err := childEntity.FromRecord(childRecord); err != nil {
+					return nil, err
+				}
+				entity.ProductList().Add(childEntity)
+			}
+		}
 		if relationValue, selected := rec["orderLineList"]; selected {
 			childRecords, ok := relationValue.V.([]core.Record)
-				if !ok { return nil, fmt.Errorf("relation orderLineList has unexpected runtime type %T", relationValue.V) }
-				for _, childRecord := range childRecords {
-					childEntity := order_line.NewOrderLine()
-					if err := childEntity.FromRecord(childRecord); err != nil { return nil, err }
-					entity.OrderLineList().Add(childEntity)
-				}}
+			if !ok {
+				return nil, fmt.Errorf("relation orderLineList has unexpected runtime type %T", relationValue.V)
+			}
+			for _, childRecord := range childRecords {
+				childEntity := order_line.NewOrderLine()
+				if err := childEntity.FromRecord(childRecord); err != nil {
+					return nil, err
+				}
+				entity.OrderLineList().Add(childEntity)
+			}
+		}
 		if relationValue, selected := rec["orderSearchPresetList"]; selected {
 			childRecords, ok := relationValue.V.([]core.Record)
-				if !ok { return nil, fmt.Errorf("relation orderSearchPresetList has unexpected runtime type %T", relationValue.V) }
-				for _, childRecord := range childRecords {
-					childEntity := order_search_preset.NewOrderSearchPreset()
-					if err := childEntity.FromRecord(childRecord); err != nil { return nil, err }
-					entity.OrderSearchPresetList().Add(childEntity)
-				}}
+			if !ok {
+				return nil, fmt.Errorf("relation orderSearchPresetList has unexpected runtime type %T", relationValue.V)
+			}
+			for _, childRecord := range childRecords {
+				childEntity := order_search_preset.NewOrderSearchPreset()
+				if err := childEntity.FromRecord(childRecord); err != nil {
+					return nil, err
+				}
+				entity.OrderSearchPresetList().Add(childEntity)
+			}
+		}
 		results = append(results, entity)
 	}
 	return core.NewSmartList(results), nil
 }
 
-func (e *ExecutableCommercePlatformRequest) ExecuteRecords(ctx *runtime.UserContext) ([]core.Record, error) {
+func (e *ExecutableCommercePlatformRequest) ExecuteRecords(context *runtime.UserContext) ([]core.Record, error) {
 	r := e.request
 	if strings.TrimSpace(r.purposeText) == "" || strings.TrimSpace(r.commentText) == "" {
 		return nil, fmt.Errorf("security audit failure: Comment() and Purpose() must be called before ExecuteForList()")
 	}
 	r.Query.Comment(fmt.Sprintf("comment=%s; purpose=%s", r.commentText, r.purposeText))
 
-	dsRaw := ctx.GetResource("dataService")
+	dsRaw := context.GetResource("dataService")
 	if dsRaw == nil {
 		return nil, fmt.Errorf("dataService not found in UserContext")
 	}
@@ -500,7 +528,7 @@ func (e *ExecutableCommercePlatformRequest) ExecuteRecords(ctx *runtime.UserCont
 		return nil, fmt.Errorf("dataService does not implement data_service.QueryExecutor")
 	}
 
-	rows, err := runtime.NewRuntimeDataService(ctx.Metadata, ds).FetchAll(ctx, r.Query)
+	rows, err := runtime.NewRuntimeDataService(context.Metadata, ds).FetchAll(context, r.Query)
 	if err != nil {
 		return nil, err
 	}
@@ -515,7 +543,6 @@ func (r *CommercePlatformRequest) CountAs(alias string) *CommercePlatformRequest
 	r.Query.CountField("id", alias)
 	return r
 }
-
 
 func (r *CommercePlatformRequest) GroupById() *CommercePlatformRequest {
 	r.Query.WithGroupBy("id")

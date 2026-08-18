@@ -1,15 +1,15 @@
 package customer_order
 
 import (
-	"context"
+	stdcontext "context"
 	"fmt"
 	"strings"
 
-	"time"
 	"github.com/shopspring/decimal"
 	"github.com/teaql/teaql-golang/core"
 	"github.com/teaql/teaql-golang/data_service"
 	"github.com/teaql/teaql-golang/runtime"
+	"time"
 )
 
 var (
@@ -20,14 +20,14 @@ var (
 )
 
 type CustomerOrder struct {
-	base        *core.BaseEntityData
-	dirtyFields map[string]bool
-	isNew       bool
-	comment     *string
-	purpose     *string
-	loadState   map[string]bool
+	base              *core.BaseEntityData
+	dirtyFields       map[string]bool
+	isNew             bool
+	comment           *string
+	purpose           *string
+	loadState         map[string]bool
 	restrictLoadState bool
-	orderLineList *OrderLineList
+	orderLineList     *OrderLineList
 }
 
 type OrderLineList struct {
@@ -48,10 +48,10 @@ func (l *OrderLineList) Items() []any {
 
 func NewCustomerOrder() *CustomerOrder {
 	return &CustomerOrder{
-		base:        core.NewBaseEntityData(),
-		dirtyFields: make(map[string]bool),
-		isNew:       true,
-		loadState:   make(map[string]bool),
+		base:          core.NewBaseEntityData(),
+		dirtyFields:   make(map[string]bool),
+		isNew:         true,
+		loadState:     make(map[string]bool),
 		orderLineList: newOrderLineList(),
 	}
 }
@@ -59,12 +59,16 @@ func NewCustomerOrder() *CustomerOrder {
 func (e *CustomerOrder) MarkLoadedOnly(fields ...string) *CustomerOrder {
 	e.restrictLoadState = true
 	e.loadState = make(map[string]bool, len(fields))
-	for _, field := range fields { e.loadState[field] = true }
+	for _, field := range fields {
+		e.loadState[field] = true
+	}
 	return e
 }
 
 func (e *CustomerOrder) IsLoaded(field string) bool {
-	if e.isNew && !e.restrictLoadState { return true }
+	if e.isNew && !e.restrictLoadState {
+		return true
+	}
 	return e.loadState[field]
 }
 
@@ -84,8 +88,6 @@ func (e *CustomerOrder) IdValue() core.Value {
 	return core.ValU64(e.base.Id)
 }
 
-
-
 func (e *CustomerOrder) FromRecord(record core.Record) error {
 	base, err := core.BaseEntityDataFromRecord(record)
 	if err != nil {
@@ -96,7 +98,9 @@ func (e *CustomerOrder) FromRecord(record core.Record) error {
 	e.dirtyFields = make(map[string]bool)
 	e.loadState = make(map[string]bool, len(record))
 	e.restrictLoadState = true
-	for field := range record { e.loadState[field] = true }
+	for field := range record {
+		e.loadState[field] = true
+	}
 	return nil
 }
 
@@ -164,14 +168,14 @@ func (e *CustomerOrder) IntoJson() any {
 	return e.base.ToRecord()
 }
 
-func (e *CustomerOrder) Save(ctx *runtime.UserContext) error {
-	dsRaw := ctx.GetResource("dataService")
+func (e *CustomerOrder) Save(context *runtime.UserContext) error {
+	dsRaw := context.GetResource("dataService")
 	if dsRaw == nil {
 		return fmt.Errorf("dataService not found in UserContext")
 	}
 	// Dynamic assert
 	type mutator interface {
-		Mutate(context.Context, data_service.MutationRequest) (*data_service.MutationResult, error)
+		Mutate(stdcontext.Context, data_service.MutationRequest) (*data_service.MutationResult, error)
 	}
 	ds, ok := dsRaw.(mutator)
 	if !ok {
@@ -187,7 +191,7 @@ func (e *CustomerOrder) Save(ctx *runtime.UserContext) error {
 				GenerateId(entity string) (uint64, error)
 			}
 			generator := idGenerator(runtime.LocalIdGenerator())
-			if configured := ctx.GetResource("idGenerator"); configured != nil {
+			if configured := context.GetResource("idGenerator"); configured != nil {
 				if typed, ok := configured.(idGenerator); ok {
 					generator = typed
 				}
@@ -206,7 +210,7 @@ func (e *CustomerOrder) Save(ctx *runtime.UserContext) error {
 		if e.comment != nil {
 			cmd.TraceChain = append(cmd.TraceChain, &core.TraceNode{Comment: *e.comment})
 		}
-		res, err := ds.Mutate(ctx, &data_service.InsertMutation{Cmd: cmd})
+		res, err := ds.Mutate(context, &data_service.InsertMutation{Cmd: cmd})
 		if err == nil {
 			e.isNew = false
 			e.dirtyFields = make(map[string]bool)
@@ -223,7 +227,7 @@ func (e *CustomerOrder) Save(ctx *runtime.UserContext) error {
 		if err != nil {
 			return err
 		}
-		return e.saveCascade(ctx)
+		return e.saveCascade(context)
 	} else {
 		cmd := core.NewUpdateCommand("Customer Order", core.ValU64(e.base.Id))
 		cmd.Values = e.IntoRecord()
@@ -232,7 +236,7 @@ func (e *CustomerOrder) Save(ctx *runtime.UserContext) error {
 		if e.comment != nil {
 			cmd.TraceChain = append(cmd.TraceChain, &core.TraceNode{Comment: *e.comment})
 		}
-		res, err := ds.Mutate(ctx, &data_service.UpdateMutation{Cmd: cmd})
+		res, err := ds.Mutate(context, &data_service.UpdateMutation{Cmd: cmd})
 		if err == nil {
 			if res.AffectedRows == 0 {
 				return fmt.Errorf("optimistic lock failed for %s(%d) at version %d", e.EntityName(), e.base.Id, expectedVersion)
@@ -243,11 +247,11 @@ func (e *CustomerOrder) Save(ctx *runtime.UserContext) error {
 		if err != nil {
 			return err
 		}
-		return e.saveCascade(ctx)
+		return e.saveCascade(context)
 	}
 }
 
-func (e *CustomerOrder) saveCascade(ctx *runtime.UserContext) error {
+func (e *CustomerOrder) saveCascade(context *runtime.UserContext) error {
 	for _, rawChild := range e.orderLineList.Items() {
 		child, ok := rawChild.(interface {
 			Base() *core.BaseEntityData
@@ -259,7 +263,7 @@ func (e *CustomerOrder) saveCascade(ctx *runtime.UserContext) error {
 		}
 		child.Base().PutDynamic("customer_order_id", core.ValU64(e.base.Id))
 		child.SetComment(*e.comment)
-		if err := child.Save(ctx); err != nil {
+		if err := child.Save(context); err != nil {
 			return fmt.Errorf("save child from orderLineList: %w", err)
 		}
 	}
@@ -362,6 +366,7 @@ func (e *CustomerOrder) updateStatusId(value uint64) *CustomerOrder {
 	e.loadState["status_id"] = true
 	return e
 }
+
 // DEBUG: constantObjectField is true
 
 func (e *CustomerOrder) UpdateStatusToPending() *CustomerOrder {
@@ -396,7 +401,6 @@ func (e *CustomerOrder) StatusIsCompleted() bool {
 	return e.StatusId() == 1004
 }
 
-
 func (e *CustomerOrder) CustomerId() uint64 {
 	val, _ := e.base.GetDynamic("customer_id")
 	res, _ := val.TryU64()
@@ -409,8 +413,8 @@ func (e *CustomerOrder) UpdateCustomerId(value uint64) *CustomerOrder {
 	e.loadState["customer_id"] = true
 	return e
 }
-// DEBUG: constantObjectField is false
 
+// DEBUG: constantObjectField is false
 
 func (e *CustomerOrder) CommercePlatformId() uint64 {
 	val, _ := e.base.GetDynamic("commerce_platform_id")
@@ -424,6 +428,7 @@ func (e *CustomerOrder) UpdateCommercePlatformId(value uint64) *CustomerOrder {
 	e.loadState["commerce_platform_id"] = true
 	return e
 }
+
 // DEBUG: constantObjectField is false
 
 func (e *CustomerOrder) OrderLineList() *OrderLineList {

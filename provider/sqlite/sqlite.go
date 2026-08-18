@@ -1,7 +1,7 @@
 package sqlite
 
 import (
-	"context"
+	stdcontext "context"
 	"database/sql"
 	"fmt"
 	"log"
@@ -83,13 +83,13 @@ func NewSqliteMutationExecutor(db *sql.DB) *SqliteMutationExecutor {
 	return &SqliteMutationExecutor{db: db}
 }
 
-func (e *SqliteMutationExecutor) FetchAllSql(ctx context.Context, query *teaql_sql.CompiledQuery) ([]core.Record, error) {
+func (e *SqliteMutationExecutor) FetchAllSql(context stdcontext.Context, query *teaql_sql.CompiledQuery) ([]core.Record, error) {
 	params, err := bindValues(query.Params)
 	if err != nil {
 		return nil, err
 	}
 	log.Printf("SQL: %s | Params: %v\n", query.SqlWithComment(), params)
-	rows, err := e.db.QueryContext(ctx, query.SqlWithComment(), params...)
+	rows, err := e.db.QueryContext(context, query.SqlWithComment(), params...)
 	if err != nil {
 		return nil, err
 	}
@@ -123,12 +123,12 @@ func (e *SqliteMutationExecutor) FetchAllSql(ctx context.Context, query *teaql_s
 	return records, nil
 }
 
-func (e *SqliteMutationExecutor) StreamSql(ctx context.Context, query *teaql_sql.CompiledQuery, chunkSize int, yield func([]core.Record) error) error {
+func (e *SqliteMutationExecutor) StreamSql(context stdcontext.Context, query *teaql_sql.CompiledQuery, chunkSize int, yield func([]core.Record) error) error {
 	params, err := bindValues(query.Params)
 	if err != nil {
 		return err
 	}
-	rows, err := e.db.QueryContext(ctx, query.SqlWithComment(), params...)
+	rows, err := e.db.QueryContext(context, query.SqlWithComment(), params...)
 	if err != nil {
 		return err
 	}
@@ -172,13 +172,13 @@ func (e *SqliteMutationExecutor) StreamSql(ctx context.Context, query *teaql_sql
 	return nil
 }
 
-func (e *SqliteMutationExecutor) ExecuteSql(ctx context.Context, query *teaql_sql.CompiledQuery) (uint64, error) {
+func (e *SqliteMutationExecutor) ExecuteSql(context stdcontext.Context, query *teaql_sql.CompiledQuery) (uint64, error) {
 	params, err := bindValues(query.Params)
 	if err != nil {
 		return 0, err
 	}
 	log.Printf("SQL: %s | Params: %v\n", query.SqlWithComment(), params)
-	res, err := e.db.ExecContext(ctx, query.SqlWithComment(), params...)
+	res, err := e.db.ExecContext(context, query.SqlWithComment(), params...)
 	if err != nil {
 		return 0, err
 	}
@@ -189,8 +189,8 @@ func (e *SqliteMutationExecutor) ExecuteSql(ctx context.Context, query *teaql_sq
 	return uint64(affected), nil
 }
 
-func (e *SqliteMutationExecutor) BeginSql(ctx context.Context) (teaql_sql.SqlTransactionTransportTx, error) {
-	tx, err := e.db.BeginTx(ctx, nil)
+func (e *SqliteMutationExecutor) BeginSql(context stdcontext.Context) (teaql_sql.SqlTransactionTransportTx, error) {
+	tx, err := e.db.BeginTx(context, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -201,13 +201,13 @@ type SqliteTransactionExecutor struct {
 	tx *sql.Tx
 }
 
-func (e *SqliteTransactionExecutor) FetchAllSql(ctx context.Context, query *teaql_sql.CompiledQuery) ([]core.Record, error) {
+func (e *SqliteTransactionExecutor) FetchAllSql(context stdcontext.Context, query *teaql_sql.CompiledQuery) ([]core.Record, error) {
 	params, err := bindValues(query.Params)
 	if err != nil {
 		return nil, err
 	}
 	log.Printf("SQL (Tx): %s | Params: %v\n", query.SqlWithComment(), params)
-	rows, err := e.tx.QueryContext(ctx, query.SqlWithComment(), params...)
+	rows, err := e.tx.QueryContext(context, query.SqlWithComment(), params...)
 	if err != nil {
 		return nil, err
 	}
@@ -241,13 +241,13 @@ func (e *SqliteTransactionExecutor) FetchAllSql(ctx context.Context, query *teaq
 	return records, nil
 }
 
-func (e *SqliteTransactionExecutor) ExecuteSql(ctx context.Context, query *teaql_sql.CompiledQuery) (uint64, error) {
+func (e *SqliteTransactionExecutor) ExecuteSql(context stdcontext.Context, query *teaql_sql.CompiledQuery) (uint64, error) {
 	params, err := bindValues(query.Params)
 	if err != nil {
 		return 0, err
 	}
 	log.Printf("SQL (Tx): %s | Params: %v\n", query.SqlWithComment(), params)
-	res, err := e.tx.ExecContext(ctx, query.SqlWithComment(), params...)
+	res, err := e.tx.ExecContext(context, query.SqlWithComment(), params...)
 	if err != nil {
 		return 0, err
 	}
@@ -258,11 +258,11 @@ func (e *SqliteTransactionExecutor) ExecuteSql(ctx context.Context, query *teaql
 	return uint64(affected), nil
 }
 
-func (e *SqliteTransactionExecutor) CommitSql(ctx context.Context) error {
+func (e *SqliteTransactionExecutor) CommitSql(context stdcontext.Context) error {
 	return e.tx.Commit()
 }
 
-func (e *SqliteTransactionExecutor) RollbackSql(ctx context.Context) error {
+func (e *SqliteTransactionExecutor) RollbackSql(context stdcontext.Context) error {
 	return e.tx.Rollback()
 }
 

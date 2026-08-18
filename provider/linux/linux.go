@@ -1,7 +1,7 @@
 package linux
 
 import (
-	"context"
+	stdcontext "context"
 	"fmt"
 	"time"
 
@@ -39,7 +39,7 @@ func (e *LinuxDataServiceExecutor) Capabilities() data_service.DataServiceCapabi
 	}
 }
 
-func (e *LinuxDataServiceExecutor) Query(ctx context.Context, request *data_service.QueryRequest) (*data_service.QueryResult, error) {
+func (e *LinuxDataServiceExecutor) Query(context stdcontext.Context, request *data_service.QueryRequest) (*data_service.QueryResult, error) {
 	startedAt := time.Now()
 	entity := request.Query.Entity
 
@@ -60,17 +60,17 @@ func (e *LinuxDataServiceExecutor) Query(ctx context.Context, request *data_serv
 	return &data_service.QueryResult{
 		Rows: rows,
 		Metadata: data_service.ExecutionMetadata{
-			Backend:      "linux-proc",
-			Operation:    data_service.OpQuery,
-			StartedAt:    startedAt,
-			EndedAt:      time.Now(),
-			ResultCount:  &resultCount,
-			TraceChain:   request.TraceChain,
-			Comment:      request.Comment,
+			Backend:     "linux-proc",
+			Operation:   data_service.OpQuery,
+			StartedAt:   startedAt,
+			EndedAt:     time.Now(),
+			ResultCount: &resultCount,
+			TraceChain:  request.TraceChain,
+			Comment:     request.Comment,
 		},
 	}, nil
 }
 
-func (e *LinuxDataServiceExecutor) Mutate(ctx context.Context, request data_service.MutationRequest) (*data_service.MutationResult, error) {
+func (e *LinuxDataServiceExecutor) Mutate(context stdcontext.Context, request data_service.MutationRequest) (*data_service.MutationResult, error) {
 	return nil, fmt.Errorf("linux provider is read-only")
 }

@@ -5,7 +5,7 @@ import (
 )
 
 type CommercePlatformCheckerLogic interface {
-	CheckAndFix(ctx *runtime.UserContext, entity *CommercePlatform, status any, location any, results any)
+	CheckAndFix(context *runtime.UserContext, entity *CommercePlatform, status any, location any, results any)
 	Required(value bool, field string, location any, results any)
 	RequiredText(value string, field string, location any, results any)
 	MinStringLength(value string, field string, minLen int, location any, results any)
@@ -14,11 +14,15 @@ type CommercePlatformCheckerLogic interface {
 
 type NoopCommercePlatformChecker struct{}
 
-func (c *NoopCommercePlatformChecker) CheckAndFix(ctx *runtime.UserContext, entity *CommercePlatform, status any, location any, results any) {}
+func (c *NoopCommercePlatformChecker) CheckAndFix(context *runtime.UserContext, entity *CommercePlatform, status any, location any, results any) {
+}
 func (c *NoopCommercePlatformChecker) Required(value bool, field string, location any, results any) {}
-func (c *NoopCommercePlatformChecker) RequiredText(value string, field string, location any, results any) {}
-func (c *NoopCommercePlatformChecker) MinStringLength(value string, field string, minLen int, location any, results any) {}
-func (c *NoopCommercePlatformChecker) MaxStringLength(value string, field string, maxLen int, location any, results any) {}
+func (c *NoopCommercePlatformChecker) RequiredText(value string, field string, location any, results any) {
+}
+func (c *NoopCommercePlatformChecker) MinStringLength(value string, field string, minLen int, location any, results any) {
+}
+func (c *NoopCommercePlatformChecker) MaxStringLength(value string, field string, maxLen int, location any, results any) {
+}
 
 type CommercePlatformChecker struct {
 	logic CommercePlatformCheckerLogic
@@ -30,8 +34,8 @@ func NewCommercePlatformChecker(logic CommercePlatformCheckerLogic) *CommercePla
 	}
 }
 
-func (c *CommercePlatformChecker) CheckAndFixTyped(ctx *runtime.UserContext, entity *CommercePlatform, status any, location any, results any) {
+func (c *CommercePlatformChecker) CheckAndFixTyped(context *runtime.UserContext, entity *CommercePlatform, status any, location any, results any) {
 	if c.logic != nil {
-		c.logic.CheckAndFix(ctx, entity, status, location, results)
+		c.logic.CheckAndFix(context, entity, status, location, results)
 	}
 }

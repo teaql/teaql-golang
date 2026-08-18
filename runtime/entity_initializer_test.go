@@ -12,11 +12,11 @@ func (i *testEntityInitializer) InitializeEntity(_ *UserContext, name string, en
 }
 
 func TestInitializeEntityUsesTrustedContextHook(t *testing.T) {
-	ctx := NewUserContext()
+	context := NewUserContext()
 	initializer := &testEntityInitializer{}
-	ctx.InsertResource("entityInitializer", initializer)
+	context.InsertResource("entityInitializer", initializer)
 	entity := &struct{ Name string }{Name: "Ada"}
-	if got := ctx.InitializeEntity("Person", entity); got != entity {
+	if got := context.InitializeEntity("Person", entity); got != entity {
 		t.Fatal("initializer changed the concrete entity")
 	}
 	if initializer.name != "Person" {
@@ -30,6 +30,6 @@ func TestInitializeEntityRejectsMissingContext(t *testing.T) {
 			t.Fatal("nil context did not fail")
 		}
 	}()
-	var ctx *UserContext
-	ctx.InitializeEntity("Person", &struct{}{})
+	var context *UserContext
+	context.InitializeEntity("Person", &struct{}{})
 }

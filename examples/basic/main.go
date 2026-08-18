@@ -1,19 +1,19 @@
 package main
 
 import (
-	"context"
+	stdcontext "context"
 	"fmt"
 	"log"
 
 	"database/sql"
-	
+
 	_ "github.com/mattn/go-sqlite3"
 
 	"github.com/teaql/teaql-golang/core"
 	"github.com/teaql/teaql-golang/data_service"
-	teaql_sql "github.com/teaql/teaql-golang/sql"
 	"github.com/teaql/teaql-golang/provider/sqlite"
 	"github.com/teaql/teaql-golang/runtime"
+	teaql_sql "github.com/teaql/teaql-golang/sql"
 )
 
 func main() {
@@ -24,15 +24,15 @@ func main() {
 		log.Fatal(err)
 	}
 	defer db.Close()
-	
+
 	// 2. Setup module and runtime context
 	module := runtime.NewRuntimeModule()
-	
+
 	orderDesc := core.NewEntityDescriptor("Order").
 		TableName("orders").
 		Property(core.NewPropertyDescriptor("id", core.TypeU64).ColumnName("id").Id().NotNull()).
 		Property(core.NewPropertyDescriptor("name", core.TypeText).ColumnName("name"))
-		
+
 	module.Entity(orderDesc)
 
 	// 3. Create table
@@ -50,18 +50,18 @@ func main() {
 	// 4. Insert data
 	insertCmd := core.NewInsertCommand("Order").Value("id", core.ValU64(1)).Value("name", core.ValText("Tea"))
 	mutateReq := &data_service.InsertMutation{Cmd: insertCmd}
-	if _, err := executor.Mutate(context.Background(), mutateReq); err != nil {
+	if _, err := executor.Mutate(stdcontext.Background(), mutateReq); err != nil {
 		log.Fatal(err)
 	}
 
 	// 5. Query data
 	query := core.NewSelectQuery("Order")
 	queryReq := &data_service.QueryRequest{Query: query}
-	result, err := executor.Query(context.Background(), queryReq)
+	result, err := executor.Query(stdcontext.Background(), queryReq)
 	if err != nil {
 		log.Fatal(err)
 	}
-	
+
 	fmt.Printf("Fetched %d orders:\n", len(result.Rows))
 	for _, row := range result.Rows {
 		fmt.Printf(" - %v\n", row)

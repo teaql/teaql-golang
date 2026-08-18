@@ -1,14 +1,13 @@
 package sqlite
 
 import (
+	stdcontext "context"
 	"database/sql"
 	"database/sql/driver"
 	"errors"
 	"testing"
-	"context"
 
 	teaql_sql "github.com/teaql/teaql-golang/sql"
-
 )
 
 type mockDriver struct{}
@@ -31,7 +30,7 @@ func (m *mockConn) Begin() (driver.Tx, error) {
 	return nil, errors.New("begin error")
 }
 
-func (m *mockConn) BeginTx(ctx context.Context, opts driver.TxOptions) (driver.Tx, error) {
+func (m *mockConn) BeginTx(context stdcontext.Context, opts driver.TxOptions) (driver.Tx, error) {
 	return nil, errors.New("begin error")
 }
 
@@ -81,17 +80,17 @@ func TestSqliteExecutorErrors(t *testing.T) {
 	}
 
 	exec := NewSqliteMutationExecutor(db)
-	ctx := context.Background()
+	context := stdcontext.Background()
 
 	// 1. BeginTx error
-	_, err = exec.BeginSql(ctx)
+	_, err = exec.BeginSql(context)
 	if err == nil {
 		t.Errorf("Expected begin error")
 	}
 
 	// 2. RowsAffected error
 	query := &teaql_sql.CompiledQuery{Sql: "INSERT"}
-	_, err = exec.ExecuteSql(ctx, query)
+	_, err = exec.ExecuteSql(context, query)
 	if err == nil {
 		t.Errorf("Expected RowsAffected error")
 	}

@@ -1,5 +1,3 @@
-
-
 package task_execution_log
 
 import (
@@ -270,14 +268,13 @@ func (r *TaskExecutionLogRequest) OrderByVersionDesc() *TaskExecutionLogRequest 
 	return r
 }
 
-
-func (r *TaskExecutionLogRequest) NewEntity(ctx *runtime.UserContext) *TaskExecutionLog {
+func (r *TaskExecutionLogRequest) NewEntity(context *runtime.UserContext) *TaskExecutionLog {
 	entity := NewTaskExecutionLog()
 	return entity
 }
 
-func (r *TaskExecutionLogRequest) ExecuteForOne(ctx *runtime.UserContext) (*TaskExecutionLog, error) {
-	list, err := r.ExecuteForList(ctx)
+func (r *TaskExecutionLogRequest) ExecuteForOne(context *runtime.UserContext) (*TaskExecutionLog, error) {
+	list, err := r.ExecuteForList(context)
 	if err != nil {
 		return nil, err
 	}
@@ -287,8 +284,8 @@ func (r *TaskExecutionLogRequest) ExecuteForOne(ctx *runtime.UserContext) (*Task
 	return list.Data[0], nil
 }
 
-func (r *TaskExecutionLogRequest) ExecuteForList(ctx *runtime.UserContext) (*core.SmartList[*TaskExecutionLog], error) {
-	dsRaw := ctx.GetResource("dataService")
+func (r *TaskExecutionLogRequest) ExecuteForList(context *runtime.UserContext) (*core.SmartList[*TaskExecutionLog], error) {
+	dsRaw := context.GetResource("dataService")
 	if dsRaw == nil {
 		return nil, fmt.Errorf("dataService not found in UserContext")
 	}
@@ -302,7 +299,7 @@ func (r *TaskExecutionLogRequest) ExecuteForList(ctx *runtime.UserContext) (*cor
 		Query: r.Query,
 	}
 
-	res, err := ds.Query(ctx, req)
+	res, err := ds.Query(context, req)
 	if err != nil {
 		return nil, err
 	}

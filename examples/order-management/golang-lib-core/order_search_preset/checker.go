@@ -5,7 +5,7 @@ import (
 )
 
 type OrderSearchPresetCheckerLogic interface {
-	CheckAndFix(ctx *runtime.UserContext, entity *OrderSearchPreset, status any, location any, results any)
+	CheckAndFix(context *runtime.UserContext, entity *OrderSearchPreset, status any, location any, results any)
 	Required(value bool, field string, location any, results any)
 	RequiredText(value string, field string, location any, results any)
 	MinStringLength(value string, field string, minLen int, location any, results any)
@@ -14,11 +14,16 @@ type OrderSearchPresetCheckerLogic interface {
 
 type NoopOrderSearchPresetChecker struct{}
 
-func (c *NoopOrderSearchPresetChecker) CheckAndFix(ctx *runtime.UserContext, entity *OrderSearchPreset, status any, location any, results any) {}
-func (c *NoopOrderSearchPresetChecker) Required(value bool, field string, location any, results any) {}
-func (c *NoopOrderSearchPresetChecker) RequiredText(value string, field string, location any, results any) {}
-func (c *NoopOrderSearchPresetChecker) MinStringLength(value string, field string, minLen int, location any, results any) {}
-func (c *NoopOrderSearchPresetChecker) MaxStringLength(value string, field string, maxLen int, location any, results any) {}
+func (c *NoopOrderSearchPresetChecker) CheckAndFix(context *runtime.UserContext, entity *OrderSearchPreset, status any, location any, results any) {
+}
+func (c *NoopOrderSearchPresetChecker) Required(value bool, field string, location any, results any) {
+}
+func (c *NoopOrderSearchPresetChecker) RequiredText(value string, field string, location any, results any) {
+}
+func (c *NoopOrderSearchPresetChecker) MinStringLength(value string, field string, minLen int, location any, results any) {
+}
+func (c *NoopOrderSearchPresetChecker) MaxStringLength(value string, field string, maxLen int, location any, results any) {
+}
 
 type OrderSearchPresetChecker struct {
 	logic OrderSearchPresetCheckerLogic
@@ -30,8 +35,8 @@ func NewOrderSearchPresetChecker(logic OrderSearchPresetCheckerLogic) *OrderSear
 	}
 }
 
-func (c *OrderSearchPresetChecker) CheckAndFixTyped(ctx *runtime.UserContext, entity *OrderSearchPreset, status any, location any, results any) {
+func (c *OrderSearchPresetChecker) CheckAndFixTyped(context *runtime.UserContext, entity *OrderSearchPreset, status any, location any, results any) {
 	if c.logic != nil {
-		c.logic.CheckAndFix(ctx, entity, status, location, results)
+		c.logic.CheckAndFix(context, entity, status, location, results)
 	}
 }

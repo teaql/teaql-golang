@@ -1,7 +1,7 @@
 package nacos
 
 import (
-	"context"
+	stdcontext "context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -71,7 +71,7 @@ func (n *NacosCloud) group() string {
 	return n.config.Group
 }
 
-func (n *NacosCloud) request(ctx context.Context, method, path string, values url.Values) ([]byte, error) {
+func (n *NacosCloud) request(context stdcontext.Context, method, path string, values url.Values) ([]byte, error) {
 	endpoint, err := n.endpoint(path)
 	if err != nil {
 		return nil, err
@@ -82,7 +82,7 @@ func (n *NacosCloud) request(ctx context.Context, method, path string, values ur
 	} else {
 		body = strings.NewReader(values.Encode())
 	}
-	req, err := http.NewRequestWithContext(ctx, method, endpoint, body)
+	req, err := http.NewRequestWithContext(context, method, endpoint, body)
 	if err != nil {
 		return nil, err
 	}
@@ -107,18 +107,18 @@ func (n *NacosCloud) request(ctx context.Context, method, path string, values ur
 	return payload, nil
 }
 
-func (n *NacosCloud) Register(ctx context.Context, instance *core.ServiceInstance) error {
-	_, err := n.request(ctx, http.MethodPost, "/nacos/v1/ns/instance", n.serviceValues(instance))
+func (n *NacosCloud) Register(context stdcontext.Context, instance *core.ServiceInstance) error {
+	_, err := n.request(context, http.MethodPost, "/nacos/v1/ns/instance", n.serviceValues(instance))
 	return err
 }
 
-func (n *NacosCloud) Deregister(ctx context.Context, instance *core.ServiceInstance) error {
-	_, err := n.request(ctx, http.MethodDelete, "/nacos/v1/ns/instance", n.serviceValues(instance))
+func (n *NacosCloud) Deregister(context stdcontext.Context, instance *core.ServiceInstance) error {
+	_, err := n.request(context, http.MethodDelete, "/nacos/v1/ns/instance", n.serviceValues(instance))
 	return err
 }
 
-func (n *NacosCloud) GetInstances(ctx context.Context, serviceId string) ([]*core.ServiceInstance, error) {
-	payload, err := n.request(ctx, http.MethodGet, "/nacos/v1/ns/instance/list", url.Values{
+func (n *NacosCloud) GetInstances(context stdcontext.Context, serviceId string) ([]*core.ServiceInstance, error) {
+	payload, err := n.request(context, http.MethodGet, "/nacos/v1/ns/instance/list", url.Values{
 		"serviceName": {serviceId}, "groupName": {n.group()}, "namespaceId": {n.config.NamespaceId}, "healthyOnly": {"true"},
 	})
 	if err != nil {
@@ -144,11 +144,11 @@ func (n *NacosCloud) GetInstances(ctx context.Context, serviceId string) ([]*cor
 	return instances, nil
 }
 
-func (n *NacosCloud) GetConfig(ctx context.Context, dataId, group string) (string, error) {
+func (n *NacosCloud) GetConfig(context stdcontext.Context, dataId, group string) (string, error) {
 	if group == "" {
 		group = n.group()
 	}
-	payload, err := n.request(ctx, http.MethodGet, "/nacos/v1/cs/configs", url.Values{
+	payload, err := n.request(context, http.MethodGet, "/nacos/v1/cs/configs", url.Values{
 		"dataId": {dataId}, "group": {group}, "tenant": {n.config.NamespaceId},
 	})
 	return string(payload), err
@@ -159,9 +159,9 @@ func (n *NacosCloud) Health() core.HealthStatus {
 	if timeout <= 0 {
 		timeout = 5 * time.Second
 	}
-	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	context, cancel := stdcontext.WithTimeout(stdcontext.Background(), timeout)
 	defer cancel()
-	_, err := n.request(ctx, http.MethodGet, "/nacos/v1/console/health/readiness", url.Values{})
+	_, err := n.request(context, http.MethodGet, "/nacos/v1/console/health/readiness", url.Values{})
 	if err != nil {
 		return core.Down
 	}

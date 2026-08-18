@@ -1,7 +1,7 @@
 package runtime
 
 import (
-	"context"
+	stdcontext "context"
 	"fmt"
 	"strings"
 	"sync"
@@ -23,9 +23,9 @@ type ContinuousPageCursor struct {
 }
 
 type ContinuousPageCursorStore interface {
-	GetContinuousPageCursor(ctx context.Context, queryKey string, targetOffset uint64) (*ContinuousPageCursor, error)
-	PutContinuousPageCursor(ctx context.Context, cursor *ContinuousPageCursor) error
-	InvalidateContinuousPageCursor(ctx context.Context, queryKey string) error
+	GetContinuousPageCursor(context stdcontext.Context, queryKey string, targetOffset uint64) (*ContinuousPageCursor, error)
+	PutContinuousPageCursor(context stdcontext.Context, cursor *ContinuousPageCursor) error
+	InvalidateContinuousPageCursor(context stdcontext.Context, queryKey string) error
 }
 
 type InMemoryContinuousPageCursorStore struct {
@@ -42,7 +42,7 @@ func continuousPageCheckpointKey(queryKey string, offset uint64) string {
 	return fmt.Sprintf("%s:%d", queryKey, offset)
 }
 
-func (s *InMemoryContinuousPageCursorStore) GetContinuousPageCursor(_ context.Context, queryKey string, targetOffset uint64) (*ContinuousPageCursor, error) {
+func (s *InMemoryContinuousPageCursorStore) GetContinuousPageCursor(_ stdcontext.Context, queryKey string, targetOffset uint64) (*ContinuousPageCursor, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	key := continuousPageCheckpointKey(queryKey, targetOffset)
@@ -54,7 +54,7 @@ func (s *InMemoryContinuousPageCursorStore) GetContinuousPageCursor(_ context.Co
 	return cursor, nil
 }
 
-func (s *InMemoryContinuousPageCursorStore) PutContinuousPageCursor(_ context.Context, cursor *ContinuousPageCursor) error {
+func (s *InMemoryContinuousPageCursorStore) PutContinuousPageCursor(_ stdcontext.Context, cursor *ContinuousPageCursor) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	if len(s.cursors) >= s.maxEntries {
@@ -71,7 +71,7 @@ func (s *InMemoryContinuousPageCursorStore) PutContinuousPageCursor(_ context.Co
 	return nil
 }
 
-func (s *InMemoryContinuousPageCursorStore) InvalidateContinuousPageCursor(_ context.Context, queryKey string) error {
+func (s *InMemoryContinuousPageCursorStore) InvalidateContinuousPageCursor(_ stdcontext.Context, queryKey string) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	prefix := queryKey + ":"
@@ -101,9 +101,9 @@ var processLocalLocks = struct {
 }{entries: make(map[string]localLockEntry)}
 
 type DataStore interface {
-	Get(ctx context.Context, key string) (core.Value, bool)
-	Put(ctx context.Context, key string, value core.Value, timeoutSeconds *uint64)
-	Remove(ctx context.Context, key string)
+	Get(context stdcontext.Context, key string) (core.Value, bool)
+	Put(context stdcontext.Context, key string, value core.Value, timeoutSeconds *uint64)
+	Remove(context stdcontext.Context, key string)
 }
 
 type InMemoryDataStore struct {
@@ -116,16 +116,16 @@ func NewInMemoryDataStore() *InMemoryDataStore {
 	}
 }
 
-func (s *InMemoryDataStore) Get(ctx context.Context, key string) (core.Value, bool) {
+func (s *InMemoryDataStore) Get(context stdcontext.Context, key string) (core.Value, bool) {
 	val, ok := s.cache[key]
 	return val, ok
 }
 
-func (s *InMemoryDataStore) Put(ctx context.Context, key string, value core.Value, timeoutSeconds *uint64) {
+func (s *InMemoryDataStore) Put(context stdcontext.Context, key string, value core.Value, timeoutSeconds *uint64) {
 	s.cache[key] = value
 }
 
-func (s *InMemoryDataStore) Remove(ctx context.Context, key string) {
+func (s *InMemoryDataStore) Remove(context stdcontext.Context, key string) {
 	delete(s.cache, key)
 }
 
@@ -196,7 +196,7 @@ func (n *GraphNode) Reference(rel string, refId any) *GraphNode {
 }
 
 type UserContext struct {
-	context.Context
+	stdcontext.Context
 	Metadata       MetadataStore
 	EntityRegistry EntityRegistry
 	Behaviors      EntityDataServiceBehaviorRegistry
@@ -284,7 +284,7 @@ func (c *UserContext) RecordExecutionMetadata(metadata data_service.ExecutionMet
 
 func NewUserContext() *UserContext {
 	return &UserContext{
-		Context:                   context.Background(),
+		Context:                   stdcontext.Background(),
 		resources:                 make(map[string]interface{}),
 		continuousPageCursorStore: NewInMemoryContinuousPageCursorStore(),
 		continuousPagePlan:        "DISABLED",
@@ -739,7 +739,7 @@ func (c *UserContext) RuntimeReadiness() error {
 		return fmt.Errorf("dataService is required")
 	}
 	if provider, ok := c.GetResource("db").(interface {
-		PingContext(context.Context) error
+		PingContext(stdcontext.Context) error
 	}); ok {
 		if err := provider.PingContext(c); err != nil {
 			return fmt.Errorf("provider readiness: %w", err)
@@ -833,9 +833,9 @@ func (c *UserContext) RemoveFromLocalCache(key string) {
 // ==========================================
 
 type RemoteCacheProvider interface {
-	PutToRemoteCache(ctx context.Context, key string, value any, timeToLiveInSeconds ...int)
-	GetFromRemoteCache(ctx context.Context, key string) any
-	RemoveFromRemoteCache(ctx context.Context, key string)
+	PutToRemoteCache(context stdcontext.Context, key string, value any, timeToLiveInSeconds ...int)
+	GetFromRemoteCache(context stdcontext.Context, key string) any
+	RemoveFromRemoteCache(context stdcontext.Context, key string)
 }
 
 func (c *UserContext) PutToRemoteCache(key string, value any, timeToLiveInSeconds ...int) {
@@ -899,8 +899,8 @@ func (c *UserContext) UnlockLocal(key string) {
 // ==========================================
 
 type RemoteLockProvider interface {
-	TryRemoteLock(ctx context.Context, key string, timeoutMillis int64, expireMillis int64) bool
-	UnlockRemote(ctx context.Context, key string)
+	TryRemoteLock(context stdcontext.Context, key string, timeoutMillis int64, expireMillis int64) bool
+	UnlockRemote(context stdcontext.Context, key string)
 }
 
 func (c *UserContext) TryRemoteLock(key string, timeoutMillis int64, expireMillis int64) bool {

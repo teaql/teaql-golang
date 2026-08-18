@@ -159,7 +159,7 @@ func (b *BaseEntityData) ToRecord() Record {
 
 func BaseEntityDataFromRecord(record Record) (*BaseEntityData, error) {
 	b := NewBaseEntityData()
-	
+
 	if idVal, ok := record["id"]; ok {
 		if id, ok := idVal.TryU64(); ok {
 			b.Id = id
@@ -167,7 +167,7 @@ func BaseEntityDataFromRecord(record Record) (*BaseEntityData, error) {
 			return nil, NewEntityError("BaseEntity", fmt.Sprintf("invalid id field: %v", idVal))
 		}
 	}
-	
+
 	if versionVal, ok := record["version"]; ok {
 		if version, ok := versionVal.TryI64(); ok {
 			b.Version = version
@@ -175,13 +175,13 @@ func BaseEntityDataFromRecord(record Record) (*BaseEntityData, error) {
 			return nil, NewEntityError("BaseEntity", fmt.Sprintf("invalid version field: %v", versionVal))
 		}
 	}
-	
+
 	for k, v := range record {
 		if k != "id" && k != "version" {
 			b.Dynamic[k] = v
 		}
 	}
-	
+
 	return b, nil
 }
 

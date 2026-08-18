@@ -11,19 +11,20 @@ type ServiceInstance struct {
 }
 
 type ServiceRegistry interface {
-	Register(ctx context.Context, instance *ServiceInstance) error
-	Deregister(ctx context.Context, instance *ServiceInstance) error
+	Register(context context.Context, instance *ServiceInstance) error
+	Deregister(context context.Context, instance *ServiceInstance) error
 }
 
 type ServiceDiscovery interface {
-	GetInstances(ctx context.Context, serviceId string) ([]*ServiceInstance, error)
+	GetInstances(context context.Context, serviceId string) ([]*ServiceInstance, error)
 }
 
 type ConfigSource interface {
-	GetConfig(ctx context.Context, dataId, group string) (string, error)
+	GetConfig(context context.Context, dataId, group string) (string, error)
 }
 
 type HealthStatus string
+
 const (
 	Up           HealthStatus = "UP"
 	Down         HealthStatus = "DOWN"

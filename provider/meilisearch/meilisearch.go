@@ -2,7 +2,7 @@ package meilisearch
 
 import (
 	"bytes"
-	"context"
+	stdcontext "context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -61,7 +61,7 @@ func (p *MeilisearchProvider) doRequest(req *http.Request) ([]byte, error) {
 	return body, nil
 }
 
-func (p *MeilisearchProvider) Query(ctx context.Context, request *data_service.QueryRequest) (*data_service.QueryResult, error) {
+func (p *MeilisearchProvider) Query(context stdcontext.Context, request *data_service.QueryRequest) (*data_service.QueryResult, error) {
 	startedAt := time.Now()
 	search := ""
 	if request.Query.SearchWithText != nil {
@@ -69,14 +69,14 @@ func (p *MeilisearchProvider) Query(ctx context.Context, request *data_service.Q
 	}
 
 	url := fmt.Sprintf("%s/indexes/%s/search", p.host, request.Query.Entity)
-	
+
 	payload := map[string]interface{}{
 		"q":     search,
 		"limit": 100,
 	}
 	payloadBytes, _ := json.Marshal(payload)
 
-	req, err := http.NewRequestWithContext(ctx, "POST", url, bytes.NewReader(payloadBytes))
+	req, err := http.NewRequestWithContext(context, "POST", url, bytes.NewReader(payloadBytes))
 	if err != nil {
 		return nil, err
 	}
@@ -107,33 +107,33 @@ func (p *MeilisearchProvider) Query(ctx context.Context, request *data_service.Q
 	return &data_service.QueryResult{
 		Rows: rows,
 		Metadata: data_service.ExecutionMetadata{
-			Backend:      "meilisearch",
-			Operation:    data_service.OpQuery,
-			StartedAt:    startedAt,
-			EndedAt:      time.Now(),
-			ResultCount:  &hitsCount,
-			DebugQuery:   &debugQuery,
-			TraceChain:   request.TraceChain,
-			Comment:      request.Comment,
+			Backend:     "meilisearch",
+			Operation:   data_service.OpQuery,
+			StartedAt:   startedAt,
+			EndedAt:     time.Now(),
+			ResultCount: &hitsCount,
+			DebugQuery:  &debugQuery,
+			TraceChain:  request.TraceChain,
+			Comment:     request.Comment,
 		},
 	}, nil
 }
 
-func (p *MeilisearchProvider) Mutate(ctx context.Context, request data_service.MutationRequest) (*data_service.MutationResult, error) {
+func (p *MeilisearchProvider) Mutate(context stdcontext.Context, request data_service.MutationRequest) (*data_service.MutationResult, error) {
 	startedAt := time.Now()
 
 	switch req := request.(type) {
 	case *data_service.InsertMutation:
 		url := fmt.Sprintf("%s/indexes/%s/documents?primaryKey=id", p.host, req.Cmd.Entity)
-		
+
 		doc := make(map[string]interface{})
 		for k, v := range req.Cmd.Values {
 			doc[k] = v.V
 		}
-		
+
 		payloadBytes, _ := json.Marshal([]map[string]interface{}{doc})
 
-		httpReq, err := http.NewRequestWithContext(ctx, "POST", url, bytes.NewReader(payloadBytes))
+		httpReq, err := http.NewRequestWithContext(context, "POST", url, bytes.NewReader(payloadBytes))
 		if err != nil {
 			return nil, err
 		}

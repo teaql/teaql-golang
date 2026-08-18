@@ -315,7 +315,7 @@ type DummySink struct {
 	Called bool
 }
 
-func (s *DummySink) OnEvent(ctx *UserContext, event *RawAuditEvent) error {
+func (s *DummySink) OnEvent(context *UserContext, event *RawAuditEvent) error {
 	s.Called = true
 	return nil
 }
@@ -325,9 +325,9 @@ func TestInMemoryRawAuditEventSink(t *testing.T) {
 	inMemory := NewInMemoryRawAuditEventSink()
 	inMemory.Register(sink1)
 
-	ctx := &UserContext{}
+	context := &UserContext{}
 	event := SchemaVerified("Sys", "t", 1)
-	err := inMemory.OnEvent(ctx, event)
+	err := inMemory.OnEvent(context, event)
 	if err != nil {
 		t.Errorf("Expected no error")
 	}
@@ -340,9 +340,9 @@ func TestInMemoryWithSink(t *testing.T) {
 	sink1 := &DummySink{}
 	inMemory := NewInMemoryRawAuditEventSink().WithSink(sink1)
 
-	ctx := &UserContext{}
+	context := &UserContext{}
 	event := SchemaVerified("Sys", "t", 1)
-	err := inMemory.OnEvent(ctx, event)
+	err := inMemory.OnEvent(context, event)
 	if err != nil {
 		t.Errorf("Expected no error")
 	}
@@ -418,7 +418,7 @@ func TestChangesForFieldsNone(t *testing.T) {
 
 type ErrorSink struct{}
 
-func (s *ErrorSink) OnEvent(ctx *UserContext, event *RawAuditEvent) error {
+func (s *ErrorSink) OnEvent(context *UserContext, event *RawAuditEvent) error {
 	return errors.New("test error")
 }
 
@@ -426,9 +426,9 @@ func TestInMemoryRawAuditEventSink_Error(t *testing.T) {
 	inMemory := NewInMemoryRawAuditEventSink()
 	inMemory.Register(&ErrorSink{})
 
-	ctx := &UserContext{}
+	context := &UserContext{}
 	event := SchemaVerified("Sys", "t", 1)
-	err := inMemory.OnEvent(ctx, event)
+	err := inMemory.OnEvent(context, event)
 	if err == nil {
 		t.Errorf("Expected error from sink")
 	}
@@ -445,13 +445,13 @@ func TestMutationAuditEmitsIndependentRawAndMaskedAppEvents(t *testing.T) {
 	raw := &MockRawAuditEventSink{}
 	app := &capturingAppAuditSink{}
 	descriptor := core.NewEntityDescriptor("User").AuditMaskFields([]string{"email"})
-	ctx := NewRuntimeModule().Entity(descriptor).EventSink(raw).IntoContext().WithAppAuditEventSink(app)
+	context := NewRuntimeModule().Entity(descriptor).EventSink(raw).IntoContext().WithAppAuditEventSink(app)
 	trace := []*core.TraceNode{{Comment: "approved change"}}
 	request := &data_service.InsertMutation{Cmd: &core.InsertCommand{
 		Entity: "User", Values: core.Record{"email": core.ValText("person@example.invalid")}, TraceChain: trace,
 	}}
 
-	err := ctx.EmitMutationAudit(request, &data_service.MutationResult{AffectedRows: 1})
+	err := context.EmitMutationAudit(request, &data_service.MutationResult{AffectedRows: 1})
 	assert.NoError(t, err)
 	assert.Len(t, raw.events, 1)
 	assert.Equal(t, "person@example.invalid", raw.events[0].Changes[0].NewValue.V)

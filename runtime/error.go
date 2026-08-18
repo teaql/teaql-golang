@@ -9,18 +9,19 @@ type CheckResult struct {
 	// fields will be populated later
 	Message string
 }
+
 func (c *CheckResult) String() string { return c.Message }
 
 type RuntimeError struct {
-	Type                   string
-	Message                string
-	MissingEntityName      string
-	CheckResults           []CheckResult
-	MissingRelationEntity  string
-	MissingRelationName    string
-	OptimisticLockEntity   string
-	OptimisticLockId       string
-	InnerError             error
+	Type                  string
+	Message               string
+	MissingEntityName     string
+	CheckResults          []CheckResult
+	MissingRelationEntity string
+	MissingRelationName   string
+	OptimisticLockEntity  string
+	OptimisticLockId      string
+	InnerError            error
 }
 
 func (e *RuntimeError) Error() string {

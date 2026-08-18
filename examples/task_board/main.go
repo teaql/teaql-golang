@@ -15,11 +15,12 @@ import (
 	gen "robot-kanban-service-core-workspace/lib"
 	"robot-kanban-service-core-workspace/lib/src/platform"
 	"robot-kanban-service-core-workspace/lib/src/task"
-	"robot-kanban-service-core-workspace/lib/src/task_status"
 	"robot-kanban-service-core-workspace/lib/src/task_execution_log"
+	"robot-kanban-service-core-workspace/lib/src/task_status"
 )
 
 type schemaAdapter struct{ meta runtime.MetadataStore }
+
 func (a *schemaAdapter) GetEntity(name string) *core.EntityDescriptor { return a.meta.Entity(name) }
 
 func main() {
@@ -50,14 +51,12 @@ func main() {
 	}
 
 	transport := sqlite.NewSqliteMutationExecutor(db)
-	
 
-	
 	executor := teaql_sql.NewSqlDataServiceExecutor(sqliteDialect, transport, &schemaAdapter{module.Metadata})
-	
-	ctx := module.IntoContext()
-	ctx.InsertResource("dataService", executor)
-	ctx.InsertResource("db", db)
+
+	context := module.IntoContext()
+	context.InsertResource("dataService", executor)
+	context.InsertResource("db", db)
 
 	// 4. Insert Platform
 	p := platform.NewPlatform().
@@ -65,7 +64,7 @@ func main() {
 		UpdateName("Robot System").
 		UpdateUserEmail("admin@robot.com").
 		UpdateVersion(1)
-	if err := p.Save(ctx); err != nil {
+	if err := p.Save(context); err != nil {
 		log.Fatal("Insert Platform:", err)
 	}
 
@@ -76,7 +75,7 @@ func main() {
 		UpdateCode("PLANNED").
 		UpdateColor("#94A3B8").
 		UpdatePlatformId(1)
-	if err := ts.Save(ctx); err != nil {
+	if err := ts.Save(context); err != nil {
 		log.Fatal("Insert TaskStatus:", err)
 	}
 
@@ -87,13 +86,13 @@ func main() {
 		UpdateStatusToPlanned().
 		UpdatePlatformId(1).
 		UpdateVersion(1)
-	if err := t.Save(ctx); err != nil {
+	if err := t.Save(context); err != nil {
 		log.Fatal("Insert Task:", err)
 	}
 
 	// 7. Update Task
 	t.UpdateName("Build Robot Arm V2")
-	if err := t.Save(ctx); err != nil {
+	if err := t.Save(context); err != nil {
 		log.Fatal("Update Task:", err)
 	}
 
@@ -104,13 +103,13 @@ func main() {
 		UpdateAction("RENAME").
 		UpdateDetail("Renamed task to V2").
 		UpdateVersion(1)
-	if err := logEntry.Save(ctx); err != nil {
+	if err := logEntry.Save(context); err != nil {
 		log.Fatal("Insert TaskExecutionLog:", err)
 	}
 
 	// 9. Query tasks
 	taskReq := task.NewTaskRequest()
-	resultTask, err := taskReq.ExecuteForList(ctx)
+	resultTask, err := taskReq.ExecuteForList(context)
 	if err != nil {
 		log.Fatal("Query Task:", err)
 	}
@@ -121,7 +120,7 @@ func main() {
 
 	// 10. Query logs
 	logReq := task_execution_log.NewTaskExecutionLogRequest()
-	resultLog, err := logReq.ExecuteForList(ctx)
+	resultLog, err := logReq.ExecuteForList(context)
 	if err != nil {
 		log.Fatal("Query Log:", err)
 	}

@@ -1,15 +1,15 @@
 package task
 
 import (
-	"context"
+	stdcontext "context"
 	"fmt"
 	"strings"
 
-	"time"
 	"github.com/shopspring/decimal"
 	"github.com/teaql/teaql-golang/core"
 	"github.com/teaql/teaql-golang/data_service"
 	"github.com/teaql/teaql-golang/runtime"
+	"time"
 )
 
 var (
@@ -51,8 +51,6 @@ func (e *Task) Base() *core.BaseEntityData {
 func (e *Task) IdValue() core.Value {
 	return core.ValU64(e.base.Id)
 }
-
-
 
 func (e *Task) FromRecord(record core.Record) error {
 	base, err := core.BaseEntityDataFromRecord(record)
@@ -119,14 +117,14 @@ func (e *Task) IntoJson() any {
 	return e.base.ToRecord()
 }
 
-func (e *Task) Save(ctx *runtime.UserContext) error {
-	dsRaw := ctx.GetResource("dataService")
+func (e *Task) Save(context *runtime.UserContext) error {
+	dsRaw := context.GetResource("dataService")
 	if dsRaw == nil {
 		return fmt.Errorf("dataService not found in UserContext")
 	}
 	// Dynamic assert
 	type mutator interface {
-		Mutate(context.Context, data_service.MutationRequest) (*data_service.MutationResult, error)
+		Mutate(stdcontext.Context, data_service.MutationRequest) (*data_service.MutationResult, error)
 	}
 	ds, ok := dsRaw.(mutator)
 	if !ok {
@@ -139,7 +137,7 @@ func (e *Task) Save(ctx *runtime.UserContext) error {
 		if e.comment != nil {
 			cmd.TraceChain = append(cmd.TraceChain, &core.TraceNode{Comment: *e.comment})
 		}
-		res, err := ds.Mutate(ctx, &data_service.InsertMutation{Cmd: cmd})
+		res, err := ds.Mutate(context, &data_service.InsertMutation{Cmd: cmd})
 		if err == nil {
 			e.isNew = false
 			e.dirtyFields = make(map[string]bool)
@@ -160,7 +158,7 @@ func (e *Task) Save(ctx *runtime.UserContext) error {
 		if e.comment != nil {
 			cmd.TraceChain = append(cmd.TraceChain, &core.TraceNode{Comment: *e.comment})
 		}
-		_, err := ds.Mutate(ctx, &data_service.UpdateMutation{Cmd: cmd})
+		_, err := ds.Mutate(context, &data_service.UpdateMutation{Cmd: cmd})
 		if err == nil {
 			e.dirtyFields = make(map[string]bool)
 		}
@@ -208,6 +206,7 @@ func (e *Task) updateStatusId(value uint64) *Task {
 	e.dirtyFields["status_id"] = true
 	return e
 }
+
 // DEBUG: constantObjectField is true
 
 func (e *Task) UpdateStatusToPlanned() *Task {
@@ -242,7 +241,6 @@ func (e *Task) StatusIsVerified() bool {
 	return e.StatusId() == 1004
 }
 
-
 func (e *Task) PlatformId() uint64 {
 	val, _ := e.base.GetDynamic("platform_id")
 	res, _ := val.TryU64()
@@ -254,5 +252,5 @@ func (e *Task) UpdatePlatformId(value uint64) *Task {
 	e.dirtyFields["platform_id"] = true
 	return e
 }
-// DEBUG: constantObjectField is false
 
+// DEBUG: constantObjectField is false

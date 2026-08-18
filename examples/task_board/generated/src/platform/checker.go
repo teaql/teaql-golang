@@ -5,7 +5,7 @@ import (
 )
 
 type PlatformCheckerLogic interface {
-	CheckAndFix(ctx *runtime.UserContext, entity *Platform, status any, location any, results any)
+	CheckAndFix(context *runtime.UserContext, entity *Platform, status any, location any, results any)
 	Required(value bool, field string, location any, results any)
 	RequiredText(value string, field string, location any, results any)
 	MinStringLength(value string, field string, minLen int, location any, results any)
@@ -14,11 +14,14 @@ type PlatformCheckerLogic interface {
 
 type NoopPlatformChecker struct{}
 
-func (c *NoopPlatformChecker) CheckAndFix(ctx *runtime.UserContext, entity *Platform, status any, location any, results any) {}
-func (c *NoopPlatformChecker) Required(value bool, field string, location any, results any) {}
+func (c *NoopPlatformChecker) CheckAndFix(context *runtime.UserContext, entity *Platform, status any, location any, results any) {
+}
+func (c *NoopPlatformChecker) Required(value bool, field string, location any, results any)       {}
 func (c *NoopPlatformChecker) RequiredText(value string, field string, location any, results any) {}
-func (c *NoopPlatformChecker) MinStringLength(value string, field string, minLen int, location any, results any) {}
-func (c *NoopPlatformChecker) MaxStringLength(value string, field string, maxLen int, location any, results any) {}
+func (c *NoopPlatformChecker) MinStringLength(value string, field string, minLen int, location any, results any) {
+}
+func (c *NoopPlatformChecker) MaxStringLength(value string, field string, maxLen int, location any, results any) {
+}
 
 type PlatformChecker struct {
 	logic PlatformCheckerLogic
@@ -30,8 +33,8 @@ func NewPlatformChecker(logic PlatformCheckerLogic) *PlatformChecker {
 	}
 }
 
-func (c *PlatformChecker) CheckAndFixTyped(ctx *runtime.UserContext, entity *Platform, status any, location any, results any) {
+func (c *PlatformChecker) CheckAndFixTyped(context *runtime.UserContext, entity *Platform, status any, location any, results any) {
 	if c.logic != nil {
-		c.logic.CheckAndFix(ctx, entity, status, location, results)
+		c.logic.CheckAndFix(context, entity, status, location, results)
 	}
 }

@@ -1,7 +1,7 @@
 package mysql
 
 import (
-	"context"
+	stdcontext "context"
 	"database/sql"
 	"fmt"
 	"strings"
@@ -81,12 +81,12 @@ func NewMysqlMutationExecutor(db *sql.DB) *MysqlMutationExecutor {
 	return &MysqlMutationExecutor{db: db}
 }
 
-func (e *MysqlMutationExecutor) FetchAllSql(ctx context.Context, query *teaql_sql.CompiledQuery) ([]core.Record, error) {
+func (e *MysqlMutationExecutor) FetchAllSql(context stdcontext.Context, query *teaql_sql.CompiledQuery) ([]core.Record, error) {
 	params, err := bindValues(query.Params)
 	if err != nil {
 		return nil, err
 	}
-	rows, err := e.db.QueryContext(ctx, query.SqlWithComment(), params...)
+	rows, err := e.db.QueryContext(context, query.SqlWithComment(), params...)
 	if err != nil {
 		return nil, err
 	}
@@ -120,12 +120,12 @@ func (e *MysqlMutationExecutor) FetchAllSql(ctx context.Context, query *teaql_sq
 	return records, nil
 }
 
-func (e *MysqlMutationExecutor) StreamSql(ctx context.Context, query *teaql_sql.CompiledQuery, chunkSize int, yield func([]core.Record) error) error {
+func (e *MysqlMutationExecutor) StreamSql(context stdcontext.Context, query *teaql_sql.CompiledQuery, chunkSize int, yield func([]core.Record) error) error {
 	params, err := bindValues(query.Params)
 	if err != nil {
 		return err
 	}
-	rows, err := e.db.QueryContext(ctx, query.SqlWithComment(), params...)
+	rows, err := e.db.QueryContext(context, query.SqlWithComment(), params...)
 	if err != nil {
 		return err
 	}
@@ -169,12 +169,12 @@ func (e *MysqlMutationExecutor) StreamSql(ctx context.Context, query *teaql_sql.
 	return nil
 }
 
-func (e *MysqlMutationExecutor) ExecuteSql(ctx context.Context, query *teaql_sql.CompiledQuery) (uint64, error) {
+func (e *MysqlMutationExecutor) ExecuteSql(context stdcontext.Context, query *teaql_sql.CompiledQuery) (uint64, error) {
 	params, err := bindValues(query.Params)
 	if err != nil {
 		return 0, err
 	}
-	res, err := e.db.ExecContext(ctx, query.SqlWithComment(), params...)
+	res, err := e.db.ExecContext(context, query.SqlWithComment(), params...)
 	if err != nil {
 		return 0, err
 	}
@@ -185,8 +185,8 @@ func (e *MysqlMutationExecutor) ExecuteSql(ctx context.Context, query *teaql_sql
 	return uint64(affected), nil
 }
 
-func (e *MysqlMutationExecutor) BeginSql(ctx context.Context) (teaql_sql.SqlTransactionTransportTx, error) {
-	tx, err := e.db.BeginTx(ctx, nil)
+func (e *MysqlMutationExecutor) BeginSql(context stdcontext.Context) (teaql_sql.SqlTransactionTransportTx, error) {
+	tx, err := e.db.BeginTx(context, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -197,12 +197,12 @@ type MysqlTransactionExecutor struct {
 	tx *sql.Tx
 }
 
-func (e *MysqlTransactionExecutor) FetchAllSql(ctx context.Context, query *teaql_sql.CompiledQuery) ([]core.Record, error) {
+func (e *MysqlTransactionExecutor) FetchAllSql(context stdcontext.Context, query *teaql_sql.CompiledQuery) ([]core.Record, error) {
 	params, err := bindValues(query.Params)
 	if err != nil {
 		return nil, err
 	}
-	rows, err := e.tx.QueryContext(ctx, query.SqlWithComment(), params...)
+	rows, err := e.tx.QueryContext(context, query.SqlWithComment(), params...)
 	if err != nil {
 		return nil, err
 	}
@@ -236,12 +236,12 @@ func (e *MysqlTransactionExecutor) FetchAllSql(ctx context.Context, query *teaql
 	return records, nil
 }
 
-func (e *MysqlTransactionExecutor) ExecuteSql(ctx context.Context, query *teaql_sql.CompiledQuery) (uint64, error) {
+func (e *MysqlTransactionExecutor) ExecuteSql(context stdcontext.Context, query *teaql_sql.CompiledQuery) (uint64, error) {
 	params, err := bindValues(query.Params)
 	if err != nil {
 		return 0, err
 	}
-	res, err := e.tx.ExecContext(ctx, query.SqlWithComment(), params...)
+	res, err := e.tx.ExecContext(context, query.SqlWithComment(), params...)
 	if err != nil {
 		return 0, err
 	}
@@ -252,11 +252,11 @@ func (e *MysqlTransactionExecutor) ExecuteSql(ctx context.Context, query *teaql_
 	return uint64(affected), nil
 }
 
-func (e *MysqlTransactionExecutor) CommitSql(ctx context.Context) error {
+func (e *MysqlTransactionExecutor) CommitSql(context stdcontext.Context) error {
 	return e.tx.Commit()
 }
 
-func (e *MysqlTransactionExecutor) RollbackSql(ctx context.Context) error {
+func (e *MysqlTransactionExecutor) RollbackSql(context stdcontext.Context) error {
 	return e.tx.Rollback()
 }
 

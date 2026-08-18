@@ -9,12 +9,12 @@ type TaskBehavior struct {
 	runtime.DefaultEntityDataServiceBehavior
 }
 
-func (b *TaskBehavior) BeforeInsert(ctx *runtime.UserContext, command *core.InsertCommand) error {
+func (b *TaskBehavior) BeforeInsert(context *runtime.UserContext, command *core.InsertCommand) error {
 	// Custom behavior
 	return nil
 }
 
-func (b *TaskBehavior) BeforeUpdate(ctx *runtime.UserContext, command *core.UpdateCommand) error {
+func (b *TaskBehavior) BeforeUpdate(context *runtime.UserContext, command *core.UpdateCommand) error {
 	// Custom behavior
 	return nil
 }

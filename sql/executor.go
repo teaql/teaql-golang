@@ -1,7 +1,7 @@
 package sql
 
 import (
-	"context"
+	stdcontext "context"
 	"fmt"
 	"time"
 
@@ -32,19 +32,19 @@ func (e *SqlExecutorError) Unwrap() error {
 }
 
 type SqlTransport interface {
-	FetchAllSql(ctx context.Context, query *CompiledQuery) ([]core.Record, error)
-	ExecuteSql(ctx context.Context, query *CompiledQuery) (uint64, error)
+	FetchAllSql(context stdcontext.Context, query *CompiledQuery) ([]core.Record, error)
+	ExecuteSql(context stdcontext.Context, query *CompiledQuery) (uint64, error)
 }
 
 // SqlStreamingTransport owns the database cursor until StreamSql returns.
 // Returning an error from yield stops consumption and releases the cursor.
 type SqlStreamingTransport interface {
-	StreamSql(ctx context.Context, query *CompiledQuery, chunkSize int, yield func([]core.Record) error) error
+	StreamSql(context stdcontext.Context, query *CompiledQuery, chunkSize int, yield func([]core.Record) error) error
 }
 
 type SqlTransactionTransport interface {
 	SqlTransport
-	BeginSql(ctx context.Context) (SqlTransactionTransportTx, error)
+	BeginSql(context stdcontext.Context) (SqlTransactionTransportTx, error)
 }
 
 type SqlTransactionTransportTx interface {
@@ -53,8 +53,8 @@ type SqlTransactionTransportTx interface {
 }
 
 type SqlTransaction interface {
-	CommitSql(ctx context.Context) error
-	RollbackSql(ctx context.Context) error
+	CommitSql(context stdcontext.Context) error
+	RollbackSql(context stdcontext.Context) error
 }
 
 type SqlDataServiceExecutor struct {
@@ -85,7 +85,7 @@ func (e *SqlDataServiceExecutor) Capabilities() ds.DataServiceCapabilities {
 	}
 }
 
-func (e *SqlDataServiceExecutor) Query(ctx context.Context, request *ds.QueryRequest) (*ds.QueryResult, error) {
+func (e *SqlDataServiceExecutor) Query(context stdcontext.Context, request *ds.QueryRequest) (*ds.QueryResult, error) {
 	entityDesc := e.SchemaProvider.GetEntity(request.Query.Entity)
 	if entityDesc == nil {
 		return nil, &SqlExecutorError{CompileError: fmt.Errorf("unknown entity %s", request.Query.Entity)}
@@ -98,7 +98,7 @@ func (e *SqlDataServiceExecutor) Query(ctx context.Context, request *ds.QueryReq
 	}
 
 	start := time.Now()
-	rows, err := e.Transport.FetchAllSql(ctx, compiled)
+	rows, err := e.Transport.FetchAllSql(context, compiled)
 	if err != nil {
 		return nil, &SqlExecutorError{TransportError: err}
 	}
@@ -121,7 +121,7 @@ func (e *SqlDataServiceExecutor) Query(ctx context.Context, request *ds.QueryReq
 		BackendRequestId: nil,
 		DebugQuery:       &debugQuery,
 	}
-	if recorder, ok := ctx.(interface{ RecordExecutionMetadata(ds.ExecutionMetadata) }); ok {
+	if recorder, ok := context.(interface{ RecordExecutionMetadata(ds.ExecutionMetadata) }); ok {
 		recorder.RecordExecutionMetadata(metadata)
 	}
 
@@ -131,21 +131,21 @@ func (e *SqlDataServiceExecutor) Query(ctx context.Context, request *ds.QueryReq
 	}, nil
 }
 
-func (e *SqlDataServiceExecutor) Mutate(ctx context.Context, request ds.MutationRequest) (*ds.MutationResult, error) {
+func (e *SqlDataServiceExecutor) Mutate(context stdcontext.Context, request ds.MutationRequest) (*ds.MutationResult, error) {
 	if transport, ok := e.Transport.(SqlTransactionTransport); ok {
-		tx, err := transport.BeginSql(ctx)
+		tx, err := transport.BeginSql(context)
 		if err != nil {
 			return nil, &SqlExecutorError{TransportError: err}
 		}
 		if tx != nil {
 			transactional := NewSqlDataServiceExecutor(e.Dialect, tx, e.SchemaProvider)
 			transactional.transactional = true
-			result, err := transactional.Mutate(ctx, request)
+			result, err := transactional.Mutate(context, request)
 			if err != nil {
-				_ = tx.RollbackSql(ctx)
+				_ = tx.RollbackSql(context)
 				return nil, err
 			}
-			if err := tx.CommitSql(ctx); err != nil {
+			if err := tx.CommitSql(context); err != nil {
 				return nil, &SqlExecutorError{TransportError: err}
 			}
 			return result, nil
@@ -156,7 +156,7 @@ func (e *SqlDataServiceExecutor) Mutate(ctx context.Context, request ds.Mutation
 		var totalAffected uint64 = 0
 		start := time.Now()
 		for _, m := range req.Mutations {
-			res, err := e.Mutate(ctx, m)
+			res, err := e.Mutate(context, m)
 			if err != nil {
 				return nil, err
 			}
@@ -223,7 +223,7 @@ func (e *SqlDataServiceExecutor) Mutate(ctx context.Context, request ds.Mutation
 	}
 
 	start := time.Now()
-	affectedRows, err := e.Transport.ExecuteSql(ctx, compiled)
+	affectedRows, err := e.Transport.ExecuteSql(context, compiled)
 	if err != nil {
 		return nil, &SqlExecutorError{TransportError: err}
 	}
@@ -262,7 +262,7 @@ func (e *SqlDataServiceExecutor) Mutate(ctx context.Context, request ds.Mutation
 		BackendRequestId: nil,
 		DebugQuery:       &debugQuery,
 	}
-	if recorder, ok := ctx.(interface{ RecordExecutionMetadata(ds.ExecutionMetadata) }); ok {
+	if recorder, ok := context.(interface{ RecordExecutionMetadata(ds.ExecutionMetadata) }); ok {
 		recorder.RecordExecutionMetadata(metadata)
 	}
 
@@ -290,7 +290,7 @@ func (e *SqlDataServiceExecutor) Mutate(ctx context.Context, request ds.Mutation
 		if compileErr != nil {
 			return nil, &SqlExecutorError{CompileError: compileErr}
 		}
-		rows, fetchErr := e.Transport.FetchAllSql(ctx, readback)
+		rows, fetchErr := e.Transport.FetchAllSql(context, readback)
 		if fetchErr != nil {
 			return nil, &SqlExecutorError{TransportError: fetchErr}
 		}
@@ -299,7 +299,7 @@ func (e *SqlDataServiceExecutor) Mutate(ctx context.Context, request ds.Mutation
 		}
 		result.PersistedRecord = rows[0]
 	}
-	if emitter, ok := ctx.(interface {
+	if emitter, ok := context.(interface {
 		EmitMutationAudit(ds.MutationRequest, *ds.MutationResult) error
 	}); ok {
 		if err := emitter.EmitMutationAudit(request, result); err != nil {
@@ -309,7 +309,7 @@ func (e *SqlDataServiceExecutor) Mutate(ctx context.Context, request ds.Mutation
 	return result, nil
 }
 
-func (e *SqlDataServiceExecutor) QueryStream(ctx context.Context, request *ds.QueryRequest, chunkSize int, yield func(*ds.StreamChunk) error) error {
+func (e *SqlDataServiceExecutor) QueryStream(context stdcontext.Context, request *ds.QueryRequest, chunkSize int, yield func(*ds.StreamChunk) error) error {
 	if chunkSize <= 0 {
 		return fmt.Errorf("chunk size must be positive")
 	}
@@ -330,7 +330,7 @@ func (e *SqlDataServiceExecutor) QueryStream(ctx context.Context, request *ds.Qu
 	}
 	chunkIndex := 0
 	var pending []core.Record
-	err = transport.StreamSql(ctx, compiled, chunkSize, func(rows []core.Record) error {
+	err = transport.StreamSql(context, compiled, chunkSize, func(rows []core.Record) error {
 		if pending != nil {
 			if err := yield(&ds.StreamChunk{Rows: pending, ChunkIndex: chunkIndex, IsLast: false}); err != nil {
 				return err
@@ -349,13 +349,13 @@ func (e *SqlDataServiceExecutor) QueryStream(ctx context.Context, request *ds.Qu
 	return nil
 }
 
-func (e *SqlDataServiceExecutor) Begin(ctx context.Context) (ds.Transaction, error) {
+func (e *SqlDataServiceExecutor) Begin(context stdcontext.Context) (ds.Transaction, error) {
 	txTransport, ok := e.Transport.(SqlTransactionTransport)
 	if !ok {
 		return nil, fmt.Errorf("transport does not support transactions")
 	}
 
-	tx, err := txTransport.BeginSql(ctx)
+	tx, err := txTransport.BeginSql(context)
 	if err != nil {
 		return nil, &SqlExecutorError{TransportError: err}
 	}
@@ -385,33 +385,33 @@ func (t *SqlDataServiceTransaction) Capabilities() ds.DataServiceCapabilities {
 	}
 }
 
-func (t *SqlDataServiceTransaction) Query(ctx context.Context, request *ds.QueryRequest) (*ds.QueryResult, error) {
+func (t *SqlDataServiceTransaction) Query(context stdcontext.Context, request *ds.QueryRequest) (*ds.QueryResult, error) {
 	executor := &SqlDataServiceExecutor{
 		Dialect:        t.Dialect,
 		Transport:      t.Transport,
 		SchemaProvider: t.SchemaProvider,
 	}
-	return executor.Query(ctx, request)
+	return executor.Query(context, request)
 }
 
-func (t *SqlDataServiceTransaction) Mutate(ctx context.Context, request ds.MutationRequest) (*ds.MutationResult, error) {
+func (t *SqlDataServiceTransaction) Mutate(context stdcontext.Context, request ds.MutationRequest) (*ds.MutationResult, error) {
 	executor := &SqlDataServiceExecutor{
 		Dialect:        t.Dialect,
 		Transport:      t.Transport,
 		SchemaProvider: t.SchemaProvider,
 	}
-	return executor.Mutate(ctx, request)
+	return executor.Mutate(context, request)
 }
 
-func (t *SqlDataServiceTransaction) Commit(ctx context.Context) error {
-	if err := t.Transport.CommitSql(ctx); err != nil {
+func (t *SqlDataServiceTransaction) Commit(context stdcontext.Context) error {
+	if err := t.Transport.CommitSql(context); err != nil {
 		return &SqlExecutorError{TransportError: err}
 	}
 	return nil
 }
 
-func (t *SqlDataServiceTransaction) Rollback(ctx context.Context) error {
-	if err := t.Transport.RollbackSql(ctx); err != nil {
+func (t *SqlDataServiceTransaction) Rollback(context stdcontext.Context) error {
+	if err := t.Transport.RollbackSql(context); err != nil {
 		return &SqlExecutorError{TransportError: err}
 	}
 	return nil

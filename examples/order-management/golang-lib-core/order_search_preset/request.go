@@ -1,5 +1,3 @@
-
-
 package order_search_preset
 
 import (
@@ -572,15 +570,13 @@ func (r *OrderSearchPresetRequest) OrderByVersionDesc() *OrderSearchPresetReques
 	return r
 }
 
-
-
-func (e *ExecutableOrderSearchPresetRequest) NewEntity(ctx *runtime.UserContext) *OrderSearchPreset {
+func (e *ExecutableOrderSearchPresetRequest) NewEntity(context *runtime.UserContext) *OrderSearchPreset {
 	entity := NewOrderSearchPreset()
 	return entity
 }
 
-func (e *ExecutableOrderSearchPresetRequest) ExecuteForOne(ctx *runtime.UserContext) (*OrderSearchPreset, error) {
-	list, err := e.ExecuteForList(ctx)
+func (e *ExecutableOrderSearchPresetRequest) ExecuteForOne(context *runtime.UserContext) (*OrderSearchPreset, error) {
+	list, err := e.ExecuteForList(context)
 	if err != nil {
 		return nil, err
 	}
@@ -590,8 +586,8 @@ func (e *ExecutableOrderSearchPresetRequest) ExecuteForOne(ctx *runtime.UserCont
 	return list.Data[0], nil
 }
 
-func (e *ExecutableOrderSearchPresetRequest) ExecuteForList(ctx *runtime.UserContext) (*core.SmartList[*OrderSearchPreset], error) {
-	rows, err := e.ExecuteRecords(ctx)
+func (e *ExecutableOrderSearchPresetRequest) ExecuteForList(context *runtime.UserContext) (*core.SmartList[*OrderSearchPreset], error) {
+	rows, err := e.ExecuteRecords(context)
 	if err != nil {
 		return nil, err
 	}
@@ -607,14 +603,14 @@ func (e *ExecutableOrderSearchPresetRequest) ExecuteForList(ctx *runtime.UserCon
 	return core.NewSmartList(results), nil
 }
 
-func (e *ExecutableOrderSearchPresetRequest) ExecuteRecords(ctx *runtime.UserContext) ([]core.Record, error) {
+func (e *ExecutableOrderSearchPresetRequest) ExecuteRecords(context *runtime.UserContext) ([]core.Record, error) {
 	r := e.request
 	if strings.TrimSpace(r.purposeText) == "" || strings.TrimSpace(r.commentText) == "" {
 		return nil, fmt.Errorf("security audit failure: Comment() and Purpose() must be called before ExecuteForList()")
 	}
 	r.Query.Comment(fmt.Sprintf("comment=%s; purpose=%s", r.commentText, r.purposeText))
 
-	dsRaw := ctx.GetResource("dataService")
+	dsRaw := context.GetResource("dataService")
 	if dsRaw == nil {
 		return nil, fmt.Errorf("dataService not found in UserContext")
 	}
@@ -624,7 +620,7 @@ func (e *ExecutableOrderSearchPresetRequest) ExecuteRecords(ctx *runtime.UserCon
 		return nil, fmt.Errorf("dataService does not implement data_service.QueryExecutor")
 	}
 
-	rows, err := runtime.NewRuntimeDataService(ctx.Metadata, ds).FetchAll(ctx, r.Query)
+	rows, err := runtime.NewRuntimeDataService(context.Metadata, ds).FetchAll(context, r.Query)
 	if err != nil {
 		return nil, err
 	}
@@ -639,7 +635,6 @@ func (r *OrderSearchPresetRequest) CountAs(alias string) *OrderSearchPresetReque
 	r.Query.CountField("id", alias)
 	return r
 }
-
 
 func (r *OrderSearchPresetRequest) GroupById() *OrderSearchPresetRequest {
 	r.Query.WithGroupBy("id")

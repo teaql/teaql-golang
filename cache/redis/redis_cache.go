@@ -1,7 +1,7 @@
 package redis
 
 import (
-	"context"
+	stdcontext "context"
 	"encoding/json"
 	"time"
 
@@ -18,20 +18,20 @@ func NewRedisRemoteCache(client *redis.Client) *RedisRemoteCache {
 	}
 }
 
-func (c *RedisRemoteCache) PutToRemoteCache(ctx context.Context, key string, value any, timeToLiveInSeconds ...int) {
+func (c *RedisRemoteCache) PutToRemoteCache(context stdcontext.Context, key string, value any, timeToLiveInSeconds ...int) {
 	var duration time.Duration
 	if len(timeToLiveInSeconds) > 0 {
 		duration = time.Duration(timeToLiveInSeconds[0]) * time.Second
 	}
-	
+
 	bytes, err := json.Marshal(value)
 	if err == nil {
-		c.client.Set(ctx, key, string(bytes), duration)
+		c.client.Set(context, key, string(bytes), duration)
 	}
 }
 
-func (c *RedisRemoteCache) GetFromRemoteCache(ctx context.Context, key string) any {
-	val, err := c.client.Get(ctx, key).Result()
+func (c *RedisRemoteCache) GetFromRemoteCache(context stdcontext.Context, key string) any {
+	val, err := c.client.Get(context, key).Result()
 	if err != nil {
 		return nil
 	}
@@ -42,6 +42,6 @@ func (c *RedisRemoteCache) GetFromRemoteCache(ctx context.Context, key string) a
 	return nil
 }
 
-func (c *RedisRemoteCache) RemoveFromRemoteCache(ctx context.Context, key string) {
-	c.client.Del(ctx, key)
+func (c *RedisRemoteCache) RemoveFromRemoteCache(context stdcontext.Context, key string) {
+	c.client.Del(context, key)
 }

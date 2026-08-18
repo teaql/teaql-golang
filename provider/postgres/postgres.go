@@ -1,7 +1,7 @@
 package postgres
 
 import (
-	"context"
+	stdcontext "context"
 	"database/sql"
 	"fmt"
 	"strings"
@@ -137,12 +137,12 @@ func NewPgMutationExecutor(db *sql.DB) *PgMutationExecutor {
 	return &PgMutationExecutor{db: db}
 }
 
-func (e *PgMutationExecutor) FetchAllSql(ctx context.Context, query *teaql_sql.CompiledQuery) ([]core.Record, error) {
+func (e *PgMutationExecutor) FetchAllSql(context stdcontext.Context, query *teaql_sql.CompiledQuery) ([]core.Record, error) {
 	params, err := bindValues(query.Params)
 	if err != nil {
 		return nil, err
 	}
-	rows, err := e.db.QueryContext(ctx, query.SqlWithComment(), params...)
+	rows, err := e.db.QueryContext(context, query.SqlWithComment(), params...)
 	if err != nil {
 		return nil, err
 	}
@@ -176,12 +176,12 @@ func (e *PgMutationExecutor) FetchAllSql(ctx context.Context, query *teaql_sql.C
 	return records, nil
 }
 
-func (e *PgMutationExecutor) StreamSql(ctx context.Context, query *teaql_sql.CompiledQuery, chunkSize int, yield func([]core.Record) error) error {
+func (e *PgMutationExecutor) StreamSql(context stdcontext.Context, query *teaql_sql.CompiledQuery, chunkSize int, yield func([]core.Record) error) error {
 	params, err := bindValues(query.Params)
 	if err != nil {
 		return err
 	}
-	rows, err := e.db.QueryContext(ctx, query.SqlWithComment(), params...)
+	rows, err := e.db.QueryContext(context, query.SqlWithComment(), params...)
 	if err != nil {
 		return err
 	}
@@ -225,12 +225,12 @@ func (e *PgMutationExecutor) StreamSql(ctx context.Context, query *teaql_sql.Com
 	return nil
 }
 
-func (e *PgMutationExecutor) ExecuteSql(ctx context.Context, query *teaql_sql.CompiledQuery) (uint64, error) {
+func (e *PgMutationExecutor) ExecuteSql(context stdcontext.Context, query *teaql_sql.CompiledQuery) (uint64, error) {
 	params, err := bindValues(query.Params)
 	if err != nil {
 		return 0, err
 	}
-	res, err := e.db.ExecContext(ctx, query.SqlWithComment(), params...)
+	res, err := e.db.ExecContext(context, query.SqlWithComment(), params...)
 	if err != nil {
 		return 0, err
 	}
@@ -241,8 +241,8 @@ func (e *PgMutationExecutor) ExecuteSql(ctx context.Context, query *teaql_sql.Co
 	return uint64(affected), nil
 }
 
-func (e *PgMutationExecutor) BeginSql(ctx context.Context) (teaql_sql.SqlTransactionTransportTx, error) {
-	tx, err := e.db.BeginTx(ctx, nil)
+func (e *PgMutationExecutor) BeginSql(context stdcontext.Context) (teaql_sql.SqlTransactionTransportTx, error) {
+	tx, err := e.db.BeginTx(context, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -253,12 +253,12 @@ type PgTransactionExecutor struct {
 	tx *sql.Tx
 }
 
-func (e *PgTransactionExecutor) FetchAllSql(ctx context.Context, query *teaql_sql.CompiledQuery) ([]core.Record, error) {
+func (e *PgTransactionExecutor) FetchAllSql(context stdcontext.Context, query *teaql_sql.CompiledQuery) ([]core.Record, error) {
 	params, err := bindValues(query.Params)
 	if err != nil {
 		return nil, err
 	}
-	rows, err := e.tx.QueryContext(ctx, query.SqlWithComment(), params...)
+	rows, err := e.tx.QueryContext(context, query.SqlWithComment(), params...)
 	if err != nil {
 		return nil, err
 	}
@@ -292,12 +292,12 @@ func (e *PgTransactionExecutor) FetchAllSql(ctx context.Context, query *teaql_sq
 	return records, nil
 }
 
-func (e *PgTransactionExecutor) ExecuteSql(ctx context.Context, query *teaql_sql.CompiledQuery) (uint64, error) {
+func (e *PgTransactionExecutor) ExecuteSql(context stdcontext.Context, query *teaql_sql.CompiledQuery) (uint64, error) {
 	params, err := bindValues(query.Params)
 	if err != nil {
 		return 0, err
 	}
-	res, err := e.tx.ExecContext(ctx, query.SqlWithComment(), params...)
+	res, err := e.tx.ExecContext(context, query.SqlWithComment(), params...)
 	if err != nil {
 		return 0, err
 	}
@@ -308,11 +308,11 @@ func (e *PgTransactionExecutor) ExecuteSql(ctx context.Context, query *teaql_sql
 	return uint64(affected), nil
 }
 
-func (e *PgTransactionExecutor) CommitSql(ctx context.Context) error {
+func (e *PgTransactionExecutor) CommitSql(context stdcontext.Context) error {
 	return e.tx.Commit()
 }
 
-func (e *PgTransactionExecutor) RollbackSql(ctx context.Context) error {
+func (e *PgTransactionExecutor) RollbackSql(context stdcontext.Context) error {
 	return e.tx.Rollback()
 }
 

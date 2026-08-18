@@ -1,7 +1,7 @@
 package consul
 
 import (
-	"context"
+	stdcontext "context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -35,14 +35,14 @@ func TestConsulCloudUsesRealHTTPAPI(t *testing.T) {
 	token := "secret"
 	cloud := NewConsulCloud(&ConsulConfig{ServerAddr: server.URL, Token: &token, HTTPClient: server.Client()})
 	instance := &core.ServiceInstance{ServiceId: "orders", Host: "10.0.0.8", Port: 8081}
-	ctx := context.Background()
-	if err := cloud.Register(ctx, instance); err != nil {
+	context := stdcontext.Background()
+	if err := cloud.Register(context, instance); err != nil {
 		t.Fatal(err)
 	}
-	if err := cloud.Deregister(ctx, instance); err != nil {
+	if err := cloud.Deregister(context, instance); err != nil {
 		t.Fatal(err)
 	}
-	instances, err := cloud.GetInstances(ctx, "orders")
+	instances, err := cloud.GetInstances(context, "orders")
 	if err != nil || len(instances) != 1 || instances[0].ServiceId != "orders-1" {
 		t.Fatalf("instances=%v err=%v", instances, err)
 	}

@@ -1,7 +1,7 @@
 package runtime_test
 
 import (
-	"context"
+	stdcontext "context"
 	"errors"
 	"sync"
 	"testing"
@@ -22,7 +22,7 @@ func (e *capturingExecutor) Capabilities() data_service.DataServiceCapabilities 
 	return data_service.DataServiceCapabilities{Query: true}
 }
 
-func (e *capturingExecutor) Query(_ context.Context, request *data_service.QueryRequest) (*data_service.QueryResult, error) {
+func (e *capturingExecutor) Query(_ stdcontext.Context, request *data_service.QueryRequest) (*data_service.QueryResult, error) {
 	e.mu.Lock()
 	defer e.mu.Unlock()
 	copyQuery := *request.Query
@@ -38,13 +38,13 @@ func (e *capturingExecutor) Query(_ context.Context, request *data_service.Query
 
 type unavailableCursorStore struct{}
 
-func (unavailableCursorStore) GetContinuousPageCursor(context.Context, string, uint64) (*runtime.ContinuousPageCursor, error) {
+func (unavailableCursorStore) GetContinuousPageCursor(stdcontext.Context, string, uint64) (*runtime.ContinuousPageCursor, error) {
 	return nil, errors.New("simulated cursor store outage")
 }
-func (unavailableCursorStore) PutContinuousPageCursor(context.Context, *runtime.ContinuousPageCursor) error {
+func (unavailableCursorStore) PutContinuousPageCursor(stdcontext.Context, *runtime.ContinuousPageCursor) error {
 	return errors.New("simulated cursor store outage")
 }
-func (unavailableCursorStore) InvalidateContinuousPageCursor(context.Context, string) error {
+func (unavailableCursorStore) InvalidateContinuousPageCursor(stdcontext.Context, string) error {
 	return errors.New("simulated cursor store outage")
 }
 
@@ -66,7 +66,7 @@ func (e *dummyExecutor) Capabilities() data_service.DataServiceCapabilities {
 	return data_service.DataServiceCapabilities{}
 }
 
-func (e *dummyExecutor) Query(ctx context.Context, request *data_service.QueryRequest) (*data_service.QueryResult, error) {
+func (e *dummyExecutor) Query(context stdcontext.Context, request *data_service.QueryRequest) (*data_service.QueryResult, error) {
 	return &data_service.QueryResult{
 		Rows: []core.Record{
 			{"id": core.ValI64(1)},
@@ -86,7 +86,7 @@ func (e *dummyFailingExecutor) Capabilities() data_service.DataServiceCapabiliti
 	return data_service.DataServiceCapabilities{}
 }
 
-func (e *dummyFailingExecutor) Query(ctx context.Context, request *data_service.QueryRequest) (*data_service.QueryResult, error) {
+func (e *dummyFailingExecutor) Query(context stdcontext.Context, request *data_service.QueryRequest) (*data_service.QueryResult, error) {
 	return nil, errors.New("dummy query error")
 }
 
@@ -98,7 +98,7 @@ func (e *dummyNonQueryExecutor) Capabilities() data_service.DataServiceCapabilit
 
 func TestRuntimeDataService_FetchAll(t *testing.T) {
 	metadata := runtime.NewInMemoryMetadataStore()
-	ctx := context.Background()
+	context := stdcontext.Background()
 
 	t.Run("successful query", func(t *testing.T) {
 		executor := &dummyExecutor{}
@@ -106,7 +106,7 @@ func TestRuntimeDataService_FetchAll(t *testing.T) {
 
 		query := &core.SelectQuery{}
 
-		rows, err := svc.FetchAll(ctx, query)
+		rows, err := svc.FetchAll(context, query)
 		if err != nil {
 			t.Fatalf("expected no error, got %v", err)
 		}
@@ -126,7 +126,7 @@ func TestRuntimeDataService_FetchAll(t *testing.T) {
 
 		query := &core.SelectQuery{}
 
-		rows, err := svc.FetchAll(ctx, query)
+		rows, err := svc.FetchAll(context, query)
 		if err == nil {
 			t.Fatal("expected error, got nil")
 		}
@@ -151,7 +151,7 @@ func TestRuntimeDataService_FetchAll(t *testing.T) {
 
 		query := &core.SelectQuery{}
 
-		rows, err := svc.FetchAll(ctx, query)
+		rows, err := svc.FetchAll(context, query)
 		if err == nil {
 			t.Fatal("expected error, got nil")
 		}
@@ -169,30 +169,30 @@ func TestRuntimeDataService_FetchAll(t *testing.T) {
 func TestRuntimeDataServiceContinuousPageFetch(t *testing.T) {
 	t.Run("descending next page uses seek", func(t *testing.T) {
 		executor := &capturingExecutor{rows: [][]core.Record{pageRows(100, 10, true), pageRows(90, 10, true)}}
-		ctx := runtime.NewUserContext()
-		ctx.SetUserIdentifier("tenant-1:user-1")
+		context := runtime.NewUserContext()
+		context.SetUserIdentifier("tenant-1:user-1")
 		svc := runtime.NewRuntimeDataService(runtime.NewInMemoryMetadataStore(), executor)
 
 		first := core.NewSelectQuery("Order").WithOrderBy(core.OrderDesc("id")).Page(0, 10).
 			OptimizeForContinuousPageFetchWith("recent-orders", 60)
-		_, err := svc.FetchAll(ctx, first)
+		_, err := svc.FetchAll(context, first)
 		if err != nil {
 			t.Fatal(err)
 		}
-		if got := ctx.ContinuousPagePlan(); got != "OFFSET_FALLBACK:FIRST_PAGE" {
+		if got := context.ContinuousPagePlan(); got != "OFFSET_FALLBACK:FIRST_PAGE" {
 			t.Fatalf("plan=%s", got)
 		}
 
 		second := core.NewSelectQuery("Order").WithOrderBy(core.OrderDesc("id")).Page(10, 10).
 			OptimizeForContinuousPageFetchWith("recent-orders", 60)
-		_, err = svc.FetchAll(ctx, second)
+		_, err = svc.FetchAll(context, second)
 		if err != nil {
 			t.Fatal(err)
 		}
-		if got := ctx.ContinuousPagePlan(); got != "CURSOR_SEEK" {
+		if got := context.ContinuousPagePlan(); got != "CURSOR_SEEK" {
 			t.Fatalf("plan=%s", got)
 		}
-		if ctx.ContinuousPageCursorID() == "" {
+		if context.ContinuousPageCursorID() == "" {
 			t.Fatal("missing cursor id")
 		}
 		if got := executor.queries[1].Slice.Offset; got != 0 {
@@ -205,16 +205,16 @@ func TestRuntimeDataServiceContinuousPageFetch(t *testing.T) {
 
 	t.Run("ascending next page uses seek", func(t *testing.T) {
 		executor := &capturingExecutor{rows: [][]core.Record{pageRows(1, 10, false), pageRows(11, 10, false)}}
-		ctx := runtime.NewUserContext()
+		context := runtime.NewUserContext()
 		svc := runtime.NewRuntimeDataService(runtime.NewInMemoryMetadataStore(), executor)
 		for _, offset := range []uint64{0, 10} {
 			query := core.NewSelectQuery("Order").WithOrderBy(core.OrderAsc("id")).Page(offset, 10).
 				OptimizeForContinuousPageFetchWith("oldest-orders", 60)
-			if _, err := svc.FetchAll(ctx, query); err != nil {
+			if _, err := svc.FetchAll(context, query); err != nil {
 				t.Fatal(err)
 			}
 		}
-		if got := ctx.ContinuousPagePlan(); got != "CURSOR_SEEK" {
+		if got := context.ContinuousPagePlan(); got != "CURSOR_SEEK" {
 			t.Fatalf("plan=%s", got)
 		}
 		if executor.queries[1].Filter == nil || executor.queries[1].Filter.Op != core.OpGt {
@@ -224,23 +224,23 @@ func TestRuntimeDataServiceContinuousPageFetch(t *testing.T) {
 
 	t.Run("cache miss and store outage fall back", func(t *testing.T) {
 		executor := &capturingExecutor{rows: [][]core.Record{pageRows(90, 10, true), pageRows(80, 10, true)}}
-		ctx := runtime.NewUserContext()
+		context := runtime.NewUserContext()
 		svc := runtime.NewRuntimeDataService(runtime.NewInMemoryMetadataStore(), executor)
 		query := core.NewSelectQuery("Order").WithOrderBy(core.OrderDesc("id")).Page(10, 10).
 			OptimizeForContinuousPageFetchWith("missing", 60)
-		if _, err := svc.FetchAll(ctx, query); err != nil {
+		if _, err := svc.FetchAll(context, query); err != nil {
 			t.Fatal(err)
 		}
-		if got := ctx.ContinuousPagePlan(); got != "OFFSET_FALLBACK:CACHE_MISS" {
+		if got := context.ContinuousPagePlan(); got != "OFFSET_FALLBACK:CACHE_MISS" {
 			t.Fatalf("plan=%s", got)
 		}
-		ctx.SetContinuousPageCursorStore(unavailableCursorStore{})
+		context.SetContinuousPageCursorStore(unavailableCursorStore{})
 		query = core.NewSelectQuery("Order").WithOrderBy(core.OrderDesc("id")).Page(10, 10).
 			OptimizeForContinuousPageFetchWith("outage", 60)
-		if _, err := svc.FetchAll(ctx, query); err != nil {
+		if _, err := svc.FetchAll(context, query); err != nil {
 			t.Fatal(err)
 		}
-		if got := ctx.ContinuousPagePlan(); got != "OFFSET_FALLBACK:STORE_UNAVAILABLE" {
+		if got := context.ContinuousPagePlan(); got != "OFFSET_FALLBACK:STORE_UNAVAILABLE" {
 			t.Fatalf("plan=%s", got)
 		}
 	})

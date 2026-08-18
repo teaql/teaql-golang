@@ -55,23 +55,23 @@ func TestSmartListAdditionalMethods(t *testing.T) {
 	items := NewSmartList([]TestItem{
 		{Id: 1, Value: "one"},
 	})
-	
+
 	items.WithTotalCount(100)
 	assert.Equal(t, uint64(100), *items.TotalCount)
-	
+
 	items.WithAggregation("sum", ValI64(50))
 	assert.Equal(t, ValI64(50), items.Aggregations["sum"])
-	
+
 	items.WithSummary("avg", ValI64(5))
 	assert.Equal(t, ValI64(5), items.Summary["avg"])
-	
+
 	facetList := NewSmartList([]Record{})
 	items.WithFacet("tags", facetList)
 	assert.Equal(t, facetList, items.Facets["tags"])
-	
+
 	items.Push(TestItem{Id: 2, Value: "two"})
 	assert.Equal(t, 2, items.Len())
-	
+
 	items.Extend([]TestItem{
 		{Id: 3, Value: "three"},
 		{Id: 4, Value: "four"},
@@ -85,7 +85,6 @@ type DummyListEntity struct {
 	version int64
 	record  Record
 }
-
 
 func (d *DummyListEntity) IntoRecord() Record {
 	return d.record
@@ -146,7 +145,7 @@ func (d *DummyListEntity) IntoJson() any {
 
 func TestSmartList_Facets(t *testing.T) {
 	list := EmptySmartList[int]()
-	
+
 	facetList := EmptySmartList[Record]()
 	list.AddFacet("f1", facetList)
 
@@ -181,7 +180,7 @@ func TestSmartList_Facets(t *testing.T) {
 
 func TestSmartList_BasicOps(t *testing.T) {
 	list := NewSmartList([]int{1, 2, 3})
-	
+
 	if list.IsEmpty() {
 		t.Errorf("Expected not empty")
 	}
@@ -272,7 +271,7 @@ func TestSmartList_IntoVec(t *testing.T) {
 
 func TestSmartList_MapAndTransform(t *testing.T) {
 	list := NewSmartList([]int{1, 2, 3})
-	
+
 	mapped := MapSmartList(list, func(v int) int64 { return int64(v) * 2 })
 	if len(mapped.Data) != 3 || mapped.Data[0] != 2 {
 		t.Errorf("MapSmartList failed")
@@ -304,7 +303,7 @@ func TestSmartList_Entities(t *testing.T) {
 	e2 := &DummyListEntity{id: ValI64(2), version: 20, record: Record{"a": ValI64(2)}}
 
 	list := NewSmartList([]*DummyListEntity{e1, e2})
-	
+
 	records := IntoRecords(list)
 	if len(records.Data) != 2 {
 		t.Errorf("IntoRecords failed")

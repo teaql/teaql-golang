@@ -1,9 +1,9 @@
 package core
 
 import (
-	"testing"
-	"github.com/stretchr/testify/assert"
 	"github.com/shopspring/decimal"
+	"github.com/stretchr/testify/assert"
+	"testing"
 )
 
 func TestBaseEntityDataToAndFromRecord(t *testing.T) {
@@ -13,7 +13,7 @@ func TestBaseEntityDataToAndFromRecord(t *testing.T) {
 		WithDynamic("name", ValText("test"))
 
 	record := b.ToRecord()
-	
+
 	valId, ok := record["id"].TryU64()
 	assert.True(t, ok)
 	assert.Equal(t, uint64(7), valId)
@@ -21,7 +21,7 @@ func TestBaseEntityDataToAndFromRecord(t *testing.T) {
 	valVersion, ok := record["version"].TryI64()
 	assert.True(t, ok)
 	assert.Equal(t, int64(2), valVersion)
-	
+
 	valName, ok := record["name"].TryText()
 	assert.True(t, ok)
 	assert.Equal(t, "test", valName)
@@ -30,7 +30,7 @@ func TestBaseEntityDataToAndFromRecord(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, uint64(7), b2.Id)
 	assert.Equal(t, int64(2), b2.Version)
-	
+
 	name, ok := b2.DynamicText("name")
 	assert.True(t, ok)
 	assert.Equal(t, "test", name)
@@ -40,19 +40,19 @@ type entityTestMockEntity struct {
 	comment string
 }
 
-func (m *entityTestMockEntity) EntityName() string { return "Mock" }
+func (m *entityTestMockEntity) EntityName() string                  { return "Mock" }
 func (m *entityTestMockEntity) EntityDescriptor() *EntityDescriptor { return nil }
-func (m *entityTestMockEntity) FromRecord(record Record) error { return nil }
-func (m *entityTestMockEntity) IntoRecord() Record { return nil }
-func (m *entityTestMockEntity) DirtyFields() []string { return nil }
-func (m *entityTestMockEntity) IsMarkedAsDelete() bool { return false }
-func (m *entityTestMockEntity) IsNew() bool { return false }
-func (m *entityTestMockEntity) MarkAsNew() {}
-func (m *entityTestMockEntity) GetComment() *string { return &m.comment }
-func (m *entityTestMockEntity) SetComment(comment string) { m.comment = comment }
-func (m *entityTestMockEntity) OriginalValues() Record { return nil }
-func (m *entityTestMockEntity) OnLoaded(context any) {}
-func (m *entityTestMockEntity) IntoJson() any { return nil }
+func (m *entityTestMockEntity) FromRecord(record Record) error      { return nil }
+func (m *entityTestMockEntity) IntoRecord() Record                  { return nil }
+func (m *entityTestMockEntity) DirtyFields() []string               { return nil }
+func (m *entityTestMockEntity) IsMarkedAsDelete() bool              { return false }
+func (m *entityTestMockEntity) IsNew() bool                         { return false }
+func (m *entityTestMockEntity) MarkAsNew()                          {}
+func (m *entityTestMockEntity) GetComment() *string                 { return &m.comment }
+func (m *entityTestMockEntity) SetComment(comment string)           { m.comment = comment }
+func (m *entityTestMockEntity) OriginalValues() Record              { return nil }
+func (m *entityTestMockEntity) OnLoaded(context any)                {}
+func (m *entityTestMockEntity) IntoJson() any                       { return nil }
 
 func TestEntityError(t *testing.T) {
 	err := NewEntityError("TestEntity", "test message")
@@ -76,57 +76,57 @@ func TestAuditedPanic(t *testing.T) {
 
 func TestBaseEntityDataDynamics(t *testing.T) {
 	b := NewBaseEntityData()
-	
+
 	// DynamicI64
 	b.PutDynamic("i64", ValI64(42))
 	vI64, ok := b.DynamicI64("i64")
 	assert.True(t, ok)
 	assert.Equal(t, int64(42), vI64)
-	
+
 	_, ok = b.DynamicI64("missing")
 	assert.False(t, ok)
-	
+
 	// DynamicU64
 	b.PutDynamic("u64", ValU64(43))
 	vU64, ok := b.DynamicU64("u64")
 	assert.True(t, ok)
 	assert.Equal(t, uint64(43), vU64)
-	
+
 	_, ok = b.DynamicU64("missing")
 	assert.False(t, ok)
-	
+
 	// DynamicDecimal
 	dec := decimal.NewFromFloat(44.4)
 	b.PutDynamic("dec", ValDecimal(dec))
 	vDec, ok := b.DynamicDecimal("dec")
 	assert.True(t, ok)
 	assert.True(t, dec.Equal(vDec))
-	
+
 	_, ok = b.DynamicDecimal("missing")
 	assert.False(t, ok)
-	
+
 	// DynamicF64
 	b.PutDynamic("f64", ValF64(45.5))
 	vF64, ok := b.DynamicF64("f64")
 	assert.True(t, ok)
 	assert.Equal(t, float64(45.5), vF64)
-	
+
 	_, ok = b.DynamicF64("missing")
 	assert.False(t, ok)
-	
+
 	// DynamicText
 	_, ok = b.DynamicText("missing")
 	assert.False(t, ok)
-	
+
 	// DynamicBool
 	b.PutDynamic("bool", ValBool(true))
 	vBool, ok := b.DynamicBool("bool")
 	assert.True(t, ok)
 	assert.Equal(t, true, vBool)
-	
+
 	_, ok = b.DynamicBool("missing")
 	assert.False(t, ok)
-	
+
 	// RemoveDynamic
 	b.RemoveDynamic("bool")
 	_, ok = b.DynamicBool("bool")

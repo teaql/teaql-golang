@@ -1,7 +1,7 @@
 package tfp_endpoint
 
 import (
-	"context"
+	stdcontext "context"
 	"encoding/json"
 	"fmt"
 
@@ -28,14 +28,14 @@ type TfpOrderBy struct {
 }
 
 type TfpSelectQuery struct {
-	Entity         string                 `json:"entity"`
+	Entity          string                 `json:"entity"`
 	FilterCondition map[string]interface{} `json:"filterCondition,omitempty"`
-	LimitValue     *uint64                `json:"limitValue,omitempty"`
-	OffsetValue    *uint64                `json:"offsetValue,omitempty"`
-	OrderItems     []TfpOrderBy           `json:"orderItems,omitempty"`
-	SelectItems    []string               `json:"selectItems,omitempty"`
-	GroupByItems   []string               `json:"groupByItems,omitempty"`
-	CommentText    *string                `json:"commentText,omitempty"`
+	LimitValue      *uint64                `json:"limitValue,omitempty"`
+	OffsetValue     *uint64                `json:"offsetValue,omitempty"`
+	OrderItems      []TfpOrderBy           `json:"orderItems,omitempty"`
+	SelectItems     []string               `json:"selectItems,omitempty"`
+	GroupByItems    []string               `json:"groupByItems,omitempty"`
+	CommentText     *string                `json:"commentText,omitempty"`
 }
 
 type TfpMutationQuery struct {
@@ -46,7 +46,7 @@ type TfpMutationQuery struct {
 	Comment *string                `json:"comment,omitempty"`
 }
 
-func (e *TfpEndpoint) HandleQuery(ctx context.Context, payload []byte) (map[string]interface{}, error) {
+func (e *TfpEndpoint) HandleQuery(context stdcontext.Context, payload []byte) (map[string]interface{}, error) {
 	var tfpQuery TfpSelectQuery
 	if err := json.Unmarshal(payload, &tfpQuery); err != nil {
 		return nil, fmt.Errorf("failed to parse JSON payload: %w", err)
@@ -82,7 +82,7 @@ func (e *TfpEndpoint) HandleQuery(ctx context.Context, payload []byte) (map[stri
 		Comment: tfpQuery.CommentText,
 	}
 
-	res, err := e.queryExecutor.Query(ctx, req)
+	res, err := e.queryExecutor.Query(context, req)
 	if err != nil {
 		return nil, fmt.Errorf("query execution failed: %w", err)
 	}
@@ -106,7 +106,7 @@ func (e *TfpEndpoint) HandleQuery(ctx context.Context, payload []byte) (map[stri
 	return response, nil
 }
 
-func (e *TfpEndpoint) HandleMutation(ctx context.Context, payload []byte) (map[string]interface{}, error) {
+func (e *TfpEndpoint) HandleMutation(context stdcontext.Context, payload []byte) (map[string]interface{}, error) {
 	var tfpMut TfpMutationQuery
 	if err := json.Unmarshal(payload, &tfpMut); err != nil {
 		return nil, fmt.Errorf("failed to parse JSON payload: %w", err)
@@ -183,7 +183,7 @@ func (e *TfpEndpoint) HandleMutation(ctx context.Context, payload []byte) (map[s
 		return nil, fmt.Errorf("unknown mutation action: %s", tfpMut.Action)
 	}
 
-	res, err := e.mutationExecutor.Mutate(ctx, mutReq)
+	res, err := e.mutationExecutor.Mutate(context, mutReq)
 	if err != nil {
 		return nil, fmt.Errorf("mutation execution failed: %w", err)
 	}

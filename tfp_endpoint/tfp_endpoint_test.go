@@ -1,7 +1,7 @@
 package tfp_endpoint
 
 import (
-	"context"
+	stdcontext "context"
 	"testing"
 
 	"github.com/teaql/teaql-golang/core"
@@ -14,7 +14,7 @@ func (e *capturingQueryExecutor) Capabilities() data_service.DataServiceCapabili
 	return data_service.DataServiceCapabilities{Query: true}
 }
 
-func (e *capturingQueryExecutor) Query(_ context.Context, request *data_service.QueryRequest) (*data_service.QueryResult, error) {
+func (e *capturingQueryExecutor) Query(_ stdcontext.Context, request *data_service.QueryRequest) (*data_service.QueryResult, error) {
 	e.query = request.Query
 	return &data_service.QueryResult{Rows: []core.Record{}}, nil
 }
@@ -29,7 +29,7 @@ func TestFederalPayloadCannotEnableContinuousPageFetch(t *testing.T) {
 		"orderItems":[{"field":"id","direction":"Desc"}],
 		"continuousPageFetch":{"namespace":"attacker","ttlSeconds":999999}
 	}`)
-	if _, err := endpoint.HandleQuery(context.Background(), payload); err != nil {
+	if _, err := endpoint.HandleQuery(stdcontext.Background(), payload); err != nil {
 		t.Fatal(err)
 	}
 	if executor.query == nil {

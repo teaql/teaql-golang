@@ -1,7 +1,7 @@
 package redis
 
 import (
-	"context"
+	stdcontext "context"
 	"encoding/json"
 	"time"
 
@@ -10,9 +10,9 @@ import (
 )
 
 type DataStore interface {
-	Get(ctx context.Context, key string) (core.Value, bool)
-	Put(ctx context.Context, key string, value core.Value, timeoutSeconds *uint64) error
-	Remove(ctx context.Context, key string) error
+	Get(context stdcontext.Context, key string) (core.Value, bool)
+	Put(context stdcontext.Context, key string, value core.Value, timeoutSeconds *uint64) error
+	Remove(context stdcontext.Context, key string) error
 }
 
 type RedisDataStore struct {
@@ -35,8 +35,8 @@ func (s *RedisDataStore) Client() *redis.Client {
 	return s.client
 }
 
-func (s *RedisDataStore) Get(ctx context.Context, key string) (core.Value, bool) {
-	val, err := s.client.Get(ctx, key).Result()
+func (s *RedisDataStore) Get(context stdcontext.Context, key string) (core.Value, bool) {
+	val, err := s.client.Get(context, key).Result()
 	if err == redis.Nil || err != nil {
 		return core.ValNull(), false
 	}
@@ -50,7 +50,7 @@ func (s *RedisDataStore) Get(ctx context.Context, key string) (core.Value, bool)
 	return jsonToCoreValue(jsonVal), true
 }
 
-func (s *RedisDataStore) Put(ctx context.Context, key string, value core.Value, timeoutSeconds *uint64) error {
+func (s *RedisDataStore) Put(context stdcontext.Context, key string, value core.Value, timeoutSeconds *uint64) error {
 	jsonBytes, err := json.Marshal(value.V)
 	if err != nil {
 		return err
@@ -61,11 +61,11 @@ func (s *RedisDataStore) Put(ctx context.Context, key string, value core.Value, 
 		duration = time.Duration(*timeoutSeconds) * time.Second
 	}
 
-	return s.client.Set(ctx, key, string(jsonBytes), duration).Err()
+	return s.client.Set(context, key, string(jsonBytes), duration).Err()
 }
 
-func (s *RedisDataStore) Remove(ctx context.Context, key string) error {
-	return s.client.Del(ctx, key).Err()
+func (s *RedisDataStore) Remove(context stdcontext.Context, key string) error {
+	return s.client.Del(context, key).Err()
 }
 
 func jsonToCoreValue(v interface{}) core.Value {

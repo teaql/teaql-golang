@@ -36,14 +36,14 @@ func main() {
 	}
 	must(os.MkdirAll(filepath.Dir(db), 0o755))
 	must(os.Setenv("ORDER_MANAGEMENT_SERVICE_CORE_DATABASE_URL", db))
-	ctx, err := lib.ServiceRuntimeFromEnv()
+	context, err := lib.ServiceRuntimeFromEnv()
 	must(err)
-	ctx.WithAppAuditEventSink(appAudit{})
+	context.WithAppAuditEventSink(appAudit{})
 	fmt.Println("[schema] ensured 7 generated entity tables")
 
 	platforms, err := lib.Q.CommercePlatforms().WithNameIs("Northwind Demo").
 		Comment("Check whether deterministic quick-start data exists").
-		Purpose("Initialize the local order-management example").ExecuteForList(ctx)
+		Purpose("Initialize the local order-management example").ExecuteForList(context)
 	must(err)
 	var platformID uint64
 	if len(platforms.Data) == 0 {
@@ -52,7 +52,7 @@ func main() {
 			UpdateName("Northwind Demo").
 			UpdateCreateTime(now).
 			UpdateUpdateTime(now)
-		must(platform.AuditAs("Create quick-start commerce platform").Save(ctx))
+		must(platform.AuditAs("Create quick-start commerce platform").Save(context))
 		platformID = platform.Id()
 		buyer := customer.NewCustomer().
 			UpdateName("Acme Retail").
@@ -60,14 +60,14 @@ func main() {
 			UpdateCommercePlatformId(platform.Id()).
 			UpdateCreateTime(now).
 			UpdateUpdateTime(now)
-		must(buyer.AuditAs("Create masked quick-start customer").Save(ctx))
+		must(buyer.AuditAs("Create masked quick-start customer").Save(context))
 		pending := order_status.NewOrderStatus().
 			UpdateName("Pending").
 			UpdateCode("PENDING").
 			UpdateColor("#F97316").
 			UpdateDisplayOrder(decimal.NewFromInt(10)).
 			UpdateCommercePlatformId(platform.Id())
-		must(pending.AuditAs("Create quick-start pending status").Save(ctx))
+		must(pending.AuditAs("Create quick-start pending status").Save(context))
 		orderDate := time.Date(2026, 8, 12, 0, 0, 0, 0, time.UTC)
 		order := customer_order.NewCustomerOrder().
 			UpdateOrderNumber("WEB-2026-001").
@@ -77,7 +77,7 @@ func main() {
 			UpdateCommercePlatformId(platform.Id())
 		// The generated constant transition uses the stable status id from the model.
 		order.UpdateStatusToPending()
-		must(order.AuditAs("Create deterministic quick-start order").Save(ctx))
+		must(order.AuditAs("Create deterministic quick-start order").Save(context))
 		fmt.Println("[seed] inserted deterministic platform, customer, status, and order")
 	} else {
 		platformID = platforms.Data[0].Id()
@@ -86,7 +86,7 @@ func main() {
 
 	orders, err := lib.Q.CustomerOrders().WithOrderNumberContaining("WEB-").OrderByIdAsc().
 		Comment("List WEB orders for the terminal quick start").
-		Purpose("Show the operator a deterministic order list").ExecuteForList(ctx)
+		Purpose("Show the operator a deterministic order list").ExecuteForList(context)
 	must(err)
 	fmt.Printf("[query] matched %d order(s)\n", len(orders.Data))
 	for _, order := range orders.Data {
@@ -94,7 +94,7 @@ func main() {
 	}
 
 	presets, err := lib.Q.OrderSearchPresets().WithRequestIdIs("quick-start-pending-orders").
-		Comment("Check idempotent quick-start preset").Purpose("Persist the operator's reusable search").ExecuteForList(ctx)
+		Comment("Check idempotent quick-start preset").Purpose("Persist the operator's reusable search").ExecuteForList(context)
 	must(err)
 	if len(presets.Data) == 0 {
 		preset := order_search_preset.NewOrderSearchPreset().
@@ -103,7 +103,7 @@ func main() {
 			UpdateRequestId("quick-start-pending-orders").
 			UpdateOwnerUserId("quick-start-user").
 			UpdateCommercePlatformId(platformID)
-		must(preset.AuditAs("Save idempotent quick-start search preset").Save(ctx))
+		must(preset.AuditAs("Save idempotent quick-start search preset").Save(context))
 		fmt.Printf("[mutation] saved preset #%d\n", preset.Id())
 	} else {
 		fmt.Printf("[mutation] preset #%d already exists\n", presets.Data[0].Id())

@@ -1,5 +1,3 @@
-
-
 package task_status
 
 import (
@@ -405,13 +403,13 @@ func (r *TaskStatusRequest) CountTasks() *TaskStatusRequest {
 	return r
 }
 
-func (r *TaskStatusRequest) NewEntity(ctx *runtime.UserContext) *TaskStatus {
+func (r *TaskStatusRequest) NewEntity(context *runtime.UserContext) *TaskStatus {
 	entity := NewTaskStatus()
 	return entity
 }
 
-func (r *TaskStatusRequest) ExecuteForOne(ctx *runtime.UserContext) (*TaskStatus, error) {
-	list, err := r.ExecuteForList(ctx)
+func (r *TaskStatusRequest) ExecuteForOne(context *runtime.UserContext) (*TaskStatus, error) {
+	list, err := r.ExecuteForList(context)
 	if err != nil {
 		return nil, err
 	}
@@ -421,8 +419,8 @@ func (r *TaskStatusRequest) ExecuteForOne(ctx *runtime.UserContext) (*TaskStatus
 	return list.Data[0], nil
 }
 
-func (r *TaskStatusRequest) ExecuteForList(ctx *runtime.UserContext) (*core.SmartList[*TaskStatus], error) {
-	dsRaw := ctx.GetResource("dataService")
+func (r *TaskStatusRequest) ExecuteForList(context *runtime.UserContext) (*core.SmartList[*TaskStatus], error) {
+	dsRaw := context.GetResource("dataService")
 	if dsRaw == nil {
 		return nil, fmt.Errorf("dataService not found in UserContext")
 	}
@@ -436,7 +434,7 @@ func (r *TaskStatusRequest) ExecuteForList(ctx *runtime.UserContext) (*core.Smar
 		Query: r.Query,
 	}
 
-	res, err := ds.Query(ctx, req)
+	res, err := ds.Query(context, req)
 	if err != nil {
 		return nil, err
 	}

@@ -3,21 +3,21 @@ package lib
 import (
 	"database/sql"
 	"fmt"
-	"os"
 	_ "github.com/mattn/go-sqlite3"
+	"os"
 
 	"github.com/teaql/teaql-golang/core"
+	provider "github.com/teaql/teaql-golang/provider/sqlite"
 	"github.com/teaql/teaql-golang/runtime"
 	teaql_sql "github.com/teaql/teaql-golang/sql"
-	provider "github.com/teaql/teaql-golang/provider/sqlite"
 
 	"order-management-service-core-workspace/lib/commerce_platform"
 	"order-management-service-core-workspace/lib/customer"
-	"order-management-service-core-workspace/lib/order_status"
 	"order-management-service-core-workspace/lib/customer_order"
-	"order-management-service-core-workspace/lib/product"
 	"order-management-service-core-workspace/lib/order_line"
 	"order-management-service-core-workspace/lib/order_search_preset"
+	"order-management-service-core-workspace/lib/order_status"
+	"order-management-service-core-workspace/lib/product"
 )
 
 func Module() *runtime.RuntimeModule {
@@ -117,7 +117,7 @@ func ServiceRuntimeFromEnv() (*runtime.UserContext, error) {
 	}
 
 	module := ModuleWithBehaviors()
-	ctx := module.IntoContext()
+	context := module.IntoContext()
 
 	dialect := &provider.SqliteDialect{}
 	transport := provider.NewSqliteMutationExecutor(db)
@@ -127,11 +127,11 @@ func ServiceRuntimeFromEnv() (*runtime.UserContext, error) {
 		return nil, err
 	}
 
-	ctx.InsertResource("dataService", executor)
-	ctx.InsertResource("db", db)
-	ctx.InsertResource("idGenerator", &sqlIdGenerator{db: db})
+	context.InsertResource("dataService", executor)
+	context.InsertResource("db", db)
+	context.InsertResource("idGenerator", &sqlIdGenerator{db: db})
 
-	return ctx, nil
+	return context, nil
 }
 
 func ensureGeneratedSchema(db *sql.DB, dialect teaql_sql.SqlDialect, metadata runtime.MetadataStore) error {
@@ -154,9 +154,9 @@ func ensureGeneratedSchema(db *sql.DB, dialect teaql_sql.SqlDialect, metadata ru
 			return fmt.Errorf("compile indexes for %s: %w", entity.Name, err)
 		}
 		for _, indexStatement := range indexes {
-		if _, err := db.Exec(indexStatement); err != nil {
-			return fmt.Errorf("create index for %s: %w", entity.Name, err)
-		}
+			if _, err := db.Exec(indexStatement); err != nil {
+				return fmt.Errorf("create index for %s: %w", entity.Name, err)
+			}
 		}
 	}
 	return nil

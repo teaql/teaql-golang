@@ -2,13 +2,13 @@ package gin
 
 import (
 	"errors"
-	"net/http"
-	"net/http/httptest"
-	"testing"
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/assert"
 	"github.com/teaql/teaql-golang/core"
 	"github.com/teaql/teaql-golang/runtime"
+	"net/http"
+	"net/http/httptest"
+	"testing"
 )
 
 func TestWebResponse(t *testing.T) {
@@ -46,24 +46,24 @@ func TestGinMiddleware(t *testing.T) {
 
 	w := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(w)
-	
+
 	// mock request
 	req, _ := http.NewRequest("GET", "/test", nil)
 	req.Header.Set("X-User-Id", "user123")
 	req.Header.Set("User-Agent", "TestAgent")
 	c.Request = req
-	
+
 	middleware(c)
-	
-	ctx, ok := GetTeaContext(c)
+
+	context, ok := GetTeaContext(c)
 	assert.True(t, ok)
-	assert.NotNil(t, ctx)
-	
-	reqInfo := ctx.GetResource("WebRequestInfo").(*WebRequestInfo)
+	assert.NotNil(t, context)
+
+	reqInfo := context.GetResource("WebRequestInfo").(*WebRequestInfo)
 	assert.NotNil(t, reqInfo)
 	assert.Equal(t, "TestAgent", *reqInfo.UserAgent)
-	assert.Equal(t, "user123", ctx.GetResource("UserId"))
-	
+	assert.Equal(t, "user123", context.GetResource("UserId"))
+
 	// Test GetTeaContext failure
 	c2, _ := gin.CreateTestContext(httptest.NewRecorder())
 	ctx2, ok2 := GetTeaContext(c2)

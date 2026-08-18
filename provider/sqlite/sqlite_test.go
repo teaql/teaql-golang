@@ -1,7 +1,7 @@
 package sqlite
 
 import (
-	"context"
+	stdcontext "context"
 	"database/sql"
 	"fmt"
 	"strings"
@@ -165,7 +165,7 @@ func TestSqliteMutationExecutor(t *testing.T) {
 	}
 
 	exec := NewSqliteMutationExecutor(db)
-	ctx := context.Background()
+	context := stdcontext.Background()
 
 	// ExecuteSql
 	queryExec := &teaql_sql.CompiledQuery{
@@ -174,7 +174,7 @@ func TestSqliteMutationExecutor(t *testing.T) {
 	}
 	// Note: using valid core Values here
 	queryExec.Params = []core.Value{core.ValI64(2), core.ValText("bar"), core.ValBool(false), core.ValF64(2.34), core.ValText("bytes2")}
-	affected, err := exec.ExecuteSql(ctx, queryExec)
+	affected, err := exec.ExecuteSql(context, queryExec)
 	if err != nil {
 		t.Fatalf("Unexpected error on ExecuteSql: %v", err)
 	}
@@ -187,7 +187,7 @@ func TestSqliteMutationExecutor(t *testing.T) {
 		Sql:    "SELECT * FROM test",
 		Params: nil,
 	}
-	records, err := exec.FetchAllSql(ctx, queryFetch)
+	records, err := exec.FetchAllSql(context, queryFetch)
 	if err != nil {
 		t.Fatalf("Unexpected error on FetchAllSql: %v", err)
 	}
@@ -200,11 +200,11 @@ func TestSqliteMutationExecutor(t *testing.T) {
 		Sql:    "INSERT INTO test VALUES (?)",
 		Params: []core.Value{{V: struct{}{}}},
 	}
-	_, err = exec.ExecuteSql(ctx, queryExecUnsupported)
+	_, err = exec.ExecuteSql(context, queryExecUnsupported)
 	if err == nil {
 		t.Errorf("Expected error for unsupported bind value")
 	}
-	_, err = exec.FetchAllSql(ctx, queryExecUnsupported)
+	_, err = exec.FetchAllSql(context, queryExecUnsupported)
 	if err == nil {
 		t.Errorf("Expected error for unsupported bind value")
 	}
@@ -214,7 +214,7 @@ func TestSqliteMutationExecutor(t *testing.T) {
 		Sql:    "INSERT INTO unknown VALUES (?)",
 		Params: []core.Value{core.ValI64(1)},
 	}
-	_, err = exec.ExecuteSql(ctx, queryExecBad)
+	_, err = exec.ExecuteSql(context, queryExecBad)
 	if err == nil {
 		t.Errorf("Expected error for bad sql in ExecuteSql")
 	}
@@ -224,18 +224,18 @@ func TestSqliteMutationExecutor(t *testing.T) {
 		Sql:    "SELECT * FROM unknown",
 		Params: nil,
 	}
-	_, err = exec.FetchAllSql(ctx, queryFetchBad)
+	_, err = exec.FetchAllSql(context, queryFetchBad)
 	if err == nil {
 		t.Errorf("Expected error for bad sql in FetchAllSql")
 	}
 
 	// Test closed DB
 	db.Close()
-	_, err = exec.ExecuteSql(ctx, queryExec)
+	_, err = exec.ExecuteSql(context, queryExec)
 	if err == nil {
 		t.Errorf("Expected error for ExecuteSql on closed db")
 	}
-	_, err = exec.FetchAllSql(ctx, queryFetch)
+	_, err = exec.FetchAllSql(context, queryFetch)
 	if err == nil {
 		t.Errorf("Expected error for FetchAllSql on closed db")
 	}
@@ -253,7 +253,7 @@ func TestStreamSqlUsesBoundedChunksAndStopsOnConsumerError(t *testing.T) {
 	exec := NewSqliteMutationExecutor(db)
 	query := &teaql_sql.CompiledQuery{Sql: "SELECT id FROM stream_fixture ORDER BY id"}
 	var sizes []int
-	if err = exec.StreamSql(context.Background(), query, 2, func(rows []core.Record) error {
+	if err = exec.StreamSql(stdcontext.Background(), query, 2, func(rows []core.Record) error {
 		sizes = append(sizes, len(rows))
 		return nil
 	}); err != nil {
@@ -264,7 +264,7 @@ func TestStreamSqlUsesBoundedChunksAndStopsOnConsumerError(t *testing.T) {
 	}
 
 	consumerErr := fmt.Errorf("stop consuming")
-	err = exec.StreamSql(context.Background(), query, 2, func(_ []core.Record) error {
+	err = exec.StreamSql(stdcontext.Background(), query, 2, func(_ []core.Record) error {
 		return consumerErr
 	})
 	if err != consumerErr {
@@ -317,7 +317,7 @@ func TestRelationLimitIsAppliedPerParent(t *testing.T) {
 		"lines",
 		core.NewSelectQuery("OrderLine").Project("id").Project("name").OrderDesc("id").Limit(3),
 	)
-	rows, err := service.FetchAll(context.Background(), query)
+	rows, err := service.FetchAll(stdcontext.Background(), query)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -354,10 +354,10 @@ func TestSqliteTransactionExecutor(t *testing.T) {
 	}
 
 	exec := NewSqliteMutationExecutor(db)
-	ctx := context.Background()
+	context := stdcontext.Background()
 
 	// Begin
-	txExec, err := exec.BeginSql(ctx)
+	txExec, err := exec.BeginSql(context)
 	if err != nil {
 		t.Fatalf("Unexpected error on BeginSql: %v", err)
 	}
@@ -366,7 +366,7 @@ func TestSqliteTransactionExecutor(t *testing.T) {
 		Sql:    "INSERT INTO test VALUES (?)",
 		Params: []core.Value{core.ValI64(1)},
 	}
-	affected, err := txExec.ExecuteSql(ctx, queryExec)
+	affected, err := txExec.ExecuteSql(context, queryExec)
 	if err != nil {
 		t.Fatalf("Unexpected error on tx ExecuteSql: %v", err)
 	}
@@ -378,7 +378,7 @@ func TestSqliteTransactionExecutor(t *testing.T) {
 		Sql:    "SELECT * FROM test",
 		Params: nil,
 	}
-	records, err := txExec.FetchAllSql(ctx, queryFetch)
+	records, err := txExec.FetchAllSql(context, queryFetch)
 	if err != nil {
 		t.Fatalf("Unexpected error on tx FetchAllSql: %v", err)
 	}
@@ -387,33 +387,33 @@ func TestSqliteTransactionExecutor(t *testing.T) {
 	}
 
 	// Commit
-	if err := txExec.CommitSql(ctx); err != nil {
+	if err := txExec.CommitSql(context); err != nil {
 		t.Fatalf("Unexpected error on CommitSql: %v", err)
 	}
 
 	// Test unsupported bind value in Tx
-	txExec2, _ := exec.BeginSql(ctx)
+	txExec2, _ := exec.BeginSql(context)
 	queryExecUnsupported := &teaql_sql.CompiledQuery{
 		Sql:    "INSERT INTO test VALUES (?)",
 		Params: []core.Value{{V: struct{}{}}},
 	}
-	_, err = txExec2.ExecuteSql(ctx, queryExecUnsupported)
+	_, err = txExec2.ExecuteSql(context, queryExecUnsupported)
 	if err == nil {
 		t.Errorf("Expected error for unsupported bind value in tx")
 	}
-	_, err = txExec2.FetchAllSql(ctx, queryExecUnsupported)
+	_, err = txExec2.FetchAllSql(context, queryExecUnsupported)
 	if err == nil {
 		t.Errorf("Expected error for unsupported bind value in tx")
 	}
-	txExec2.RollbackSql(ctx)
+	txExec2.RollbackSql(context)
 
 	// Test SQL error in Tx
-	txExec3, _ := exec.BeginSql(ctx)
+	txExec3, _ := exec.BeginSql(context)
 	queryExecBad := &teaql_sql.CompiledQuery{
 		Sql:    "INSERT INTO unknown VALUES (?)",
 		Params: []core.Value{core.ValI64(1)},
 	}
-	_, err = txExec3.ExecuteSql(ctx, queryExecBad)
+	_, err = txExec3.ExecuteSql(context, queryExecBad)
 	if err == nil {
 		t.Errorf("Expected error for bad sql in tx ExecuteSql")
 	}
@@ -421,11 +421,11 @@ func TestSqliteTransactionExecutor(t *testing.T) {
 		Sql:    "SELECT * FROM unknown",
 		Params: nil,
 	}
-	_, err = txExec3.FetchAllSql(ctx, queryFetchBad)
+	_, err = txExec3.FetchAllSql(context, queryFetchBad)
 	if err == nil {
 		t.Errorf("Expected error for bad sql in tx FetchAllSql")
 	}
-	txExec3.RollbackSql(ctx)
+	txExec3.RollbackSql(context)
 }
 
 func TestBindSqliteValue(t *testing.T) {

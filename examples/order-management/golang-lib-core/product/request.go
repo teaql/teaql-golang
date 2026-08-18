@@ -1,5 +1,3 @@
-
-
 package product
 
 import (
@@ -522,13 +520,13 @@ func (r *ProductRequest) SelectOrderLineListWith(child *order_line.OrderLineRequ
 	return r
 }
 
-func (e *ExecutableProductRequest) NewEntity(ctx *runtime.UserContext) *Product {
+func (e *ExecutableProductRequest) NewEntity(context *runtime.UserContext) *Product {
 	entity := NewProduct()
 	return entity
 }
 
-func (e *ExecutableProductRequest) ExecuteForOne(ctx *runtime.UserContext) (*Product, error) {
-	list, err := e.ExecuteForList(ctx)
+func (e *ExecutableProductRequest) ExecuteForOne(context *runtime.UserContext) (*Product, error) {
+	list, err := e.ExecuteForList(context)
 	if err != nil {
 		return nil, err
 	}
@@ -538,8 +536,8 @@ func (e *ExecutableProductRequest) ExecuteForOne(ctx *runtime.UserContext) (*Pro
 	return list.Data[0], nil
 }
 
-func (e *ExecutableProductRequest) ExecuteForList(ctx *runtime.UserContext) (*core.SmartList[*Product], error) {
-	rows, err := e.ExecuteRecords(ctx)
+func (e *ExecutableProductRequest) ExecuteForList(context *runtime.UserContext) (*core.SmartList[*Product], error) {
+	rows, err := e.ExecuteRecords(context)
 	if err != nil {
 		return nil, err
 	}
@@ -552,25 +550,30 @@ func (e *ExecutableProductRequest) ExecuteForList(ctx *runtime.UserContext) (*co
 		}
 		if relationValue, selected := rec["orderLineList"]; selected {
 			childRecords, ok := relationValue.V.([]core.Record)
-				if !ok { return nil, fmt.Errorf("relation orderLineList has unexpected runtime type %T", relationValue.V) }
-				for _, childRecord := range childRecords {
-					childEntity := order_line.NewOrderLine()
-					if err := childEntity.FromRecord(childRecord); err != nil { return nil, err }
-					entity.OrderLineList().Add(childEntity)
-				}}
+			if !ok {
+				return nil, fmt.Errorf("relation orderLineList has unexpected runtime type %T", relationValue.V)
+			}
+			for _, childRecord := range childRecords {
+				childEntity := order_line.NewOrderLine()
+				if err := childEntity.FromRecord(childRecord); err != nil {
+					return nil, err
+				}
+				entity.OrderLineList().Add(childEntity)
+			}
+		}
 		results = append(results, entity)
 	}
 	return core.NewSmartList(results), nil
 }
 
-func (e *ExecutableProductRequest) ExecuteRecords(ctx *runtime.UserContext) ([]core.Record, error) {
+func (e *ExecutableProductRequest) ExecuteRecords(context *runtime.UserContext) ([]core.Record, error) {
 	r := e.request
 	if strings.TrimSpace(r.purposeText) == "" || strings.TrimSpace(r.commentText) == "" {
 		return nil, fmt.Errorf("security audit failure: Comment() and Purpose() must be called before ExecuteForList()")
 	}
 	r.Query.Comment(fmt.Sprintf("comment=%s; purpose=%s", r.commentText, r.purposeText))
 
-	dsRaw := ctx.GetResource("dataService")
+	dsRaw := context.GetResource("dataService")
 	if dsRaw == nil {
 		return nil, fmt.Errorf("dataService not found in UserContext")
 	}
@@ -580,7 +583,7 @@ func (e *ExecutableProductRequest) ExecuteRecords(ctx *runtime.UserContext) ([]c
 		return nil, fmt.Errorf("dataService does not implement data_service.QueryExecutor")
 	}
 
-	rows, err := runtime.NewRuntimeDataService(ctx.Metadata, ds).FetchAll(ctx, r.Query)
+	rows, err := runtime.NewRuntimeDataService(context.Metadata, ds).FetchAll(context, r.Query)
 	if err != nil {
 		return nil, err
 	}
@@ -595,7 +598,6 @@ func (r *ProductRequest) CountAs(alias string) *ProductRequest {
 	r.Query.CountField("id", alias)
 	return r
 }
-
 
 func (r *ProductRequest) GroupById() *ProductRequest {
 	r.Query.WithGroupBy("id")

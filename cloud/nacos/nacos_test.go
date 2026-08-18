@@ -1,7 +1,7 @@
 package nacos
 
 import (
-	"context"
+	stdcontext "context"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -35,18 +35,18 @@ func TestNacosCloudUsesRealHTTPAPI(t *testing.T) {
 
 	cloud := NewNacosCloud(&NacosConfig{ServerAddrs: []string{server.URL}, NamespaceId: "tenant-a", Group: "APP", HTTPClient: server.Client()})
 	instance := &core.ServiceInstance{ServiceId: "orders", Host: "10.0.0.7", Port: 8080, Metadata: map[string]string{"zone": "a"}}
-	ctx := context.Background()
-	if err := cloud.Register(ctx, instance); err != nil {
+	context := stdcontext.Background()
+	if err := cloud.Register(context, instance); err != nil {
 		t.Fatal(err)
 	}
-	if err := cloud.Deregister(ctx, instance); err != nil {
+	if err := cloud.Deregister(context, instance); err != nil {
 		t.Fatal(err)
 	}
-	instances, err := cloud.GetInstances(ctx, "orders")
+	instances, err := cloud.GetInstances(context, "orders")
 	if err != nil || len(instances) != 1 || instances[0].Host != "10.0.0.7" {
 		t.Fatalf("instances=%v err=%v", instances, err)
 	}
-	config, err := cloud.GetConfig(ctx, "orders.yaml", "APP")
+	config, err := cloud.GetConfig(context, "orders.yaml", "APP")
 	if err != nil || config != "feature=true" {
 		t.Fatalf("config=%q err=%v", config, err)
 	}

@@ -1,7 +1,7 @@
 package runtime
 
 import (
-	"context"
+	stdcontext "context"
 	"fmt"
 	"time"
 
@@ -34,7 +34,7 @@ func (e *SqlDataServiceExecutor) Capabilities() data_service.DataServiceCapabili
 	}
 }
 
-func (e *SqlDataServiceExecutor) Query(ctx context.Context, request *data_service.QueryRequest) (*data_service.QueryResult, error) {
+func (e *SqlDataServiceExecutor) Query(context stdcontext.Context, request *data_service.QueryRequest) (*data_service.QueryResult, error) {
 	if err := request.Query.PrepareForList(); err != nil {
 		return nil, err
 	}
@@ -49,7 +49,7 @@ func (e *SqlDataServiceExecutor) Query(ctx context.Context, request *data_servic
 	}
 
 	startedAt := time.Now()
-	records, err := e.transport.FetchAllSql(ctx, compiled)
+	records, err := e.transport.FetchAllSql(context, compiled)
 	if err != nil {
 		return nil, err
 	}
@@ -62,7 +62,7 @@ func (e *SqlDataServiceExecutor) Query(ctx context.Context, request *data_servic
 		StartedAt: startedAt, EndedAt: time.Now(), ResultCount: &resultCount,
 		TraceChain: request.TraceChain, Comment: request.Comment, DebugQuery: &debugQuery,
 	}
-	if recorder, ok := ctx.(interface {
+	if recorder, ok := context.(interface {
 		RecordExecutionMetadata(data_service.ExecutionMetadata)
 	}); ok {
 		recorder.RecordExecutionMetadata(metadata)
@@ -70,7 +70,7 @@ func (e *SqlDataServiceExecutor) Query(ctx context.Context, request *data_servic
 	return &data_service.QueryResult{Rows: records, Metadata: metadata}, nil
 }
 
-func (e *SqlDataServiceExecutor) Mutate(ctx context.Context, request data_service.MutationRequest) (*data_service.MutationResult, error) {
+func (e *SqlDataServiceExecutor) Mutate(context stdcontext.Context, request data_service.MutationRequest) (*data_service.MutationResult, error) {
 	var compiled *teaql_sql.CompiledQuery
 	var err error
 
@@ -93,7 +93,7 @@ func (e *SqlDataServiceExecutor) Mutate(ctx context.Context, request data_servic
 	}
 
 	startedAt := time.Now()
-	affected, err := e.transport.ExecuteSql(ctx, compiled)
+	affected, err := e.transport.ExecuteSql(context, compiled)
 	if err != nil {
 		return nil, err
 	}
@@ -112,13 +112,13 @@ func (e *SqlDataServiceExecutor) Mutate(ctx context.Context, request data_servic
 		StartedAt: startedAt, EndedAt: time.Now(), AffectedRows: &affected,
 		TraceChain: request.TraceChain(), Comment: request.Comment(), DebugQuery: &debugQuery,
 	}
-	if recorder, ok := ctx.(interface {
+	if recorder, ok := context.(interface {
 		RecordExecutionMetadata(data_service.ExecutionMetadata)
 	}); ok {
 		recorder.RecordExecutionMetadata(metadata)
 	}
 	result := &data_service.MutationResult{AffectedRows: affected, Metadata: metadata}
-	if emitter, ok := ctx.(interface {
+	if emitter, ok := context.(interface {
 		EmitMutationAudit(data_service.MutationRequest, *data_service.MutationResult) error
 	}); ok {
 		if err := emitter.EmitMutationAudit(request, result); err != nil {

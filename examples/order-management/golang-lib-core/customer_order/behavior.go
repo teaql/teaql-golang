@@ -9,12 +9,12 @@ type CustomerOrderBehavior struct {
 	runtime.DefaultEntityDataServiceBehavior
 }
 
-func (b *CustomerOrderBehavior) BeforeInsert(ctx *runtime.UserContext, command *core.InsertCommand) error {
+func (b *CustomerOrderBehavior) BeforeInsert(context *runtime.UserContext, command *core.InsertCommand) error {
 	// Custom behavior
 	return nil
 }
 
-func (b *CustomerOrderBehavior) BeforeUpdate(ctx *runtime.UserContext, command *core.UpdateCommand) error {
+func (b *CustomerOrderBehavior) BeforeUpdate(context *runtime.UserContext, command *core.UpdateCommand) error {
 	// Custom behavior
 	return nil
 }

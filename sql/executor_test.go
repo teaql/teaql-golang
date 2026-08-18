@@ -1,7 +1,7 @@
 package sql
 
 import (
-	"context"
+	stdcontext "context"
 	"errors"
 	"testing"
 
@@ -11,56 +11,56 @@ import (
 )
 
 type mockSqlTransport struct {
-	fetchAllSql func(ctx context.Context, query *CompiledQuery) ([]core.Record, error)
-	executeSql  func(ctx context.Context, query *CompiledQuery) (uint64, error)
-	beginSql    func(ctx context.Context) (SqlTransactionTransportTx, error)
-	streamSql   func(ctx context.Context, query *CompiledQuery, chunkSize int, yield func([]core.Record) error) error
+	fetchAllSql func(context stdcontext.Context, query *CompiledQuery) ([]core.Record, error)
+	executeSql  func(context stdcontext.Context, query *CompiledQuery) (uint64, error)
+	beginSql    func(context stdcontext.Context) (SqlTransactionTransportTx, error)
+	streamSql   func(context stdcontext.Context, query *CompiledQuery, chunkSize int, yield func([]core.Record) error) error
 }
 
-func (m *mockSqlTransport) StreamSql(ctx context.Context, query *CompiledQuery, chunkSize int, yield func([]core.Record) error) error {
+func (m *mockSqlTransport) StreamSql(context stdcontext.Context, query *CompiledQuery, chunkSize int, yield func([]core.Record) error) error {
 	if m.streamSql != nil {
-		return m.streamSql(ctx, query, chunkSize, yield)
+		return m.streamSql(context, query, chunkSize, yield)
 	}
 	return errors.New("stream unsupported")
 }
 
-func (m *mockSqlTransport) FetchAllSql(ctx context.Context, query *CompiledQuery) ([]core.Record, error) {
+func (m *mockSqlTransport) FetchAllSql(context stdcontext.Context, query *CompiledQuery) ([]core.Record, error) {
 	if m.fetchAllSql != nil {
-		return m.fetchAllSql(ctx, query)
+		return m.fetchAllSql(context, query)
 	}
 	return nil, nil
 }
 
-func (m *mockSqlTransport) ExecuteSql(ctx context.Context, query *CompiledQuery) (uint64, error) {
+func (m *mockSqlTransport) ExecuteSql(context stdcontext.Context, query *CompiledQuery) (uint64, error) {
 	if m.executeSql != nil {
-		return m.executeSql(ctx, query)
+		return m.executeSql(context, query)
 	}
 	return 0, nil
 }
 
-func (m *mockSqlTransport) BeginSql(ctx context.Context) (SqlTransactionTransportTx, error) {
+func (m *mockSqlTransport) BeginSql(context stdcontext.Context) (SqlTransactionTransportTx, error) {
 	if m.beginSql != nil {
-		return m.beginSql(ctx)
+		return m.beginSql(context)
 	}
 	return nil, nil
 }
 
 type mockSqlTx struct {
 	*mockSqlTransport
-	commitSql   func(ctx context.Context) error
-	rollbackSql func(ctx context.Context) error
+	commitSql   func(context stdcontext.Context) error
+	rollbackSql func(context stdcontext.Context) error
 }
 
-func (m *mockSqlTx) CommitSql(ctx context.Context) error {
+func (m *mockSqlTx) CommitSql(context stdcontext.Context) error {
 	if m.commitSql != nil {
-		return m.commitSql(ctx)
+		return m.commitSql(context)
 	}
 	return nil
 }
 
-func (m *mockSqlTx) RollbackSql(ctx context.Context) error {
+func (m *mockSqlTx) RollbackSql(context stdcontext.Context) error {
 	if m.rollbackSql != nil {
-		return m.rollbackSql(ctx)
+		return m.rollbackSql(context)
 	}
 	return nil
 }
@@ -99,7 +99,7 @@ func TestSqlDataServiceExecutor_Query(t *testing.T) {
 		},
 	}
 	transport := &mockSqlTransport{
-		fetchAllSql: func(ctx context.Context, query *CompiledQuery) ([]core.Record, error) {
+		fetchAllSql: func(context stdcontext.Context, query *CompiledQuery) ([]core.Record, error) {
 			return []core.Record{
 				{"id": core.ValI64(1)},
 			}, nil
@@ -107,7 +107,7 @@ func TestSqlDataServiceExecutor_Query(t *testing.T) {
 	}
 
 	exec := NewSqlDataServiceExecutor(dialect, transport, sp)
-	ctx := context.Background()
+	context := stdcontext.Background()
 
 	q := core.NewSelectQuery("Order").Project("id")
 	cmt := "test comment"
@@ -116,7 +116,7 @@ func TestSqlDataServiceExecutor_Query(t *testing.T) {
 		Comment:    &cmt,
 		TraceChain: []*core.TraceNode{{Comment: "t1"}},
 	}
-	res, err := exec.Query(ctx, req)
+	res, err := exec.Query(context, req)
 
 	assert.NoError(t, err)
 	assert.Equal(t, 1, len(res.Rows))
@@ -128,7 +128,7 @@ func TestSqlDataServiceExecutor_Query(t *testing.T) {
 	// Unknown entity
 	qUnknown := core.NewSelectQuery("Unknown")
 	reqUnknown := &ds.QueryRequest{Query: qUnknown}
-	_, err = exec.Query(ctx, reqUnknown)
+	_, err = exec.Query(context, reqUnknown)
 	assert.Error(t, err)
 }
 
@@ -140,17 +140,17 @@ func TestSqlDataServiceExecutor_QueryError(t *testing.T) {
 		},
 	}
 	transport := &mockSqlTransport{
-		fetchAllSql: func(ctx context.Context, query *CompiledQuery) ([]core.Record, error) {
+		fetchAllSql: func(context stdcontext.Context, query *CompiledQuery) ([]core.Record, error) {
 			return nil, errors.New("db error")
 		},
 	}
 
 	exec := NewSqlDataServiceExecutor(dialect, transport, sp)
-	ctx := context.Background()
+	context := stdcontext.Background()
 
 	q := core.NewSelectQuery("Order").Project("id")
 	req := &ds.QueryRequest{Query: q}
-	_, err := exec.Query(ctx, req)
+	_, err := exec.Query(context, req)
 	assert.Error(t, err)
 }
 
@@ -165,18 +165,18 @@ func TestSqlDataServiceExecutor_Mutate(t *testing.T) {
 		},
 	}
 	transport := &mockSqlTransport{
-		executeSql: func(ctx context.Context, query *CompiledQuery) (uint64, error) {
+		executeSql: func(context stdcontext.Context, query *CompiledQuery) (uint64, error) {
 			return 1, nil
 		},
 	}
 
 	exec := NewSqlDataServiceExecutor(dialect, transport, sp)
-	ctx := context.Background()
+	context := stdcontext.Background()
 
 	// Insert
 	cmd := core.NewInsertCommand("Order").Value("id", core.ValU64(1))
 	req := &ds.InsertMutation{Cmd: cmd}
-	res, err := exec.Mutate(ctx, req)
+	res, err := exec.Mutate(context, req)
 	assert.NoError(t, err)
 	assert.Equal(t, uint64(1), res.AffectedRows)
 	assert.Equal(t, ds.OpInsert, res.Metadata.Operation)
@@ -184,40 +184,40 @@ func TestSqlDataServiceExecutor_Mutate(t *testing.T) {
 	// Update
 	cmdUpdate := core.NewUpdateCommand("Order", core.ValU64(1)).Value("name", core.ValText("B")).WithExpectedVersion(1)
 	reqUpdate := &ds.UpdateMutation{Cmd: cmdUpdate}
-	res, err = exec.Mutate(ctx, reqUpdate)
+	res, err = exec.Mutate(context, reqUpdate)
 	assert.NoError(t, err)
 	assert.Equal(t, ds.OpUpdate, res.Metadata.Operation)
 
 	// Delete
 	cmdDelete := core.NewDeleteCommand("Order", core.ValU64(1)).WithExpectedVersion(1)
 	reqDelete := &ds.DeleteMutation{Cmd: cmdDelete}
-	res, err = exec.Mutate(ctx, reqDelete)
+	res, err = exec.Mutate(context, reqDelete)
 	assert.NoError(t, err)
 	assert.Equal(t, ds.OpDelete, res.Metadata.Operation)
 
 	// Recover
 	cmdRecover := core.NewRecoverCommand("Order", core.ValU64(1), -1)
 	reqRecover := &ds.RecoverMutation{Cmd: cmdRecover}
-	res, err = exec.Mutate(ctx, reqRecover)
+	res, err = exec.Mutate(context, reqRecover)
 	assert.NoError(t, err)
 	assert.Equal(t, ds.OpRecover, res.Metadata.Operation)
 
 	// Batch
 	batchReq := &ds.BatchMutation{Mutations: []ds.MutationRequest{req, reqUpdate}}
-	res, err = exec.Mutate(ctx, batchReq)
+	res, err = exec.Mutate(context, batchReq)
 	assert.NoError(t, err)
 	assert.Equal(t, uint64(2), res.AffectedRows)
 	assert.Equal(t, ds.OpBatch, res.Metadata.Operation)
 
 	// Unknown mutation type
 	type dummyMutation struct{ ds.MutationRequest }
-	_, err = exec.Mutate(ctx, &dummyMutation{})
+	_, err = exec.Mutate(context, &dummyMutation{})
 	assert.Error(t, err)
 
 	// Unknown entity
 	cmdUnknown := core.NewInsertCommand("Unknown").Value("id", core.ValU64(1))
 	reqUnknown := &ds.InsertMutation{Cmd: cmdUnknown}
-	_, err = exec.Mutate(ctx, reqUnknown)
+	_, err = exec.Mutate(context, reqUnknown)
 	assert.Error(t, err)
 }
 
@@ -229,22 +229,22 @@ func TestSqlDataServiceExecutor_MutateError(t *testing.T) {
 		},
 	}
 	transport := &mockSqlTransport{
-		executeSql: func(ctx context.Context, query *CompiledQuery) (uint64, error) {
+		executeSql: func(context stdcontext.Context, query *CompiledQuery) (uint64, error) {
 			return 0, errors.New("db err")
 		},
 	}
 
 	exec := NewSqlDataServiceExecutor(dialect, transport, sp)
-	ctx := context.Background()
+	context := stdcontext.Background()
 
 	cmd := core.NewInsertCommand("Order").Value("id", core.ValU64(1))
 	req := &ds.InsertMutation{Cmd: cmd}
-	_, err := exec.Mutate(ctx, req)
+	_, err := exec.Mutate(context, req)
 	assert.Error(t, err)
 
 	// Batch error
 	batchReq := &ds.BatchMutation{Mutations: []ds.MutationRequest{req}}
-	_, err = exec.Mutate(ctx, batchReq)
+	_, err = exec.Mutate(context, batchReq)
 	assert.Error(t, err)
 }
 
@@ -256,7 +256,7 @@ func TestSqlDataServiceExecutor_QueryStream(t *testing.T) {
 		},
 	}
 	transport := &mockSqlTransport{
-		streamSql: func(ctx context.Context, query *CompiledQuery, chunkSize int, yield func([]core.Record) error) error {
+		streamSql: func(context stdcontext.Context, query *CompiledQuery, chunkSize int, yield func([]core.Record) error) error {
 			if err := yield([]core.Record{
 				{"id": core.ValI64(1)},
 				{"id": core.ValI64(2)},
@@ -268,12 +268,12 @@ func TestSqlDataServiceExecutor_QueryStream(t *testing.T) {
 	}
 
 	exec := NewSqlDataServiceExecutor(dialect, transport, sp)
-	ctx := context.Background()
+	context := stdcontext.Background()
 	q := core.NewSelectQuery("Order").Project("id")
 	req := &ds.QueryRequest{Query: q}
 
 	var chunks []*ds.StreamChunk
-	err := exec.QueryStream(ctx, req, 2, func(chunk *ds.StreamChunk) error { chunks = append(chunks, chunk); return nil })
+	err := exec.QueryStream(context, req, 2, func(chunk *ds.StreamChunk) error { chunks = append(chunks, chunk); return nil })
 	assert.NoError(t, err)
 	assert.Equal(t, 2, len(chunks))
 	assert.Equal(t, 2, len(chunks[0].Rows))
@@ -286,12 +286,12 @@ func TestSqlDataServiceExecutor_QueryStream(t *testing.T) {
 
 	// Stream error
 	transportErr := &mockSqlTransport{
-		streamSql: func(ctx context.Context, query *CompiledQuery, chunkSize int, yield func([]core.Record) error) error {
+		streamSql: func(context stdcontext.Context, query *CompiledQuery, chunkSize int, yield func([]core.Record) error) error {
 			return errors.New("err")
 		},
 	}
 	execErr := NewSqlDataServiceExecutor(dialect, transportErr, sp)
-	err = execErr.QueryStream(ctx, req, 2, func(chunk *ds.StreamChunk) error { return nil })
+	err = execErr.QueryStream(context, req, 2, func(chunk *ds.StreamChunk) error { return nil })
 	assert.Error(t, err)
 }
 
@@ -304,30 +304,30 @@ func TestSqlDataServiceExecutor_Transaction(t *testing.T) {
 	}
 	tx := &mockSqlTx{
 		mockSqlTransport: &mockSqlTransport{
-			executeSql: func(ctx context.Context, query *CompiledQuery) (uint64, error) {
+			executeSql: func(context stdcontext.Context, query *CompiledQuery) (uint64, error) {
 				return 1, nil
 			},
-			fetchAllSql: func(ctx context.Context, query *CompiledQuery) ([]core.Record, error) {
+			fetchAllSql: func(context stdcontext.Context, query *CompiledQuery) ([]core.Record, error) {
 				return []core.Record{{"id": core.ValI64(1)}}, nil
 			},
 		},
-		commitSql: func(ctx context.Context) error {
+		commitSql: func(context stdcontext.Context) error {
 			return nil
 		},
-		rollbackSql: func(ctx context.Context) error {
+		rollbackSql: func(context stdcontext.Context) error {
 			return nil
 		},
 	}
 	transport := &mockSqlTransport{
-		beginSql: func(ctx context.Context) (SqlTransactionTransportTx, error) {
+		beginSql: func(context stdcontext.Context) (SqlTransactionTransportTx, error) {
 			return tx, nil
 		},
 	}
 
 	exec := NewSqlDataServiceExecutor(dialect, transport, sp)
-	ctx := context.Background()
+	context := stdcontext.Background()
 
-	dsTx, err := exec.Begin(ctx)
+	dsTx, err := exec.Begin(context)
 	assert.NoError(t, err)
 	assert.NotNil(t, dsTx)
 
@@ -336,17 +336,17 @@ func TestSqlDataServiceExecutor_Transaction(t *testing.T) {
 
 	q := core.NewSelectQuery("Order").Project("id")
 	req := &ds.QueryRequest{Query: q}
-	_, err = dsTx.Query(ctx, req)
+	_, err = dsTx.Query(context, req)
 	assert.NoError(t, err)
 
 	cmd := core.NewInsertCommand("Order").Value("id", core.ValU64(1))
 	reqMut := &ds.InsertMutation{Cmd: cmd}
-	_, err = dsTx.Mutate(ctx, reqMut)
+	_, err = dsTx.Mutate(context, reqMut)
 	assert.NoError(t, err)
 
-	err = dsTx.Commit(ctx)
+	err = dsTx.Commit(context)
 	assert.NoError(t, err)
-	err = dsTx.Rollback(ctx)
+	err = dsTx.Rollback(context)
 	assert.NoError(t, err)
 }
 
@@ -360,41 +360,41 @@ func TestSqlDataServiceExecutor_TransactionErrors(t *testing.T) {
 
 	// Not a transaction transport
 	exec := NewSqlDataServiceExecutor(dialect, &nonTxTransport{}, sp)
-	ctx := context.Background()
-	_, err := exec.Begin(ctx)
+	context := stdcontext.Background()
+	_, err := exec.Begin(context)
 	assert.Error(t, err)
 
 	// Error on begin
 	transportErr := &mockSqlTransport{
-		beginSql: func(ctx context.Context) (SqlTransactionTransportTx, error) {
+		beginSql: func(context stdcontext.Context) (SqlTransactionTransportTx, error) {
 			return nil, errors.New("begin err")
 		},
 	}
 	execErr := NewSqlDataServiceExecutor(dialect, transportErr, sp)
-	_, err = execErr.Begin(ctx)
+	_, err = execErr.Begin(context)
 	assert.Error(t, err)
 
 	// Error on commit / rollback
 	tx := &mockSqlTx{
 		mockSqlTransport: &mockSqlTransport{},
-		commitSql: func(ctx context.Context) error {
+		commitSql: func(context stdcontext.Context) error {
 			return errors.New("commit err")
 		},
-		rollbackSql: func(ctx context.Context) error {
+		rollbackSql: func(context stdcontext.Context) error {
 			return errors.New("rollback err")
 		},
 	}
 	transport := &mockSqlTransport{
-		beginSql: func(ctx context.Context) (SqlTransactionTransportTx, error) {
+		beginSql: func(context stdcontext.Context) (SqlTransactionTransportTx, error) {
 			return tx, nil
 		},
 	}
 	execWithTx := NewSqlDataServiceExecutor(dialect, transport, sp)
-	dsTx, _ := execWithTx.Begin(ctx)
+	dsTx, _ := execWithTx.Begin(context)
 
-	err = dsTx.Commit(ctx)
+	err = dsTx.Commit(context)
 	assert.Error(t, err)
 
-	err = dsTx.Rollback(ctx)
+	err = dsTx.Rollback(context)
 	assert.Error(t, err)
 }

@@ -1,7 +1,7 @@
 package runtime_test
 
 import (
-	"context"
+	stdcontext "context"
 	"errors"
 	"strings"
 	"testing"
@@ -39,11 +39,11 @@ type mockTransport struct {
 	err      error
 }
 
-func (m *mockTransport) FetchAllSql(ctx context.Context, query *teaql_sql.CompiledQuery) ([]core.Record, error) {
+func (m *mockTransport) FetchAllSql(context stdcontext.Context, query *teaql_sql.CompiledQuery) ([]core.Record, error) {
 	return m.records, m.err
 }
 
-func (m *mockTransport) ExecuteSql(ctx context.Context, query *teaql_sql.CompiledQuery) (uint64, error) {
+func (m *mockTransport) ExecuteSql(context stdcontext.Context, query *teaql_sql.CompiledQuery) (uint64, error) {
 	return m.affected, m.err
 }
 
@@ -56,7 +56,7 @@ func TestSqlDataServiceExecutor_Capabilities(t *testing.T) {
 }
 
 func TestSqlDataServiceExecutor_Query(t *testing.T) {
-	ctx := context.Background()
+	context := stdcontext.Background()
 	meta := runtime.NewInMemoryMetadataStore()
 	entity := &core.EntityDescriptor{
 		Name:    "User",
@@ -81,7 +81,7 @@ func TestSqlDataServiceExecutor_Query(t *testing.T) {
 			},
 		}
 
-		res, err := exec.Query(ctx, req)
+		res, err := exec.Query(context, req)
 		if err != nil {
 			t.Fatalf("expected no error, got %v", err)
 		}
@@ -98,7 +98,7 @@ func TestSqlDataServiceExecutor_Query(t *testing.T) {
 			},
 		}
 
-		_, err := exec.Query(ctx, req)
+		_, err := exec.Query(context, req)
 		if err == nil {
 			t.Fatal("expected error, got nil")
 		}
@@ -116,7 +116,7 @@ func TestSqlDataServiceExecutor_Query(t *testing.T) {
 			},
 		}
 
-		_, err := exec.Query(ctx, req)
+		_, err := exec.Query(context, req)
 		if err == nil {
 			t.Fatal("expected compile error, got nil")
 		}
@@ -134,7 +134,7 @@ func TestSqlDataServiceExecutor_Query(t *testing.T) {
 			},
 		}
 
-		_, err := exec.Query(ctx, req)
+		_, err := exec.Query(context, req)
 		if err == nil {
 			t.Fatal("expected transport error, got nil")
 		}
@@ -142,7 +142,7 @@ func TestSqlDataServiceExecutor_Query(t *testing.T) {
 }
 
 func TestSqlDataServiceExecutor_Mutate(t *testing.T) {
-	ctx := context.Background()
+	context := stdcontext.Background()
 	meta := runtime.NewInMemoryMetadataStore()
 	entity := &core.EntityDescriptor{
 		Name:    "User",
@@ -169,7 +169,7 @@ func TestSqlDataServiceExecutor_Mutate(t *testing.T) {
 			},
 		}
 
-		res, err := exec.Mutate(ctx, req)
+		res, err := exec.Mutate(context, req)
 		if err != nil {
 			t.Fatalf("expected no error, got %v", err)
 		}
@@ -191,7 +191,7 @@ func TestSqlDataServiceExecutor_Mutate(t *testing.T) {
 			},
 		}
 
-		res, err := exec.Mutate(ctx, req)
+		res, err := exec.Mutate(context, req)
 		if err != nil {
 			t.Fatalf("expected no error, got %v", err)
 		}
@@ -212,7 +212,7 @@ func TestSqlDataServiceExecutor_Mutate(t *testing.T) {
 			},
 		}
 
-		res, err := exec.Mutate(ctx, req)
+		res, err := exec.Mutate(context, req)
 		if err != nil {
 			t.Fatalf("expected no error, got %v", err)
 		}
@@ -229,7 +229,7 @@ func TestSqlDataServiceExecutor_Mutate(t *testing.T) {
 		}
 		req := &customMutation{}
 
-		_, err := exec.Mutate(ctx, req)
+		_, err := exec.Mutate(context, req)
 		if err == nil {
 			t.Fatal("expected error for unsupported mutation type, got nil")
 		}
@@ -245,7 +245,7 @@ func TestSqlDataServiceExecutor_Mutate(t *testing.T) {
 			},
 		}
 
-		_, err := exec.Mutate(ctx, req)
+		_, err := exec.Mutate(context, req)
 		if err == nil {
 			t.Fatal("expected compile error, got nil")
 		}
@@ -264,7 +264,7 @@ func TestSqlDataServiceExecutor_Mutate(t *testing.T) {
 			},
 		}
 
-		_, err := exec.Mutate(ctx, req)
+		_, err := exec.Mutate(context, req)
 		if err == nil {
 			t.Fatal("expected transport error, got nil")
 		}
@@ -281,18 +281,18 @@ func TestSqlExecutionEvidenceIsParameterizedAndFilterable(t *testing.T) {
 		},
 	})
 	store := runtime.NewSQLExecutionEvidenceStore()
-	ctx := runtime.NewUserContext().WithRuntimeTelemetrySink(store)
+	context := runtime.NewUserContext().WithRuntimeTelemetrySink(store)
 	exec := runtime.NewSqlDataServiceExecutor(
 		&mockTransport{records: []core.Record{{"id": core.ValText("1")}}, affected: 1},
 		&mockDialect{}, meta)
 
-	_, err := exec.Mutate(ctx, &data_service.InsertMutation{Cmd: &core.InsertCommand{
+	_, err := exec.Mutate(context, &data_service.InsertMutation{Cmd: &core.InsertCommand{
 		Entity: "User", Values: core.Record{"id": core.ValText("1"), "name": core.ValText("secret-value")},
 	}})
 	if err != nil {
 		t.Fatal(err)
 	}
-	_, err = exec.Query(ctx, &data_service.QueryRequest{Query: &core.SelectQuery{
+	_, err = exec.Query(context, &data_service.QueryRequest{Query: &core.SelectQuery{
 		Entity: "User", Filter: core.ExprEq("name", core.ValText("secret-value")),
 	}})
 	if err != nil {
@@ -322,7 +322,7 @@ func TestSqlExecutionEvidenceIsParameterizedAndFilterable(t *testing.T) {
 	if len(store.Snapshot()) != 0 {
 		t.Fatal("mode change did not clear evidence")
 	}
-	_, err = exec.Mutate(ctx, &data_service.InsertMutation{Cmd: &core.InsertCommand{
+	_, err = exec.Mutate(context, &data_service.InsertMutation{Cmd: &core.InsertCommand{
 		Entity: "User", Values: core.Record{"id": core.ValText("2"), "name": core.ValText("ignored")},
 	}})
 	if err != nil {
