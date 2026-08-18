@@ -47,25 +47,69 @@ func (q *CompiledQuery) DebugSql(kind DatabaseKind) string {
 func replacePostgresPlaceholders(sql string, params []core.Value) string {
 	var output strings.Builder
 	output.Grow(len(sql))
-
-	inString := false
+	state := scanSQL
 	chars := []rune(sql)
-
 	for i := 0; i < len(chars); i++ {
 		ch := chars[i]
-
-		if ch == '\'' {
-			output.WriteRune('\'')
-			if inString && i+1 < len(chars) && chars[i+1] == '\'' {
+		if state == scanSQL && ch == '\'' {
+			output.WriteRune(ch)
+			state = scanSingleQuote
+			continue
+		}
+		if state == scanSQL && ch == '"' {
+			output.WriteRune(ch)
+			state = scanDoubleQuote
+			continue
+		}
+		if state == scanSQL && ch == '-' && i+1 < len(chars) && chars[i+1] == '-' {
+			output.WriteString("--")
+			i++
+			state = scanLineComment
+			continue
+		}
+		if state == scanSQL && ch == '/' && i+1 < len(chars) && chars[i+1] == '*' {
+			output.WriteString("/*")
+			i++
+			state = scanBlockComment
+			continue
+		}
+		if state == scanSingleQuote {
+			output.WriteRune(ch)
+			if ch == '\'' && i+1 < len(chars) && chars[i+1] == '\'' {
 				output.WriteRune('\'')
 				i++
-			} else {
-				inString = !inString
+			} else if ch == '\'' {
+				state = scanSQL
 			}
 			continue
 		}
-
-		if !inString && ch == '$' && i+1 < len(chars) && chars[i+1] >= '0' && chars[i+1] <= '9' {
+		if state == scanDoubleQuote {
+			output.WriteRune(ch)
+			if ch == '"' && i+1 < len(chars) && chars[i+1] == '"' {
+				output.WriteRune('"')
+				i++
+			} else if ch == '"' {
+				state = scanSQL
+			}
+			continue
+		}
+		if state == scanLineComment {
+			output.WriteRune(ch)
+			if ch == '\n' || ch == '\r' {
+				state = scanSQL
+			}
+			continue
+		}
+		if state == scanBlockComment {
+			output.WriteRune(ch)
+			if ch == '*' && i+1 < len(chars) && chars[i+1] == '/' {
+				output.WriteRune('/')
+				i++
+				state = scanSQL
+			}
+			continue
+		}
+		if ch == '$' && i+1 < len(chars) && chars[i+1] >= '0' && chars[i+1] <= '9' {
 			idxStr := ""
 			j := i + 1
 			for j < len(chars) && chars[j] >= '0' && chars[j] <= '9' {
@@ -203,9 +247,23 @@ func sqlLiteral(value core.Value, kind DatabaseKind) string {
 	case string:
 		return quotedSqlString(v)
 	case time.Time:
-		return quotedSqlString(v.UTC().Format("2006-01-02"))
+		date := quotedSqlString(v.UTC().Format("2006-01-02"))
+		if kind == DatabaseKindPostgreSQL {
+			return "DATE " + date
+		}
+		if kind == DatabaseKindMySQL {
+			return "CAST(" + date + " AS DATE)"
+		}
+		return date
 	case core.Timestamp:
-		return fmt.Sprintf("%d", v)
+		if kind == DatabaseKindSQLite {
+			return fmt.Sprintf("%d", v)
+		}
+		instant := v.ToTime().UTC()
+		if kind == DatabaseKindPostgreSQL {
+			return "TIMESTAMPTZ " + quotedSqlString(instant.Format("2006-01-02 15:04:05.000Z"))
+		}
+		return "CAST(" + quotedSqlString(instant.Format("2006-01-02 15:04:05.000")) + " AS DATETIME(3))"
 	case []core.Value:
 		var strs []string
 		for _, item := range v {

@@ -66,6 +66,18 @@ func TestSqliteDebugSqlPreservesCommentsAndTemporalStorageLiterals(t *testing.T)
 		query.DebugSql(DatabaseKindSQLite))
 }
 
+func TestPostgresAndMysqlDebugSqlUseTypedTemporalLiterals(t *testing.T) {
+	params := []core.Value{core.ValDate(time.Date(2024, 2, 29, 0, 0, 0, 0, time.UTC)), core.ValTimestamp(-315521754322)}
+	pg := (&CompiledQuery{Sql: "-- ignored $1\nSELECT $1, $2 /* ignored $2 */", Params: params}).DebugSql(DatabaseKindPostgreSQL)
+	if pg != "-- ignored $1\nSELECT DATE '2024-02-29', TIMESTAMPTZ '1960-01-02 03:04:05.678Z' /* ignored $2 */" {
+		t.Fatalf("unexpected pg SQL: %s", pg)
+	}
+	my := (&CompiledQuery{Sql: "SELECT ?, ? /* ignored ? */", Params: params}).DebugSql(DatabaseKindMySQL)
+	if my != "SELECT CAST('2024-02-29' AS DATE), CAST('1960-01-02 03:04:05.678' AS DATETIME(3)) /* ignored ? */" {
+		t.Fatalf("unexpected mysql SQL: %s", my)
+	}
+}
+
 func TestCompiledQueryDebugSqlPositional(t *testing.T) {
 	q := CompiledQuery{
 		Sql:    "SELECT * FROM users WHERE name = ? AND age > ?",
