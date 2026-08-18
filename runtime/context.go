@@ -206,12 +206,25 @@ type UserContext struct {
 	standardAuditSink         RawAuditEventSink
 	appAuditSink              AppAuditEventSink
 	runtimeTelemetrySink      RuntimeTelemetrySink
+	runtimeTelemetry          RuntimeTelemetry
 	continuousPageCursorStore ContinuousPageCursorStore
 	continuousPageMu          sync.Mutex
 	continuousPagePlan        string
 	continuousPageCursorID    string
 	userIdentifier            string
 	requestPolicy             RequestPolicy
+}
+
+type userContextKey struct{}
+
+// UserContextFrom preserves access to TeaQL services when an instrumentation
+// adapter derives a child context for trace propagation.
+func UserContextFrom(context stdcontext.Context) (*UserContext, bool) {
+	if value, ok := context.(*UserContext); ok {
+		return value, true
+	}
+	value, ok := context.Value(userContextKey{}).(*UserContext)
+	return value, ok
 }
 
 type RuntimeTelemetrySink interface {
@@ -282,14 +295,32 @@ func (c *UserContext) RecordExecutionMetadata(metadata data_service.ExecutionMet
 	}
 }
 
+func (c *UserContext) WithRuntimeTelemetry(telemetry RuntimeTelemetry) *UserContext {
+	if telemetry == nil {
+		telemetry = NoopRuntimeTelemetry{}
+	}
+	c.runtimeTelemetry = telemetry
+	return c
+}
+
+func (c *UserContext) RuntimeTelemetry() RuntimeTelemetry {
+	if c.runtimeTelemetry == nil {
+		return NoopRuntimeTelemetry{}
+	}
+	return c.runtimeTelemetry
+}
+
 func NewUserContext() *UserContext {
-	return &UserContext{
+	context := &UserContext{
 		Context:                   stdcontext.Background(),
 		resources:                 make(map[string]interface{}),
 		continuousPageCursorStore: NewInMemoryContinuousPageCursorStore(),
 		continuousPagePlan:        "DISABLED",
 		userIdentifier:            "main",
+		runtimeTelemetry:          NoopRuntimeTelemetry{},
 	}
+	context.Context = stdcontext.WithValue(context.Context, userContextKey{}, context)
+	return context
 }
 
 func (c *UserContext) SetContinuousPageCursorStore(store ContinuousPageCursorStore) {
@@ -356,8 +387,23 @@ func (c *UserContext) GetResource(name string) interface{} {
 }
 
 func (c *UserContext) SendEvent(event *RawAuditEvent) error {
+	return c.sendEvent(c, event)
+}
+
+func (c *UserContext) sendEvent(context stdcontext.Context, event *RawAuditEvent) (err error) {
+	context, scope := StartRuntimeOperation(context, c.RuntimeTelemetry(), NewRuntimeOperation("audit", event.Entity+".event", map[string]RuntimeAttributeValue{
+		"teaql.entity.type": event.Entity,
+	}))
+	_ = context
+	defer func() {
+		if err != nil {
+			scope.Failure(RuntimeErrorType(err))
+		} else {
+			scope.Success(nil)
+		}
+	}()
 	if c.standardAuditSink != nil {
-		if err := c.standardAuditSink.OnEvent(c, event); err != nil {
+		if err = c.standardAuditSink.OnEvent(c, event); err != nil {
 			return err
 		}
 	}
@@ -378,6 +424,10 @@ func (c *UserContext) SendEvent(event *RawAuditEvent) error {
 // narrow interface. It keeps the standard sink owned by the initialized server
 // context while still allowing an independent application sink.
 func (c *UserContext) EmitMutationAudit(request data_service.MutationRequest, result *data_service.MutationResult) error {
+	return c.emitMutationAudit(c, request, result)
+}
+
+func (c *UserContext) emitMutationAudit(context stdcontext.Context, request data_service.MutationRequest, result *data_service.MutationResult) error {
 	if result == nil || result.AffectedRows == 0 {
 		return nil
 	}
@@ -407,7 +457,7 @@ func (c *UserContext) EmitMutationAudit(request data_service.MutationRequest, re
 		return nil
 	}
 	event.TraceChain = append([]*core.TraceNode(nil), request.TraceChain()...)
-	return c.SendEvent(event)
+	return c.sendEvent(context, event)
 }
 
 func (c *UserContext) SetAppAuditEventSink(sink AppAuditEventSink) { c.appAuditSink = sink }

@@ -35,13 +35,28 @@ func NewRuntimeDataService(metadata MetadataStore, executor data_service.DataSer
 	}
 }
 
-func (s *RuntimeDataService) FetchAll(context stdcontext.Context, query *core.SelectQuery) ([]core.Record, error) {
+func (s *RuntimeDataService) FetchAll(context stdcontext.Context, query *core.SelectQuery) (rows []core.Record, err error) {
+	userCtx, _ := UserContextFrom(context)
+	telemetry := RuntimeTelemetry(NoopRuntimeTelemetry{})
+	if userCtx != nil {
+		telemetry = userCtx.RuntimeTelemetry()
+	}
+	context, scope := StartRuntimeOperation(context, telemetry, NewRuntimeOperation("query", query.Entity+".list", map[string]RuntimeAttributeValue{
+		"teaql.entity.type": query.Entity,
+	}))
+	defer func() {
+		if err != nil {
+			scope.Failure(RuntimeErrorType(err))
+		} else {
+			scope.Success(map[string]RuntimeAttributeValue{"teaql.result.cardinality": len(rows)})
+		}
+	}()
 	prepared := cloneSelectQuery(query, query.Entity)
-	if err := prepared.PrepareForList(); err != nil {
+	if err = prepared.PrepareForList(); err != nil {
 		return nil, err
 	}
 	executionQuery, continuous := s.prepareContinuousPage(context, prepared)
-	rows, err := s.fetchRows(context, executionQuery)
+	rows, err = s.fetchRows(context, executionQuery)
 	if err != nil {
 		return nil, err
 	}
@@ -53,7 +68,7 @@ func (s *RuntimeDataService) FetchAll(context stdcontext.Context, query *core.Se
 }
 
 func (s *RuntimeDataService) prepareContinuousPage(context stdcontext.Context, query *core.SelectQuery) (*core.SelectQuery, *continuousPageExecution) {
-	userCtx, ok := context.(*UserContext)
+	userCtx, ok := UserContextFrom(context)
 	if !ok || query.ContinuousPageFetch == nil {
 		if ok {
 			userCtx.ObserveContinuousPage("DISABLED", "")
@@ -83,15 +98,19 @@ func (s *RuntimeDataService) prepareContinuousPage(context stdcontext.Context, q
 		userCtx.ObserveContinuousPage("OFFSET_FALLBACK:FIRST_PAGE", "")
 		return query, execution
 	}
-	cursor, err := userCtx.ContinuousPageCursorStore().GetContinuousPageCursor(context, queryKey, query.Slice.Offset)
+	cacheContext, cacheScope := StartRuntimeOperation(context, userCtx.RuntimeTelemetry(), NewRuntimeOperation("cache", "continuous-page.get", map[string]RuntimeAttributeValue{"teaql.cache.operation": "get"}))
+	cursor, err := userCtx.ContinuousPageCursorStore().GetContinuousPageCursor(cacheContext, queryKey, query.Slice.Offset)
 	if err != nil {
+		cacheScope.Failure(RuntimeErrorType(err))
 		userCtx.ObserveContinuousPage("OFFSET_FALLBACK:STORE_UNAVAILABLE", "")
 		return query, execution
 	}
 	if cursor == nil {
+		cacheScope.Success(map[string]RuntimeAttributeValue{"teaql.cache.result": "miss"})
 		userCtx.ObserveContinuousPage("OFFSET_FALLBACK:CACHE_MISS", "")
 		return query, execution
 	}
+	cacheScope.Success(map[string]RuntimeAttributeValue{"teaql.cache.result": "hit"})
 	if cursor.Entity != query.Entity || cursor.Direction != execution.direction ||
 		cursor.PageSize != execution.pageSize || cursor.NextOffset != execution.originalOffset ||
 		!cursor.ExpiresAt.After(time.Now()) {
@@ -114,7 +133,7 @@ func (s *RuntimeDataService) prepareContinuousPage(context stdcontext.Context, q
 }
 
 func (s *RuntimeDataService) registerContinuousPage(context stdcontext.Context, execution *continuousPageExecution, rows []core.Record) {
-	userCtx, ok := context.(*UserContext)
+	userCtx, ok := UserContextFrom(context)
 	if !ok || execution == nil || uint64(len(rows)) != execution.pageSize || len(rows) == 0 {
 		return
 	}
@@ -128,12 +147,18 @@ func (s *RuntimeDataService) registerContinuousPage(context stdcontext.Context, 
 		PageSize: execution.pageSize, NextOffset: execution.originalOffset + uint64(len(rows)),
 		ExpiresAt: time.Now().Add(time.Duration(execution.ttlSeconds) * time.Second),
 	}
-	if err := userCtx.ContinuousPageCursorStore().PutContinuousPageCursor(context, cursor); err != nil {
+	cacheContext, cacheScope := StartRuntimeOperation(context, userCtx.RuntimeTelemetry(), NewRuntimeOperation("cache", "continuous-page.put", map[string]RuntimeAttributeValue{"teaql.cache.operation": "put"}))
+	if err := userCtx.ContinuousPageCursorStore().PutContinuousPageCursor(cacheContext, cursor); err != nil {
+		cacheScope.Failure(RuntimeErrorType(err))
 		userCtx.ObserveContinuousPage("OFFSET_FALLBACK:STORE_UNAVAILABLE", "")
 	} else if execution.optimized {
+		cacheScope.Success(map[string]RuntimeAttributeValue{"teaql.cache.result": "stored"})
 		userCtx.ObserveContinuousPage("CURSOR_SEEK", execution.seekCursorID)
 	} else if execution.originalOffset == 0 {
+		cacheScope.Success(map[string]RuntimeAttributeValue{"teaql.cache.result": "stored"})
 		userCtx.ObserveContinuousPage("OFFSET_FALLBACK:FIRST_PAGE", "")
+	} else {
+		cacheScope.Success(map[string]RuntimeAttributeValue{"teaql.cache.result": "stored"})
 	}
 }
 
@@ -147,7 +172,22 @@ func continuousPageQueryKey(context *UserContext, query *core.SelectQuery, names
 	return "teaql:continuous-page:v1:" + hex.EncodeToString(digest[:])
 }
 
-func (s *RuntimeDataService) fetchRows(context stdcontext.Context, query *core.SelectQuery) ([]core.Record, error) {
+func (s *RuntimeDataService) fetchRows(context stdcontext.Context, query *core.SelectQuery) (rows []core.Record, err error) {
+	userCtx, _ := UserContextFrom(context)
+	telemetry := RuntimeTelemetry(NoopRuntimeTelemetry{})
+	if userCtx != nil {
+		telemetry = userCtx.RuntimeTelemetry()
+	}
+	context, scope := StartRuntimeOperation(context, telemetry, NewRuntimeOperation("provider", "data-service.query", map[string]RuntimeAttributeValue{
+		"teaql.entity.type": query.Entity,
+	}))
+	defer func() {
+		if err != nil {
+			scope.Failure(RuntimeErrorType(err))
+		} else {
+			scope.Success(map[string]RuntimeAttributeValue{"teaql.result.cardinality": len(rows)})
+		}
+	}()
 	qExec, ok := s.executor.(data_service.QueryExecutor)
 	if !ok {
 		return nil, fmt.Errorf("executor does not support Query")
@@ -164,7 +204,8 @@ func (s *RuntimeDataService) fetchRows(context stdcontext.Context, query *core.S
 		return nil, &DataServiceError{Type: "Executor", ExecutorError: err}
 	}
 
-	return res.Rows, nil
+	rows = res.Rows
+	return rows, nil
 }
 
 func (s *RuntimeDataService) enhanceRelations(context stdcontext.Context, parents []core.Record, query *core.SelectQuery) error {
@@ -176,8 +217,15 @@ func (s *RuntimeDataService) enhanceRelations(context stdcontext.Context, parent
 		return fmt.Errorf("unknown entity %s", query.Entity)
 	}
 	for _, load := range query.Relations {
+		userCtx, _ := UserContextFrom(context)
+		telemetry := RuntimeTelemetry(NoopRuntimeTelemetry{})
+		if userCtx != nil {
+			telemetry = userCtx.RuntimeTelemetry()
+		}
+		relationContext, relationScope := StartRuntimeOperation(context, telemetry, NewRuntimeOperation("relation_load", query.Entity+"."+load.Name, map[string]RuntimeAttributeValue{"teaql.entity.type": query.Entity}))
 		relation := parentDescriptor.RelationByName(load.Name)
 		if relation == nil {
+			relationScope.Failure("missing_relation")
 			return fmt.Errorf("missing relation %s.%s", query.Entity, load.Name)
 		}
 		ids := make([]core.Value, 0, len(parents))
@@ -192,17 +240,20 @@ func (s *RuntimeDataService) enhanceRelations(context stdcontext.Context, parent
 		if childQuery.Slice != nil {
 			childQuery.PartitionByField(relation.ForKey)
 		}
-		children, err := s.fetchRows(context, childQuery)
+		children, err := s.fetchRows(relationContext, childQuery)
 		if err != nil {
+			relationScope.Failure(RuntimeErrorType(err))
 			return err
 		}
 		for _, child := range children {
 			delete(child, "__teaql_partition_rank")
 		}
-		if err := s.enhanceRelations(context, children, childQuery); err != nil {
+		if err := s.enhanceRelations(relationContext, children, childQuery); err != nil {
+			relationScope.Failure(RuntimeErrorType(err))
 			return err
 		}
 		attachRelationRows(parents, children, load.Name, relation)
+		relationScope.Success(map[string]RuntimeAttributeValue{"teaql.result.cardinality": len(children)})
 	}
 	return nil
 }

@@ -62,17 +62,27 @@ func (e *SqlDataServiceExecutor) Query(context stdcontext.Context, request *data
 		StartedAt: startedAt, EndedAt: time.Now(), ResultCount: &resultCount,
 		TraceChain: request.TraceChain, Comment: request.Comment, DebugQuery: &debugQuery,
 	}
-	if recorder, ok := context.(interface {
-		RecordExecutionMetadata(data_service.ExecutionMetadata)
-	}); ok {
-		recorder.RecordExecutionMetadata(metadata)
+	if userContext, ok := UserContextFrom(context); ok {
+		userContext.RecordExecutionMetadata(metadata)
 	}
 	return &data_service.QueryResult{Rows: records, Metadata: metadata}, nil
 }
 
-func (e *SqlDataServiceExecutor) Mutate(context stdcontext.Context, request data_service.MutationRequest) (*data_service.MutationResult, error) {
+func (e *SqlDataServiceExecutor) Mutate(context stdcontext.Context, request data_service.MutationRequest) (result *data_service.MutationResult, err error) {
+	userCtx, _ := UserContextFrom(context)
+	telemetry := RuntimeTelemetry(NoopRuntimeTelemetry{})
+	if userCtx != nil {
+		telemetry = userCtx.RuntimeTelemetry()
+	}
+	context, mutationScope := StartRuntimeOperation(context, telemetry, NewRuntimeOperation("mutation", "sql.mutate", nil))
+	defer func() {
+		if err != nil {
+			mutationScope.Failure(RuntimeErrorType(err))
+		} else if result != nil {
+			mutationScope.Success(map[string]RuntimeAttributeValue{"teaql.result.cardinality": result.AffectedRows})
+		}
+	}()
 	var compiled *teaql_sql.CompiledQuery
-	var err error
 
 	switch req := request.(type) {
 	case *data_service.InsertMutation:
@@ -92,11 +102,14 @@ func (e *SqlDataServiceExecutor) Mutate(context stdcontext.Context, request data
 		return nil, err
 	}
 
+	context, providerScope := StartRuntimeOperation(context, telemetry, NewRuntimeOperation("provider", "sql.execute", nil))
 	startedAt := time.Now()
 	affected, err := e.transport.ExecuteSql(context, compiled)
 	if err != nil {
+		providerScope.Failure(RuntimeErrorType(err))
 		return nil, err
 	}
+	providerScope.Success(map[string]RuntimeAttributeValue{"teaql.result.cardinality": affected})
 
 	operation := data_service.OpInsert
 	switch request.(type) {
@@ -112,16 +125,12 @@ func (e *SqlDataServiceExecutor) Mutate(context stdcontext.Context, request data
 		StartedAt: startedAt, EndedAt: time.Now(), AffectedRows: &affected,
 		TraceChain: request.TraceChain(), Comment: request.Comment(), DebugQuery: &debugQuery,
 	}
-	if recorder, ok := context.(interface {
-		RecordExecutionMetadata(data_service.ExecutionMetadata)
-	}); ok {
-		recorder.RecordExecutionMetadata(metadata)
+	if userCtx != nil {
+		userCtx.RecordExecutionMetadata(metadata)
 	}
-	result := &data_service.MutationResult{AffectedRows: affected, Metadata: metadata}
-	if emitter, ok := context.(interface {
-		EmitMutationAudit(data_service.MutationRequest, *data_service.MutationResult) error
-	}); ok {
-		if err := emitter.EmitMutationAudit(request, result); err != nil {
+	result = &data_service.MutationResult{AffectedRows: affected, Metadata: metadata}
+	if userCtx != nil {
+		if err := userCtx.emitMutationAudit(context, request, result); err != nil {
 			return nil, err
 		}
 	}
