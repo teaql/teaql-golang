@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"strings"
 	"testing"
 	"time"
 
@@ -89,6 +90,49 @@ func TestBindSqliteValueSupportsTypedNullDecimalAndTime(t *testing.T) {
 	want := time.Date(2026, 1, 2, 3, 4, 5, 0, time.UTC)
 	if value, err := bindSqliteValue(core.ValDate(want)); err != nil || value != "2026-01-02" {
 		t.Fatalf("time binding = %#v, %v", value, err)
+	}
+	if value, err := bindSqliteValue(core.ValTimestamp(1787110200123)); err != nil || value != int64(1787110200123) {
+		t.Fatalf("timestamp binding = %#v, %v", value, err)
+	}
+}
+
+func TestTemporalDebugSqlIsExecutableAndMatchesPreparedStorage(t *testing.T) {
+	db, err := sql.Open("sqlite3", ":memory:")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer db.Close()
+	if _, err = db.Exec("CREATE TABLE temporal_fixture (id INTEGER PRIMARY KEY, d DATE, t TIMESTAMP)"); err != nil {
+		t.Fatal(err)
+	}
+	query := &teaql_sql.CompiledQuery{
+		Sql: "INSERT INTO temporal_fixture VALUES (?, ?, ?)",
+		Params: []core.Value{
+			core.ValI64(1), core.ValDate(time.Date(2024, 2, 29, 0, 0, 0, 0, time.UTC)),
+			core.ValTimestamp(1787110200123),
+		},
+	}
+	values, err := bindValues(query.Params)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err = db.Exec(query.Sql, values...); err != nil {
+		t.Fatal(err)
+	}
+	literal := strings.Replace(query.DebugSql(teaql_sql.DatabaseKindSQLite), "VALUES (1,", "VALUES (2,", 1)
+	if _, err = db.Exec(literal); err != nil {
+		t.Fatal(err)
+	}
+	var equalCount int
+	var storageType string
+	if err = db.QueryRow("SELECT count(*) FROM temporal_fixture a JOIN temporal_fixture b ON a.d=b.d AND a.t=b.t WHERE a.id=1 AND b.id=2").Scan(&equalCount); err != nil {
+		t.Fatal(err)
+	}
+	if err = db.QueryRow("SELECT typeof(t) FROM temporal_fixture WHERE id=1").Scan(&storageType); err != nil {
+		t.Fatal(err)
+	}
+	if equalCount != 1 || storageType != "integer" {
+		t.Fatalf("equal=%d storage=%s", equalCount, storageType)
 	}
 }
 

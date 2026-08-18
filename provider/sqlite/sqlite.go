@@ -308,6 +308,8 @@ func bindSqliteValue(value core.Value) (interface{}, error) {
 		// TeaQL time.Time values are dates (timestamps use epoch milliseconds).
 		// Match SQLite DATE text storage so inclusive bounds include the day.
 		return v.Format("2006-01-02"), nil
+	case core.Timestamp:
+		return int64(v), nil
 	case string:
 		return v, nil
 	}

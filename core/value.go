@@ -38,8 +38,8 @@ func ValF64(f float64) Value             { return Value{f} }
 func ValDecimal(d decimal.Decimal) Value { return Value{d} }
 func ValText(s string) Value             { return Value{s} }
 func ValJson(j any) Value                { return Value{j} }
-func ValDate(d time.Time) Value          { return Value{d} } // Stores date without time
-func ValTimestamp(t int64) Value         { return Value{t} } // Unix timestamp in milliseconds
+func ValDate(d time.Time) Value          { return Value{d} }            // Stores date without time
+func ValTimestamp(t int64) Value         { return Value{Timestamp(t)} } // Unix timestamp in milliseconds
 func ValTypedNull(t DataType) Value      { return Value{t} }
 
 // --- Methods ---
@@ -179,6 +179,8 @@ func (v Value) TryTime() (time.Time, bool) {
 
 func (v Value) TryTimestamp() (int64, bool) {
 	switch val := v.V.(type) {
+	case Timestamp:
+		return int64(val), true
 	case int64:
 		return val, true
 	case uint64:
@@ -205,7 +207,7 @@ func (v Value) EntityIdValue() (string, bool) {
 		return val, true
 	case int64, uint64:
 		// simple conversion, normally we use strconv but let's keep it simple for now
-		return "", false 
+		return "", false
 	}
 	return "", false
 }

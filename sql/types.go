@@ -5,6 +5,7 @@ import (
 	"github.com/shopspring/decimal"
 	"github.com/teaql/teaql-golang/core"
 	"strings"
+	"time"
 )
 
 type DatabaseKind int
@@ -30,15 +31,16 @@ func (q *CompiledQuery) SqlWithComment() string {
 }
 
 func (q *CompiledQuery) DebugSql(kind DatabaseKind) string {
+	sql := q.SqlWithComment()
 	switch kind {
 	case DatabaseKindPostgreSQL:
-		return replacePostgresPlaceholders(q.Sql, q.Params)
+		return replacePostgresPlaceholders(sql, q.Params)
 	case DatabaseKindSQLite:
-		return replacePositionalPlaceholders(q.Sql, q.Params, kind)
+		return replacePositionalPlaceholders(sql, q.Params, kind)
 	case DatabaseKindMySQL:
-		return replacePositionalPlaceholders(q.Sql, q.Params, kind)
+		return replacePositionalPlaceholders(sql, q.Params, kind)
 	default:
-		return q.Sql
+		return sql
 	}
 }
 
@@ -91,25 +93,72 @@ func replacePositionalPlaceholders(sql string, params []core.Value, kind Databas
 	var output strings.Builder
 	output.Grow(len(sql))
 
-	inString := false
+	state := scanSQL
 	chars := []rune(sql)
 	paramIdx := 0
 
 	for i := 0; i < len(chars); i++ {
 		ch := chars[i]
 
-		if ch == '\'' {
-			output.WriteRune('\'')
-			if inString && i+1 < len(chars) && chars[i+1] == '\'' {
+		if state == scanSQL && ch == '\'' {
+			output.WriteRune(ch)
+			state = scanSingleQuote
+			continue
+		}
+		if state == scanSQL && ch == '"' {
+			output.WriteRune(ch)
+			state = scanDoubleQuote
+			continue
+		}
+		if state == scanSQL && ch == '-' && i+1 < len(chars) && chars[i+1] == '-' {
+			output.WriteString("--")
+			i++
+			state = scanLineComment
+			continue
+		}
+		if state == scanSQL && ch == '/' && i+1 < len(chars) && chars[i+1] == '*' {
+			output.WriteString("/*")
+			i++
+			state = scanBlockComment
+			continue
+		}
+		if state == scanSingleQuote {
+			output.WriteRune(ch)
+			if ch == '\'' && i+1 < len(chars) && chars[i+1] == '\'' {
 				output.WriteRune('\'')
 				i++
-			} else {
-				inString = !inString
+			} else if ch == '\'' {
+				state = scanSQL
 			}
 			continue
 		}
-
-		if !inString && ch == '?' {
+		if state == scanDoubleQuote {
+			output.WriteRune(ch)
+			if ch == '"' && i+1 < len(chars) && chars[i+1] == '"' {
+				output.WriteRune('"')
+				i++
+			} else if ch == '"' {
+				state = scanSQL
+			}
+			continue
+		}
+		if state == scanLineComment {
+			output.WriteRune(ch)
+			if ch == '\n' || ch == '\r' {
+				state = scanSQL
+			}
+			continue
+		}
+		if state == scanBlockComment {
+			output.WriteRune(ch)
+			if ch == '*' && i+1 < len(chars) && chars[i+1] == '/' {
+				output.WriteRune('/')
+				i++
+				state = scanSQL
+			}
+			continue
+		}
+		if ch == '?' {
 			if paramIdx < len(params) {
 				output.WriteString(sqlLiteral(params[paramIdx], kind))
 				paramIdx++
@@ -122,6 +171,16 @@ func replacePositionalPlaceholders(sql string, params []core.Value, kind Databas
 	}
 	return output.String()
 }
+
+type sqlScanState uint8
+
+const (
+	scanSQL sqlScanState = iota
+	scanSingleQuote
+	scanDoubleQuote
+	scanLineComment
+	scanBlockComment
+)
 
 func sqlLiteral(value core.Value, kind DatabaseKind) string {
 	if value.V == nil {
@@ -143,6 +202,10 @@ func sqlLiteral(value core.Value, kind DatabaseKind) string {
 		return v.String()
 	case string:
 		return quotedSqlString(v)
+	case time.Time:
+		return quotedSqlString(v.UTC().Format("2006-01-02"))
+	case core.Timestamp:
+		return fmt.Sprintf("%d", v)
 	case []core.Value:
 		var strs []string
 		for _, item := range v {

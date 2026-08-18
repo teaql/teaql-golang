@@ -351,6 +351,8 @@ func bindPgValue(value core.Value) (interface{}, error) {
 		return v.String(), nil
 	case time.Time:
 		return v, nil
+	case core.Timestamp:
+		return v.ToTime(), nil
 	case string:
 		return v, nil
 	}

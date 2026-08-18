@@ -5,6 +5,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/teaql/teaql-golang/core"
 	"testing"
+	"time"
 )
 
 func TestCompiledQuerySqlWithComment(t *testing.T) {
@@ -48,6 +49,21 @@ func TestDebugSqlRendersCopyPasteStatementWithSharedSemantics(t *testing.T) {
 	assert.Equal(t,
 		"SELECT * FROM school WHERE name = 'O''Brien School' AND active = TRUE AND phone IS NULL AND repeated = 'O''Brien School' AND note = '$2'",
 		query.DebugSql(DatabaseKindPostgreSQL))
+}
+
+func TestSqliteDebugSqlPreservesCommentsAndTemporalStorageLiterals(t *testing.T) {
+	comment := "teaql purpose=temporal.verify ? $1"
+	query := CompiledQuery{
+		Sql: "-- line ? $1\nSELECT '?', \"identifier?\", ?, ? /* block ? */",
+		Params: []core.Value{
+			core.ValDate(time.Date(2024, 2, 29, 12, 0, 0, 0, time.FixedZone("offset", 8*60*60))),
+			core.ValTimestamp(1787110200123),
+		},
+		Comment: &comment,
+	}
+	assert.Equal(t,
+		"/* teaql purpose=temporal.verify ? $1 */ -- line ? $1\nSELECT '?', \"identifier?\", '2024-02-29', 1787110200123 /* block ? */",
+		query.DebugSql(DatabaseKindSQLite))
 }
 
 func TestCompiledQueryDebugSqlPositional(t *testing.T) {
