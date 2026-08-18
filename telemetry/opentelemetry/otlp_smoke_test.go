@@ -49,7 +49,8 @@ func TestExportsQueryTraceMetricAndLogThroughOTLPHTTP(t *testing.T) {
 		otlptracehttp.WithURLPath("/v1/traces"))
 	require.NoError(t, err)
 	tracerProvider := traceSdk.NewTracerProvider(
-		traceSdk.WithResource(res), traceSdk.WithSyncer(traceExporter))
+		traceSdk.WithResource(res), traceSdk.WithBatcher(traceExporter,
+			traceSdk.WithMaxQueueSize(64), traceSdk.WithMaxExportBatchSize(16)))
 	metricExporter, err := otlpmetrichttp.New(context,
 		otlpmetrichttp.WithEndpoint(parsed.Host), otlpmetrichttp.WithInsecure(),
 		otlpmetrichttp.WithURLPath("/v1/metrics"))
