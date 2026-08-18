@@ -80,12 +80,27 @@ func TestExportsQueryTraceMetricAndLogThroughOTLPHTTP(t *testing.T) {
 	require.NoError(t, err)
 	telemetry.WithLogEmitter(logs)
 
-	_, scope := runtime.StartRuntimeOperation(context, telemetry,
-		runtime.NewRuntimeOperation("query", "ConformanceProbe.list", map[string]runtime.RuntimeAttributeValue{
-			"teaql.entity.type": "ConformanceProbe",
-			"teaql.entity.id":   "must-not-export",
-		}))
-	scope.Success(map[string]runtime.RuntimeAttributeValue{"teaql.result.cardinality": 1})
+	operations := []struct {
+		family, name string
+		attributes   map[string]runtime.RuntimeAttributeValue
+	}{
+		{"query", "ConformanceProbe.list", map[string]runtime.RuntimeAttributeValue{"teaql.entity.type": "ConformanceProbe"}},
+		{"mutation", "ConformanceProbe.update", map[string]runtime.RuntimeAttributeValue{"teaql.entity.type": "ConformanceProbe", "teaql.mutation.kind": "update"}},
+		{"relation_load", "ConformanceProbe.children", map[string]runtime.RuntimeAttributeValue{"teaql.entity.type": "ConformanceProbe", "teaql.relation.name": "children"}},
+		{"provider", "sqlite.query", map[string]runtime.RuntimeAttributeValue{"teaql.provider.kind": "sqlite", "teaql.provider.operation": "query"}},
+		{"cache", "continuous_page.get", map[string]runtime.RuntimeAttributeValue{"teaql.cache.operation": "get"}},
+		{"audit", "ConformanceProbe.audit", map[string]runtime.RuntimeAttributeValue{"teaql.entity.type": "ConformanceProbe", "teaql.mutation.kind": "update", "teaql.audit.changed_field_count": 1}},
+	}
+	for _, operation := range operations {
+		operation.attributes["teaql.entity.id"] = "must-not-export"
+		_, scope := runtime.StartRuntimeOperation(context, telemetry,
+			runtime.NewRuntimeOperation(operation.family, operation.name, operation.attributes))
+		completion := map[string]runtime.RuntimeAttributeValue{"teaql.result.cardinality": 1}
+		if operation.family == "cache" {
+			completion["teaql.cache.result"] = "hit"
+		}
+		scope.Success(completion)
+	}
 	require.NoError(t, logs.err)
 	require.NoError(t, telemetry.Flush(context))
 }
