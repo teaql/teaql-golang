@@ -24,6 +24,25 @@ type capturingLogEmitter struct {
 	panic bool
 }
 
+func TestDelegatesExplicitApplicationOwnedLifecycle(t *testing.T) {
+	tracerProvider := trace.NewTracerProvider()
+	meterProvider := metric.NewMeterProvider()
+	flushes, shutdowns := 0, 0
+	telemetry, err := New(
+		tracerProvider.Tracer("io.teaql.runtime.lifecycle"),
+		meterProvider.Meter("io.teaql.runtime.lifecycle"),
+		func(stdcontext.Context) error { flushes++; return nil },
+		func(stdcontext.Context) error { shutdowns++; return nil },
+	)
+	require.NoError(t, err)
+
+	require.NoError(t, telemetry.Flush(stdcontext.Background()))
+	require.NoError(t, telemetry.Shutdown(stdcontext.Background()))
+
+	assert.Equal(t, 1, flushes)
+	assert.Equal(t, 1, shutdowns)
+}
+
 func (e *capturingLogEmitter) Emit(context stdcontext.Context, record RuntimeLogRecord) {
 	e.logs = append(e.logs, capturedLog{
 		record: record, spanContext: oteltrace.SpanContextFromContext(context),
