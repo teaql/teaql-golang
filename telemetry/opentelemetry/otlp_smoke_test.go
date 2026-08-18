@@ -32,6 +32,7 @@ func TestExportsQueryTraceMetricAndLogThroughOTLPHTTP(t *testing.T) {
 	if base == "" {
 		base = "http://localhost:4318"
 	}
+	expectExportFailure := os.Getenv("TEAQL_EXPECT_EXPORT_FAILURE") == "1"
 	parsed, err := url.Parse(base)
 	require.NoError(t, err)
 	runID := serviceName[strings.LastIndex(serviceName, "-")+1:]
@@ -102,8 +103,17 @@ func TestExportsQueryTraceMetricAndLogThroughOTLPHTTP(t *testing.T) {
 		}
 		scope.Success(completion)
 	}
-	require.NoError(t, logs.err)
-	require.NoError(t, telemetry.Flush(context))
+	if expectExportFailure {
+		require.Error(t, logs.err)
+	} else {
+		require.NoError(t, logs.err)
+	}
+	flushError := telemetry.Flush(context)
+	if expectExportFailure {
+		require.Error(t, flushError)
+	} else {
+		require.NoError(t, flushError)
+	}
 }
 
 type otlpJSONLogEmitter struct {
