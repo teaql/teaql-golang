@@ -11,7 +11,27 @@ import (
 	"go.opentelemetry.io/otel/sdk/metric/metricdata"
 	"go.opentelemetry.io/otel/sdk/trace"
 	"go.opentelemetry.io/otel/sdk/trace/tracetest"
+	oteltrace "go.opentelemetry.io/otel/trace"
 )
+
+type capturedLog struct {
+	record      RuntimeLogRecord
+	spanContext oteltrace.SpanContext
+}
+
+type capturingLogEmitter struct {
+	logs  []capturedLog
+	panic bool
+}
+
+func (e *capturingLogEmitter) Emit(context stdcontext.Context, record RuntimeLogRecord) {
+	e.logs = append(e.logs, capturedLog{
+		record: record, spanContext: oteltrace.SpanContextFromContext(context),
+	})
+	if e.panic {
+		panic("application logger failed")
+	}
+}
 
 func TestOfficialSDKExportsNestedSpansAndMetrics(t *testing.T) {
 	spanExporter := tracetest.NewInMemoryExporter()
@@ -30,6 +50,8 @@ func TestOfficialSDKExportsNestedSpansAndMetrics(t *testing.T) {
 		},
 	)
 	require.NoError(t, err)
+	logs := &capturingLogEmitter{panic: true}
+	telemetry.WithLogEmitter(logs)
 
 	context, query := runtime.StartRuntimeOperation(stdcontext.Background(), telemetry,
 		runtime.NewRuntimeOperation("query", "School.list", map[string]runtime.RuntimeAttributeValue{
@@ -66,4 +88,16 @@ func TestOfficialSDKExportsNestedSpansAndMetrics(t *testing.T) {
 	}
 	assert.True(t, metricNames["teaql.runtime.operation.duration"])
 	assert.True(t, metricNames["teaql.runtime.operation.count"])
+	require.Len(t, logs.logs, 2)
+	var queryLog capturedLog
+	for _, log := range logs.logs {
+		if log.record.Attributes["teaql.operation.family"] == "query" {
+			queryLog = log
+		}
+	}
+	assert.Equal(t, "TeaQL runtime operation completed", queryLog.record.Body)
+	assert.Equal(t, "School.list", queryLog.record.Attributes["teaql.operation.name"])
+	assert.NotContains(t, queryLog.record.Attributes, "teaql.entity.id")
+	assert.Equal(t, querySpan.SpanContext.TraceID(), queryLog.spanContext.TraceID())
+	assert.Equal(t, querySpan.SpanContext.SpanID(), queryLog.spanContext.SpanID())
 }

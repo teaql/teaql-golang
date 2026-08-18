@@ -20,6 +20,18 @@ type RuntimeTelemetry struct {
 	operations instrument.Int64Counter
 	flush      func(stdcontext.Context) error
 	shutdown   func(stdcontext.Context) error
+	logEmitter RuntimeLogEmitter
+}
+
+type RuntimeLogRecord struct {
+	Body       string
+	Attributes map[string]runtime.RuntimeAttributeValue
+}
+
+// RuntimeLogEmitter lets the application route structured runtime logs through
+// its logging stack. The supplied context contains the active TeaQL span.
+type RuntimeLogEmitter interface {
+	Emit(stdcontext.Context, RuntimeLogRecord)
 }
 
 func New(
@@ -50,6 +62,11 @@ func New(
 	}, nil
 }
 
+func (t *RuntimeTelemetry) WithLogEmitter(emitter RuntimeLogEmitter) *RuntimeTelemetry {
+	t.logEmitter = emitter
+	return t
+}
+
 func (t *RuntimeTelemetry) Start(context stdcontext.Context, operation runtime.RuntimeOperation) (stdcontext.Context, runtime.RuntimeTelemetryScope) {
 	attributes := make([]attribute.KeyValue, 0, len(operation.Attributes))
 	for key, value := range operation.Attributes {
@@ -61,6 +78,7 @@ func (t *RuntimeTelemetry) Start(context stdcontext.Context, operation runtime.R
 	return context, &scope{
 		context: context, span: span, operation: operation,
 		startedAt: time.Now(), duration: t.duration, operations: t.operations,
+		logEmitter: t.logEmitter,
 	}
 }
 
@@ -86,6 +104,7 @@ type scope struct {
 	startedAt  time.Time
 	duration   instrument.Float64Histogram
 	operations instrument.Int64Counter
+	logEmitter RuntimeLogEmitter
 }
 
 func (s *scope) Success(attributes map[string]runtime.RuntimeAttributeValue) {
@@ -115,9 +134,27 @@ func (s *scope) finish(outcome string, finishSpan func()) {
 			attribute.String("teaql.operation.family", s.operation.Family),
 			attribute.String("teaql.operation.outcome", outcome),
 		}
-		s.duration.Record(s.context, float64(time.Since(s.startedAt).Microseconds())/1000, dimensions...)
+		durationMillis := float64(time.Since(s.startedAt).Microseconds()) / 1000
+		s.duration.Record(s.context, durationMillis, dimensions...)
 		s.operations.Add(s.context, 1, dimensions...)
+		s.emitLog(outcome, durationMillis)
 		s.span.End()
+	})
+}
+
+func (s *scope) emitLog(outcome string, durationMillis float64) {
+	if s.logEmitter == nil {
+		return
+	}
+	defer func() { _ = recover() }()
+	s.logEmitter.Emit(s.context, RuntimeLogRecord{
+		Body: "TeaQL runtime operation completed",
+		Attributes: map[string]runtime.RuntimeAttributeValue{
+			"teaql.operation.family":      s.operation.Family,
+			"teaql.operation.name":        s.operation.Name,
+			"teaql.operation.outcome":     outcome,
+			"teaql.operation.duration_ms": durationMillis,
+		},
 	})
 }
 
