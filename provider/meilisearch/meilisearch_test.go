@@ -166,7 +166,7 @@ func TestMeilisearchProviderEdgeCases(t *testing.T) {
 	provider.host = "http://localhost:7700"
 	provider.client.Transport = &mockRoundTripper{
 		roundTripFunc: func(req *http.Request) (*http.Response, error) {
-			return nil, context.DeadlineExceeded
+			return nil, stdcontext.DeadlineExceeded
 		},
 	}
 	_, err = provider.Query(context, queryReq)
@@ -206,6 +206,6 @@ func TestMeilisearchProviderEdgeCases(t *testing.T) {
 type errReader2 struct{}
 
 func (errReader2) Read(p []byte) (n int, err error) {
-	return 0, context.DeadlineExceeded
+	return 0, stdcontext.DeadlineExceeded
 }
 func (errReader2) Close() error { return nil }
