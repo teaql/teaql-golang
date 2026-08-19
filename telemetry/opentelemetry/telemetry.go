@@ -121,13 +121,17 @@ func (s *scope) Success(attributes map[string]runtime.RuntimeAttributeValue) {
 }
 
 func (s *scope) Failure(errorType string) {
+	category := runtime.RuntimeErrorCategory(errorType)
 	s.finish("failure", func() {
-		s.span.SetAttributes(attribute.String("teaql.error.type", errorType))
+		s.span.SetAttributes(
+			attribute.String("teaql.error.type", errorType),
+			attribute.String("teaql.error.category", category),
+		)
 		s.span.SetStatus(codes.Error, "TeaQL operation failed")
-	})
+	}, category)
 }
 
-func (s *scope) finish(outcome string, finishSpan func()) {
+func (s *scope) finish(outcome string, finishSpan func(), errorCategory ...string) {
 	s.once.Do(func() {
 		finishSpan()
 		dimensions := []attribute.KeyValue{
@@ -137,24 +141,32 @@ func (s *scope) finish(outcome string, finishSpan func()) {
 		durationMillis := float64(time.Since(s.startedAt).Microseconds()) / 1000
 		s.duration.Record(s.context, durationMillis, dimensions...)
 		s.operations.Add(s.context, 1, dimensions...)
-		s.emitLog(outcome, durationMillis)
+		category := ""
+		if len(errorCategory) > 0 {
+			category = errorCategory[0]
+		}
+		s.emitLog(outcome, durationMillis, category)
 		s.span.End()
 	})
 }
 
-func (s *scope) emitLog(outcome string, durationMillis float64) {
+func (s *scope) emitLog(outcome string, durationMillis float64, errorCategory string) {
 	if s.logEmitter == nil {
 		return
 	}
 	defer func() { _ = recover() }()
+	attributes := map[string]runtime.RuntimeAttributeValue{
+		"teaql.operation.family":      s.operation.Family,
+		"teaql.operation.name":        s.operation.Name,
+		"teaql.operation.outcome":     outcome,
+		"teaql.operation.duration_ms": durationMillis,
+	}
+	if errorCategory != "" {
+		attributes["teaql.error.category"] = errorCategory
+	}
 	s.logEmitter.Emit(s.context, RuntimeLogRecord{
-		Body: "TeaQL runtime operation completed",
-		Attributes: map[string]runtime.RuntimeAttributeValue{
-			"teaql.operation.family":      s.operation.Family,
-			"teaql.operation.name":        s.operation.Name,
-			"teaql.operation.outcome":     outcome,
-			"teaql.operation.duration_ms": durationMillis,
-		},
+		Body:       "TeaQL runtime operation completed",
+		Attributes: attributes,
 	})
 }
 

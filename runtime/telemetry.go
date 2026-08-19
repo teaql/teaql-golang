@@ -3,6 +3,7 @@ package runtime
 import (
 	stdcontext "context"
 	"fmt"
+	"strings"
 	"sync"
 )
 
@@ -121,4 +122,28 @@ func RuntimeErrorType(err error) string {
 		return "unknown"
 	}
 	return fmt.Sprintf("%T", err)
+}
+
+// RuntimeErrorCategory derives a stable category from a native error type,
+// never from the error message.
+func RuntimeErrorCategory(errorType string) string {
+	typeName := strings.ToLower(errorType)
+	for _, rule := range []struct {
+		category string
+		terms    []string
+	}{
+		{"timeout", []string{"timeout", "deadline"}},
+		{"authorization", []string{"authentication", "authorization", "unauthorized", "forbidden", "permission"}},
+		{"validation", []string{"validation", "invalidargument", "valueerror", "parse", "format"}},
+		{"conflict", []string{"conflict", "optimistic", "version", "duplicate", "alreadyexists"}},
+		{"transport", []string{"transport", "network", "connection", "socket", "http", "ioerror"}},
+		{"provider", []string{"provider", "sql", "database", "jdbc"}},
+	} {
+		for _, term := range rule.terms {
+			if strings.Contains(typeName, term) {
+				return rule.category
+			}
+		}
+	}
+	return "internal"
 }

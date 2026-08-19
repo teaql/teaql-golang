@@ -47,3 +47,15 @@ func TestRuntimeTelemetrySafeBalancedAndFailOpen(t *testing.T) {
 		NewRuntimeOperation("cache", "get", nil))
 	assert.NotPanics(t, func() { brokenScope.Success(nil) })
 }
+
+func TestRuntimeErrorCategoryUsesTypeNotMessage(t *testing.T) {
+	if got := RuntimeErrorCategory("DatabaseTimeoutError"); got != "timeout" {
+		t.Fatalf("got %s", got)
+	}
+	if got := RuntimeErrorCategory("PermissionError"); got != "authorization" {
+		t.Fatalf("got %s", got)
+	}
+	if got := RuntimeErrorCategory("UnknownTeaQLError"); got != "internal" {
+		t.Fatalf("got %s", got)
+	}
+}
