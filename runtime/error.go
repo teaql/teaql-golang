@@ -6,8 +6,11 @@ import (
 )
 
 type CheckResult struct {
-	// fields will be populated later
-	Message string
+	RuleID      string
+	Location    string
+	InputValue  any
+	SystemValue any
+	Message     string
 }
 
 func (c *CheckResult) String() string { return c.Message }

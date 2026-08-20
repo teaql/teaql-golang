@@ -556,7 +556,10 @@ func (c *UserContext) InsertNamedResource(args ...any) any {
 }
 
 func (c *UserContext) Language(args ...any) any {
-	return nil
+	if value, ok := c.resources["locale"].(Locale); ok {
+		return value
+	}
+	return LocaleEnglish
 }
 
 func (c *UserContext) Local(args ...any) any {
@@ -632,11 +635,41 @@ func (c *UserContext) SetInternalIdGenerator(val any) {
 }
 
 func (c *UserContext) SetLanguage(val any) {
-	c.resources["set_language"] = val
+	if code, ok := val.(string); ok {
+		if err := c.SetLocaleCode(code); err != nil {
+			panic(err)
+		}
+	}
 }
 
 func (c *UserContext) SetLanguageCode(val any) {
-	c.resources["set_language_code"] = val
+	if code, ok := val.(string); ok {
+		if err := c.SetLocaleCode(code); err != nil {
+			panic(err)
+		}
+	}
+}
+
+func (c *UserContext) SetLocaleCode(code string) error {
+	locale, err := ParseLocale(code)
+	if err != nil {
+		return err
+	}
+	c.resources["locale"] = locale
+	return nil
+}
+func (c *UserContext) InstallI18nCatalog(catalog *I18nCatalog) error {
+	if catalog == nil {
+		return fmt.Errorf("catalog is required")
+	}
+	c.resources["i18n_catalog"] = catalog
+	return nil
+}
+func (c *UserContext) I18nCatalog() *I18nCatalog {
+	if catalog, ok := c.resources["i18n_catalog"].(*I18nCatalog); ok {
+		return catalog
+	}
+	return BuiltinI18nCatalog()
 }
 
 func (c *UserContext) SetMetadata(val any) {
@@ -697,7 +730,17 @@ func (c *UserContext) TraceId(args ...any) any {
 }
 
 func (c *UserContext) TranslateCheckResults(args ...any) {
-	// TODO: invoke checker registry
+	if len(args) == 0 {
+		return
+	}
+	results, ok := args[0].([]CheckResult)
+	if !ok {
+		return
+	}
+	locale := c.Language().(Locale)
+	for i := range results {
+		c.I18nCatalog().Translate(&results[i], locale)
+	}
 }
 
 func (c *UserContext) UserIdentifier(args ...any) any {
@@ -735,7 +778,7 @@ func (c *UserContext) WithInternalIdGenerator(val any) *UserContext {
 }
 
 func (c *UserContext) WithLanguage(val any) *UserContext {
-	c.resources["with_language"] = val
+	c.SetLanguage(val)
 	return c
 }
 
