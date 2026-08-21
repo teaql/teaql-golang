@@ -779,6 +779,15 @@ func (c *UserContext) WithCheckerRegistry(val any) *UserContext {
 	return c
 }
 
+// CheckAndFix runs the installed model checker against provider-independent
+// mutation state. Generated save code calls this before ID allocation or I/O.
+func (c *UserContext) CheckAndFix(input *CheckAndFixInput) error {
+	if input == nil {
+		return nil
+	}
+	return c.checkAndFix(input)
+}
+
 func (c *UserContext) checkAndFix(input *CheckAndFixInput) error {
 	if c.checkerRegistry == nil {
 		return nil

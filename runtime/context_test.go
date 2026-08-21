@@ -315,3 +315,27 @@ func TestUserContext_MoreAutogen(t *testing.T) {
 	context.RecordSqlLog()
 	context.TranslateCheckResults()
 }
+
+type contextRequiredRegistry struct{ calls int }
+
+func (r *contextRequiredRegistry) CheckAndFix(_ *UserContext, input *CheckAndFixInput) []CheckResult {
+	r.calls++
+	if _, ok := input.Values["name"]; !ok {
+		return []CheckResult{{RuleID: "required", Location: "name"}}
+	}
+	return nil
+}
+
+func TestUserContextCheckAndFixReturnsStructuredError(t *testing.T) {
+	registry := &contextRequiredRegistry{}
+	context := NewUserContext()
+	context.SetCheckerRegistry(registry)
+	err := context.CheckAndFix(&CheckAndFixInput{Entity: "Task", Operation: core.MutationInsert, Values: core.Record{}})
+	runtimeErr, ok := err.(*RuntimeError)
+	if !ok || runtimeErr.Type != "Check" || len(runtimeErr.CheckResults) != 1 {
+		t.Fatalf("expected structured check error, got %#v", err)
+	}
+	if registry.calls != 1 {
+		t.Fatalf("expected one checker call, got %d", registry.calls)
+	}
+}
