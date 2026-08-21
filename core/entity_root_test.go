@@ -35,3 +35,19 @@ func TestEntityRootTracksFinalValuesVersionsAndLifecycle(t *testing.T) {
 		t.Fatalf("commit must clear pending state")
 	}
 }
+
+func TestEntityRootMergePreservesLifecycleWithoutFieldChanges(t *testing.T) {
+	child := NewEntityRoot()
+	newKey := NewEntityKey("Line", ValI64(-1))
+	loadedKey := NewEntityKey("Line", ValI64(42))
+	child.MarkAsNew(newKey)
+	child.SetOriginalVersion(loadedKey, 7)
+	root := NewEntityRoot()
+	root.MergeFrom(child)
+	if !root.IsNew(newKey) {
+		t.Fatal("new entity without field changes was lost")
+	}
+	if version, ok := root.OriginalVersion(loadedKey); !ok || version != 7 {
+		t.Fatal("version-only entity was lost")
+	}
+}

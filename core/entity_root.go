@@ -28,6 +28,7 @@ type EntityRoot struct {
 	mu               sync.RWMutex
 	changes          map[string]EntityChange
 	originalVersions map[string]int64
+	originalKeys     map[string]EntityKey
 	newKeys          map[string]EntityKey
 	deletedKeys      map[string]EntityKey
 }
@@ -36,6 +37,7 @@ func NewEntityRoot() *EntityRoot {
 	return &EntityRoot{
 		changes:          make(map[string]EntityChange),
 		originalVersions: make(map[string]int64),
+		originalKeys:     make(map[string]EntityKey),
 		newKeys:          make(map[string]EntityKey),
 		deletedKeys:      make(map[string]EntityKey),
 	}
@@ -85,20 +87,43 @@ func (r *EntityRoot) MergeFrom(other *EntityRoot) {
 	if other == nil || other == r {
 		return
 	}
-	for _, change := range other.Changes() {
-		for field, value := range change.Values {
-			r.Set(change.Key, field, value)
+	for _, key := range other.Keys() {
+		for field, value := range other.Change(key) {
+			r.Set(key, field, value)
 		}
-		if version, ok := other.OriginalVersion(change.Key); ok {
-			r.SetOriginalVersion(change.Key, version)
+		if version, ok := other.OriginalVersion(key); ok {
+			r.SetOriginalVersion(key, version)
 		}
-		if other.IsNew(change.Key) {
-			r.MarkAsNew(change.Key)
+		if other.IsNew(key) {
+			r.MarkAsNew(key)
 		}
-		if other.IsDeleted(change.Key) {
-			r.MarkAsDeleted(change.Key)
+		if other.IsDeleted(key) {
+			r.MarkAsDeleted(key)
 		}
 	}
+}
+
+func (r *EntityRoot) Keys() []EntityKey {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+	keys := make(map[string]EntityKey)
+	for id, entry := range r.changes {
+		keys[id] = entry.Key
+	}
+	for id, key := range r.newKeys {
+		keys[id] = key
+	}
+	for id, key := range r.deletedKeys {
+		keys[id] = key
+	}
+	for id, key := range r.originalKeys {
+		keys[id] = key
+	}
+	result := make([]EntityKey, 0, len(keys))
+	for _, key := range keys {
+		result = append(result, key)
+	}
+	return result
 }
 
 func (r *EntityRoot) Rekey(oldKey, newKey EntityKey) {
@@ -112,7 +137,9 @@ func (r *EntityRoot) Rekey(oldKey, newKey EntityKey) {
 	}
 	if version, ok := r.originalVersions[oldID]; ok {
 		delete(r.originalVersions, oldID)
+		delete(r.originalKeys, oldID)
 		r.originalVersions[newID] = version
+		r.originalKeys[newID] = newKey
 	}
 	if _, ok := r.newKeys[oldID]; ok {
 		delete(r.newKeys, oldID)
@@ -136,6 +163,7 @@ func (r *EntityRoot) SetOriginalVersion(key EntityKey, version int64) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	r.originalVersions[key.mapKey()] = version
+	r.originalKeys[key.mapKey()] = key
 }
 
 func (r *EntityRoot) OriginalVersion(key EntityKey) (int64, bool) {
