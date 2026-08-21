@@ -134,11 +134,12 @@ func (r *InMemoryEntityDataServiceBehaviorRegistry) Behavior(entity string) Enti
 }
 
 type RuntimeModule struct {
-	Metadata       *InMemoryMetadataStore
-	EntityRegistry *InMemoryEntityRegistry
-	Behaviors      *InMemoryEntityDataServiceBehaviorRegistry
-	EventSinks     *InMemoryRawAuditEventSink
-	InitialGraphs  []*GraphNode
+	Metadata        *InMemoryMetadataStore
+	EntityRegistry  *InMemoryEntityRegistry
+	Behaviors       *InMemoryEntityDataServiceBehaviorRegistry
+	EventSinks      *InMemoryRawAuditEventSink
+	InitialGraphs   []*GraphNode
+	CheckerRegistry CheckerRegistry
 }
 
 func NewRuntimeModule() *RuntimeModule {
@@ -185,6 +186,11 @@ func (m *RuntimeModule) InitialGraph(graph *GraphNode) *RuntimeModule {
 	return m
 }
 
+func (m *RuntimeModule) Checkers(registry CheckerRegistry) *RuntimeModule {
+	m.CheckerRegistry = registry
+	return m
+}
+
 func (m *RuntimeModule) AddInitialGraphs(graphs []*GraphNode) *RuntimeModule {
 	m.InitialGraphs = append(m.InitialGraphs, graphs...)
 	return m
@@ -209,6 +215,11 @@ func (m *RuntimeModule) And(other *RuntimeModule) *RuntimeModule {
 		combined.EventSink(sink)
 	}
 	combined.InitialGraphs = append(append([]*GraphNode{}, m.InitialGraphs...), other.InitialGraphs...)
+	if other.CheckerRegistry != nil {
+		combined.CheckerRegistry = other.CheckerRegistry
+	} else {
+		combined.CheckerRegistry = m.CheckerRegistry
+	}
 	return combined
 }
 
@@ -219,6 +230,7 @@ func (m *RuntimeModule) ApplyTo(context *UserContext) {
 	context.Behaviors = m.Behaviors
 	context.setStandardAuditEventSink(m.EventSinks)
 	context.SetInitialGraphs(m.InitialGraphs)
+	context.SetCheckerRegistry(m.CheckerRegistry)
 }
 
 func (m *RuntimeModule) IntoContext() *UserContext {
