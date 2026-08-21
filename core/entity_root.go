@@ -67,6 +67,71 @@ func (r *EntityRoot) Changes() []EntityChange {
 	return result
 }
 
+func (r *EntityRoot) Change(key EntityKey) Record {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+	entry, ok := r.changes[key.mapKey()]
+	if !ok {
+		return make(Record)
+	}
+	result := make(Record, len(entry.Values))
+	for field, value := range entry.Values {
+		result[field] = value
+	}
+	return result
+}
+
+func (r *EntityRoot) MergeFrom(other *EntityRoot) {
+	if other == nil || other == r {
+		return
+	}
+	for _, change := range other.Changes() {
+		for field, value := range change.Values {
+			r.Set(change.Key, field, value)
+		}
+		if version, ok := other.OriginalVersion(change.Key); ok {
+			r.SetOriginalVersion(change.Key, version)
+		}
+		if other.IsNew(change.Key) {
+			r.MarkAsNew(change.Key)
+		}
+		if other.IsDeleted(change.Key) {
+			r.MarkAsDeleted(change.Key)
+		}
+	}
+}
+
+func (r *EntityRoot) Rekey(oldKey, newKey EntityKey) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	oldID, newID := oldKey.mapKey(), newKey.mapKey()
+	if entry, ok := r.changes[oldID]; ok {
+		delete(r.changes, oldID)
+		entry.Key = newKey
+		r.changes[newID] = entry
+	}
+	if version, ok := r.originalVersions[oldID]; ok {
+		delete(r.originalVersions, oldID)
+		r.originalVersions[newID] = version
+	}
+	if _, ok := r.newKeys[oldID]; ok {
+		delete(r.newKeys, oldID)
+		r.newKeys[newID] = newKey
+	}
+	if _, ok := r.deletedKeys[oldID]; ok {
+		delete(r.deletedKeys, oldID)
+		r.deletedKeys[newID] = newKey
+	}
+}
+
+func (r *EntityRoot) ClearEntity(key EntityKey) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	delete(r.changes, key.mapKey())
+	delete(r.newKeys, key.mapKey())
+	delete(r.deletedKeys, key.mapKey())
+}
+
 func (r *EntityRoot) SetOriginalVersion(key EntityKey, version int64) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
