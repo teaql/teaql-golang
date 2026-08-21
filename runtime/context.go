@@ -214,6 +214,7 @@ type UserContext struct {
 	userIdentifier            string
 	requestPolicy             RequestPolicy
 	checkerRegistry           CheckerRegistry
+	entityRoot                *core.EntityRoot
 }
 
 // CheckAndFixInput is the provider-independent mutation state seen by model checkers.
@@ -349,6 +350,7 @@ func NewUserContext() *UserContext {
 		continuousPagePlan:        "DISABLED",
 		userIdentifier:            "main",
 		runtimeTelemetry:          NoopRuntimeTelemetry{},
+		entityRoot:                core.NewEntityRoot(),
 	}
 	context.Context = stdcontext.WithValue(context.Context, userContextKey{}, context)
 	return context
@@ -562,9 +564,7 @@ func (c *UserContext) EntityDataServiceBehavior(args ...any) any {
 	return nil
 }
 
-func (c *UserContext) EntityRoot(args ...any) any {
-	return nil
-}
+func (c *UserContext) EntityRoot() *core.EntityRoot { return c.entityRoot }
 
 func (c *UserContext) GenerateId(args ...any) any {
 	return nil
