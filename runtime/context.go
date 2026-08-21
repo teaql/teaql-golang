@@ -226,6 +226,22 @@ type CheckAndFixInput struct {
 	Now       time.Time
 }
 
+// EntityReference is trusted context-owned identity, never a raw magic number.
+type EntityReference struct {
+	Entity string
+	ID     uint64
+}
+
+type ContextRootError struct {
+	Reason       string
+	ExpectedType string
+	ActiveRoot   *EntityReference
+}
+
+func (e *ContextRootError) Error() string {
+	return fmt.Sprintf("context root %s: expected %s", e.Reason, e.ExpectedType)
+}
+
 type CheckerRegistry interface {
 	CheckAndFix(context *UserContext, input *CheckAndFixInput) []CheckResult
 }
@@ -777,6 +793,28 @@ func (c *UserContext) UserIdentifier(args ...any) any {
 func (c *UserContext) WithCheckerRegistry(val any) *UserContext {
 	c.SetCheckerRegistry(val)
 	return c
+}
+
+func (c *UserContext) WithActiveRoot(root EntityReference) *UserContext {
+	c.InsertResource("activeRoot", root)
+	return c
+}
+
+func (c *UserContext) RequireActiveRoot(expectedType string) (EntityReference, error) {
+	value := c.GetResource("activeRoot")
+	root, ok := value.(EntityReference)
+	if !ok {
+		if pointer, pointerOK := value.(*EntityReference); pointerOK && pointer != nil {
+			root, ok = *pointer, true
+		}
+	}
+	if !ok {
+		return EntityReference{}, &ContextRootError{Reason: "missing", ExpectedType: expectedType}
+	}
+	if root.Entity != expectedType {
+		return EntityReference{}, &ContextRootError{Reason: "type_mismatch", ExpectedType: expectedType, ActiveRoot: &root}
+	}
+	return root, nil
 }
 
 // CheckAndFix runs the installed model checker against provider-independent

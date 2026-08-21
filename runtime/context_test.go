@@ -339,3 +339,18 @@ func TestUserContextCheckAndFixReturnsStructuredError(t *testing.T) {
 		t.Fatalf("expected one checker call, got %d", registry.calls)
 	}
 }
+
+func TestUserContextActiveRootIsTypedAndFailsClosed(t *testing.T) {
+	context := NewUserContext()
+	if _, err := context.RequireActiveRoot("Tenant"); err == nil {
+		t.Fatal("expected missing active root error")
+	}
+	context.WithActiveRoot(EntityReference{Entity: "Tenant", ID: 42})
+	root, err := context.RequireActiveRoot("Tenant")
+	if err != nil || root.ID != 42 {
+		t.Fatalf("unexpected active root: %#v, %v", root, err)
+	}
+	if _, err := context.RequireActiveRoot("Store"); err == nil {
+		t.Fatal("expected type mismatch")
+	}
+}
