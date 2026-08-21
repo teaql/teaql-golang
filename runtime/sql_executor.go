@@ -83,6 +83,15 @@ func (e *SqlDataServiceExecutor) Mutate(context stdcontext.Context, request data
 		}
 	}()
 	var compiled *teaql_sql.CompiledQuery
+	if userCtx != nil {
+		input := mutationCheckInput(request)
+		if input != nil {
+			input.Now = time.Now()
+			if err = userCtx.checkAndFix(input); err != nil {
+				return nil, err
+			}
+		}
+	}
 
 	switch req := request.(type) {
 	case *data_service.InsertMutation:
@@ -135,4 +144,17 @@ func (e *SqlDataServiceExecutor) Mutate(context stdcontext.Context, request data
 		}
 	}
 	return result, nil
+}
+
+func mutationCheckInput(request data_service.MutationRequest) *CheckAndFixInput {
+	switch req := request.(type) {
+	case *data_service.InsertMutation:
+		return &CheckAndFixInput{Entity: req.Cmd.Entity, Operation: core.MutationInsert, Values: req.Cmd.Values}
+	case *data_service.UpdateMutation:
+		return &CheckAndFixInput{Entity: req.Cmd.Entity, Operation: core.MutationUpdate, Values: req.Cmd.Values, OldValues: req.Cmd.OldValues}
+	case *data_service.DeleteMutation:
+		return &CheckAndFixInput{Entity: req.Cmd.Entity, Operation: core.MutationDelete}
+	default:
+		return nil
+	}
 }

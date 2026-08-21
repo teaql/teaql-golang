@@ -34,9 +34,10 @@ func (d *mockDialect) CompileGbkFunction(entity *core.EntityDescriptor, args []*
 }
 
 type mockTransport struct {
-	records  []core.Record
-	affected uint64
-	err      error
+	records    []core.Record
+	affected   uint64
+	err        error
+	executions int
 }
 
 func (m *mockTransport) FetchAllSql(context stdcontext.Context, query *teaql_sql.CompiledQuery) ([]core.Record, error) {
@@ -44,7 +45,18 @@ func (m *mockTransport) FetchAllSql(context stdcontext.Context, query *teaql_sql
 }
 
 func (m *mockTransport) ExecuteSql(context stdcontext.Context, query *teaql_sql.CompiledQuery) (uint64, error) {
+	m.executions++
 	return m.affected, m.err
+}
+
+type requiredNameRegistry struct{ calls int }
+
+func (r *requiredNameRegistry) CheckAndFix(_ *runtime.UserContext, input *runtime.CheckAndFixInput) []runtime.CheckResult {
+	r.calls++
+	if _, ok := input.Values["name"]; !ok {
+		return []runtime.CheckResult{{RuleID: "required", Location: "name"}}
+	}
+	return nil
 }
 
 func TestSqlDataServiceExecutor_Capabilities(t *testing.T) {
@@ -155,6 +167,30 @@ func TestSqlDataServiceExecutor_Mutate(t *testing.T) {
 	meta.Register(entity)
 
 	dialect := &mockDialect{}
+
+	t.Run("checker failure prevents SQL and is save scoped", func(t *testing.T) {
+		transport := &mockTransport{affected: 1}
+		registry := &requiredNameRegistry{}
+		context := runtime.NewUserContext().WithCheckerRegistry(registry)
+		exec := runtime.NewSqlDataServiceExecutor(transport, dialect, meta)
+		req := &data_service.InsertMutation{Cmd: &core.InsertCommand{
+			Entity: "User", Values: core.Record{"id": core.ValText("1")},
+		}}
+
+		for attempt := 0; attempt < 2; attempt++ {
+			_, err := exec.Mutate(context, req)
+			var runtimeErr *runtime.RuntimeError
+			if !errors.As(err, &runtimeErr) || runtimeErr.Type != "Check" {
+				t.Fatalf("expected structured check error, got %v", err)
+			}
+		}
+		if transport.executions != 0 {
+			t.Fatalf("invalid mutation executed SQL %d times", transport.executions)
+		}
+		if registry.calls != 2 {
+			t.Fatalf("checker calls = %d, want 2", registry.calls)
+		}
+	})
 
 	t.Run("insert success", func(t *testing.T) {
 		transport := &mockTransport{
