@@ -81,6 +81,18 @@ func NewMysqlMutationExecutor(db *sql.DB) *MysqlMutationExecutor {
 	return &MysqlMutationExecutor{db: db}
 }
 
+func (e *MysqlMutationExecutor) NextId(context stdcontext.Context, entity string) (uint64, error) {
+	return teaql_sql.NextOptimisticId(context, e, &MysqlDialect{}, entity)
+}
+
+func (e *MysqlMutationExecutor) EnsureIdFloor(context stdcontext.Context, entity string, floor uint64) error {
+	return teaql_sql.EnsureOptimisticIdFloor(context, e, &MysqlDialect{}, entity, floor)
+}
+
+func (e *MysqlMutationExecutor) GenerateId(entity string) (uint64, error) {
+	return e.NextId(stdcontext.Background(), entity)
+}
+
 func (e *MysqlMutationExecutor) FetchAllSql(context stdcontext.Context, query *teaql_sql.CompiledQuery) ([]core.Record, error) {
 	params, err := bindValues(query.Params)
 	if err != nil {

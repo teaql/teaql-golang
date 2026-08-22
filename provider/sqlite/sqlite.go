@@ -83,6 +83,18 @@ func NewSqliteMutationExecutor(db *sql.DB) *SqliteMutationExecutor {
 	return &SqliteMutationExecutor{db: db}
 }
 
+func (e *SqliteMutationExecutor) NextId(context stdcontext.Context, entity string) (uint64, error) {
+	return teaql_sql.NextOptimisticId(context, e, &SqliteDialect{}, entity)
+}
+
+func (e *SqliteMutationExecutor) EnsureIdFloor(context stdcontext.Context, entity string, floor uint64) error {
+	return teaql_sql.EnsureOptimisticIdFloor(context, e, &SqliteDialect{}, entity, floor)
+}
+
+func (e *SqliteMutationExecutor) GenerateId(entity string) (uint64, error) {
+	return e.NextId(stdcontext.Background(), entity)
+}
+
 func (e *SqliteMutationExecutor) FetchAllSql(context stdcontext.Context, query *teaql_sql.CompiledQuery) ([]core.Record, error) {
 	params, err := bindValues(query.Params)
 	if err != nil {

@@ -241,6 +241,68 @@ func TestSqliteMutationExecutor(t *testing.T) {
 	}
 }
 
+func TestSqliteOptimisticIdSpaceAcrossExecutors(t *testing.T) {
+	path := t.TempDir() + "/ids.db"
+	dsn := "file:" + path + "?_busy_timeout=5000&_journal_mode=WAL"
+	firstDB, err := sql.Open("sqlite3", dsn)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer firstDB.Close()
+	secondDB, err := sql.Open("sqlite3", dsn)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer secondDB.Close()
+	first := NewSqliteMutationExecutor(firstDB)
+	second := NewSqliteMutationExecutor(secondDB)
+	context := stdcontext.Background()
+	if id, err := first.NextId(context, "Order"); err != nil || id != 1 {
+		t.Fatalf("first ID = %d, %v", id, err)
+	}
+	if id, err := second.NextId(context, "Order"); err != nil || id != 2 {
+		t.Fatalf("second ID = %d, %v", id, err)
+	}
+	if err := teaql_sql.EnsureOptimisticIdFloor(context, first, &SqliteDialect{}, "SeededType", 1001); err != nil {
+		t.Fatal(err)
+	}
+	if id, err := second.NextId(context, "SeededType"); err != nil || id != 1002 {
+		t.Fatalf("ID after bootstrap floor = %d, %v", id, err)
+	}
+
+	type allocation struct {
+		id  uint64
+		err error
+	}
+	results := make(chan allocation, 40)
+	for index := 0; index < 40; index++ {
+		executor := first
+		if index%2 == 1 {
+			executor = second
+		}
+		go func() {
+			id, err := executor.NextId(context, "Order")
+			results <- allocation{id, err}
+		}()
+	}
+	seen := map[uint64]bool{}
+	for index := 0; index < 40; index++ {
+		result := <-results
+		if result.err != nil {
+			t.Fatal(result.err)
+		}
+		if seen[result.id] {
+			t.Fatalf("duplicate ID %d", result.id)
+		}
+		seen[result.id] = true
+	}
+	for id := uint64(3); id <= 42; id++ {
+		if !seen[id] {
+			t.Fatalf("missing ID %d", id)
+		}
+	}
+}
+
 func TestStreamSqlUsesBoundedChunksAndStopsOnConsumerError(t *testing.T) {
 	db, err := sql.Open("sqlite3", ":memory:")
 	if err != nil {

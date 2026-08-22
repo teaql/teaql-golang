@@ -137,6 +137,18 @@ func NewPgMutationExecutor(db *sql.DB) *PgMutationExecutor {
 	return &PgMutationExecutor{db: db}
 }
 
+func (e *PgMutationExecutor) NextId(context stdcontext.Context, entity string) (uint64, error) {
+	return teaql_sql.NextOptimisticId(context, e, &PostgresDialect{}, entity)
+}
+
+func (e *PgMutationExecutor) EnsureIdFloor(context stdcontext.Context, entity string, floor uint64) error {
+	return teaql_sql.EnsureOptimisticIdFloor(context, e, &PostgresDialect{}, entity, floor)
+}
+
+func (e *PgMutationExecutor) GenerateId(entity string) (uint64, error) {
+	return e.NextId(stdcontext.Background(), entity)
+}
+
 func (e *PgMutationExecutor) FetchAllSql(context stdcontext.Context, query *teaql_sql.CompiledQuery) ([]core.Record, error) {
 	params, err := bindValues(query.Params)
 	if err != nil {
