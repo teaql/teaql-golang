@@ -120,7 +120,7 @@ func (c *I18nCatalog) Translate(result *CheckResult, locale Locale) {
 		key = "checker." + strings.ToLower(result.RuleID)
 	}
 	msg := c.Message(locale, key)
-	values := map[string]string{"location": result.Location, "system": fmt.Sprint(result.SystemValue), "input": fmt.Sprint(result.InputValue), "input_len": "0"}
+	values := map[string]string{"location": result.NativePath(), "system": fmt.Sprint(result.SystemValue), "input": fmt.Sprint(result.InputValue), "input_len": "0"}
 	if s, ok := result.InputValue.(string); ok {
 		values["input_len"] = fmt.Sprint(len([]rune(s)))
 	}

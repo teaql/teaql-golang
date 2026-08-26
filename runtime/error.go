@@ -13,7 +13,11 @@ type CheckResult struct {
 	Message     string
 }
 
-func (c *CheckResult) String() string { return c.Message }
+func (c *CheckResult) String() string                 { return c.Message }
+func (c *CheckResult) ObjectLocation() ObjectLocation { return LocationFromModelPath(c.Location) }
+func (c *CheckResult) ModelPath() string              { return c.ObjectLocation().ModelPath() }
+func (c *CheckResult) NativePath() string             { return c.ObjectLocation().NativePath() }
+func (c *CheckResult) InstancePath() string           { return c.ObjectLocation().InstancePath() }
 
 type RuntimeError struct {
 	Type                  string
