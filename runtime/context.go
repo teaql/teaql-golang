@@ -202,6 +202,7 @@ type UserContext struct {
 	Behaviors      EntityDataServiceBehaviorRegistry
 
 	initialGraphs             []*GraphNode
+	rootGraphs                []*GraphNode
 	resources                 map[string]interface{}
 	standardAuditSink         RawAuditEventSink
 	appAuditSink              AppAuditEventSink
@@ -388,6 +389,10 @@ func (c *UserContext) ContinuousPageCursorID() string {
 func (c *UserContext) InitialGraphs() []*GraphNode {
 	return c.initialGraphs
 }
+
+func (c *UserContext) RootGraphs() []*GraphNode { return c.rootGraphs }
+
+func (c *UserContext) SetRootGraphs(graphs []*GraphNode) { c.rootGraphs = graphs }
 
 func (c *UserContext) SetInitialGraphs(graphs []*GraphNode) {
 	c.initialGraphs = graphs

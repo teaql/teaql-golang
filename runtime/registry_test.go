@@ -116,6 +116,7 @@ func TestRuntimeModule_MoreBuilders(t *testing.T) {
 
 	sink := &MockRawAuditEventSink{}
 	node := &GraphNode{Entity: "TestEntity2"}
+	root := &GraphNode{Entity: "Root"}
 	nodes := []*GraphNode{{Entity: "TestEntity3"}}
 
 	module := NewRuntimeModule().
@@ -123,11 +124,14 @@ func TestRuntimeModule_MoreBuilders(t *testing.T) {
 		Behavior("TestEntity2", behavior).
 		EventSink(sink).
 		InitialGraph(node).
+		RootGraph(root).
 		AddInitialGraphs(nodes)
 
 	context := module.IntoContext()
 	assert.NotNil(t, context)
 	assert.Equal(t, 2, len(context.InitialGraphs()))
+	assert.Equal(t, 1, len(context.RootGraphs()))
+	assert.Same(t, root, context.RootGraphs()[0])
 	assert.True(t, module.EntityRegistry.Contains("TestEntity2"))
 }
 
