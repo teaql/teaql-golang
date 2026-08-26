@@ -17,4 +17,8 @@ func TestObjectLocationPathDialects(t *testing.T) {
 	if got := escaped.InstancePath(); got != "/a~1b~0c" {
 		t.Fatalf("escaped pointer: %s", got)
 	}
+	legacy := CheckResult{Location: "order_items[2].user_url"}
+	if got := legacy.InstancePath(); got != "/orderItems/2/userUrl" {
+		t.Fatalf("legacy pointer: %s", got)
+	}
 }

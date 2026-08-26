@@ -17,10 +17,32 @@ type ObjectLocation struct{ Segments []ObjectLocationSegment }
 func Location() ObjectLocation { return ObjectLocation{} }
 func LocationFromModelPath(path string) ObjectLocation {
 	location := Location()
-	for _, part := range strings.Split(path, ".") {
-		if part != "" {
-			location = location.Property(part)
+	for cursor := 0; cursor < len(path); {
+		if path[cursor] == '.' {
+			cursor++
+			continue
 		}
+		if path[cursor] == '[' {
+			end := strings.IndexByte(path[cursor:], ']')
+			if end < 0 {
+				location = location.Property(path[cursor:])
+				break
+			}
+			end += cursor
+			if index, err := strconv.Atoi(path[cursor+1 : end]); err == nil {
+				location = location.At(index)
+			}
+			cursor = end + 1
+			continue
+		}
+		end := cursor
+		for end < len(path) && path[end] != '.' && path[end] != '[' {
+			end++
+		}
+		if end > cursor {
+			location = location.Property(path[cursor:end])
+		}
+		cursor = end
 	}
 	return location
 }
