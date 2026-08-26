@@ -159,19 +159,6 @@ type Transaction interface {
 	Rollback(context stdcontext.Context) error
 }
 
-type SchemaRequest struct {
-	EntityName string
-}
-
-type SchemaResult struct {
-	Changed bool
-}
-
-type SchemaExecutor interface {
-	DataServiceExecutor
-	EnsureSchema(context stdcontext.Context, request *SchemaRequest) (*SchemaResult, error)
-}
-
 type IdGeneratorExecutor interface {
 	DataServiceExecutor
 	NextId(context stdcontext.Context, entity string) (uint64, error)

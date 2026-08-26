@@ -1,8 +1,8 @@
 package main
 
 import (
+	"errors"
 	"path/filepath"
-	"strings"
 	"testing"
 
 	"github.com/teaql/teaql-golang/runtime"
@@ -35,8 +35,12 @@ func TestRetainedMinimumConformance(t *testing.T) {
 	// 2. Checker rejects invalid input before persistence.
 	invalid := lib.Q.WorkItems().Comment("create invalid work item").Purpose("exercise checker").NewEntity(context)
 	invalid.UpdatePlatformId(platform.Id())
-	if _, err = invalid.AuditAs("reject missing title").Save(context); err == nil || !strings.Contains(err.Error(), "title") {
+	if _, err = invalid.AuditAs("reject missing title").Save(context); err == nil {
 		t.Fatalf("expected title checker error, got %v", err)
+	}
+	var checkError *runtime.RuntimeError
+	if !errors.As(err, &checkError) || checkError.Type != "Check" || len(checkError.CheckResults) == 0 || checkError.CheckResults[0].Location != "title" {
+		t.Fatalf("expected machine-readable title checker error, got %#v", err)
 	}
 	assertWorkItemCount(t, context, 0)
 

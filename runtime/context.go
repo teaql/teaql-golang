@@ -557,10 +557,6 @@ func (c *UserContext) EnableSelectSqlLog(args ...any) any {
 	return nil
 }
 
-func (c *UserContext) EnsureSchema(args ...any) any {
-	return nil
-}
-
 func (c *UserContext) EntityDataService(args ...any) any {
 	return nil
 }
