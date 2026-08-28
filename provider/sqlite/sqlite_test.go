@@ -80,6 +80,28 @@ func TestSqliteDialect(t *testing.T) {
 	}
 }
 
+func TestEnsureSoundexIsIdempotentAndExecutable(t *testing.T) {
+	db, err := sql.Open("sqlite3", ":memory:")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer db.Close()
+	if err := EnsureSoundex(db); err != nil {
+		t.Fatal(err)
+	}
+	if err := EnsureSoundex(db); err != nil {
+		t.Fatal(err)
+	}
+	var encoded, empty string
+	var matched int
+	if err := db.QueryRow("SELECT soundex('Robert'), soundex('Robert') = soundex('Rupert'), soundex(NULL)").Scan(&encoded, &matched, &empty); err != nil {
+		t.Fatal(err)
+	}
+	if encoded != "R163" || matched != 1 || empty != "?000" {
+		t.Fatalf("unexpected soundex values encoded=%s matched=%d empty=%s", encoded, matched, empty)
+	}
+}
+
 func TestBindSqliteValueSupportsTypedNullDecimalAndTime(t *testing.T) {
 	if value, err := bindSqliteValue(core.ValTypedNull(core.TypeDecimal)); err != nil || value != nil {
 		t.Fatalf("typed null binding = %#v, %v", value, err)

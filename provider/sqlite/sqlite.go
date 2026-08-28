@@ -8,7 +8,7 @@ import (
 	"strings"
 	"time"
 
-	_ "github.com/mattn/go-sqlite3"
+	sqlite3 "github.com/mattn/go-sqlite3"
 	"github.com/shopspring/decimal"
 
 	"github.com/teaql/teaql-golang/core"
@@ -17,6 +17,88 @@ import (
 
 const DefaultIdSpaceTable = "teaql_id_space"
 const SqliteDecimalPrefix = "__teaql_decimal__:"
+
+// EnsureSoundex installs a deterministic SQLite-compatible soundex function
+// on the connection retained by this SQLite pool. It is intended to be called
+// by the generated EnsureSchema boundary.
+func EnsureSoundex(db *sql.DB) error {
+	if db == nil {
+		return fmt.Errorf("sqlite database is nil")
+	}
+	// A user-defined SQLite function belongs to a physical connection. Keeping
+	// one connection makes the registration deterministic for this embedded DB.
+	db.SetMaxOpenConns(1)
+	connection, err := db.Conn(stdcontext.Background())
+	if err != nil {
+		return err
+	}
+	defer connection.Close()
+	return connection.Raw(func(driverConnection any) error {
+		sqliteConnection, ok := driverConnection.(*sqlite3.SQLiteConn)
+		if !ok {
+			return fmt.Errorf("unexpected SQLite driver connection %T", driverConnection)
+		}
+		return sqliteConnection.RegisterFunc("soundex", sqliteCompatibleSoundex, true)
+	})
+}
+
+func sqliteCompatibleSoundex(value any) string {
+	if value == nil {
+		return "?000"
+	}
+	var input string
+	switch typed := value.(type) {
+	case string:
+		input = typed
+	case []byte:
+		input = string(typed)
+	default:
+		input = fmt.Sprint(typed)
+	}
+	letters := make([]byte, 0, len(input))
+	for _, value := range []byte(strings.ToUpper(input)) {
+		if value >= 'A' && value <= 'Z' {
+			letters = append(letters, value)
+		}
+	}
+	if len(letters) == 0 {
+		return "?000"
+	}
+	code := func(value byte) byte {
+		switch value {
+		case 'B', 'F', 'P', 'V':
+			return '1'
+		case 'C', 'G', 'J', 'K', 'Q', 'S', 'X', 'Z':
+			return '2'
+		case 'D', 'T':
+			return '3'
+		case 'L':
+			return '4'
+		case 'M', 'N':
+			return '5'
+		case 'R':
+			return '6'
+		default:
+			return '0'
+		}
+	}
+	result := []byte{letters[0]}
+	previous := code(letters[0])
+	for _, letter := range letters[1:] {
+		current := code(letter)
+		if current != '0' && current != previous {
+			result = append(result, current)
+		}
+		if len(result) == 4 {
+			break
+		}
+		previous = current
+	}
+	for len(result) < 4 {
+		result = append(result, '0')
+	}
+	return string(result)
+}
 
 type SqliteDialect struct{}
 
