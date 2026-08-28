@@ -87,7 +87,8 @@ func TestSchoolBootstrapWithLocalRuntime(t *testing.T) {
 	assertCount("date range", Q.Schools().WithEstablishedDateBetween(time.Date(1995, 1, 1, 0, 0, 0, 0, time.UTC), time.Date(1995, 12, 31, 0, 0, 0, 0, time.UTC)), 1)
 	assertCount("known", Q.Schools().WithAddressIsKnown(), 1)
 	assertCount("unknown", Q.Schools().WithAddressIsUnknown(), 0)
-	assertCount("boolean", Q.Schools().WhichAreActive(), 1)
+	assertCount("boolean true", Q.Schools().WhichAreActive(), 1)
+	assertCount("boolean false", Q.Schools().WhichAreNotActive(), 0)
 	assertCount("constant relation", Q.Schools().WithSchoolTypeIsPrimary(), 1)
 	projected, err := Q.Schools().SelectName().OrderByIdDesc().Comment("Query parity: projection and ordering").Purpose("Execute the shared School Query conformance case").ExecuteForList(context)
 	if err != nil {
