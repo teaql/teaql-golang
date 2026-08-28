@@ -403,6 +403,61 @@ func TestRelationLimitIsAppliedPerParent(t *testing.T) {
 	}
 }
 
+func TestRelationFacetUsesOuterFilterAndIncludeAll(t *testing.T) {
+	db, err := sql.Open("sqlite3", ":memory:")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer db.Close()
+	for _, statement := range []string{
+		"CREATE TABLE facet_school (id INTEGER PRIMARY KEY, name TEXT, school_type INTEGER, version INTEGER)",
+		"CREATE TABLE facet_school_type (id INTEGER PRIMARY KEY, code TEXT, version INTEGER)",
+		"INSERT INTO facet_school VALUES (1, 'Riverside', 1001, 1), (2, 'Riverside Annex', 1001, 1), (3, 'Other', 1002, 1)",
+		"INSERT INTO facet_school_type VALUES (1001, 'PRIMARY', 1), (1002, 'SECONDARY', 1), (1003, 'VOCATIONAL', 1)",
+	} {
+		if _, err := db.Exec(statement); err != nil {
+			t.Fatal(err)
+		}
+	}
+	metadata := runtime.NewInMemoryMetadataStore()
+	metadata.Register(core.NewEntityDescriptor("School").TableName("facet_school").
+		Property(core.NewPropertyDescriptor("id", core.TypeU64).Id().NotNull()).
+		Property(core.NewPropertyDescriptor("name", core.TypeText)).
+		Property(core.NewPropertyDescriptor("school_type", core.TypeU64)).
+		Property(core.NewPropertyDescriptor("version", core.TypeI64).Version().NotNull()))
+	metadata.Register(core.NewEntityDescriptor("SchoolType").TableName("facet_school_type").
+		Property(core.NewPropertyDescriptor("id", core.TypeU64).Id().NotNull()).
+		Property(core.NewPropertyDescriptor("code", core.TypeText)).
+		Property(core.NewPropertyDescriptor("version", core.TypeI64).Version().NotNull()))
+	transport := NewSqliteMutationExecutor(db)
+	executor := teaql_sql.NewSqlDataServiceExecutor(&SqliteDialect{}, transport, metadata)
+	service := runtime.NewRuntimeDataService(metadata, executor)
+	outer := core.NewSelectQuery("School").AndFilter(core.ExprContain("name", "Riverside"))
+	nested := core.NewQuerySelection(core.NewSelectQuery("SchoolType").Project("id").Project("code").Count("school_count"))
+	options := core.NewQueryOptions()
+	options.Facets = append(options.Facets, core.NewFacetRequest("types", "school_type", nested, true))
+	all, err := runtime.ExecuteFacets(stdcontext.Background(), service, outer, options)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(all["types"].Data) != 3 {
+		t.Fatalf("expected all three facet values, got %d", len(all["types"].Data))
+	}
+	primaryCount, _ := all["types"].Data[0]["school_count"].TryU64()
+	secondaryCount, _ := all["types"].Data[1]["school_count"].TryU64()
+	if primaryCount != 2 || secondaryCount != 0 {
+		t.Fatalf("unexpected filtered counts primary=%d secondary=%d", primaryCount, secondaryCount)
+	}
+	options.Facets[0].IncludeAllFacets = false
+	matched, err := runtime.ExecuteFacets(stdcontext.Background(), service, outer, options)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(matched["types"].Data) != 1 {
+		t.Fatalf("expected one matched facet value, got %d", len(matched["types"].Data))
+	}
+}
+
 func TestSqliteTransactionExecutor(t *testing.T) {
 	db, err := sql.Open("sqlite3", ":memory:")
 	if err != nil {
