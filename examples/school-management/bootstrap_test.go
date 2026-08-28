@@ -90,6 +90,19 @@ func TestSchoolBootstrapWithLocalRuntime(t *testing.T) {
 	assertCount("boolean true", Q.Schools().WhichAreActive(), 1)
 	assertCount("boolean false", Q.Schools().WhichAreNotActive(), 0)
 	assertCount("constant relation", Q.Schools().WithSchoolTypeIsPrimary(), 1)
+	related, err := Q.Schools().WithNameIs("Riverside Primary School").
+		SelectPlatformWith(Q.PlatformsMinimal().SelectName()).
+		SelectSchoolTypeWith(Q.SchoolTypesMinimal().SelectCode()).
+		Comment("Query parity: typed forward relations").
+		Purpose("Execute the shared School Query conformance case").ExecuteForOne(context)
+	if err != nil {
+		t.Fatal(err)
+	}
+	platformName, platformOK := E.School(related).Platform().Name().Eval()
+	typeCode, typeOK := E.School(related).SchoolType().Code().Eval()
+	if !platformOK || platformName != "Campus Learning Platform" || !typeOK || typeCode != "PRIMARY" {
+		t.Fatalf("forward relations platform=%q/%t schoolType=%q/%t", platformName, platformOK, typeCode, typeOK)
+	}
 	projected, err := Q.Schools().SelectName().OrderByIdDesc().Comment("Query parity: projection and ordering").Purpose("Execute the shared School Query conformance case").ExecuteForList(context)
 	if err != nil {
 		t.Fatal(err)

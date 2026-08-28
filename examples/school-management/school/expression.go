@@ -394,19 +394,14 @@ func (e *SchoolExpression) Platform() *PlatformRelationExpression {
 	if e.value == nil {
 		return &PlatformRelationExpression{root: e.root, path: path}
 	}
-	if !e.value.IsLoaded("platform_id") {
+	if !e.value.isRelationLoaded("platformEntity") {
 		return &PlatformRelationExpression{root: e.root, path: path, err: e.fieldError("platform_id")}
 	}
-	raw, ok := e.value.Base().GetDynamic("platform_id")
-	if !ok || raw.IsNull() {
+	related, ok := e.value.RelationEntity("platformEntity")
+	if !ok || related == nil {
 		return &PlatformRelationExpression{root: e.root, path: path}
 	}
-	if values, list := raw.TryList(); list && len(values) != 0 {
-		if record, object := values[0].TryObject(); object {
-			return &PlatformRelationExpression{value: record, root: e.root, path: path}
-		}
-	}
-	return &PlatformRelationExpression{root: e.root, path: path, err: e.fieldError("platform_id")}
+	return &PlatformRelationExpression{value: related.IntoRecord(), root: e.root, path: path}
 }
 
 type SchoolTypeRelationExpression struct {
@@ -565,17 +560,12 @@ func (e *SchoolExpression) SchoolType() *SchoolTypeRelationExpression {
 	if e.value == nil {
 		return &SchoolTypeRelationExpression{root: e.root, path: path}
 	}
-	if !e.value.IsLoaded("school_type_id") {
+	if !e.value.isRelationLoaded("schoolTypeEntity") {
 		return &SchoolTypeRelationExpression{root: e.root, path: path, err: e.fieldError("school_type_id")}
 	}
-	raw, ok := e.value.Base().GetDynamic("school_type_id")
-	if !ok || raw.IsNull() {
+	related, ok := e.value.RelationEntity("schoolTypeEntity")
+	if !ok || related == nil {
 		return &SchoolTypeRelationExpression{root: e.root, path: path}
 	}
-	if values, list := raw.TryList(); list && len(values) != 0 {
-		if record, object := values[0].TryObject(); object {
-			return &SchoolTypeRelationExpression{value: record, root: e.root, path: path}
-		}
-	}
-	return &SchoolTypeRelationExpression{root: e.root, path: path, err: e.fieldError("school_type_id")}
+	return &SchoolTypeRelationExpression{value: related.IntoRecord(), root: e.root, path: path}
 }
