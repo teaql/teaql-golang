@@ -1,5 +1,3 @@
-
-
 package platform
 
 import (
@@ -11,8 +9,8 @@ import (
 	"github.com/teaql/teaql-golang/core"
 	"github.com/teaql/teaql-golang/data_service"
 	"github.com/teaql/teaql-golang/runtime"
-	"school-management-service-core-workspace/lib/school_type"
 	"school-management-service-core-workspace/lib/school"
+	"school-management-service-core-workspace/lib/school_type"
 )
 
 var (
@@ -21,9 +19,10 @@ var (
 )
 
 type PlatformRequest struct {
-	Query       *core.SelectQuery
-	purposeText string
-	commentText string
+	Query             *core.SelectQuery
+	purposeText       string
+	commentText       string
+	relationFactories map[string]func() core.Entity
 }
 
 type ExecutablePlatformRequest struct {
@@ -32,7 +31,8 @@ type ExecutablePlatformRequest struct {
 
 func NewPlatformRequest() *PlatformRequest {
 	r := &PlatformRequest{
-		Query: core.NewSelectQuery("Platform"),
+		Query:             core.NewSelectQuery("Platform"),
+		relationFactories: make(map[string]func() core.Entity),
 	}
 	r.Query.AndFilter(core.ExprGte("version", core.ValI64(1)))
 	return r
@@ -46,6 +46,10 @@ func NewPlatformMinimalRequest() *PlatformRequest {
 
 func (r *PlatformRequest) GetQuery() *core.SelectQuery {
 	return r.Query
+}
+
+func (r *PlatformRequest) NewRelationEntity() core.Entity {
+	return NewPlatform()
 }
 
 func (r *PlatformRequest) Comment(comment string) *PlatformRequest {
@@ -84,20 +88,28 @@ func (r *PlatformRequest) OptimizeForContinuousPageFetchWith(namespace string, t
 }
 
 func removePlatformVersionFilter(expr *core.Expr) *core.Expr {
-	if expr == nil { return nil }
+	if expr == nil {
+		return nil
+	}
 	if expr.Type == core.ExprTypeBinary && expr.Left != nil &&
 		expr.Left.Type == core.ExprTypeColumn && expr.Left.Column == "version" {
 		return nil
 	}
-	if expr.Type != core.ExprTypeAnd { return expr }
+	if expr.Type != core.ExprTypeAnd {
+		return expr
+	}
 	parts := make([]*core.Expr, 0, len(expr.Parts))
 	for _, part := range expr.Parts {
 		if kept := removePlatformVersionFilter(part); kept != nil {
 			parts = append(parts, kept)
 		}
 	}
-	if len(parts) == 0 { return nil }
-	if len(parts) == 1 { return parts[0] }
+	if len(parts) == 0 {
+		return nil
+	}
+	if len(parts) == 1 {
+		return parts[0]
+	}
 	return core.ExprAndNode(parts...)
 }
 
@@ -157,6 +169,22 @@ func (r *PlatformRequest) WithIdLessThanOrEqualTo(value uint64) *PlatformRequest
 	r.Query.AndFilter(core.ExprLte("id", core.ValU64(value)))
 	return r
 }
+func (r *PlatformRequest) WithIdBetween(lower uint64, upper uint64) *PlatformRequest {
+	value := lower
+	from := core.ValU64(value)
+	value = upper
+	to := core.ValU64(value)
+	r.Query.AndFilter(core.ExprBetweenNode("id", from, to))
+	return r
+}
+func (r *PlatformRequest) WithIdIsKnown() *PlatformRequest {
+	r.Query.AndFilter(core.ExprIsNotNullNode("id"))
+	return r
+}
+func (r *PlatformRequest) WithIdIsUnknown() *PlatformRequest {
+	r.Query.AndFilter(core.ExprIsNullNode("id"))
+	return r
+}
 func (r *PlatformRequest) OrderByIdAsc() *PlatformRequest {
 	r.Query.OrderAsc("id")
 	return r
@@ -210,6 +238,22 @@ func (r *PlatformRequest) WithNameLessThanOrEqualTo(value string) *PlatformReque
 	r.Query.AndFilter(core.ExprLte("name", core.ValText(value)))
 	return r
 }
+func (r *PlatformRequest) WithNameBetween(lower string, upper string) *PlatformRequest {
+	value := lower
+	from := core.ValText(value)
+	value = upper
+	to := core.ValText(value)
+	r.Query.AndFilter(core.ExprBetweenNode("name", from, to))
+	return r
+}
+func (r *PlatformRequest) WithNameIsKnown() *PlatformRequest {
+	r.Query.AndFilter(core.ExprIsNotNullNode("name"))
+	return r
+}
+func (r *PlatformRequest) WithNameIsUnknown() *PlatformRequest {
+	r.Query.AndFilter(core.ExprIsNullNode("name"))
+	return r
+}
 func (r *PlatformRequest) WithNameContaining(term string) *PlatformRequest {
 	r.Query.AndFilter(core.ExprContain("name", term))
 	return r
@@ -222,8 +266,16 @@ func (r *PlatformRequest) WithNameStartingWith(term string) *PlatformRequest {
 	r.Query.AndFilter(core.ExprBeginWith("name", term))
 	return r
 }
+func (r *PlatformRequest) WithNameNotStartingWith(term string) *PlatformRequest {
+	r.Query.AndFilter(core.ExprNotBeginWith("name", term))
+	return r
+}
 func (r *PlatformRequest) WithNameEndingWith(term string) *PlatformRequest {
 	r.Query.AndFilter(core.ExprEndWith("name", term))
+	return r
+}
+func (r *PlatformRequest) WithNameNotEndingWith(term string) *PlatformRequest {
+	r.Query.AndFilter(core.ExprNotEndWith("name", term))
 	return r
 }
 func (r *PlatformRequest) OrderByNameAsc() *PlatformRequest {
@@ -279,6 +331,22 @@ func (r *PlatformRequest) WithBaseUrlLessThanOrEqualTo(value string) *PlatformRe
 	r.Query.AndFilter(core.ExprLte("base_url", core.ValText(value)))
 	return r
 }
+func (r *PlatformRequest) WithBaseUrlBetween(lower string, upper string) *PlatformRequest {
+	value := lower
+	from := core.ValText(value)
+	value = upper
+	to := core.ValText(value)
+	r.Query.AndFilter(core.ExprBetweenNode("base_url", from, to))
+	return r
+}
+func (r *PlatformRequest) WithBaseUrlIsKnown() *PlatformRequest {
+	r.Query.AndFilter(core.ExprIsNotNullNode("base_url"))
+	return r
+}
+func (r *PlatformRequest) WithBaseUrlIsUnknown() *PlatformRequest {
+	r.Query.AndFilter(core.ExprIsNullNode("base_url"))
+	return r
+}
 func (r *PlatformRequest) WithBaseUrlContaining(term string) *PlatformRequest {
 	r.Query.AndFilter(core.ExprContain("base_url", term))
 	return r
@@ -291,8 +359,16 @@ func (r *PlatformRequest) WithBaseUrlStartingWith(term string) *PlatformRequest 
 	r.Query.AndFilter(core.ExprBeginWith("base_url", term))
 	return r
 }
+func (r *PlatformRequest) WithBaseUrlNotStartingWith(term string) *PlatformRequest {
+	r.Query.AndFilter(core.ExprNotBeginWith("base_url", term))
+	return r
+}
 func (r *PlatformRequest) WithBaseUrlEndingWith(term string) *PlatformRequest {
 	r.Query.AndFilter(core.ExprEndWith("base_url", term))
+	return r
+}
+func (r *PlatformRequest) WithBaseUrlNotEndingWith(term string) *PlatformRequest {
+	r.Query.AndFilter(core.ExprNotEndWith("base_url", term))
 	return r
 }
 func (r *PlatformRequest) OrderByBaseUrlAsc() *PlatformRequest {
@@ -348,6 +424,22 @@ func (r *PlatformRequest) WithCreateTimeLessThanOrEqualTo(value time.Time) *Plat
 	r.Query.AndFilter(core.ExprLte("create_time", core.ValTimestamp(value.UnixMilli())))
 	return r
 }
+func (r *PlatformRequest) WithCreateTimeBetween(lower time.Time, upper time.Time) *PlatformRequest {
+	value := lower
+	from := core.ValTimestamp(value.UnixMilli())
+	value = upper
+	to := core.ValTimestamp(value.UnixMilli())
+	r.Query.AndFilter(core.ExprBetweenNode("create_time", from, to))
+	return r
+}
+func (r *PlatformRequest) WithCreateTimeIsKnown() *PlatformRequest {
+	r.Query.AndFilter(core.ExprIsNotNullNode("create_time"))
+	return r
+}
+func (r *PlatformRequest) WithCreateTimeIsUnknown() *PlatformRequest {
+	r.Query.AndFilter(core.ExprIsNullNode("create_time"))
+	return r
+}
 func (r *PlatformRequest) OrderByCreateTimeAsc() *PlatformRequest {
 	r.Query.OrderAsc("create_time")
 	return r
@@ -401,6 +493,22 @@ func (r *PlatformRequest) WithUpdateTimeLessThanOrEqualTo(value time.Time) *Plat
 	r.Query.AndFilter(core.ExprLte("update_time", core.ValTimestamp(value.UnixMilli())))
 	return r
 }
+func (r *PlatformRequest) WithUpdateTimeBetween(lower time.Time, upper time.Time) *PlatformRequest {
+	value := lower
+	from := core.ValTimestamp(value.UnixMilli())
+	value = upper
+	to := core.ValTimestamp(value.UnixMilli())
+	r.Query.AndFilter(core.ExprBetweenNode("update_time", from, to))
+	return r
+}
+func (r *PlatformRequest) WithUpdateTimeIsKnown() *PlatformRequest {
+	r.Query.AndFilter(core.ExprIsNotNullNode("update_time"))
+	return r
+}
+func (r *PlatformRequest) WithUpdateTimeIsUnknown() *PlatformRequest {
+	r.Query.AndFilter(core.ExprIsNullNode("update_time"))
+	return r
+}
 func (r *PlatformRequest) OrderByUpdateTimeAsc() *PlatformRequest {
 	r.Query.OrderAsc("update_time")
 	return r
@@ -452,6 +560,22 @@ func (r *PlatformRequest) WithVersionLessThan(value int64) *PlatformRequest {
 }
 func (r *PlatformRequest) WithVersionLessThanOrEqualTo(value int64) *PlatformRequest {
 	r.Query.AndFilter(core.ExprLte("version", core.ValI64(value)))
+	return r
+}
+func (r *PlatformRequest) WithVersionBetween(lower int64, upper int64) *PlatformRequest {
+	value := lower
+	from := core.ValI64(value)
+	value = upper
+	to := core.ValI64(value)
+	r.Query.AndFilter(core.ExprBetweenNode("version", from, to))
+	return r
+}
+func (r *PlatformRequest) WithVersionIsKnown() *PlatformRequest {
+	r.Query.AndFilter(core.ExprIsNotNullNode("version"))
+	return r
+}
+func (r *PlatformRequest) WithVersionIsUnknown() *PlatformRequest {
+	r.Query.AndFilter(core.ExprIsNullNode("version"))
 	return r
 }
 func (r *PlatformRequest) OrderByVersionAsc() *PlatformRequest {
@@ -530,22 +654,32 @@ func (e *ExecutablePlatformRequest) ExecuteForList(context *runtime.UserContext)
 		}
 		if relationValue, selected := rec["schoolTypeList"]; selected {
 			childRecords, ok := relationValue.V.([]core.Record)
-				if !ok { return nil, fmt.Errorf("relation schoolTypeList has unexpected runtime type %T", relationValue.V) }
-				for _, childRecord := range childRecords {
-					childEntity := school_type.NewSchoolType()
-					childEntity.AttachEntityRoot(entity.EntityRoot())
-					if err := childEntity.FromRecord(childRecord); err != nil { return nil, err }
-					entity.SchoolTypeList().Add(childEntity)
-				}}
+			if !ok {
+				return nil, fmt.Errorf("relation schoolTypeList has unexpected runtime type %T", relationValue.V)
+			}
+			for _, childRecord := range childRecords {
+				childEntity := school_type.NewSchoolType()
+				childEntity.AttachEntityRoot(entity.EntityRoot())
+				if err := childEntity.FromRecord(childRecord); err != nil {
+					return nil, err
+				}
+				entity.SchoolTypeList().Add(childEntity)
+			}
+		}
 		if relationValue, selected := rec["schoolList"]; selected {
 			childRecords, ok := relationValue.V.([]core.Record)
-				if !ok { return nil, fmt.Errorf("relation schoolList has unexpected runtime type %T", relationValue.V) }
-				for _, childRecord := range childRecords {
-					childEntity := school.NewSchool()
-					childEntity.AttachEntityRoot(entity.EntityRoot())
-					if err := childEntity.FromRecord(childRecord); err != nil { return nil, err }
-					entity.SchoolList().Add(childEntity)
-				}}
+			if !ok {
+				return nil, fmt.Errorf("relation schoolList has unexpected runtime type %T", relationValue.V)
+			}
+			for _, childRecord := range childRecords {
+				childEntity := school.NewSchool()
+				childEntity.AttachEntityRoot(entity.EntityRoot())
+				if err := childEntity.FromRecord(childRecord); err != nil {
+					return nil, err
+				}
+				entity.SchoolList().Add(childEntity)
+			}
+		}
 		results = append(results, entity)
 	}
 	return core.NewSmartList(results), nil
@@ -563,42 +697,66 @@ func (e *ExecutablePlatformRequest) ExecuteForPage(context *runtime.UserContext,
 	}
 	r.Query.Page(offset, size).Comment(fmt.Sprintf("comment=%s; purpose=%s", r.commentText, r.purposeText))
 	authorized, err := context.PrepareQuery(r.Query)
-	if err != nil { return nil, err }
+	if err != nil {
+		return nil, err
+	}
 	dsRaw := context.GetResource("dataService")
 	ds, ok := dsRaw.(data_service.QueryExecutor)
-	if !ok { return nil, fmt.Errorf("dataService does not implement data_service.QueryExecutor") }
+	if !ok {
+		return nil, fmt.Errorf("dataService does not implement data_service.QueryExecutor")
+	}
 	service := runtime.NewRuntimeDataService(context.Metadata, ds)
 	const countAlias = "__teaql_total"
 	countRows, err := service.FetchAll(context, authorized.ForExactCount(countAlias))
-	if err != nil { return nil, err }
-	if len(countRows) != 1 { return nil, fmt.Errorf("exact count returned %d rows", len(countRows)) }
+	if err != nil {
+		return nil, err
+	}
+	if len(countRows) != 1 {
+		return nil, fmt.Errorf("exact count returned %d rows", len(countRows))
+	}
 	total, ok := countRows[0][countAlias].TryU64()
-	if !ok { return nil, fmt.Errorf("exact count did not return an unsigned integer") }
+	if !ok {
+		return nil, fmt.Errorf("exact count did not return an unsigned integer")
+	}
 	rows, err := service.FetchAll(context, authorized)
-	if err != nil { return nil, err }
+	if err != nil {
+		return nil, err
+	}
 	results := make([]*Platform, 0, len(rows))
 	for _, rec := range rows {
 		entity := NewPlatform()
 		entity.AttachEntityRoot(context.EntityRoot())
-		if err := entity.FromRecord(rec); err != nil { return nil, err }
+		if err := entity.FromRecord(rec); err != nil {
+			return nil, err
+		}
 		if relationValue, selected := rec["schoolTypeList"]; selected {
 			childRecords, ok := relationValue.V.([]core.Record)
-				if !ok { return nil, fmt.Errorf("relation schoolTypeList has unexpected runtime type %T", relationValue.V) }
-				for _, childRecord := range childRecords {
-					childEntity := school_type.NewSchoolType()
-					childEntity.AttachEntityRoot(entity.EntityRoot())
-					if err := childEntity.FromRecord(childRecord); err != nil { return nil, err }
-					entity.SchoolTypeList().Add(childEntity)
-				}}
+			if !ok {
+				return nil, fmt.Errorf("relation schoolTypeList has unexpected runtime type %T", relationValue.V)
+			}
+			for _, childRecord := range childRecords {
+				childEntity := school_type.NewSchoolType()
+				childEntity.AttachEntityRoot(entity.EntityRoot())
+				if err := childEntity.FromRecord(childRecord); err != nil {
+					return nil, err
+				}
+				entity.SchoolTypeList().Add(childEntity)
+			}
+		}
 		if relationValue, selected := rec["schoolList"]; selected {
 			childRecords, ok := relationValue.V.([]core.Record)
-				if !ok { return nil, fmt.Errorf("relation schoolList has unexpected runtime type %T", relationValue.V) }
-				for _, childRecord := range childRecords {
-					childEntity := school.NewSchool()
-					childEntity.AttachEntityRoot(entity.EntityRoot())
-					if err := childEntity.FromRecord(childRecord); err != nil { return nil, err }
-					entity.SchoolList().Add(childEntity)
-				}}
+			if !ok {
+				return nil, fmt.Errorf("relation schoolList has unexpected runtime type %T", relationValue.V)
+			}
+			for _, childRecord := range childRecords {
+				childEntity := school.NewSchool()
+				childEntity.AttachEntityRoot(entity.EntityRoot())
+				if err := childEntity.FromRecord(childRecord); err != nil {
+					return nil, err
+				}
+				entity.SchoolList().Add(childEntity)
+			}
+		}
 		results = append(results, entity)
 	}
 	return core.NewSmartList(results).WithTotalCount(total), nil
@@ -668,7 +826,6 @@ func (r *PlatformRequest) CountAs(alias string) *PlatformRequest {
 	r.Query.CountField("id", alias)
 	return r
 }
-
 
 func (r *PlatformRequest) GroupById() *PlatformRequest {
 	r.Query.WithGroupBy("id")

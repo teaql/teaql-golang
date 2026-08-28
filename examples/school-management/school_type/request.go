@@ -1,5 +1,3 @@
-
-
 package school_type
 
 import (
@@ -20,9 +18,10 @@ var (
 )
 
 type SchoolTypeRequest struct {
-	Query       *core.SelectQuery
-	purposeText string
-	commentText string
+	Query             *core.SelectQuery
+	purposeText       string
+	commentText       string
+	relationFactories map[string]func() core.Entity
 }
 
 type ExecutableSchoolTypeRequest struct {
@@ -31,7 +30,8 @@ type ExecutableSchoolTypeRequest struct {
 
 func NewSchoolTypeRequest() *SchoolTypeRequest {
 	r := &SchoolTypeRequest{
-		Query: core.NewSelectQuery("School Type"),
+		Query:             core.NewSelectQuery("School Type"),
+		relationFactories: make(map[string]func() core.Entity),
 	}
 	r.Query.AndFilter(core.ExprGte("version", core.ValI64(1)))
 	return r
@@ -45,6 +45,10 @@ func NewSchoolTypeMinimalRequest() *SchoolTypeRequest {
 
 func (r *SchoolTypeRequest) GetQuery() *core.SelectQuery {
 	return r.Query
+}
+
+func (r *SchoolTypeRequest) NewRelationEntity() core.Entity {
+	return NewSchoolType()
 }
 
 func (r *SchoolTypeRequest) Comment(comment string) *SchoolTypeRequest {
@@ -83,20 +87,28 @@ func (r *SchoolTypeRequest) OptimizeForContinuousPageFetchWith(namespace string,
 }
 
 func removeSchoolTypeVersionFilter(expr *core.Expr) *core.Expr {
-	if expr == nil { return nil }
+	if expr == nil {
+		return nil
+	}
 	if expr.Type == core.ExprTypeBinary && expr.Left != nil &&
 		expr.Left.Type == core.ExprTypeColumn && expr.Left.Column == "version" {
 		return nil
 	}
-	if expr.Type != core.ExprTypeAnd { return expr }
+	if expr.Type != core.ExprTypeAnd {
+		return expr
+	}
 	parts := make([]*core.Expr, 0, len(expr.Parts))
 	for _, part := range expr.Parts {
 		if kept := removeSchoolTypeVersionFilter(part); kept != nil {
 			parts = append(parts, kept)
 		}
 	}
-	if len(parts) == 0 { return nil }
-	if len(parts) == 1 { return parts[0] }
+	if len(parts) == 0 {
+		return nil
+	}
+	if len(parts) == 1 {
+		return parts[0]
+	}
 	return core.ExprAndNode(parts...)
 }
 
@@ -154,6 +166,22 @@ func (r *SchoolTypeRequest) WithPlatformLessThan(value uint64) *SchoolTypeReques
 }
 func (r *SchoolTypeRequest) WithPlatformLessThanOrEqualTo(value uint64) *SchoolTypeRequest {
 	r.Query.AndFilter(core.ExprLte("platform_id", core.ValU64(value)))
+	return r
+}
+func (r *SchoolTypeRequest) WithPlatformBetween(lower uint64, upper uint64) *SchoolTypeRequest {
+	value := lower
+	from := core.ValU64(value)
+	value = upper
+	to := core.ValU64(value)
+	r.Query.AndFilter(core.ExprBetweenNode("platform_id", from, to))
+	return r
+}
+func (r *SchoolTypeRequest) WithPlatformIsKnown() *SchoolTypeRequest {
+	r.Query.AndFilter(core.ExprIsNotNullNode("platform_id"))
+	return r
+}
+func (r *SchoolTypeRequest) WithPlatformIsUnknown() *SchoolTypeRequest {
+	r.Query.AndFilter(core.ExprIsNullNode("platform_id"))
 	return r
 }
 func (r *SchoolTypeRequest) FacetByPlatformAs(name string, nestedReq any) *SchoolTypeRequest {
@@ -215,6 +243,22 @@ func (r *SchoolTypeRequest) WithIdLessThanOrEqualTo(value uint64) *SchoolTypeReq
 	r.Query.AndFilter(core.ExprLte("id", core.ValU64(value)))
 	return r
 }
+func (r *SchoolTypeRequest) WithIdBetween(lower uint64, upper uint64) *SchoolTypeRequest {
+	value := lower
+	from := core.ValU64(value)
+	value = upper
+	to := core.ValU64(value)
+	r.Query.AndFilter(core.ExprBetweenNode("id", from, to))
+	return r
+}
+func (r *SchoolTypeRequest) WithIdIsKnown() *SchoolTypeRequest {
+	r.Query.AndFilter(core.ExprIsNotNullNode("id"))
+	return r
+}
+func (r *SchoolTypeRequest) WithIdIsUnknown() *SchoolTypeRequest {
+	r.Query.AndFilter(core.ExprIsNullNode("id"))
+	return r
+}
 func (r *SchoolTypeRequest) OrderByIdAsc() *SchoolTypeRequest {
 	r.Query.OrderAsc("id")
 	return r
@@ -268,6 +312,22 @@ func (r *SchoolTypeRequest) WithNameLessThanOrEqualTo(value string) *SchoolTypeR
 	r.Query.AndFilter(core.ExprLte("name", core.ValText(value)))
 	return r
 }
+func (r *SchoolTypeRequest) WithNameBetween(lower string, upper string) *SchoolTypeRequest {
+	value := lower
+	from := core.ValText(value)
+	value = upper
+	to := core.ValText(value)
+	r.Query.AndFilter(core.ExprBetweenNode("name", from, to))
+	return r
+}
+func (r *SchoolTypeRequest) WithNameIsKnown() *SchoolTypeRequest {
+	r.Query.AndFilter(core.ExprIsNotNullNode("name"))
+	return r
+}
+func (r *SchoolTypeRequest) WithNameIsUnknown() *SchoolTypeRequest {
+	r.Query.AndFilter(core.ExprIsNullNode("name"))
+	return r
+}
 func (r *SchoolTypeRequest) WithNameContaining(term string) *SchoolTypeRequest {
 	r.Query.AndFilter(core.ExprContain("name", term))
 	return r
@@ -280,8 +340,16 @@ func (r *SchoolTypeRequest) WithNameStartingWith(term string) *SchoolTypeRequest
 	r.Query.AndFilter(core.ExprBeginWith("name", term))
 	return r
 }
+func (r *SchoolTypeRequest) WithNameNotStartingWith(term string) *SchoolTypeRequest {
+	r.Query.AndFilter(core.ExprNotBeginWith("name", term))
+	return r
+}
 func (r *SchoolTypeRequest) WithNameEndingWith(term string) *SchoolTypeRequest {
 	r.Query.AndFilter(core.ExprEndWith("name", term))
+	return r
+}
+func (r *SchoolTypeRequest) WithNameNotEndingWith(term string) *SchoolTypeRequest {
+	r.Query.AndFilter(core.ExprNotEndWith("name", term))
 	return r
 }
 func (r *SchoolTypeRequest) OrderByNameAsc() *SchoolTypeRequest {
@@ -337,6 +405,22 @@ func (r *SchoolTypeRequest) WithCodeLessThanOrEqualTo(value string) *SchoolTypeR
 	r.Query.AndFilter(core.ExprLte("code", core.ValText(value)))
 	return r
 }
+func (r *SchoolTypeRequest) WithCodeBetween(lower string, upper string) *SchoolTypeRequest {
+	value := lower
+	from := core.ValText(value)
+	value = upper
+	to := core.ValText(value)
+	r.Query.AndFilter(core.ExprBetweenNode("code", from, to))
+	return r
+}
+func (r *SchoolTypeRequest) WithCodeIsKnown() *SchoolTypeRequest {
+	r.Query.AndFilter(core.ExprIsNotNullNode("code"))
+	return r
+}
+func (r *SchoolTypeRequest) WithCodeIsUnknown() *SchoolTypeRequest {
+	r.Query.AndFilter(core.ExprIsNullNode("code"))
+	return r
+}
 func (r *SchoolTypeRequest) WithCodeContaining(term string) *SchoolTypeRequest {
 	r.Query.AndFilter(core.ExprContain("code", term))
 	return r
@@ -349,8 +433,16 @@ func (r *SchoolTypeRequest) WithCodeStartingWith(term string) *SchoolTypeRequest
 	r.Query.AndFilter(core.ExprBeginWith("code", term))
 	return r
 }
+func (r *SchoolTypeRequest) WithCodeNotStartingWith(term string) *SchoolTypeRequest {
+	r.Query.AndFilter(core.ExprNotBeginWith("code", term))
+	return r
+}
 func (r *SchoolTypeRequest) WithCodeEndingWith(term string) *SchoolTypeRequest {
 	r.Query.AndFilter(core.ExprEndWith("code", term))
+	return r
+}
+func (r *SchoolTypeRequest) WithCodeNotEndingWith(term string) *SchoolTypeRequest {
+	r.Query.AndFilter(core.ExprNotEndWith("code", term))
 	return r
 }
 func (r *SchoolTypeRequest) OrderByCodeAsc() *SchoolTypeRequest {
@@ -406,6 +498,22 @@ func (r *SchoolTypeRequest) WithDisplayOrderLessThanOrEqualTo(value decimal.Deci
 	r.Query.AndFilter(core.ExprLte("display_order", core.ValDecimal(value)))
 	return r
 }
+func (r *SchoolTypeRequest) WithDisplayOrderBetween(lower decimal.Decimal, upper decimal.Decimal) *SchoolTypeRequest {
+	value := lower
+	from := core.ValDecimal(value)
+	value = upper
+	to := core.ValDecimal(value)
+	r.Query.AndFilter(core.ExprBetweenNode("display_order", from, to))
+	return r
+}
+func (r *SchoolTypeRequest) WithDisplayOrderIsKnown() *SchoolTypeRequest {
+	r.Query.AndFilter(core.ExprIsNotNullNode("display_order"))
+	return r
+}
+func (r *SchoolTypeRequest) WithDisplayOrderIsUnknown() *SchoolTypeRequest {
+	r.Query.AndFilter(core.ExprIsNullNode("display_order"))
+	return r
+}
 func (r *SchoolTypeRequest) OrderByDisplayOrderAsc() *SchoolTypeRequest {
 	r.Query.OrderAsc("display_order")
 	return r
@@ -459,12 +567,38 @@ func (r *SchoolTypeRequest) WithVersionLessThanOrEqualTo(value int64) *SchoolTyp
 	r.Query.AndFilter(core.ExprLte("version", core.ValI64(value)))
 	return r
 }
+func (r *SchoolTypeRequest) WithVersionBetween(lower int64, upper int64) *SchoolTypeRequest {
+	value := lower
+	from := core.ValI64(value)
+	value = upper
+	to := core.ValI64(value)
+	r.Query.AndFilter(core.ExprBetweenNode("version", from, to))
+	return r
+}
+func (r *SchoolTypeRequest) WithVersionIsKnown() *SchoolTypeRequest {
+	r.Query.AndFilter(core.ExprIsNotNullNode("version"))
+	return r
+}
+func (r *SchoolTypeRequest) WithVersionIsUnknown() *SchoolTypeRequest {
+	r.Query.AndFilter(core.ExprIsNullNode("version"))
+	return r
+}
 func (r *SchoolTypeRequest) OrderByVersionAsc() *SchoolTypeRequest {
 	r.Query.OrderAsc("version")
 	return r
 }
 func (r *SchoolTypeRequest) OrderByVersionDesc() *SchoolTypeRequest {
 	r.Query.OrderDesc("version")
+	return r
+}
+
+func (r *SchoolTypeRequest) SelectPlatformWith(child interface {
+	GetQuery() *core.SelectQuery
+	NewRelationEntity() core.Entity
+}) *SchoolTypeRequest {
+	r.Query.Project("platform_id")
+	r.Query.RelationQuery("platformEntity", child.GetQuery())
+	r.relationFactories["platformEntity"] = child.NewRelationEntity
 	return r
 }
 
@@ -521,15 +655,35 @@ func (e *ExecutableSchoolTypeRequest) ExecuteForList(context *runtime.UserContex
 		if err := entity.FromRecord(rec); err != nil {
 			return nil, err
 		}
+		if relationValue, selected := rec["platformEntity"]; selected {
+			entity.markRelationLoaded("platformEntity")
+			if childRecord, ok := relationValue.V.(core.Record); ok {
+				if factory := e.request.relationFactories["platformEntity"]; factory != nil {
+					childEntity := factory()
+					if attachable, ok := childEntity.(interface{ AttachEntityRoot(*core.EntityRoot) }); ok {
+						attachable.AttachEntityRoot(entity.EntityRoot())
+					}
+					if err := childEntity.FromRecord(childRecord); err != nil {
+						return nil, err
+					}
+					entity.setRelationEntity("platformEntity", childEntity)
+				}
+			}
+		}
 		if relationValue, selected := rec["schoolList"]; selected {
 			childRecords, ok := relationValue.V.([]core.Record)
-				if !ok { return nil, fmt.Errorf("relation schoolList has unexpected runtime type %T", relationValue.V) }
-				for _, childRecord := range childRecords {
-					childEntity := school.NewSchool()
-					childEntity.AttachEntityRoot(entity.EntityRoot())
-					if err := childEntity.FromRecord(childRecord); err != nil { return nil, err }
-					entity.SchoolList().Add(childEntity)
-				}}
+			if !ok {
+				return nil, fmt.Errorf("relation schoolList has unexpected runtime type %T", relationValue.V)
+			}
+			for _, childRecord := range childRecords {
+				childEntity := school.NewSchool()
+				childEntity.AttachEntityRoot(entity.EntityRoot())
+				if err := childEntity.FromRecord(childRecord); err != nil {
+					return nil, err
+				}
+				entity.SchoolList().Add(childEntity)
+			}
+		}
 		results = append(results, entity)
 	}
 	return core.NewSmartList(results), nil
@@ -547,33 +701,67 @@ func (e *ExecutableSchoolTypeRequest) ExecuteForPage(context *runtime.UserContex
 	}
 	r.Query.Page(offset, size).Comment(fmt.Sprintf("comment=%s; purpose=%s", r.commentText, r.purposeText))
 	authorized, err := context.PrepareQuery(r.Query)
-	if err != nil { return nil, err }
+	if err != nil {
+		return nil, err
+	}
 	dsRaw := context.GetResource("dataService")
 	ds, ok := dsRaw.(data_service.QueryExecutor)
-	if !ok { return nil, fmt.Errorf("dataService does not implement data_service.QueryExecutor") }
+	if !ok {
+		return nil, fmt.Errorf("dataService does not implement data_service.QueryExecutor")
+	}
 	service := runtime.NewRuntimeDataService(context.Metadata, ds)
 	const countAlias = "__teaql_total"
 	countRows, err := service.FetchAll(context, authorized.ForExactCount(countAlias))
-	if err != nil { return nil, err }
-	if len(countRows) != 1 { return nil, fmt.Errorf("exact count returned %d rows", len(countRows)) }
+	if err != nil {
+		return nil, err
+	}
+	if len(countRows) != 1 {
+		return nil, fmt.Errorf("exact count returned %d rows", len(countRows))
+	}
 	total, ok := countRows[0][countAlias].TryU64()
-	if !ok { return nil, fmt.Errorf("exact count did not return an unsigned integer") }
+	if !ok {
+		return nil, fmt.Errorf("exact count did not return an unsigned integer")
+	}
 	rows, err := service.FetchAll(context, authorized)
-	if err != nil { return nil, err }
+	if err != nil {
+		return nil, err
+	}
 	results := make([]*SchoolType, 0, len(rows))
 	for _, rec := range rows {
 		entity := NewSchoolType()
 		entity.AttachEntityRoot(context.EntityRoot())
-		if err := entity.FromRecord(rec); err != nil { return nil, err }
+		if err := entity.FromRecord(rec); err != nil {
+			return nil, err
+		}
+		if relationValue, selected := rec["platformEntity"]; selected {
+			entity.markRelationLoaded("platformEntity")
+			if childRecord, ok := relationValue.V.(core.Record); ok {
+				if factory := e.request.relationFactories["platformEntity"]; factory != nil {
+					childEntity := factory()
+					if attachable, ok := childEntity.(interface{ AttachEntityRoot(*core.EntityRoot) }); ok {
+						attachable.AttachEntityRoot(entity.EntityRoot())
+					}
+					if err := childEntity.FromRecord(childRecord); err != nil {
+						return nil, err
+					}
+					entity.setRelationEntity("platformEntity", childEntity)
+				}
+			}
+		}
 		if relationValue, selected := rec["schoolList"]; selected {
 			childRecords, ok := relationValue.V.([]core.Record)
-				if !ok { return nil, fmt.Errorf("relation schoolList has unexpected runtime type %T", relationValue.V) }
-				for _, childRecord := range childRecords {
-					childEntity := school.NewSchool()
-					childEntity.AttachEntityRoot(entity.EntityRoot())
-					if err := childEntity.FromRecord(childRecord); err != nil { return nil, err }
-					entity.SchoolList().Add(childEntity)
-				}}
+			if !ok {
+				return nil, fmt.Errorf("relation schoolList has unexpected runtime type %T", relationValue.V)
+			}
+			for _, childRecord := range childRecords {
+				childEntity := school.NewSchool()
+				childEntity.AttachEntityRoot(entity.EntityRoot())
+				if err := childEntity.FromRecord(childRecord); err != nil {
+					return nil, err
+				}
+				entity.SchoolList().Add(childEntity)
+			}
+		}
 		results = append(results, entity)
 	}
 	return core.NewSmartList(results).WithTotalCount(total), nil

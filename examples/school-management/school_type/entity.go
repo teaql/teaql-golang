@@ -7,12 +7,12 @@ import (
 	"strings"
 	"sync/atomic"
 
-	"time"
 	"github.com/shopspring/decimal"
 	"github.com/teaql/teaql-golang/core"
 	"github.com/teaql/teaql-golang/data_service"
 	"github.com/teaql/teaql-golang/runtime"
 	"school-management-service-core-workspace/lib/school"
+	"time"
 )
 
 var (
@@ -25,17 +25,19 @@ var (
 var teaqlTemporaryEntityID int64
 
 type SchoolType struct {
-	base        *core.BaseEntityData
-	dirtyFields map[string]bool
-	isNew       bool
-	markedAsDelete bool
-	comment     *string
-	purpose     *string
-	loadState   map[string]bool
+	base              *core.BaseEntityData
+	dirtyFields       map[string]bool
+	isNew             bool
+	markedAsDelete    bool
+	comment           *string
+	purpose           *string
+	loadState         map[string]bool
 	restrictLoadState bool
-	root        *core.EntityRoot
-	ledgerID    core.Value
-	schoolList *SchoolList
+	root              *core.EntityRoot
+	ledgerID          core.Value
+	relations         map[string]core.Entity
+	loadedRelations   map[string]bool
+	schoolList        *SchoolList
 }
 
 type SchoolList struct {
@@ -57,41 +59,70 @@ func (l *SchoolList) Items() []*school.School {
 func NewSchoolType() *SchoolType {
 	temporaryID := -atomic.AddInt64(&teaqlTemporaryEntityID, 1)
 	entity := &SchoolType{
-		base:        core.NewBaseEntityData(),
-		dirtyFields: make(map[string]bool),
-		isNew:       true,
-		loadState:   make(map[string]bool),
-		root:        core.NewEntityRoot(),
-		ledgerID:    core.ValI64(temporaryID),
-		schoolList: newSchoolList(),
+		base:            core.NewBaseEntityData(),
+		dirtyFields:     make(map[string]bool),
+		isNew:           true,
+		loadState:       make(map[string]bool),
+		root:            core.NewEntityRoot(),
+		ledgerID:        core.ValI64(temporaryID),
+		relations:       make(map[string]core.Entity),
+		loadedRelations: make(map[string]bool),
+		schoolList:      newSchoolList(),
 	}
 	entity.root.MarkAsNew(entity.EntityKey())
 	return entity
 }
 
 func (e *SchoolType) EntityKey() core.EntityKey {
-	if e.base.Id != 0 { return core.NewEntityKey(e.EntityName(), core.ValU64(e.base.Id)) }
+	if e.base.Id != 0 {
+		return core.NewEntityKey(e.EntityName(), core.ValU64(e.base.Id))
+	}
 	return core.NewEntityKey(e.EntityName(), e.ledgerID)
 }
 
 func (e *SchoolType) EntityRoot() *core.EntityRoot { return e.root }
 
 func (e *SchoolType) AttachEntityRoot(root *core.EntityRoot) {
-	if root == nil || root == e.root { return }
+	if root == nil || root == e.root {
+		return
+	}
 	root.MergeFrom(e.root)
 	e.root = root
-		for _, child := range e.schoolList.Items() { child.AttachEntityRoot(root) }
+	for _, child := range e.schoolList.Items() {
+		child.AttachEntityRoot(root)
+	}
+}
+
+func (e *SchoolType) RelationEntity(name string) (core.Entity, bool) {
+	value, ok := e.relations[name]
+	return value, ok
+}
+
+func (e *SchoolType) setRelationEntity(name string, value core.Entity) {
+	e.relations[name] = value
+}
+
+func (e *SchoolType) markRelationLoaded(name string) {
+	e.loadedRelations[name] = true
+}
+
+func (e *SchoolType) isRelationLoaded(name string) bool {
+	return e.loadedRelations[name]
 }
 
 func (e *SchoolType) MarkLoadedOnly(fields ...string) *SchoolType {
 	e.restrictLoadState = true
 	e.loadState = make(map[string]bool, len(fields))
-	for _, field := range fields { e.loadState[field] = true }
+	for _, field := range fields {
+		e.loadState[field] = true
+	}
 	return e
 }
 
 func (e *SchoolType) IsLoaded(field string) bool {
-	if e.isNew && !e.restrictLoadState { return true }
+	if e.isNew && !e.restrictLoadState {
+		return true
+	}
 	return e.loadState[field]
 }
 
@@ -111,8 +142,6 @@ func (e *SchoolType) IdValue() core.Value {
 	return core.ValU64(e.base.Id)
 }
 
-
-
 func (e *SchoolType) FromRecord(record core.Record) error {
 	oldKey := e.EntityKey()
 	base, err := core.BaseEntityDataFromRecord(record)
@@ -126,7 +155,9 @@ func (e *SchoolType) FromRecord(record core.Record) error {
 	e.dirtyFields = make(map[string]bool)
 	e.loadState = make(map[string]bool, len(record))
 	e.restrictLoadState = true
-	for field := range record { e.loadState[field] = true }
+	for field := range record {
+		e.loadState[field] = true
+	}
 	return nil
 }
 
@@ -229,8 +260,12 @@ func (e *SchoolType) Save(context *runtime.UserContext) (*SchoolType, error) {
 				e.root.Set(e.EntityKey(), field, value)
 			}
 		}
-		if checkErr != nil { return nil, checkErr }
-		if err := e.FromRecord(checkedValues); err != nil { return nil, err }
+		if checkErr != nil {
+			return nil, checkErr
+		}
+		if err := e.FromRecord(checkedValues); err != nil {
+			return nil, err
+		}
 		type idGenerator interface {
 			GenerateId(entity string) (uint64, error)
 		}
@@ -285,7 +320,9 @@ func (e *SchoolType) Save(context *runtime.UserContext) (*SchoolType, error) {
 		if err := e.FromRecord(res.PersistedRecord); err != nil {
 			return nil, err
 		}
-		if err := e.saveCascade(context); err != nil { return nil, err }
+		if err := e.saveCascade(context); err != nil {
+			return nil, err
+		}
 		e.root.ClearEntity(e.EntityKey())
 		return e, nil
 	} else if e.markedAsDelete {
@@ -296,7 +333,9 @@ func (e *SchoolType) Save(context *runtime.UserContext) (*SchoolType, error) {
 			cmd.TraceChain = append(cmd.TraceChain, &core.TraceNode{Comment: *e.comment})
 		}
 		res, err := ds.Mutate(context, &data_service.DeleteMutation{Cmd: cmd})
-		if err != nil { return nil, err }
+		if err != nil {
+			return nil, err
+		}
 		if res.AffectedRows == 0 {
 			return nil, fmt.Errorf("optimistic lock failed for %s(%d) at version %d", e.EntityName(), e.base.Id, expectedVersion)
 		}
@@ -306,7 +345,9 @@ func (e *SchoolType) Save(context *runtime.UserContext) (*SchoolType, error) {
 		if res.PersistedRecord == nil {
 			return nil, fmt.Errorf("mutation did not return the authoritative persisted record")
 		}
-		if err := e.FromRecord(res.PersistedRecord); err != nil { return nil, err }
+		if err := e.FromRecord(res.PersistedRecord); err != nil {
+			return nil, err
+		}
 		e.root.ClearEntity(e.EntityKey())
 		return e, nil
 	} else {
@@ -318,8 +359,12 @@ func (e *SchoolType) Save(context *runtime.UserContext) (*SchoolType, error) {
 				e.root.Set(e.EntityKey(), field, value)
 			}
 		}
-		if checkErr != nil { return nil, checkErr }
-		if err := e.FromRecord(checkedValues); err != nil { return nil, err }
+		if checkErr != nil {
+			return nil, checkErr
+		}
+		if err := e.FromRecord(checkedValues); err != nil {
+			return nil, err
+		}
 		cmd := core.NewUpdateCommand("School Type", core.ValU64(e.base.Id))
 		cmd.Values = e.root.Change(e.EntityKey())
 		expectedVersion := e.base.Version
@@ -341,8 +386,12 @@ func (e *SchoolType) Save(context *runtime.UserContext) (*SchoolType, error) {
 		if res.PersistedRecord == nil {
 			return nil, fmt.Errorf("mutation did not return the authoritative persisted record")
 		}
-		if err := e.FromRecord(res.PersistedRecord); err != nil { return nil, err }
-		if err := e.saveCascade(context); err != nil { return nil, err }
+		if err := e.FromRecord(res.PersistedRecord); err != nil {
+			return nil, err
+		}
+		if err := e.saveCascade(context); err != nil {
+			return nil, err
+		}
 		e.root.ClearEntity(e.EntityKey())
 		return e, nil
 	}
@@ -434,9 +483,9 @@ func (e *SchoolType) UpdatePlatformId(value uint64) *SchoolType {
 	e.loadState["platform_id"] = true
 	return e
 }
+
 // DEBUG: constantObjectField is false
 
 func (e *SchoolType) SchoolList() *SchoolList {
 	return e.schoolList
 }
-
