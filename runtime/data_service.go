@@ -63,6 +63,9 @@ func (s *RuntimeDataService) FetchAll(context stdcontext.Context, query *core.Se
 	if err := s.enhanceRelations(context, rows, executionQuery); err != nil {
 		return nil, err
 	}
+	if err := s.enhanceRelationAggregates(context, rows, executionQuery); err != nil {
+		return nil, err
+	}
 	s.registerContinuousPage(context, continuous, rows)
 	return rows, nil
 }
@@ -267,11 +270,134 @@ func cloneSelectQuery(source *core.SelectQuery, entity string) *core.SelectQuery
 	clone.Projection = append([]string(nil), source.Projection...)
 	clone.OrderBy = append([]*core.OrderBy(nil), source.OrderBy...)
 	clone.Relations = append([]*core.RelationLoad(nil), source.Relations...)
+	clone.RelationAggregates = append([]*core.RelationAggregate(nil), source.RelationAggregates...)
+	clone.Aggregates = append([]*core.Aggregate(nil), source.Aggregates...)
+	clone.GroupBy = append([]string(nil), source.GroupBy...)
 	if source.Slice != nil {
 		slice := *source.Slice
 		clone.Slice = &slice
 	}
 	return &clone
+}
+
+func (s *RuntimeDataService) enhanceRelationAggregates(context stdcontext.Context, parents []core.Record, query *core.SelectQuery) error {
+	if len(parents) == 0 || len(query.RelationAggregates) == 0 {
+		return nil
+	}
+	parentDescriptor := s.metadata.Entity(query.Entity)
+	if parentDescriptor == nil {
+		return fmt.Errorf("unknown entity %s", query.Entity)
+	}
+	for _, aggregate := range query.RelationAggregates {
+		relation := parentDescriptor.RelationByName(aggregate.RelationName)
+		if relation == nil {
+			return fmt.Errorf("missing relation %s.%s", query.Entity, aggregate.RelationName)
+		}
+		ids := make([]core.Value, 0, len(parents))
+		for _, parent := range parents {
+			if id, ok := parent[relation.LocKey]; ok {
+				ids = append(ids, id)
+			}
+		}
+		if len(ids) == 0 {
+			attachEmptyRelationAggregate(parents, aggregate, aggregate.Query)
+			continue
+		}
+		childQuery := cloneSelectQuery(aggregate.Query, relation.TargetEntity)
+		childQuery.Projection = nil
+		childQuery.ExprProjection = nil
+		childQuery.OrderBy = nil
+		childQuery.Slice = nil
+		childQuery.Relations = nil
+		childQuery.RelationAggregates = nil
+		if len(childQuery.Aggregates) == 0 {
+			childQuery.Aggregates = []*core.Aggregate{core.AggCountAlias(aggregate.Alias)}
+		}
+		if !containsField(childQuery.GroupBy, relation.ForKey) {
+			childQuery.GroupBy = append(childQuery.GroupBy, relation.ForKey)
+		}
+		childQuery.AndFilter(core.ExprInList(relation.ForKey, ids))
+		rows, err := s.fetchRows(context, childQuery)
+		if err != nil {
+			return err
+		}
+		if childDescriptor := s.metadata.Entity(relation.TargetEntity); childDescriptor != nil {
+			if property := childDescriptor.PropertyByName(relation.ForKey); property != nil && property.ColName != relation.ForKey {
+				for _, row := range rows {
+					if value, exists := row[property.ColName]; exists {
+						row[relation.ForKey] = value
+					}
+				}
+			}
+		}
+		attachRelationAggregateRows(parents, rows, relation, aggregate, childQuery)
+	}
+	return nil
+}
+
+func containsField(fields []string, field string) bool {
+	for _, candidate := range fields {
+		if candidate == field {
+			return true
+		}
+	}
+	return false
+}
+
+func attachEmptyRelationAggregate(parents []core.Record, aggregate *core.RelationAggregate, query *core.SelectQuery) {
+	for _, parent := range parents {
+		if aggregate.SingleResult {
+			parent[aggregate.Alias] = emptyAggregateValue(query)
+		} else {
+			parent[aggregate.Alias] = core.Value{V: core.Record{}}
+		}
+	}
+}
+
+func emptyAggregateValue(query *core.SelectQuery) core.Value {
+	if query == nil || len(query.Aggregates) == 0 || query.Aggregates[0].Function == core.AggCount {
+		return core.ValI64(0)
+	}
+	return core.ValNull()
+}
+
+func attachRelationAggregateRows(parents, rows []core.Record, relation *core.RelationDescriptor, aggregate *core.RelationAggregate, query *core.SelectQuery) {
+	buckets := make(map[string]core.Record, len(rows))
+	for _, row := range rows {
+		if foreignKey, ok := row[relation.ForKey]; ok {
+			buckets[relationKey(foreignKey)] = row
+		}
+	}
+	for _, parent := range parents {
+		localKey, ok := parent[relation.LocKey]
+		if !ok {
+			continue
+		}
+		row, found := buckets[relationKey(localKey)]
+		if !found {
+			if aggregate.SingleResult {
+				parent[aggregate.Alias] = emptyAggregateValue(query)
+			} else {
+				parent[aggregate.Alias] = core.Value{V: core.Record{}}
+			}
+			continue
+		}
+		if aggregate.SingleResult {
+			alias := aggregate.Alias
+			if len(query.Aggregates) > 0 {
+				alias = query.Aggregates[0].Alias
+			}
+			parent[aggregate.Alias] = row[alias]
+		} else {
+			values := make(core.Record, len(row))
+			for key, value := range row {
+				if key != relation.ForKey {
+					values[key] = value
+				}
+			}
+			parent[aggregate.Alias] = core.Value{V: values}
+		}
+	}
 }
 
 func ensureProjection(query *core.SelectQuery, field string) {

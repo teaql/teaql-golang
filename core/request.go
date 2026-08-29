@@ -213,19 +213,20 @@ func ApplyRuntimeMetadata(query *SelectQuery, options *QueryOptions, childEnhanc
 	}
 	query.RawSql = options.RawSql
 	query.RawSqlSearchCriteria = append(query.RawSqlSearchCriteria, options.RawSqlSearchCriteria...)
-	
+
 	for _, p := range options.DynamicProperties {
 		query.DynamicProperties = append(query.DynamicProperties, NewRawSqlProjection(p.PropertyName, p.RawSqlSegment))
 	}
-	
+
 	for _, p := range options.RawProjections {
 		query.RawProjections = append(query.RawProjections, NewRawSqlProjection(p.PropertyName, p.RawSqlSegment))
 	}
-	
+
 	for _, g := range options.ObjectGroupBys {
 		query.ObjectGroupBys = append(query.ObjectGroupBys, NewObjectGroupBy(g.PropertyName, g.StorageField, g.Query.IntoQuery()))
 	}
-	
+	query.RelationAggregates = RuntimeRelationAggregates(options)
+
 	for _, c := range childEnhancements {
 		query.ChildEnhancement(c.IntoQuery())
 	}

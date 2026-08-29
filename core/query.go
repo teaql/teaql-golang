@@ -237,6 +237,7 @@ type SelectQuery struct {
 	Aggregates           []*Aggregate
 	GroupBy              []string
 	Relations            []*RelationLoad
+	RelationAggregates   []*RelationAggregate
 	AggregationCache     *AggregationCacheOptions
 	CommentText          *string
 	TraceChain           []*TraceNode
@@ -259,6 +260,7 @@ func NewSelectQuery(entity string) *SelectQuery {
 		Aggregates:           make([]*Aggregate, 0),
 		GroupBy:              make([]string, 0),
 		Relations:            make([]*RelationLoad, 0),
+		RelationAggregates:   make([]*RelationAggregate, 0),
 		TraceChain:           make([]*TraceNode, 0),
 		RawSqlSearchCriteria: make([]string, 0),
 		DynamicProperties:    make([]*RawSqlProjection, 0),
