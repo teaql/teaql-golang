@@ -6,6 +6,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"sync"
 	"time"
 
 	"github.com/teaql/teaql-golang/core"
@@ -21,6 +22,35 @@ type continuousPageExecution struct {
 	ttlSeconds     uint64
 	optimized      bool
 	seekCursorID   string
+}
+
+type idSetBuildLockEntry struct {
+	lock *sync.Mutex
+	refs int
+}
+
+var idSetBuildLocks = struct {
+	sync.Mutex
+	entries map[string]*idSetBuildLockEntry
+}{entries: make(map[string]*idSetBuildLockEntry)}
+
+func acquireIDSetBuildLock(queryKey string) (*sync.Mutex, func()) {
+	idSetBuildLocks.Lock()
+	entry := idSetBuildLocks.entries[queryKey]
+	if entry == nil {
+		entry = &idSetBuildLockEntry{lock: &sync.Mutex{}}
+		idSetBuildLocks.entries[queryKey] = entry
+	}
+	entry.refs++
+	idSetBuildLocks.Unlock()
+	return entry.lock, func() {
+		idSetBuildLocks.Lock()
+		entry.refs--
+		if entry.refs == 0 {
+			delete(idSetBuildLocks.entries, queryKey)
+		}
+		idSetBuildLocks.Unlock()
+	}
 }
 
 type RuntimeDataService struct {
@@ -55,6 +85,10 @@ func (s *RuntimeDataService) FetchAll(context stdcontext.Context, query *core.Se
 	if err = prepared.PrepareForList(); err != nil {
 		return nil, err
 	}
+	prepared, idSetOrder, idSetEmpty := s.prepareIDSetPage(context, prepared)
+	if idSetEmpty {
+		return []core.Record{}, nil
+	}
 	executionQuery, continuous := s.prepareContinuousPage(context, prepared)
 	rows, err = s.fetchRows(context, executionQuery)
 	if err != nil {
@@ -66,8 +100,153 @@ func (s *RuntimeDataService) FetchAll(context stdcontext.Context, query *core.Se
 	if err := s.enhanceRelationAggregates(context, rows, executionQuery); err != nil {
 		return nil, err
 	}
+	if len(idSetOrder) > 0 {
+		rows = restoreIDSetOrder(rows, idSetOrder)
+	}
 	s.registerContinuousPage(context, continuous, rows)
 	return rows, nil
+}
+
+func (s *RuntimeDataService) prepareIDSetPage(context stdcontext.Context, query *core.SelectQuery) (*core.SelectQuery, []uint64, bool) {
+	userCtx, ok := UserContextFrom(context)
+	if !ok || query.IDSetPagination == nil {
+		if ok {
+			userCtx.ObserveIDSet("ID_SET_DISABLED", "UNKNOWN", 0)
+		}
+		return query, nil, false
+	}
+	options := query.IDSetPagination
+	if query.Slice == nil || query.Slice.Limit == nil || *query.Slice.Limit == 0 ||
+		query.PartitionBy != nil || len(query.Aggregates) > 0 || len(query.GroupBy) > 0 || query.RawSql != nil {
+		userCtx.ObserveIDSet("ID_SET_FALLBACK_UNSUPPORTED_SHAPE", "UNKNOWN", 0)
+		return query, nil, false
+	}
+	for _, order := range query.OrderBy {
+		if order.Expr != nil || order.Field == "" {
+			userCtx.ObserveIDSet("ID_SET_FALLBACK_NON_DETERMINISTIC_ORDER", "UNKNOWN", 0)
+			return query, nil, false
+		}
+	}
+	stable := query.Clone()
+	hasIDOrder := false
+	for _, order := range stable.OrderBy {
+		if order.Field == "id" {
+			hasIDOrder = true
+			break
+		}
+	}
+	if !hasIDOrder {
+		stable.OrderAsc("id")
+	}
+	queryKey := idSetQueryKey(userCtx, stable, options.Namespace)
+	retained, err := userCtx.IDSetStore().GetIDSet(context, queryKey)
+	if err != nil {
+		userCtx.ObserveIDSet("ID_SET_FALLBACK_STORE_UNAVAILABLE", "UNKNOWN", 0)
+		return query, nil, false
+	}
+	plan := "ID_SET_HIT"
+	if retained == nil {
+		lock, release := acquireIDSetBuildLock(queryKey)
+		defer release()
+		lock.Lock()
+		defer lock.Unlock()
+		retained, err = userCtx.IDSetStore().GetIDSet(context, queryKey)
+		if err != nil {
+			userCtx.ObserveIDSet("ID_SET_FALLBACK_STORE_UNAVAILABLE", "UNKNOWN", 0)
+			return query, nil, false
+		}
+		if retained == nil {
+			idQuery := stable.Clone()
+			idQuery.Projection = []string{"id"}
+			idQuery.ExprProjection = nil
+			idQuery.Relations = nil
+			idQuery.RelationAggregates = nil
+			idQuery.ChildEnhancements = nil
+			idQuery.Slice = nil
+			idQuery.Limit(options.MaxIDs + 1)
+			idQuery.IDSetPagination = nil
+			idRows, fetchErr := s.fetchRows(context, idQuery)
+			if fetchErr != nil {
+				userCtx.ObserveIDSet("ID_SET_FALLBACK_STORE_UNAVAILABLE", "UNKNOWN", 0)
+				return query, nil, false
+			}
+			ids := make([]uint64, 0, len(idRows))
+			for _, row := range idRows {
+				id, present := row["id"]
+				parsed, valid := id.TryU64()
+				if !present || !valid {
+					userCtx.ObserveIDSet("ID_SET_FALLBACK_UNSUPPORTED_SHAPE", "UNKNOWN", 0)
+					return query, nil, false
+				}
+				ids = append(ids, parsed)
+			}
+			if uint64(len(ids)) > options.MaxIDs {
+				userCtx.ObserveIDSet("ID_SET_FALLBACK_LIMIT_EXCEEDED", "LOWER_BOUND", uint64(len(ids)))
+				return query, nil, false
+			}
+			retained = &RetainedIDSet{QueryKey: queryKey, IDs: ids, ExpiresAt: time.Now().Add(time.Duration(options.TTLSeconds) * time.Second)}
+			if err = userCtx.IDSetStore().PutIDSet(context, retained); err != nil {
+				userCtx.ObserveIDSet("ID_SET_FALLBACK_STORE_UNAVAILABLE", "UNKNOWN", 0)
+				return query, nil, false
+			}
+			plan = "ID_SET_BUILD"
+		}
+	}
+	userCtx.ObserveIDSet(plan, "EXACT", uint64(len(retained.IDs)))
+	start := query.Slice.Offset
+	if start >= uint64(len(retained.IDs)) {
+		return query, nil, true
+	}
+	end := start + *query.Slice.Limit
+	if end > uint64(len(retained.IDs)) {
+		end = uint64(len(retained.IDs))
+	}
+	pageIDs := append([]uint64(nil), retained.IDs[start:end]...)
+	values := make([]core.Value, len(pageIDs))
+	for i, id := range pageIDs {
+		values[i] = core.ValU64(id)
+	}
+	page := query.Clone()
+	page.Slice = nil
+	page.IDSetPagination = nil
+	page.AndFilter(core.ExprInList("id", values))
+	return page, pageIDs, false
+}
+
+func idSetQueryKey(context *UserContext, query *core.SelectQuery, namespace string) string {
+	normalized := query.Clone()
+	normalized.Slice = nil
+	normalized.Projection = nil
+	normalized.ExprProjection = nil
+	normalized.Relations = nil
+	normalized.RelationAggregates = nil
+	normalized.CommentText = nil
+	normalized.TraceChain = nil
+	normalized.IDSetPagination = nil
+	payload, _ := json.Marshal(normalized)
+	scope := fmt.Sprintf("%s|%s|%T:%v|%T:%v|%v|", namespace, context.userIdentifier,
+		context.GetResource("db"), context.GetResource("db"), context.requestPolicy,
+		context.requestPolicy, context.GetResource("activeRoot"))
+	digest := sha256.Sum256(append([]byte(scope), payload...))
+	return "teaql:id-set:v1:" + hex.EncodeToString(digest[:])
+}
+
+func restoreIDSetOrder(rows []core.Record, ids []uint64) []core.Record {
+	byID := make(map[uint64]core.Record, len(rows))
+	for _, row := range rows {
+		if value, ok := row["id"]; ok {
+			if id, valid := value.TryU64(); valid {
+				byID[id] = row
+			}
+		}
+	}
+	ordered := make([]core.Record, 0, len(rows))
+	for _, id := range ids {
+		if row, ok := byID[id]; ok {
+			ordered = append(ordered, row)
+		}
+	}
+	return ordered
 }
 
 func (s *RuntimeDataService) prepareContinuousPage(context stdcontext.Context, query *core.SelectQuery) (*core.SelectQuery, *continuousPageExecution) {

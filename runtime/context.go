@@ -34,6 +34,87 @@ type InMemoryContinuousPageCursorStore struct {
 	maxEntries int
 }
 
+type RetainedIDSet struct {
+	QueryKey  string
+	IDs       []uint64
+	ExpiresAt time.Time
+}
+
+type IDSetStore interface {
+	GetIDSet(context stdcontext.Context, queryKey string) (*RetainedIDSet, error)
+	PutIDSet(context stdcontext.Context, retained *RetainedIDSet) error
+	InvalidateIDSet(context stdcontext.Context, queryKey string) error
+}
+
+type InMemoryIDSetStore struct {
+	mu         sync.Mutex
+	sets       map[string]*RetainedIDSet
+	maxEntries int
+	maxBytes   uint64
+}
+
+var defaultIDSetStore IDSetStore = NewInMemoryIDSetStore()
+
+func NewInMemoryIDSetStore() *InMemoryIDSetStore {
+	return &InMemoryIDSetStore{sets: make(map[string]*RetainedIDSet), maxEntries: 64, maxBytes: 256 << 20}
+}
+
+func (s *InMemoryIDSetStore) GetIDSet(_ stdcontext.Context, queryKey string) (*RetainedIDSet, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	retained := s.sets[queryKey]
+	if retained == nil {
+		return nil, nil
+	}
+	if !retained.ExpiresAt.After(time.Now()) {
+		delete(s.sets, queryKey)
+		return nil, nil
+	}
+	copySet := *retained
+	copySet.IDs = append([]uint64(nil), retained.IDs...)
+	return &copySet, nil
+}
+
+func (s *InMemoryIDSetStore) PutIDSet(_ stdcontext.Context, retained *RetainedIDSet) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	copySet := *retained
+	copySet.IDs = append([]uint64(nil), retained.IDs...)
+	if uint64(len(copySet.IDs))*8 > s.maxBytes {
+		return fmt.Errorf("retained ID set exceeds store memory ceiling")
+	}
+	for len(s.sets) >= s.maxEntries || retainedIDSetBytes(s.sets)+uint64(len(copySet.IDs))*8 > s.maxBytes {
+		var oldestKey string
+		var oldest time.Time
+		for key, value := range s.sets {
+			if oldestKey == "" || value.ExpiresAt.Before(oldest) {
+				oldestKey, oldest = key, value.ExpiresAt
+			}
+		}
+		if oldestKey == "" {
+			break
+		}
+		delete(s.sets, oldestKey)
+	}
+	s.sets[copySet.QueryKey] = &copySet
+	return nil
+}
+
+func retainedIDSetBytes(sets map[string]*RetainedIDSet) uint64 {
+	var total uint64
+	for _, retained := range sets {
+		total += uint64(len(retained.IDs)) * 8
+	}
+	return total
+}
+
+func (s *InMemoryIDSetStore) InvalidateIDSet(_ stdcontext.Context, queryKey string) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	delete(s.sets, queryKey)
+	return nil
+}
+
 func NewInMemoryContinuousPageCursorStore() *InMemoryContinuousPageCursorStore {
 	return &InMemoryContinuousPageCursorStore{cursors: make(map[string]*ContinuousPageCursor), maxEntries: 4096}
 }
@@ -209,6 +290,11 @@ type UserContext struct {
 	runtimeTelemetrySink      RuntimeTelemetrySink
 	runtimeTelemetry          RuntimeTelemetry
 	continuousPageCursorStore ContinuousPageCursorStore
+	idSetStore                IDSetStore
+	idSetMu                   sync.Mutex
+	idSetPlan                 string
+	idSetCount                uint64
+	idSetCountAccuracy        string
 	continuousPageMu          sync.Mutex
 	continuousPagePlan        string
 	continuousPageCursorID    string
@@ -347,12 +433,42 @@ func NewUserContext() *UserContext {
 		Context:                   stdcontext.Background(),
 		resources:                 make(map[string]interface{}),
 		continuousPageCursorStore: NewInMemoryContinuousPageCursorStore(),
+		idSetStore:                defaultIDSetStore,
+		idSetPlan:                 "ID_SET_DISABLED",
+		idSetCountAccuracy:        "UNKNOWN",
 		continuousPagePlan:        "DISABLED",
 		userIdentifier:            "main",
 		runtimeTelemetry:          NoopRuntimeTelemetry{},
 	}
 	context.Context = stdcontext.WithValue(context.Context, userContextKey{}, context)
 	return context
+}
+
+func (c *UserContext) SetIDSetStore(store IDSetStore) {
+	if store == nil {
+		panic("ID set store must not be nil")
+	}
+	c.idSetStore = store
+}
+
+func (c *UserContext) IDSetStore() IDSetStore { return c.idSetStore }
+
+func (c *UserContext) ObserveIDSet(plan, accuracy string, count uint64) {
+	c.idSetMu.Lock()
+	defer c.idSetMu.Unlock()
+	c.idSetPlan, c.idSetCountAccuracy, c.idSetCount = plan, accuracy, count
+}
+
+func (c *UserContext) IDSetPlan() string {
+	c.idSetMu.Lock()
+	defer c.idSetMu.Unlock()
+	return c.idSetPlan
+}
+
+func (c *UserContext) IDSetCount() (uint64, string) {
+	c.idSetMu.Lock()
+	defer c.idSetMu.Unlock()
+	return c.idSetCount, c.idSetCountAccuracy
 }
 
 func (c *UserContext) SetContinuousPageCursorStore(store ContinuousPageCursorStore) {

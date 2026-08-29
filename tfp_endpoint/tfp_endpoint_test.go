@@ -45,6 +45,21 @@ func TestFederalPayloadCannotEnableContinuousPageFetch(t *testing.T) {
 	}
 }
 
+func TestFederalPayloadCannotEnableIDSetPagination(t *testing.T) {
+	executor := &capturingQueryExecutor{}
+	endpoint := NewTfpEndpoint(executor, nil).WithTrustedContext(trusted())
+	payload := []byte(`{
+		"entity":"Order",
+		"limitValue":10,
+		"commentText":"test query",
+		"purposeText":"test",
+		"idSetPagination":{"namespace":"attacker","maxIds":9999999}
+	}`)
+	if _, err := endpoint.HandleQuery(stdcontext.Background(), payload); err == nil {
+		t.Fatal("expected server-local ID-set option to be rejected")
+	}
+}
+
 func TestCanonicalFilterIsTranslatedAndTenantIsAdded(t *testing.T) {
 	executor := &capturingQueryExecutor{}
 	endpoint := NewTfpEndpoint(executor, nil).WithTrustedContext(trusted())

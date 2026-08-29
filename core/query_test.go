@@ -67,6 +67,21 @@ func TestContinuousPageFetchIsExplicitLocalAndValidated(t *testing.T) {
 	assert.Panics(t, func() { NewSelectQuery("Order").OptimizeForContinuousPageFetchWith("orders", 0) })
 }
 
+func TestIDSetPaginationIsExplicitLocalAndValidated(t *testing.T) {
+	query := NewSelectQuery("Order")
+	assert.Nil(t, query.IDSetPagination)
+	query.OptimizePaginationWithIDSetConfig("orders", 30, 1000)
+	assert.Equal(t, "orders", query.IDSetPagination.Namespace)
+	assert.Equal(t, uint64(30), query.IDSetPagination.TTLSeconds)
+	assert.Equal(t, uint64(1000), query.IDSetPagination.MaxIDs)
+	payload, err := json.Marshal(query)
+	assert.NoError(t, err)
+	assert.NotContains(t, string(payload), "IDSetPagination")
+	assert.Panics(t, func() { NewSelectQuery("Order").OptimizePaginationWithIDSetConfig(" ", 30, 1) })
+	assert.Panics(t, func() { NewSelectQuery("Order").OptimizePaginationWithIDSetConfig("orders", 0, 1) })
+	assert.Panics(t, func() { NewSelectQuery("Order").OptimizePaginationWithIDSetConfig("orders", 30, 0) })
+}
+
 func TestSelectQueryAggregationCache(t *testing.T) {
 	q := NewSelectQuery("Order").EnableAggregationCacheFor(5000).PropagateAggregationCache(10000)
 

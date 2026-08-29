@@ -220,6 +220,12 @@ type ContinuousPageFetchOptions struct {
 	TTLSeconds uint64 `json:"-"`
 }
 
+type IDSetPaginationOptions struct {
+	Namespace  string `json:"-"`
+	TTLSeconds uint64 `json:"-"`
+	MaxIDs     uint64 `json:"-"`
+}
+
 func DefaultStreamConfig() *StreamConfig {
 	return &StreamConfig{ChunkSize: 1000}
 }
@@ -249,6 +255,7 @@ type SelectQuery struct {
 	ChildEnhancements    []*SelectQuery
 	StreamConfig         *StreamConfig
 	ContinuousPageFetch  *ContinuousPageFetchOptions `json:"-"`
+	IDSetPagination      *IDSetPaginationOptions     `json:"-"`
 }
 
 func NewSelectQuery(entity string) *SelectQuery {
@@ -605,6 +612,24 @@ func (q *SelectQuery) OptimizeForContinuousPageFetchWith(namespace string, ttlSe
 		panic("continuous page ttlSeconds must be positive")
 	}
 	q.ContinuousPageFetch = &ContinuousPageFetchOptions{Namespace: namespace, TTLSeconds: ttlSeconds}
+	return q
+}
+
+func (q *SelectQuery) OptimizePaginationWithIDSet() *SelectQuery {
+	return q.OptimizePaginationWithIDSetConfig("default", 600, 3_000_000)
+}
+
+func (q *SelectQuery) OptimizePaginationWithIDSetConfig(namespace string, ttlSeconds, maxIDs uint64) *SelectQuery {
+	if strings.TrimSpace(namespace) == "" {
+		panic("ID set pagination namespace must not be empty")
+	}
+	if ttlSeconds == 0 {
+		panic("ID set pagination ttlSeconds must be positive")
+	}
+	if maxIDs == 0 {
+		panic("ID set pagination maxIDs must be positive")
+	}
+	q.IDSetPagination = &IDSetPaginationOptions{Namespace: namespace, TTLSeconds: ttlSeconds, MaxIDs: maxIDs}
 	return q
 }
 

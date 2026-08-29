@@ -96,7 +96,7 @@ func rejectPrivilegedInput(payload []byte) error {
 	if err := json.Unmarshal(payload, &value); err != nil {
 		return &TfpError{Code: "TFP_INVALID_REQUEST", Message: "invalid JSON"}
 	}
-	forbidden := map[string]bool{"tenant": true, "tenantId": true, "merchant": true, "merchantId": true, "user": true, "userId": true, "permissions": true, "requestPolicy": true, "purposePolicy": true, "trustedContext": true, "hardLimit": true, "hard_limit": true, "hardLimitValue": true, "hard_limit_value": true, "continuousPageFetch": true}
+	forbidden := map[string]bool{"tenant": true, "tenantId": true, "merchant": true, "merchantId": true, "user": true, "userId": true, "permissions": true, "requestPolicy": true, "purposePolicy": true, "trustedContext": true, "hardLimit": true, "hard_limit": true, "hardLimitValue": true, "hard_limit_value": true, "continuousPageFetch": true, "idSetPagination": true, "id_set_pagination": true, "paginationWithIdSet": true}
 	var visit func(interface{}) error
 	visit = func(current interface{}) error {
 		switch item := current.(type) {
