@@ -425,6 +425,163 @@ func TestRelationLimitIsAppliedPerParent(t *testing.T) {
 	}
 }
 
+func TestRelationSubqueriesExecutePositiveAndNegativePredicates(t *testing.T) {
+	db, err := sql.Open("sqlite3", ":memory:")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer db.Close()
+	for _, statement := range []string{
+		"CREATE TABLE query_group_data (id INTEGER PRIMARY KEY, name TEXT, version INTEGER)",
+		"CREATE TABLE query_record_data (id INTEGER PRIMARY KEY, query_group INTEGER, name TEXT, version INTEGER)",
+		"INSERT INTO query_group_data VALUES (1, 'Core', 1), (2, 'Other', 1), (3, 'Empty', 1)",
+		"INSERT INTO query_record_data VALUES (11, 1, 'included', 1), (12, 2, 'excluded', 1), (13, NULL, 'orphan', 1)",
+	} {
+		if _, err = db.Exec(statement); err != nil {
+			t.Fatal(err)
+		}
+	}
+	metadata := runtime.NewInMemoryMetadataStore()
+	group := core.NewEntityDescriptor("QueryGroup").TableName("query_group_data").
+		Property(core.NewPropertyDescriptor("id", core.TypeU64).Id().NotNull()).
+		Property(core.NewPropertyDescriptor("name", core.TypeText)).
+		Property(core.NewPropertyDescriptor("version", core.TypeI64).Version().NotNull())
+	record := core.NewEntityDescriptor("QueryRecord").TableName("query_record_data").
+		Property(core.NewPropertyDescriptor("id", core.TypeU64).Id().NotNull()).
+		Property(core.NewPropertyDescriptor("query_group", core.TypeU64)).
+		Property(core.NewPropertyDescriptor("name", core.TypeText)).
+		Property(core.NewPropertyDescriptor("version", core.TypeI64).Version().NotNull())
+	metadata.Register(group)
+	metadata.Register(record)
+	service := runtime.NewRuntimeDataService(metadata,
+		teaql_sql.NewSqlDataServiceExecutor(&SqliteDialect{}, NewSqliteMutationExecutor(db), metadata))
+	child := core.NewSelectQuery("QueryGroup").AndFilter(core.ExprEq("name", core.ValText("Core")))
+	included, err := service.FetchAll(stdcontext.Background(), core.NewSelectQuery("QueryRecord").
+		AndFilter(core.ExprInSubQuery("query_group", group, child, "id")))
+	if err != nil {
+		t.Fatal(err)
+	}
+	excluded, err := service.FetchAll(stdcontext.Background(), core.NewSelectQuery("QueryRecord").
+		AndFilter(core.ExprNotInSubQuery("query_group", group, child, "id")))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(included) != 1 || included[0]["name"].V != "included" {
+		t.Fatalf("unexpected positive subquery result: %#v", included)
+	}
+	if len(excluded) != 1 || excluded[0]["name"].V != "excluded" {
+		t.Fatalf("unexpected negative subquery result: %#v", excluded)
+	}
+	fetchIDs := func(entity string, filter *core.Expr) []string {
+		rows, fetchErr := service.FetchAll(stdcontext.Background(),
+			core.NewSelectQuery(entity).AndFilter(filter).OrderAsc("id"))
+		if fetchErr != nil {
+			t.Fatal(fetchErr)
+		}
+		ids := make([]string, 0, len(rows))
+		for _, row := range rows {
+			ids = append(ids, fmt.Sprint(row["id"].V))
+		}
+		return ids
+	}
+	assertIDs := func(want []string, got []string) {
+		if fmt.Sprint(want) != fmt.Sprint(got) {
+			t.Fatalf("unexpected relation ids: want %v, got %v", want, got)
+		}
+	}
+	assertIDs([]string{"11", "12"}, fetchIDs("QueryRecord", core.ExprIsNotNullNode("query_group")))
+	assertIDs([]string{"13"}, fetchIDs("QueryRecord", core.ExprIsNullNode("query_group")))
+	assertIDs([]string{"11"}, fetchIDs("QueryRecord", core.ExprInSubQuery("query_group", group, child, "id")))
+	assertIDs([]string{"12"}, fetchIDs("QueryRecord", core.ExprNotInSubQuery("query_group", group, child, "id")))
+	allRecords := core.NewSelectQuery("QueryRecord")
+	assertIDs([]string{"1", "2"}, fetchIDs("QueryGroup", core.ExprInSubQuery("id", record, allRecords, "query_group")))
+	assertIDs([]string{"3"}, fetchIDs("QueryGroup", core.ExprNotInSubQuery("id", record, allRecords, "query_group")))
+}
+
+func TestCompleteScalarFixtureIncludingNullableBooleanExecutes(t *testing.T) {
+	db, err := sql.Open("sqlite3", ":memory:")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer db.Close()
+	for _, statement := range []string{
+		`CREATE TABLE query_record_scalar (
+			id INTEGER PRIMARY KEY, required_text TEXT, optional_text TEXT,
+			required_integer INTEGER, optional_long INTEGER, required_decimal NUMERIC,
+			required_float REAL, required_double REAL, required_date DATE,
+			required_time INTEGER, required_timestamp TIMESTAMP,
+			active BOOLEAN, reviewed BOOLEAN, version INTEGER)`,
+		"INSERT INTO query_record_scalar VALUES " +
+			"(1,'Alpha','optional',42,42000000000,42.125,42.5,42.75,'2026-08-29',34200000,1777632600000,1,0,1)," +
+			"(2,'Beta',NULL,7,NULL,7.500,7.5,7.75,'2026-08-30',36000000,1777720400000,0,NULL,1)," +
+			"(3,'Gamma','tail',99,99000000000,99.875,99.5,99.75,'2026-08-31',37800000,1777808200000,1,1,1)",
+	} {
+		if _, err = db.Exec(statement); err != nil {
+			t.Fatal(err)
+		}
+	}
+	metadata := runtime.NewInMemoryMetadataStore()
+	record := core.NewEntityDescriptor("QueryRecord").TableName("query_record_scalar").
+		Property(core.NewPropertyDescriptor("id", core.TypeU64).Id().NotNull()).
+		Property(core.NewPropertyDescriptor("required_text", core.TypeText)).
+		Property(core.NewPropertyDescriptor("optional_text", core.TypeText)).
+		Property(core.NewPropertyDescriptor("required_integer", core.TypeI64)).
+		Property(core.NewPropertyDescriptor("optional_long", core.TypeI64)).
+		Property(core.NewPropertyDescriptor("required_decimal", core.TypeDecimal)).
+		Property(core.NewPropertyDescriptor("required_float", core.TypeF64)).
+		Property(core.NewPropertyDescriptor("required_double", core.TypeF64)).
+		Property(core.NewPropertyDescriptor("required_date", core.TypeDate)).
+		Property(core.NewPropertyDescriptor("required_time", core.TypeI64)).
+		Property(core.NewPropertyDescriptor("required_timestamp", core.TypeTimestamp)).
+		Property(core.NewPropertyDescriptor("active", core.TypeBool)).
+		Property(core.NewPropertyDescriptor("reviewed", core.TypeBool)).
+		Property(core.NewPropertyDescriptor("version", core.TypeI64).Version().NotNull())
+	metadata.Register(record)
+	service := runtime.NewRuntimeDataService(metadata,
+		teaql_sql.NewSqlDataServiceExecutor(&SqliteDialect{}, NewSqliteMutationExecutor(db), metadata))
+	ids := func(expr *core.Expr) []uint64 {
+		rows, queryErr := service.FetchAll(stdcontext.Background(), core.NewSelectQuery("QueryRecord").
+			Project("id").AndFilter(expr).OrderAsc("id"))
+		if queryErr != nil {
+			t.Fatal(queryErr)
+		}
+		result := make([]uint64, 0, len(rows))
+		for _, row := range rows {
+			id, ok := row["id"].TryU64()
+			if !ok {
+				t.Fatalf("invalid projected id: %#v", row["id"])
+			}
+			result = append(result, id)
+		}
+		return result
+	}
+	assertIDs := func(want []uint64, expression *core.Expr) {
+		got := ids(expression)
+		if fmt.Sprint(got) != fmt.Sprint(want) {
+			t.Fatalf("ids=%v want=%v", got, want)
+		}
+	}
+	assertIDs([]uint64{1}, core.ExprEq("required_text", core.ValText("Alpha")))
+	assertIDs([]uint64{2, 3}, core.ExprNe("required_text", core.ValText("Alpha")))
+	assertIDs([]uint64{1, 3}, core.ExprInList("required_text", []core.Value{core.ValText("Alpha"), core.ValText("Gamma")}))
+	assertIDs([]uint64{2}, core.ExprContain("required_text", "et"))
+	assertIDs([]uint64{1, 3}, core.ExprBetweenNode("required_integer", core.ValI64(40), core.ValI64(100)))
+	assertIDs([]uint64{3}, core.ExprGt("required_decimal", core.ValDecimal(decimal.NewFromInt(50))))
+	assertIDs([]uint64{2}, core.ExprLte("required_float", core.ValF64(7.5)))
+	assertIDs([]uint64{3}, core.ExprGte("required_double", core.ValF64(99.75)))
+	assertIDs([]uint64{2, 3}, core.ExprBetweenNode("required_date",
+		core.ValDate(time.Date(2026, 8, 30, 0, 0, 0, 0, time.UTC)),
+		core.ValDate(time.Date(2026, 8, 31, 0, 0, 0, 0, time.UTC))))
+	assertIDs([]uint64{3}, core.ExprGt("required_time", core.ValI64(36_000_000)))
+	assertIDs([]uint64{1, 2}, core.ExprLt("required_timestamp", core.ValTimestamp(1_777_750_000_000)))
+	assertIDs([]uint64{2}, core.ExprIsNullNode("optional_text"))
+	assertIDs([]uint64{1, 3}, core.ExprIsNotNullNode("optional_long"))
+	assertIDs([]uint64{2}, core.ExprEq("active", core.ValBool(false)))
+	assertIDs([]uint64{3}, core.ExprEq("reviewed", core.ValBool(true)))
+	assertIDs([]uint64{1}, core.ExprEq("reviewed", core.ValBool(false)))
+	assertIDs([]uint64{2}, core.ExprIsNullNode("reviewed"))
+}
+
 func TestRelationFacetUsesOuterFilterAndIncludeAll(t *testing.T) {
 	db, err := sql.Open("sqlite3", ":memory:")
 	if err != nil {

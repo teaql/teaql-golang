@@ -90,6 +90,9 @@ func (e *SqlDataServiceExecutor) Query(context stdcontext.Context, request *ds.Q
 	if entityDesc == nil {
 		return nil, &SqlExecutorError{CompileError: fmt.Errorf("unknown entity %s", request.Query.Entity)}
 	}
+	if err := e.resolveSubqueryDescriptors(request.Query); err != nil {
+		return nil, &SqlExecutorError{CompileError: err}
+	}
 
 	defaultDialect := &DefaultSqlDialect{Dialect: e.Dialect}
 	compiled, err := defaultDialect.CompileSelect(entityDesc, request.Query)
@@ -129,6 +132,72 @@ func (e *SqlDataServiceExecutor) Query(context stdcontext.Context, request *ds.Q
 		Rows:     rows,
 		Metadata: metadata,
 	}, nil
+}
+
+// resolveSubqueryDescriptors keeps generated requests independent from the
+// generated module facade. A request identifies its child query by entity
+// name; the installed runtime metadata remains the authoritative descriptor
+// registry used at execution time.
+func (e *SqlDataServiceExecutor) resolveSubqueryDescriptors(query *core.SelectQuery) error {
+	if query == nil {
+		return nil
+	}
+	var resolveExpr func(*core.Expr) error
+	resolveExpr = func(expr *core.Expr) error {
+		if expr == nil {
+			return nil
+		}
+		if expr.Type == core.ExprTypeSubQuery {
+			if expr.Query == nil || expr.Query.Entity == "" {
+				return fmt.Errorf("subquery has no entity identity")
+			}
+			descriptor := e.SchemaProvider.GetEntity(expr.Query.Entity)
+			if descriptor == nil {
+				return fmt.Errorf("unknown subquery entity %s", expr.Query.Entity)
+			}
+			expr.Entity = descriptor
+			if err := e.resolveSubqueryDescriptors(expr.Query); err != nil {
+				return err
+			}
+		}
+		for _, child := range []*core.Expr{expr.Left, expr.Right, expr.Lower, expr.Upper} {
+			if err := resolveExpr(child); err != nil {
+				return err
+			}
+		}
+		for _, child := range expr.Args {
+			if err := resolveExpr(child); err != nil {
+				return err
+			}
+		}
+		for _, child := range expr.Parts {
+			if err := resolveExpr(child); err != nil {
+				return err
+			}
+		}
+		return nil
+	}
+	if err := resolveExpr(query.Filter); err != nil {
+		return err
+	}
+	if err := resolveExpr(query.Having); err != nil {
+		return err
+	}
+	for _, projection := range query.ExprProjection {
+		if projection != nil {
+			if err := resolveExpr(projection.Expr); err != nil {
+				return err
+			}
+		}
+	}
+	for _, order := range query.OrderBy {
+		if order != nil {
+			if err := resolveExpr(order.Expr); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
 }
 
 func (e *SqlDataServiceExecutor) Mutate(context stdcontext.Context, request ds.MutationRequest) (*ds.MutationResult, error) {

@@ -241,6 +241,12 @@ func ExprNotInSubQuery(column string, entity *EntityDescriptor, query *SelectQue
 }
 
 func ExprSubQueryNode(left *Expr, op BinaryOp, entity *EntityDescriptor, query *SelectQuery, field string) *Expr {
+	query = query.Clone()
+	if op == OpNotIn || op == OpNotInLarge {
+		// NULL in a NOT IN projection makes every outer comparison UNKNOWN.
+		// Ignore orphan relation keys here; they remain queryable via IsNull.
+		query.AndFilter(ExprIsNotNullNode(field))
+	}
 	query.Projection = []string{field}
 	return &Expr{
 		Type:   ExprTypeSubQuery,
@@ -343,5 +349,3 @@ func exprsEqual(a, b *Expr) bool {
 	// simple pointer eq might not catch everything. We'll use fmt.Sprintf("%v") as a hacky hash for now.
 	return fmt.Sprintf("%v", a) == fmt.Sprintf("%v", b)
 }
-
-
