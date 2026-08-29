@@ -15,6 +15,32 @@ import (
 	teaql_sql "github.com/teaql/teaql-golang/sql"
 )
 
+type topNRecordingTransport struct {
+	delegate *SqliteMutationExecutor
+	queries  []string
+}
+
+type topNTelemetry struct{ operations []runtime.RuntimeOperation }
+type topNScope struct{}
+
+func (t *topNTelemetry) Start(ctx stdcontext.Context, operation runtime.RuntimeOperation) (stdcontext.Context, runtime.RuntimeTelemetryScope) {
+	t.operations = append(t.operations, operation)
+	return ctx, topNScope{}
+}
+func (*topNTelemetry) Flush(stdcontext.Context) error              { return nil }
+func (*topNTelemetry) Shutdown(stdcontext.Context) error           { return nil }
+func (topNScope) Success(map[string]runtime.RuntimeAttributeValue) {}
+func (topNScope) Failure(string)                                   {}
+
+func (t *topNRecordingTransport) FetchAllSql(ctx stdcontext.Context, query *teaql_sql.CompiledQuery) ([]core.Record, error) {
+	t.queries = append(t.queries, query.Sql)
+	return t.delegate.FetchAllSql(ctx, query)
+}
+
+func (t *topNRecordingTransport) ExecuteSql(ctx stdcontext.Context, query *teaql_sql.CompiledQuery) (uint64, error) {
+	return t.delegate.ExecuteSql(ctx, query)
+}
+
 func TestSqliteDialect(t *testing.T) {
 	d := &SqliteDialect{}
 
@@ -394,14 +420,16 @@ func TestRelationLimitIsAppliedPerParent(t *testing.T) {
 		Property(core.NewPropertyDescriptor("order_id", core.TypeU64).NotNull()).
 		Property(core.NewPropertyDescriptor("name", core.TypeText)))
 
-	transport := NewSqliteMutationExecutor(db)
+	transport := &topNRecordingTransport{delegate: NewSqliteMutationExecutor(db)}
 	executor := teaql_sql.NewSqlDataServiceExecutor(&SqliteDialect{}, transport, metadata)
 	service := runtime.NewRuntimeDataService(metadata, executor)
+	telemetry := &topNTelemetry{}
+	ctx := runtime.NewUserContext().WithRuntimeTelemetry(telemetry)
 	query := core.NewSelectQuery("Order").OrderAsc("id").RelationQuery(
 		"lines",
 		core.NewSelectQuery("OrderLine").Project("id").Project("name").OrderDesc("id").Limit(3),
 	)
-	rows, err := service.FetchAll(stdcontext.Background(), query)
+	rows, err := service.FetchAll(ctx, query)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -422,6 +450,93 @@ func TestRelationLimitIsAppliedPerParent(t *testing.T) {
 				t.Fatal("internal partition rank leaked into relation payload")
 			}
 		}
+	}
+	if len(transport.queries) != 3 {
+		t.Fatalf("SQLite AlwaysProbe query count = %d, want root + 2 probes", len(transport.queries))
+	}
+	probeIDs := relationIDs(rows, "lines")
+	transport.queries = nil
+	windowQuery := core.NewSelectQuery("Order").OrderAsc("id").RelationQuery(
+		"lines",
+		core.NewSelectQuery("OrderLine").Project("id").Project("name").OrderDesc("id").Limit(3).TopNProbeParentThreshold(0),
+	)
+	windowRows, err := service.FetchAll(ctx, windowQuery)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(transport.queries) != 2 || !strings.Contains(transport.queries[1], "ROW_NUMBER() OVER") {
+		t.Fatalf("explicit window plan queries = %#v", transport.queries)
+	}
+	if fmt.Sprint(probeIDs) != fmt.Sprint(relationIDs(windowRows, "lines")) {
+		t.Fatalf("probe/window mismatch: %v vs %v", probeIDs, relationIDs(windowRows, "lines"))
+	}
+	for threshold, expectedQueries := range map[uint64]int{2: 3, 1: 2} {
+		transport.queries = nil
+		thresholdQuery := core.NewSelectQuery("Order").OrderAsc("id").RelationQuery(
+			"lines", core.NewSelectQuery("OrderLine").Project("id").Project("name").
+				OrderDesc("id").Limit(3).TopNProbeParentThreshold(threshold),
+		)
+		if _, err = service.FetchAll(ctx, thresholdQuery); err != nil {
+			t.Fatal(err)
+		}
+		if len(transport.queries) != expectedQueries {
+			t.Fatalf("threshold %d query count = %d, want %d", threshold, len(transport.queries), expectedQueries)
+		}
+	}
+	var relationOperation *runtime.RuntimeOperation
+	for index := range telemetry.operations {
+		operation := &telemetry.operations[index]
+		if operation.Family == "relation_load" && operation.Attributes["teaql.relation.selected_plan"] == "window" {
+			relationOperation = operation
+		}
+	}
+	if relationOperation == nil || relationOperation.Attributes["teaql.relation.parent_count"] != 2 || relationOperation.Attributes["teaql.relation.per_parent_limit"] != uint64(3) {
+		t.Fatalf("missing TOPN-010 telemetry: %#v", telemetry.operations)
+	}
+}
+
+func relationIDs(parents []core.Record, name string) map[string][]string {
+	result := map[string][]string{}
+	for _, parent := range parents {
+		key := fmt.Sprint(parent["id"].V)
+		children, _ := parent[name].V.([]core.Record)
+		for _, child := range children {
+			result[key] = append(result[key], fmt.Sprint(child["id"].V))
+		}
+	}
+	return result
+}
+
+func TestTOPN_012CanonicalRelationIndexEnsureIsIdempotent(t *testing.T) {
+	db, err := sql.Open("sqlite3", ":memory:")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer db.Close()
+	if _, err = db.Exec("CREATE TABLE orderline (id INTEGER PRIMARY KEY, order_id INTEGER)"); err != nil {
+		t.Fatal(err)
+	}
+	dialect := &teaql_sql.DefaultSqlDialect{Dialect: &SqliteDialect{}}
+	entity := core.NewEntityDescriptor("OrderLine").TableName("orderline").
+		Property(core.NewPropertyDescriptor("id", core.TypeU64).ColumnName("id").Id()).
+		Property(core.NewPropertyDescriptor("order_id", core.TypeU64).ColumnName("order_id"))
+	statements, err := dialect.SchemaIndexesSqls(entity)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for run := 0; run < 2; run++ {
+		for _, statement := range statements {
+			if _, err = db.Exec(statement); err != nil {
+				t.Fatal(err)
+			}
+		}
+	}
+	var count int
+	if err = db.QueryRow("SELECT count(*) FROM sqlite_master WHERE type='index' AND name='IDX_ORDERLINE_ORDER_ID_ID'").Scan(&count); err != nil {
+		t.Fatal(err)
+	}
+	if count != 1 {
+		t.Fatalf("canonical index count = %d", count)
 	}
 }
 

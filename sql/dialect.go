@@ -152,7 +152,18 @@ func (d *DefaultSqlDialect) SchemaIndexesSqls(entity *core.EntityDescriptor) ([]
 	}
 
 	for _, p := range entity.Properties {
-		if strings.HasSuffix(p.Name, "Id") || strings.HasSuffix(p.Name, "Time") || strings.HasSuffix(p.Name, "_time") || p.Name == "create_time" || p.Name == "update_time" {
+		if strings.HasSuffix(p.Name, "Id") || strings.HasSuffix(p.Name, "_id") {
+			idColumn := "id"
+			if id := entity.IdProperty(); id != nil {
+				idColumn = id.ColName
+			}
+			idxName := fmt.Sprintf("IDX_%s_%s_%s", tableNameUpper, strings.ToUpper(p.ColName), strings.ToUpper(idColumn))
+			sqls = append(sqls, fmt.Sprintf("CREATE INDEX IF NOT EXISTS %s ON %s (%s, %s DESC)",
+				d.Dialect.QuoteIdent(idxName), quotedTable,
+				d.Dialect.QuoteIdent(p.ColName), d.Dialect.QuoteIdent(idColumn)))
+			continue
+		}
+		if strings.HasSuffix(p.Name, "Time") || strings.HasSuffix(p.Name, "_time") || p.Name == "create_time" || p.Name == "update_time" {
 			idxName := fmt.Sprintf("IDX_%s_%s", tableNameUpper, strings.ToUpper(p.ColName))
 			sqls = append(sqls, fmt.Sprintf("CREATE INDEX IF NOT EXISTS %s ON %s (%s)",
 				d.Dialect.QuoteIdent(idxName),
