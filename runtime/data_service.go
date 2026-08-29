@@ -404,10 +404,8 @@ func (s *RuntimeDataService) enhanceRelations(context stdcontext.Context, parent
 		if userCtx != nil {
 			telemetry = userCtx.RuntimeTelemetry()
 		}
-		relationContext, relationScope := StartRuntimeOperation(context, telemetry, NewRuntimeOperation("relation_load", query.Entity+"."+load.Name, map[string]RuntimeAttributeValue{"teaql.entity.type": query.Entity}))
 		relation := parentDescriptor.RelationByName(load.Name)
 		if relation == nil {
-			relationScope.Failure("missing_relation")
 			return fmt.Errorf("missing relation %s.%s", query.Entity, load.Name)
 		}
 		ids := make([]core.Value, 0, len(parents))
@@ -418,11 +416,58 @@ func (s *RuntimeDataService) enhanceRelations(context stdcontext.Context, parent
 		}
 		childQuery := cloneSelectQuery(load.Query, relation.TargetEntity)
 		ensureProjection(childQuery, relation.ForKey)
-		childQuery.AndFilter(core.ExprInList(relation.ForKey, ids))
-		if childQuery.Slice != nil {
-			childQuery.PartitionByField(relation.ForKey)
+		bounded := relation.IsMany && childQuery.Slice != nil && childQuery.Slice.Limit != nil
+		useProbes := false
+		if bounded {
+			if childQuery.TopNProbeThreshold != nil {
+				useProbes = *childQuery.TopNProbeThreshold > 0 && uint64(len(ids)) <= *childQuery.TopNProbeThreshold
+			} else if provider, ok := s.executor.(interface{ TopNRelationPlanPolicy() string }); ok {
+				useProbes = provider.TopNRelationPlanPolicy() == "always_probe"
+			}
+			ensureStableIDOrder(childQuery)
 		}
-		children, err := s.fetchRows(relationContext, childQuery)
+		limit := uint64(0)
+		if bounded {
+			limit = *childQuery.Slice.Limit
+		}
+		threshold := "provider-default"
+		if childQuery.TopNProbeThreshold != nil {
+			threshold = fmt.Sprint(*childQuery.TopNProbeThreshold)
+		}
+		plan := "window"
+		probeCount := 0
+		if useProbes {
+			plan = "bounded_probes"
+			probeCount = len(ids)
+		}
+		relationContext, relationScope := StartRuntimeOperation(context, telemetry, NewRuntimeOperation("relation_load", query.Entity+"."+load.Name, map[string]RuntimeAttributeValue{
+			"teaql.entity.type": query.Entity, "teaql.relation.name": load.Name,
+			"teaql.relation.parent_count": len(ids), "teaql.relation.per_parent_limit": limit,
+			"teaql.relation.configured_probe_threshold": threshold,
+			"teaql.relation.selected_plan":              plan, "teaql.relation.probe_count": probeCount,
+		}))
+		var children []core.Record
+		var err error
+		if useProbes {
+			children = make([]core.Record, 0)
+			for _, id := range ids {
+				probe := cloneSelectQuery(childQuery, relation.TargetEntity)
+				probe.PartitionBy = nil
+				probe.AndFilter(core.ExprEq(relation.ForKey, id))
+				var rows []core.Record
+				rows, err = s.fetchRows(relationContext, probe)
+				if err != nil {
+					break
+				}
+				children = append(children, rows...)
+			}
+		} else {
+			childQuery.AndFilter(core.ExprInList(relation.ForKey, ids))
+			if bounded {
+				childQuery.PartitionByField(relation.ForKey)
+			}
+			children, err = s.fetchRows(relationContext, childQuery)
+		}
 		if err != nil {
 			relationScope.Failure(RuntimeErrorType(err))
 			return err
@@ -438,6 +483,15 @@ func (s *RuntimeDataService) enhanceRelations(context stdcontext.Context, parent
 		relationScope.Success(map[string]RuntimeAttributeValue{"teaql.result.cardinality": len(children)})
 	}
 	return nil
+}
+
+func ensureStableIDOrder(query *core.SelectQuery) {
+	for _, order := range query.OrderBy {
+		if order.Field == "id" {
+			return
+		}
+	}
+	query.OrderAsc("id")
 }
 
 func cloneSelectQuery(source *core.SelectQuery, entity string) *core.SelectQuery {

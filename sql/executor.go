@@ -72,6 +72,13 @@ func NewSqlDataServiceExecutor(dialect SqlDialect, transport SqlTransport, schem
 	}
 }
 
+func (e *SqlDataServiceExecutor) TopNRelationPlanPolicy() string {
+	if e.Dialect.Kind() == DatabaseKindSQLite {
+		return "always_probe"
+	}
+	return "window"
+}
+
 func (e *SqlDataServiceExecutor) Capabilities() ds.DataServiceCapabilities {
 	_, isTxTransport := e.Transport.(SqlTransactionTransport)
 	return ds.DataServiceCapabilities{

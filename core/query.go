@@ -256,6 +256,7 @@ type SelectQuery struct {
 	StreamConfig         *StreamConfig
 	ContinuousPageFetch  *ContinuousPageFetchOptions `json:"-"`
 	IDSetPagination      *IDSetPaginationOptions     `json:"-"`
+	TopNProbeThreshold   *uint64                     `json:"-"`
 }
 
 func NewSelectQuery(entity string) *SelectQuery {
@@ -630,6 +631,11 @@ func (q *SelectQuery) OptimizePaginationWithIDSetConfig(namespace string, ttlSec
 		panic("ID set pagination maxIDs must be positive")
 	}
 	q.IDSetPagination = &IDSetPaginationOptions{Namespace: namespace, TTLSeconds: ttlSeconds, MaxIDs: maxIDs}
+	return q
+}
+
+func (q *SelectQuery) TopNProbeParentThreshold(threshold uint64) *SelectQuery {
+	q.TopNProbeThreshold = &threshold
 	return q
 }
 

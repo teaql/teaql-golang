@@ -82,6 +82,18 @@ func TestIDSetPaginationIsExplicitLocalAndValidated(t *testing.T) {
 	assert.Panics(t, func() { NewSelectQuery("Order").OptimizePaginationWithIDSetConfig("orders", 30, 0) })
 }
 
+func TestTopNProbeThresholdIsExplicitLocalAndCloned(t *testing.T) {
+	query := NewSelectQuery("Order").TopNProbeParentThreshold(32)
+	assert.NotNil(t, query.TopNProbeThreshold)
+	assert.Equal(t, uint64(32), *query.TopNProbeThreshold)
+	clone := query.Clone()
+	assert.NotNil(t, clone.TopNProbeThreshold)
+	assert.Equal(t, uint64(32), *clone.TopNProbeThreshold)
+	payload, err := json.Marshal(query)
+	assert.NoError(t, err)
+	assert.NotContains(t, string(payload), "TopNProbe")
+}
+
 func TestSelectQueryAggregationCache(t *testing.T) {
 	q := NewSelectQuery("Order").EnableAggregationCacheFor(5000).PropagateAggregationCache(10000)
 
