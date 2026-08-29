@@ -394,8 +394,8 @@ func TestRelationLimitIsAppliedPerParent(t *testing.T) {
 	defer db.Close()
 	for _, statement := range []string{
 		"CREATE TABLE orders (id INTEGER PRIMARY KEY, version INTEGER)",
-		"CREATE TABLE orderline (id INTEGER PRIMARY KEY, order_id INTEGER, name TEXT)",
-		"INSERT INTO orders VALUES (11, 1), (12, 1)",
+		"CREATE TABLE orderline (id INTEGER PRIMARY KEY, order_id INTEGER, name TEXT, state TEXT, version INTEGER)",
+		"INSERT INTO orders VALUES (11, 1), (12, 1), (13, 1)",
 	} {
 		if _, err := db.Exec(statement); err != nil {
 			t.Fatal(err)
@@ -404,10 +404,13 @@ func TestRelationLimitIsAppliedPerParent(t *testing.T) {
 	for _, orderID := range []int{11, 12} {
 		for index := 1; index <= 5; index++ {
 			id := orderID*100 + index
-			if _, err := db.Exec("INSERT INTO orderline VALUES (?, ?, ?)", id, orderID, fmt.Sprintf("line-%d", id)); err != nil {
+			if _, err := db.Exec("INSERT INTO orderline VALUES (?, ?, ?, ?, ?)", id, orderID, "same", "visible", 1); err != nil {
 				t.Fatal(err)
 			}
 		}
+	}
+	if _, err := db.Exec("INSERT INTO orderline VALUES (9999, 11, 'same', 'hidden', 1)"); err != nil {
+		t.Fatal(err)
 	}
 
 	metadata := runtime.NewInMemoryMetadataStore()
@@ -418,7 +421,9 @@ func TestRelationLimitIsAppliedPerParent(t *testing.T) {
 	metadata.Register(core.NewEntityDescriptor("OrderLine").TableName("orderline").
 		Property(core.NewPropertyDescriptor("id", core.TypeU64).Id().NotNull()).
 		Property(core.NewPropertyDescriptor("order_id", core.TypeU64).NotNull()).
-		Property(core.NewPropertyDescriptor("name", core.TypeText)))
+		Property(core.NewPropertyDescriptor("name", core.TypeText)).
+		Property(core.NewPropertyDescriptor("state", core.TypeText)).
+		Property(core.NewPropertyDescriptor("version", core.TypeI64).Version().NotNull()))
 
 	transport := &topNRecordingTransport{delegate: NewSqliteMutationExecutor(db)}
 	executor := teaql_sql.NewSqlDataServiceExecutor(&SqliteDialect{}, transport, metadata)
@@ -427,14 +432,14 @@ func TestRelationLimitIsAppliedPerParent(t *testing.T) {
 	ctx := runtime.NewUserContext().WithRuntimeTelemetry(telemetry)
 	query := core.NewSelectQuery("Order").OrderAsc("id").RelationQuery(
 		"lines",
-		core.NewSelectQuery("OrderLine").Project("id").Project("name").OrderDesc("id").Limit(3),
+		core.NewSelectQuery("OrderLine").Project("id").Project("name").WithFilter(core.ExprEq("state", core.ValText("visible"))).OrderDesc("name").Limit(3),
 	)
 	rows, err := service.FetchAll(ctx, query)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(rows) != 2 {
-		t.Fatalf("expected 2 parents, got %d", len(rows))
+	if len(rows) != 3 {
+		t.Fatalf("expected 3 parents, got %d", len(rows))
 	}
 	for _, parent := range rows {
 		value, ok := parent["lines"]
@@ -442,8 +447,12 @@ func TestRelationLimitIsAppliedPerParent(t *testing.T) {
 			t.Fatal("missing lines relation")
 		}
 		lines, ok := value.V.([]core.Record)
-		if !ok || len(lines) != 3 {
-			t.Fatalf("expected 3 lines per parent, got %#v", value.V)
+		expected := 3
+		if parent["id"].V == uint64(13) || parent["id"].V == int64(13) {
+			expected = 0
+		}
+		if !ok || len(lines) != expected {
+			t.Fatalf("expected %d lines for parent %v, got %#v", expected, parent["id"].V, value.V)
 		}
 		for _, line := range lines {
 			if _, leaked := line["__teaql_partition_rank"]; leaked {
@@ -451,14 +460,15 @@ func TestRelationLimitIsAppliedPerParent(t *testing.T) {
 			}
 		}
 	}
-	if len(transport.queries) != 3 {
-		t.Fatalf("SQLite AlwaysProbe query count = %d, want root + 2 probes", len(transport.queries))
+	if len(transport.queries) != 4 {
+		t.Fatalf("SQLite AlwaysProbe query count = %d, want root + 3 probes", len(transport.queries))
 	}
+	assertTopNQueriesKeepPredicatesAndAvoidCount(t, transport.queries)
 	probeIDs := relationIDs(rows, "lines")
 	transport.queries = nil
 	windowQuery := core.NewSelectQuery("Order").OrderAsc("id").RelationQuery(
 		"lines",
-		core.NewSelectQuery("OrderLine").Project("id").Project("name").OrderDesc("id").Limit(3).TopNProbeParentThreshold(0),
+		core.NewSelectQuery("OrderLine").Project("id").Project("name").WithFilter(core.ExprEq("state", core.ValText("visible"))).OrderDesc("name").Limit(3).TopNProbeParentThreshold(0),
 	)
 	windowRows, err := service.FetchAll(ctx, windowQuery)
 	if err != nil {
@@ -467,20 +477,30 @@ func TestRelationLimitIsAppliedPerParent(t *testing.T) {
 	if len(transport.queries) != 2 || !strings.Contains(transport.queries[1], "ROW_NUMBER() OVER") {
 		t.Fatalf("explicit window plan queries = %#v", transport.queries)
 	}
+	assertTopNQueriesKeepPredicatesAndAvoidCount(t, transport.queries)
 	if fmt.Sprint(probeIDs) != fmt.Sprint(relationIDs(windowRows, "lines")) {
 		t.Fatalf("probe/window mismatch: %v vs %v", probeIDs, relationIDs(windowRows, "lines"))
 	}
-	for threshold, expectedQueries := range map[uint64]int{2: 3, 1: 2} {
+	for threshold, expectedQueries := range map[uint64]int{3: 4, 2: 2} {
 		transport.queries = nil
 		thresholdQuery := core.NewSelectQuery("Order").OrderAsc("id").RelationQuery(
 			"lines", core.NewSelectQuery("OrderLine").Project("id").Project("name").
-				OrderDesc("id").Limit(3).TopNProbeParentThreshold(threshold),
+				WithFilter(core.ExprEq("state", core.ValText("visible"))).OrderDesc("name").Limit(3).TopNProbeParentThreshold(threshold),
 		)
 		if _, err = service.FetchAll(ctx, thresholdQuery); err != nil {
 			t.Fatal(err)
 		}
 		if len(transport.queries) != expectedQueries {
 			t.Fatalf("threshold %d query count = %d, want %d", threshold, len(transport.queries), expectedQueries)
+		}
+		assertTopNQueriesKeepPredicatesAndAvoidCount(t, transport.queries)
+		firstRun := append([]string(nil), transport.queries...)
+		transport.queries = nil
+		if _, err = service.FetchAll(ctx, thresholdQuery); err != nil {
+			t.Fatal(err)
+		}
+		if fmt.Sprint(firstRun) != fmt.Sprint(transport.queries) {
+			t.Fatalf("threshold %d selected a different plan on repeat: %v vs %v", threshold, firstRun, transport.queries)
 		}
 	}
 	var relationOperation *runtime.RuntimeOperation
@@ -490,8 +510,19 @@ func TestRelationLimitIsAppliedPerParent(t *testing.T) {
 			relationOperation = operation
 		}
 	}
-	if relationOperation == nil || relationOperation.Attributes["teaql.relation.parent_count"] != 2 || relationOperation.Attributes["teaql.relation.per_parent_limit"] != uint64(3) {
+	if relationOperation == nil || relationOperation.Attributes["teaql.relation.parent_count"] != 3 || relationOperation.Attributes["teaql.relation.per_parent_limit"] != uint64(3) {
 		t.Fatalf("missing TOPN-010 telemetry: %#v", telemetry.operations)
+	}
+}
+
+func assertTopNQueriesKeepPredicatesAndAvoidCount(t *testing.T, queries []string) {
+	t.Helper()
+	joined := strings.Join(queries, "\n")
+	if strings.Contains(strings.ToUpper(joined), "COUNT(") {
+		t.Fatalf("Top-N plan must not issue count queries: %s", joined)
+	}
+	if !strings.Contains(joined, "state") || !strings.Contains(joined, "version") {
+		t.Fatalf("Top-N child plan lost business/version predicates: %s", joined)
 	}
 }
 
