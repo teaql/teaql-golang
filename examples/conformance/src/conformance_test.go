@@ -93,7 +93,7 @@ func TestRetainedMinimumConformance(t *testing.T) {
 	}
 
 	// 7. Delete is hidden from normal Q and visible through DeletedRowsOnly.
-	item.MarkAsDeleted()
+	item.MarkForDeletion()
 	if _, err = item.AuditAs("delete work item").Save(context); err != nil {
 		t.Fatal(err)
 	}

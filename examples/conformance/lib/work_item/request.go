@@ -466,7 +466,7 @@ func (e *ExecutableWorkItemRequest) NewEntity(context *runtime.UserContext) *Wor
 		panic("security audit failure: non-empty Comment() and Purpose() are required before NewEntity()")
 	}
 	entity := NewWorkItem()
-	entity.AttachEntityRoot(context.EntityRoot())
+	entity.AttachEntityRoot(core.NewEntityRoot())
 	initialized := context.InitializeEntity("WorkItem", entity)
 	typed, ok := initialized.(*WorkItem)
 	if !ok {
@@ -495,7 +495,7 @@ func (e *ExecutableWorkItemRequest) ExecuteForList(context *runtime.UserContext)
 	var results []*WorkItem
 	for _, rec := range rows {
 		entity := NewWorkItem()
-		entity.AttachEntityRoot(context.EntityRoot())
+		entity.AttachEntityRoot(core.NewEntityRoot())
 		if err := entity.FromRecord(rec); err != nil {
 			return nil, err
 		}
@@ -544,7 +544,7 @@ func (e *ExecutableWorkItemRequest) ExecuteForPage(context *runtime.UserContext,
 	results := make([]*WorkItem, 0, len(rows))
 	for _, rec := range rows {
 		entity := NewWorkItem()
-		entity.AttachEntityRoot(context.EntityRoot())
+		entity.AttachEntityRoot(core.NewEntityRoot())
 		if err := entity.FromRecord(rec); err != nil {
 			return nil, err
 		}
@@ -573,7 +573,7 @@ func (e *ExecutableWorkItemRequest) ExecuteForStream(context *runtime.UserContex
 	return ds.QueryStream(context, req, chunkSize, func(chunk *data_service.StreamChunk) error {
 		for _, rec := range chunk.Rows {
 			entity := NewWorkItem()
-			entity.AttachEntityRoot(context.EntityRoot())
+			entity.AttachEntityRoot(core.NewEntityRoot())
 			if err := entity.FromRecord(rec); err != nil {
 				return err
 			}

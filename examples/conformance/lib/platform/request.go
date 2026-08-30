@@ -313,7 +313,7 @@ func (e *ExecutablePlatformRequest) NewEntity(context *runtime.UserContext) *Pla
 		panic("security audit failure: non-empty Comment() and Purpose() are required before NewEntity()")
 	}
 	entity := NewPlatform()
-	entity.AttachEntityRoot(context.EntityRoot())
+	entity.AttachEntityRoot(core.NewEntityRoot())
 	initialized := context.InitializeEntity("Platform", entity)
 	typed, ok := initialized.(*Platform)
 	if !ok {
@@ -342,7 +342,7 @@ func (e *ExecutablePlatformRequest) ExecuteForList(context *runtime.UserContext)
 	var results []*Platform
 	for _, rec := range rows {
 		entity := NewPlatform()
-		entity.AttachEntityRoot(context.EntityRoot())
+		entity.AttachEntityRoot(core.NewEntityRoot())
 		if err := entity.FromRecord(rec); err != nil {
 			return nil, err
 		}
@@ -405,7 +405,7 @@ func (e *ExecutablePlatformRequest) ExecuteForPage(context *runtime.UserContext,
 	results := make([]*Platform, 0, len(rows))
 	for _, rec := range rows {
 		entity := NewPlatform()
-		entity.AttachEntityRoot(context.EntityRoot())
+		entity.AttachEntityRoot(core.NewEntityRoot())
 		if err := entity.FromRecord(rec); err != nil {
 			return nil, err
 		}
@@ -448,7 +448,7 @@ func (e *ExecutablePlatformRequest) ExecuteForStream(context *runtime.UserContex
 	return ds.QueryStream(context, req, chunkSize, func(chunk *data_service.StreamChunk) error {
 		for _, rec := range chunk.Rows {
 			entity := NewPlatform()
-			entity.AttachEntityRoot(context.EntityRoot())
+			entity.AttachEntityRoot(core.NewEntityRoot())
 			if err := entity.FromRecord(rec); err != nil {
 				return err
 			}

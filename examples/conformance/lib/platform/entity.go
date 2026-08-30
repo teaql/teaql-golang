@@ -162,7 +162,7 @@ func (e *Platform) IsMarkedAsDelete() bool {
 	return e.markedAsDelete
 }
 
-func (e *Platform) MarkAsDeleted() *Platform {
+func (e *Platform) MarkForDeletion() *Platform {
 	e.markedAsDelete = true
 	e.root.MarkAsDeleted(e.EntityKey())
 	return e

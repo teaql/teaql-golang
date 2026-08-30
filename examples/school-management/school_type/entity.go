@@ -183,7 +183,7 @@ func (e *SchoolType) IsMarkedAsDelete() bool {
 	return e.markedAsDelete
 }
 
-func (e *SchoolType) MarkAsDeleted() *SchoolType {
+func (e *SchoolType) MarkForDeletion() *SchoolType {
 	e.markedAsDelete = true
 	e.root.MarkAsDeleted(e.EntityKey())
 	return e

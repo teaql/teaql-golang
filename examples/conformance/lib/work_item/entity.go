@@ -140,7 +140,7 @@ func (e *WorkItem) IsMarkedAsDelete() bool {
 	return e.markedAsDelete
 }
 
-func (e *WorkItem) MarkAsDeleted() *WorkItem {
+func (e *WorkItem) MarkForDeletion() *WorkItem {
 	e.markedAsDelete = true
 	e.root.MarkAsDeleted(e.EntityKey())
 	return e
