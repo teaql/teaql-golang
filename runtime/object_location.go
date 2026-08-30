@@ -56,6 +56,11 @@ func (l ObjectLocation) At(index int) ObjectLocation {
 	segments = append(segments, ObjectLocationSegment{Index: &index})
 	return ObjectLocation{Segments: segments}
 }
+func (l ObjectLocation) PrefixedBy(prefix ObjectLocation) ObjectLocation {
+	segments := append([]ObjectLocationSegment{}, prefix.Segments...)
+	segments = append(segments, l.Segments...)
+	return ObjectLocation{Segments: segments}
+}
 func (l ObjectLocation) ModelPath() string  { return l.render(func(s string) string { return s }) }
 func (l ObjectLocation) NativePath() string { return l.render(upperCamel) }
 func (l ObjectLocation) InstancePath() string {

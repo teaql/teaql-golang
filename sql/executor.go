@@ -475,8 +475,17 @@ func (t *SqlDataServiceTransaction) Mutate(context stdcontext.Context, request d
 		Dialect:        t.Dialect,
 		Transport:      t.Transport,
 		SchemaProvider: t.SchemaProvider,
+		transactional:  true,
 	}
 	return executor.Mutate(context, request)
+}
+
+func (t *SqlDataServiceTransaction) GenerateId(entity string) (uint64, error) {
+	return NextOptimisticId(stdcontext.Background(), t.Transport, t.Dialect, entity)
+}
+
+func (t *SqlDataServiceTransaction) EnsureIdFloor(context stdcontext.Context, entity string, floor uint64) error {
+	return EnsureOptimisticIdFloor(context, t.Transport, t.Dialect, entity, floor)
 }
 
 func (t *SqlDataServiceTransaction) Commit(context stdcontext.Context) error {

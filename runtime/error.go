@@ -6,18 +6,30 @@ import (
 )
 
 type CheckResult struct {
-	RuleID      string
-	Location    string
-	InputValue  any
-	SystemValue any
-	Message     string
+	RuleID string
+	// Location is a legacy presentation retained for source compatibility.
+	Location          string
+	CanonicalLocation ObjectLocation
+	InputValue        any
+	SystemValue       any
+	Message           string
 }
 
-func (c *CheckResult) String() string                 { return c.Message }
-func (c *CheckResult) ObjectLocation() ObjectLocation { return LocationFromModelPath(c.Location) }
-func (c *CheckResult) ModelPath() string              { return c.ObjectLocation().ModelPath() }
-func (c *CheckResult) NativePath() string             { return c.ObjectLocation().NativePath() }
-func (c *CheckResult) InstancePath() string           { return c.ObjectLocation().InstancePath() }
+func (c *CheckResult) String() string { return c.Message }
+func (c *CheckResult) ObjectLocation() ObjectLocation {
+	if len(c.CanonicalLocation.Segments) != 0 || c.Location == "" {
+		return c.CanonicalLocation
+	}
+	return LocationFromModelPath(c.Location)
+}
+func (c CheckResult) PrefixedBy(prefix ObjectLocation) CheckResult {
+	c.CanonicalLocation = c.ObjectLocation().PrefixedBy(prefix)
+	c.Location = c.CanonicalLocation.ModelPath()
+	return c
+}
+func (c *CheckResult) ModelPath() string    { return c.ObjectLocation().ModelPath() }
+func (c *CheckResult) NativePath() string   { return c.ObjectLocation().NativePath() }
+func (c *CheckResult) InstancePath() string { return c.ObjectLocation().InstancePath() }
 
 type RuntimeError struct {
 	Type                  string

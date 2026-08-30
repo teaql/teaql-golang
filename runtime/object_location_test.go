@@ -22,3 +22,13 @@ func TestObjectLocationPathDialects(t *testing.T) {
 		t.Fatalf("legacy pointer: %s", got)
 	}
 }
+
+func TestCheckResultStructuredPrefix(t *testing.T) {
+	result := CheckResult{RuleID: "required", CanonicalLocation: Location().Property("product_name")}
+	result = result.PrefixedBy(Location().Property("order_item_list").At(0))
+	if result.ModelPath() != "order_item_list[0].product_name" ||
+		result.NativePath() != "OrderItemList[0].ProductName" ||
+		result.InstancePath() != "/orderItemList/0/productName" {
+		t.Fatalf("unexpected prefixed paths: %s %s %s", result.ModelPath(), result.NativePath(), result.InstancePath())
+	}
+}

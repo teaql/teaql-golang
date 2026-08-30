@@ -86,7 +86,7 @@ func (e *SqlDataServiceExecutor) Mutate(context stdcontext.Context, request data
 	if userCtx != nil {
 		input := mutationCheckInput(request)
 		if input != nil {
-			input.Now = time.Now()
+			input.Now = userCtx.FixTime()
 			if err = userCtx.checkAndFix(input); err != nil {
 				return nil, err
 			}

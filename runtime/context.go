@@ -301,6 +301,26 @@ type UserContext struct {
 	userIdentifier            string
 	requestPolicy             RequestPolicy
 	checkerRegistry           CheckerRegistry
+	graphSaveGate             sync.Mutex
+	graphSaveMu               sync.Mutex
+	graphSaveActive           bool
+	graphCommitActions        []func()
+	graphRollbackActions      []func()
+	graphFixTime              time.Time
+	currentFixEvidence        []FixEvidence
+	lastFixEvidence           []FixEvidence
+}
+
+type FixEvidenceSource string
+const (
+	FixEvidenceClock FixEvidenceSource = "clock"
+	FixEvidenceContext FixEvidenceSource = "context"
+)
+type FixEvidence struct {
+	EntityType string
+	ModelPath string
+	Source FixEvidenceSource
+	SourceLabel string
 }
 
 // CheckAndFixInput is the provider-independent mutation state seen by model checkers.
@@ -536,6 +556,121 @@ func (c *UserContext) InsertResource(name string, resource interface{}) {
 
 func (c *UserContext) GetResource(name string) interface{} {
 	return c.resources[name]
+}
+
+// ExecuteGraphSave coordinates one generated object graph through one provider
+// transaction. Nested entity saves join the active graph transaction.
+func (c *UserContext) ExecuteGraphSave(work func() error) error {
+	// Generated child entities use their within-graph save entry point directly.
+	// Every public/root save is serialized here, preventing an unrelated goroutine
+	// from joining whichever transaction happens to be active on this context.
+	c.graphSaveGate.Lock()
+	defer c.graphSaveGate.Unlock()
+	c.graphSaveMu.Lock()
+	provider := c.resources["dataService"]
+	originalIDGenerator, hadIDGenerator := c.resources["idGenerator"]
+	executor, ok := provider.(data_service.TransactionExecutor)
+	if !ok {
+		c.graphSaveMu.Unlock()
+		return fmt.Errorf("configured dataService does not support graph transactions")
+	}
+	transaction, err := executor.Begin(c)
+	if err != nil {
+		c.graphSaveMu.Unlock()
+		return err
+	}
+	c.graphSaveActive = true
+	c.graphCommitActions = nil
+	c.graphRollbackActions = nil
+	c.graphFixTime = time.Now()
+	c.currentFixEvidence = nil
+	c.resources["dataService"] = transaction
+	if _, ok := transaction.(interface{ GenerateId(string) (uint64, error) }); ok {
+		c.resources["idGenerator"] = transaction
+	}
+	c.graphSaveMu.Unlock()
+
+	err = work()
+	if err == nil {
+		err = transaction.Commit(c)
+	}
+	if err != nil {
+		rollbackErr := transaction.Rollback(c)
+		for index := len(c.graphRollbackActions) - 1; index >= 0; index-- {
+			c.graphRollbackActions[index]()
+		}
+		if rollbackErr != nil {
+			err = fmt.Errorf("graph save failed: %w; rollback failed: %v", err, rollbackErr)
+		}
+	} else {
+		for _, action := range c.graphCommitActions {
+			action()
+		}
+	}
+
+	c.graphSaveMu.Lock()
+	c.resources["dataService"] = provider
+	if hadIDGenerator {
+		c.resources["idGenerator"] = originalIDGenerator
+	} else {
+		delete(c.resources, "idGenerator")
+	}
+	c.graphSaveActive = false
+	c.graphCommitActions = nil
+	c.graphRollbackActions = nil
+	c.graphFixTime = time.Time{}
+	c.lastFixEvidence = append([]FixEvidence(nil), c.currentFixEvidence...)
+	c.currentFixEvidence = nil
+	c.graphSaveMu.Unlock()
+	return err
+}
+
+func (c *UserContext) RecordFixEvidence(evidence FixEvidence) error {
+	normalized := strings.ToLower(evidence.SourceLabel)
+	if evidence.EntityType == "" || evidence.ModelPath == "" || evidence.SourceLabel == "" ||
+		(evidence.Source != FixEvidenceClock && evidence.Source != FixEvidenceContext) ||
+		strings.Contains(normalized, "authorization") || strings.Contains(normalized, "cookie") || strings.Contains(normalized, "token=") {
+		return fmt.Errorf("fix evidence must contain only safe framework provenance labels")
+	}
+	c.graphSaveMu.Lock()
+	c.currentFixEvidence = append(c.currentFixEvidence, evidence)
+	c.graphSaveMu.Unlock()
+	return nil
+}
+
+func (c *UserContext) LastFixEvidence() []FixEvidence {
+	c.graphSaveMu.Lock()
+	defer c.graphSaveMu.Unlock()
+	return append([]FixEvidence(nil), c.lastFixEvidence...)
+}
+
+// FixTime is captured once for an active graph save and otherwise reflects the
+// current standalone mutation time.
+func (c *UserContext) FixTime() time.Time {
+	c.graphSaveMu.Lock()
+	defer c.graphSaveMu.Unlock()
+	if !c.graphFixTime.IsZero() {
+		return c.graphFixTime
+	}
+	return time.Now()
+}
+
+func (c *UserContext) AfterGraphCommit(action func()) {
+	c.graphSaveMu.Lock()
+	defer c.graphSaveMu.Unlock()
+	if !c.graphSaveActive {
+		panic("no graph save is active")
+	}
+	c.graphCommitActions = append(c.graphCommitActions, action)
+}
+
+func (c *UserContext) AfterGraphRollback(action func()) {
+	c.graphSaveMu.Lock()
+	defer c.graphSaveMu.Unlock()
+	if !c.graphSaveActive {
+		panic("no graph save is active")
+	}
+	c.graphRollbackActions = append(c.graphRollbackActions, action)
 }
 
 func (c *UserContext) SendEvent(event *RawAuditEvent) error {
@@ -937,6 +1072,9 @@ func (c *UserContext) CheckAndFix(input *CheckAndFixInput) error {
 func (c *UserContext) checkAndFix(input *CheckAndFixInput) error {
 	if c.checkerRegistry == nil {
 		return nil
+	}
+	if input.Now.IsZero() {
+		input.Now = c.FixTime()
 	}
 	results := c.checkerRegistry.CheckAndFix(c, input)
 	c.TranslateCheckResults(results)
