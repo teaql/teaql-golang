@@ -1,10 +1,12 @@
 package runtime_test
 
 import (
+	"bytes"
 	stdcontext "context"
 	"errors"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/teaql/teaql-golang/core"
 	"github.com/teaql/teaql-golang/data_service"
@@ -371,5 +373,31 @@ func TestSqlExecutionEvidenceIsParameterizedAndFilterable(t *testing.T) {
 	store.Disable()
 	if len(store.Snapshot()) != 0 {
 		t.Fatal("disable did not clear evidence")
+	}
+}
+
+func TestDiagnosticSQLLogSinkIsExplicitAndUsesDebugQuery(t *testing.T) {
+	var output bytes.Buffer
+	debug := "SELECT * FROM users WHERE name = 'O''Brien 学校'"
+	count := 1
+	metadata := data_service.ExecutionMetadata{
+		Operation: data_service.OpQuery, DebugQuery: &debug,
+		StartedAt: time.Unix(1, 0), EndedAt: time.Unix(1, 25_000), ResultCount: &count,
+	}
+	context := runtime.NewUserContext()
+	context.RecordExecutionMetadata(metadata)
+	if output.Len() != 0 {
+		t.Fatal("diagnostic SQL must be disabled by default")
+	}
+	context.WithDiagnosticSQLLogSink(runtime.NewTextDiagnosticSQLLogSink(&output))
+	context.RecordExecutionMetadata(metadata)
+	if !strings.Contains(output.String(), debug) || !strings.Contains(output.String(), "1 rows returned") {
+		t.Fatalf("operator log did not contain copy-paste SQL and summary: %s", output.String())
+	}
+	context.WithDiagnosticSQLLogSink(nil)
+	before := output.Len()
+	context.RecordExecutionMetadata(metadata)
+	if output.Len() != before {
+		t.Fatal("removing diagnostic SQL sink must stop value-bearing output")
 	}
 }

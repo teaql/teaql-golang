@@ -3,6 +3,7 @@ package runtime
 import (
 	stdcontext "context"
 	"fmt"
+	"io"
 	"strings"
 	"sync"
 	"time"
@@ -288,6 +289,7 @@ type UserContext struct {
 	standardAuditSink         RawAuditEventSink
 	appAuditSink              AppAuditEventSink
 	runtimeTelemetrySink      RuntimeTelemetrySink
+	diagnosticSQLLogSink      DiagnosticSQLLogSink
 	runtimeTelemetry          RuntimeTelemetry
 	continuousPageCursorStore ContinuousPageCursorStore
 	idSetStore                IDSetStore
@@ -312,14 +314,16 @@ type UserContext struct {
 }
 
 type FixEvidenceSource string
+
 const (
-	FixEvidenceClock FixEvidenceSource = "clock"
+	FixEvidenceClock   FixEvidenceSource = "clock"
 	FixEvidenceContext FixEvidenceSource = "context"
 )
+
 type FixEvidence struct {
-	EntityType string
-	ModelPath string
-	Source FixEvidenceSource
+	EntityType  string
+	ModelPath   string
+	Source      FixEvidenceSource
 	SourceLabel string
 }
 
@@ -367,6 +371,38 @@ func UserContextFrom(context stdcontext.Context) (*UserContext, bool) {
 
 type RuntimeTelemetrySink interface {
 	RecordExecutionMetadata(data_service.ExecutionMetadata)
+}
+
+// DiagnosticSQLLogSink is an explicitly installed, value-bearing operator
+// log destination. It is separate from safe RuntimeTelemetry and defaults off.
+type DiagnosticSQLLogSink interface {
+	WriteSQLLog(data_service.ExecutionMetadata)
+}
+
+type TextDiagnosticSQLLogSink struct {
+	mu     sync.Mutex
+	writer io.Writer
+}
+
+func NewTextDiagnosticSQLLogSink(writer io.Writer) *TextDiagnosticSQLLogSink {
+	return &TextDiagnosticSQLLogSink{writer: writer}
+}
+
+func (s *TextDiagnosticSQLLogSink) WriteSQLLog(metadata data_service.ExecutionMetadata) {
+	if s == nil || s.writer == nil || metadata.DebugQuery == nil {
+		return
+	}
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	duration := metadata.EndedAt.Sub(metadata.StartedAt).Microseconds()
+	summary := ""
+	if metadata.ResultCount != nil {
+		summary = fmt.Sprintf("%d rows returned", *metadata.ResultCount)
+	} else if metadata.AffectedRows != nil {
+		summary = fmt.Sprintf("%d rows affected", *metadata.AffectedRows)
+	}
+	fmt.Fprintf(s.writer, "[TeaQL SQL][%s][%dus] %s\n%s\n",
+		strings.ToLower(string(metadata.Operation)), duration, summary, *metadata.DebugQuery)
 }
 
 type SQLExecutionEvidenceMode int
@@ -427,9 +463,17 @@ func (c *UserContext) WithRuntimeTelemetrySink(sink RuntimeTelemetrySink) *UserC
 	return c
 }
 
+func (c *UserContext) WithDiagnosticSQLLogSink(sink DiagnosticSQLLogSink) *UserContext {
+	c.diagnosticSQLLogSink = sink
+	return c
+}
+
 func (c *UserContext) RecordExecutionMetadata(metadata data_service.ExecutionMetadata) {
 	if c.runtimeTelemetrySink != nil {
 		c.runtimeTelemetrySink.RecordExecutionMetadata(metadata)
+	}
+	if c.diagnosticSQLLogSink != nil {
+		c.diagnosticSQLLogSink.WriteSQLLog(metadata)
 	}
 }
 
