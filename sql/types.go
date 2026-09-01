@@ -16,6 +16,19 @@ const (
 	DatabaseKindMySQL
 )
 
+func (kind DatabaseKind) String() string {
+	switch kind {
+	case DatabaseKindPostgreSQL:
+		return "postgresql"
+	case DatabaseKindSQLite:
+		return "sqlite"
+	case DatabaseKindMySQL:
+		return "mysql"
+	default:
+		return "unknown"
+	}
+}
+
 type CompiledQuery struct {
 	Sql     string
 	Params  []core.Value

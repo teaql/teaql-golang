@@ -3,7 +3,7 @@ module runtime-example-conformance-service-core-workspace
 go 1.18
 
 require (
-	github.com/teaql/teaql-golang v0.1.10
+	github.com/teaql/teaql-golang v0.2.1
 	runtime-example-conformance-service-core-workspace/lib v0.0.0
 )
 

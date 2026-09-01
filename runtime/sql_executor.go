@@ -3,12 +3,29 @@ package runtime
 import (
 	stdcontext "context"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/teaql/teaql-golang/core"
 	"github.com/teaql/teaql-golang/data_service"
 	teaql_sql "github.com/teaql/teaql-golang/sql"
 )
+
+func canonicalTraceFrames(frames []*core.TraceNode) []*core.TraceNode {
+	result := make([]*core.TraceNode, 0, len(frames))
+	for _, frame := range frames {
+		if frame == nil {
+			continue
+		}
+		switch strings.ToLower(frame.Kind) {
+		case "comment", "purpose", "auditreason", "audit_reason", "provider", "sql":
+			continue
+		default:
+			result = append(result, frame)
+		}
+	}
+	return result
+}
 
 type SqlDataServiceExecutor struct {
 	transport teaql_sql.SqlTransport
@@ -56,11 +73,20 @@ func (e *SqlDataServiceExecutor) Query(context stdcontext.Context, request *data
 
 	resultCount := len(records)
 	debugQuery := compiled.DebugSql(e.dialect.Dialect.Kind())
+	tracePath := []*core.TraceNode{
+		core.NewTypedTraceNode("operation", "query", "query"),
+		core.NewTypedTraceNode("request", request.Query.Entity, request.Query.Entity),
+	}
+	tracePath = append(tracePath, canonicalTraceFrames(request.TraceChain)...)
+	provider := strings.ToLower(fmt.Sprint(e.dialect.Dialect.Kind()))
+	tracePath = append(tracePath,
+		core.NewTypedTraceNode("provider", provider, provider),
+		core.NewTypedTraceNode("sql", "select", "select"))
 	metadata := data_service.ExecutionMetadata{
-		Backend: "sql", Operation: data_service.OpQuery,
+		Backend: provider, Operation: data_service.OpQuery,
 		ParameterizedSQL: compiled.Sql, Parameters: append([]core.Value(nil), compiled.Params...),
 		StartedAt: startedAt, EndedAt: time.Now(), ResultCount: &resultCount,
-		TraceChain: request.TraceChain, Comment: request.Comment, DebugQuery: &debugQuery,
+		TraceChain: tracePath, Comment: request.Comment, Purpose: request.Purpose, DebugQuery: &debugQuery,
 	}
 	if userContext, ok := UserContextFrom(context); ok {
 		userContext.RecordExecutionMetadata(metadata)
@@ -128,11 +154,29 @@ func (e *SqlDataServiceExecutor) Mutate(context stdcontext.Context, request data
 		operation = data_service.OpDelete
 	}
 	debugQuery := compiled.DebugSql(e.dialect.Dialect.Kind())
+	entityName := "unknown"
+	switch req := request.(type) {
+	case *data_service.InsertMutation:
+		entityName = req.Cmd.Entity
+	case *data_service.UpdateMutation:
+		entityName = req.Cmd.Entity
+	case *data_service.DeleteMutation:
+		entityName = req.Cmd.Entity
+	}
+	tracePath := []*core.TraceNode{
+		core.NewTypedTraceNode("operation", "mutation", "mutation"),
+		core.NewTypedTraceNode("entity", entityName, entityName),
+	}
+	tracePath = append(tracePath, canonicalTraceFrames(request.TraceChain())...)
+	provider := strings.ToLower(fmt.Sprint(e.dialect.Dialect.Kind()))
+	tracePath = append(tracePath,
+		core.NewTypedTraceNode("provider", provider, provider),
+		core.NewTypedTraceNode("sql", strings.ToLower(string(operation)), strings.ToLower(string(operation))))
 	metadata := data_service.ExecutionMetadata{
-		Backend: "sql", Operation: operation,
+		Backend: provider, Operation: operation,
 		ParameterizedSQL: compiled.Sql, Parameters: append([]core.Value(nil), compiled.Params...),
 		StartedAt: startedAt, EndedAt: time.Now(), AffectedRows: &affected,
-		TraceChain: request.TraceChain(), Comment: request.Comment(), DebugQuery: &debugQuery,
+		TraceChain: tracePath, Comment: request.Comment(), AuditReason: request.Comment(), DebugQuery: &debugQuery,
 	}
 	if userCtx != nil {
 		userCtx.RecordExecutionMetadata(metadata)

@@ -5,8 +5,7 @@ import (
 	"runtime-example-conformance-service-core-workspace/lib/work_item"
 )
 
-type QType struct{}
-
+type QType struct {}
 var Q = &QType{}
 
 func (q *QType) Platforms() *platform.PlatformRequest {
@@ -23,4 +22,11 @@ func (q *QType) WorkItems() *work_item.WorkItemRequest {
 
 func (q *QType) WorkItemsMinimal() *work_item.WorkItemRequest {
 	return work_item.NewWorkItemMinimalRequest()
+}
+
+func (q *QType) WorkItemPlatform(entity *work_item.WorkItem) (*platform.Platform, bool) {
+	value, ok := entity.RelationEntity("platformEntity")
+	if !ok { return nil, false }
+	typed, ok := value.(*platform.Platform)
+	return typed, ok
 }

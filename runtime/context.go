@@ -4,6 +4,7 @@ import (
 	stdcontext "context"
 	"fmt"
 	"io"
+	"os"
 	"strings"
 	"sync"
 	"time"
@@ -290,6 +291,8 @@ type UserContext struct {
 	appAuditSink              AppAuditEventSink
 	runtimeTelemetrySink      RuntimeTelemetrySink
 	diagnosticSQLLogSink      DiagnosticSQLLogSink
+	querySQLLogEnabled        bool
+	mutationSQLLogEnabled     bool
 	runtimeTelemetry          RuntimeTelemetry
 	continuousPageCursorStore ContinuousPageCursorStore
 	idSetStore                IDSetStore
@@ -373,8 +376,8 @@ type RuntimeTelemetrySink interface {
 	RecordExecutionMetadata(data_service.ExecutionMetadata)
 }
 
-// DiagnosticSQLLogSink is an explicitly installed, value-bearing operator
-// log destination. It is separate from safe RuntimeTelemetry and defaults off.
+// DiagnosticSQLLogSink receives value-bearing operator logs. The text sink is
+// installed by default and can be disabled independently for queries/mutations.
 type DiagnosticSQLLogSink interface {
 	WriteSQLLog(data_service.ExecutionMetadata)
 }
@@ -382,6 +385,13 @@ type DiagnosticSQLLogSink interface {
 type TextDiagnosticSQLLogSink struct {
 	mu     sync.Mutex
 	writer io.Writer
+}
+
+func sqlLogText(value *string) string {
+	if value == nil {
+		return ""
+	}
+	return *value
 }
 
 func NewTextDiagnosticSQLLogSink(writer io.Writer) *TextDiagnosticSQLLogSink {
@@ -401,8 +411,10 @@ func (s *TextDiagnosticSQLLogSink) WriteSQLLog(metadata data_service.ExecutionMe
 	} else if metadata.AffectedRows != nil {
 		summary = fmt.Sprintf("%d rows affected", *metadata.AffectedRows)
 	}
-	fmt.Fprintf(s.writer, "[TeaQL SQL][%s][%dus] %s\n%s\n",
-		strings.ToLower(string(metadata.Operation)), duration, summary, *metadata.DebugQuery)
+	fmt.Fprintf(s.writer, "[TeaQL SQL][%s][%dus] %s comment=%q purpose=%q auditReason=%q tracePath=%v\nParameterized SQL: %s params=%v\nDebug SQL: %s\n",
+		strings.ToLower(string(metadata.Operation)), duration, summary,
+		sqlLogText(metadata.Comment), sqlLogText(metadata.Purpose), sqlLogText(metadata.AuditReason), metadata.TraceChain,
+		metadata.ParameterizedSQL, metadata.Parameters, *metadata.DebugQuery)
 }
 
 type SQLExecutionEvidenceMode int
@@ -469,6 +481,10 @@ func (c *UserContext) WithDiagnosticSQLLogSink(sink DiagnosticSQLLogSink) *UserC
 }
 
 func (c *UserContext) RecordExecutionMetadata(metadata data_service.ExecutionMetadata) {
+	isQuery := metadata.Operation == data_service.OpQuery
+	if (isQuery && !c.querySQLLogEnabled) || (!isQuery && !c.mutationSQLLogEnabled) {
+		return
+	}
 	if c.runtimeTelemetrySink != nil {
 		c.runtimeTelemetrySink.RecordExecutionMetadata(metadata)
 	}
@@ -503,6 +519,9 @@ func NewUserContext() *UserContext {
 		continuousPagePlan:        "DISABLED",
 		userIdentifier:            "main",
 		runtimeTelemetry:          NoopRuntimeTelemetry{},
+		diagnosticSQLLogSink:      NewTextDiagnosticSQLLogSink(os.Stderr),
+		querySQLLogEnabled:        true,
+		mutationSQLLogEnabled:     true,
 	}
 	context.Context = stdcontext.WithValue(context.Context, userContextKey{}, context)
 	return context
@@ -830,18 +849,38 @@ func (c *UserContext) DataServiceInternal(args ...any) any {
 }
 
 func (c *UserContext) DisableSqlLog(args ...any) any {
+	c.querySQLLogEnabled = false
+	c.mutationSQLLogEnabled = false
 	return nil
 }
 
+func (c *UserContext) DisableSelectSqlLog(args ...any) any {
+	c.querySQLLogEnabled = false
+	return c
+}
+
+func (c *UserContext) DisableMutationSqlLog(args ...any) any {
+	c.mutationSQLLogEnabled = false
+	return c
+}
+
+func (c *UserContext) QuerySqlLogEnabled() bool { return c.querySQLLogEnabled }
+
+func (c *UserContext) MutationSqlLogEnabled() bool { return c.mutationSQLLogEnabled }
+
 func (c *UserContext) EnableAllSqlLog(args ...any) any {
+	c.querySQLLogEnabled = true
+	c.mutationSQLLogEnabled = true
 	return nil
 }
 
 func (c *UserContext) EnableMutationSqlLog(args ...any) any {
+	c.mutationSQLLogEnabled = true
 	return nil
 }
 
 func (c *UserContext) EnableSelectSqlLog(args ...any) any {
+	c.querySQLLogEnabled = true
 	return nil
 }
 

@@ -3,6 +3,7 @@ package sql
 import (
 	stdcontext "context"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/teaql/teaql-golang/core"
@@ -12,6 +13,16 @@ import (
 type SqlExecutorError struct {
 	CompileError   error
 	TransportError error
+}
+
+func canonicalSQLTraceFrames(frames []*core.TraceNode) []*core.TraceNode {
+	result := make([]*core.TraceNode, 0, len(frames))
+	for _, frame := range frames {
+		if frame != nil && strings.EqualFold(frame.Kind, "relation") {
+			result = append(result, frame)
+		}
+	}
+	return result
 }
 
 func (e *SqlExecutorError) Error() string {
@@ -117,8 +128,17 @@ func (e *SqlDataServiceExecutor) Query(context stdcontext.Context, request *ds.Q
 	count := len(rows)
 	debugQuery := compiled.DebugSql(e.Dialect.Kind())
 
+	tracePath := []*core.TraceNode{
+		core.NewTypedTraceNode("operation", "query", "query"),
+		core.NewTypedTraceNode("request", request.Query.Entity, request.Query.Entity),
+	}
+	tracePath = append(tracePath, canonicalSQLTraceFrames(request.TraceChain)...)
+	provider := e.Dialect.Kind().String()
+	tracePath = append(tracePath,
+		core.NewTypedTraceNode("provider", provider, provider),
+		core.NewTypedTraceNode("sql", "select", "select"))
 	metadata := ds.ExecutionMetadata{
-		Backend:          "sql",
+		Backend:          provider,
 		Operation:        ds.OpQuery,
 		ParameterizedSQL: compiled.Sql,
 		Parameters:       append([]core.Value(nil), compiled.Params...),
@@ -126,8 +146,9 @@ func (e *SqlDataServiceExecutor) Query(context stdcontext.Context, request *ds.Q
 		EndedAt:          end,
 		AffectedRows:     nil,
 		ResultCount:      &count,
-		TraceChain:       request.TraceChain,
+		TraceChain:       tracePath,
 		Comment:          request.Comment,
+		Purpose:          request.Purpose,
 		BackendRequestId: nil,
 		DebugQuery:       &debugQuery,
 	}
@@ -324,8 +345,16 @@ func (e *SqlDataServiceExecutor) Mutate(context stdcontext.Context, request ds.M
 		comment = &c
 	}
 
+	provider := e.Dialect.Kind().String()
+	tracePath := append([]*core.TraceNode{
+		core.NewTypedTraceNode("operation", "mutation", "mutation"),
+		core.NewTypedTraceNode("entity", entityName, entityName),
+	}, canonicalSQLTraceFrames(traceChain)...)
+	tracePath = append(tracePath,
+		core.NewTypedTraceNode("provider", provider, provider),
+		core.NewTypedTraceNode("sql", strings.ToLower(string(operation)), strings.ToLower(string(operation))))
 	metadata := ds.ExecutionMetadata{
-		Backend:          "sql",
+		Backend:          provider,
 		Operation:        operation,
 		ParameterizedSQL: compiled.Sql,
 		Parameters:       append([]core.Value(nil), compiled.Params...),
@@ -333,8 +362,9 @@ func (e *SqlDataServiceExecutor) Mutate(context stdcontext.Context, request ds.M
 		EndedAt:          end,
 		AffectedRows:     &affectedRows,
 		ResultCount:      nil,
-		TraceChain:       traceChain,
+		TraceChain:       tracePath,
 		Comment:          comment,
+		AuditReason:      comment,
 		BackendRequestId: nil,
 		DebugQuery:       &debugQuery,
 	}

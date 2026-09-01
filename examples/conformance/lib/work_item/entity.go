@@ -2,16 +2,17 @@ package work_item
 
 import (
 	stdcontext "context"
+	"errors"
 	"fmt"
 	"reflect"
 	"strings"
 	"sync/atomic"
 
+	"time"
 	"github.com/shopspring/decimal"
 	"github.com/teaql/teaql-golang/core"
 	"github.com/teaql/teaql-golang/data_service"
 	"github.com/teaql/teaql-golang/runtime"
-	"time"
 )
 
 var (
@@ -19,22 +20,26 @@ var (
 	_ = decimal.Decimal{}
 	_ = fmt.Sprint
 	_ = strings.Join
+	_ = errors.As
 )
 
 var teaqlTemporaryEntityID int64
 
 type WorkItem struct {
-	base              *core.BaseEntityData
-	dirtyFields       map[string]bool
-	isNew             bool
-	markedAsDelete    bool
-	comment           *string
-	purpose           *string
-	loadState         map[string]bool
+	base        *core.BaseEntityData
+	dirtyFields map[string]bool
+	isNew       bool
+	markedAsDelete bool
+	comment     *string
+	purpose     *string
+	loadState   map[string]bool
 	restrictLoadState bool
-	root              *core.EntityRoot
-	ledgerID          core.Value
+	root        *core.EntityRoot
+	ledgerID    core.Value
+	relations   map[string]core.Entity
+	loadedRelations map[string]bool
 }
+
 
 func NewWorkItem() *WorkItem {
 	temporaryID := -atomic.AddInt64(&teaqlTemporaryEntityID, 1)
@@ -45,41 +50,52 @@ func NewWorkItem() *WorkItem {
 		loadState:   make(map[string]bool),
 		root:        core.NewEntityRoot(),
 		ledgerID:    core.ValI64(temporaryID),
+		relations:   make(map[string]core.Entity),
+		loadedRelations: make(map[string]bool),
 	}
 	entity.root.MarkAsNew(entity.EntityKey())
 	return entity
 }
 
 func (e *WorkItem) EntityKey() core.EntityKey {
-	if e.base.Id != 0 {
-		return core.NewEntityKey(e.EntityName(), core.ValU64(e.base.Id))
-	}
+	if e.base.Id != 0 { return core.NewEntityKey(e.EntityName(), core.ValU64(e.base.Id)) }
 	return core.NewEntityKey(e.EntityName(), e.ledgerID)
 }
 
 func (e *WorkItem) EntityRoot() *core.EntityRoot { return e.root }
 
 func (e *WorkItem) AttachEntityRoot(root *core.EntityRoot) {
-	if root == nil || root == e.root {
-		return
-	}
+	if root == nil || root == e.root { return }
 	root.MergeFrom(e.root)
 	e.root = root
+}
+
+func (e *WorkItem) RelationEntity(name string) (core.Entity, bool) {
+	value, ok := e.relations[name]
+	return value, ok
+}
+
+func (e *WorkItem) setRelationEntity(name string, value core.Entity) {
+	e.relations[name] = value
+}
+
+func (e *WorkItem) markRelationLoaded(name string) {
+	e.loadedRelations[name] = true
+}
+
+func (e *WorkItem) isRelationLoaded(name string) bool {
+	return e.loadedRelations[name]
 }
 
 func (e *WorkItem) MarkLoadedOnly(fields ...string) *WorkItem {
 	e.restrictLoadState = true
 	e.loadState = make(map[string]bool, len(fields))
-	for _, field := range fields {
-		e.loadState[field] = true
-	}
+	for _, field := range fields { e.loadState[field] = true }
 	return e
 }
 
 func (e *WorkItem) IsLoaded(field string) bool {
-	if e.isNew && !e.restrictLoadState {
-		return true
-	}
+	if e.isNew && !e.restrictLoadState { return true }
 	return e.loadState[field]
 }
 
@@ -99,6 +115,8 @@ func (e *WorkItem) IdValue() core.Value {
 	return core.ValU64(e.base.Id)
 }
 
+
+
 func (e *WorkItem) FromRecord(record core.Record) error {
 	oldKey := e.EntityKey()
 	base, err := core.BaseEntityDataFromRecord(record)
@@ -112,9 +130,7 @@ func (e *WorkItem) FromRecord(record core.Record) error {
 	e.dirtyFields = make(map[string]bool)
 	e.loadState = make(map[string]bool, len(record))
 	e.restrictLoadState = true
-	for field := range record {
-		e.loadState[field] = true
-	}
+	for field := range record { e.loadState[field] = true }
 	return nil
 }
 
@@ -192,6 +208,101 @@ func (e *WorkItem) IntoJson() any {
 }
 
 func (e *WorkItem) Save(context *runtime.UserContext) (*WorkItem, error) {
+	var saved *WorkItem
+	err := context.ExecuteGraphSave(func() error {
+		if preflightErr := e.TeaqlPreflightGraph(context); preflightErr != nil { return preflightErr }
+		var innerErr error
+		saved, innerErr = e.TeaqlSaveWithinGraph(context)
+		return innerErr
+	})
+	return saved, err
+}
+
+// TeaqlPreflightGraph runs Checker/Fix for the complete aggregate before the
+// first provider mutation. It is generated infrastructure, not application API.
+func (e *WorkItem) TeaqlPreflightGraph(context *runtime.UserContext) error {
+	if e.comment == nil || strings.TrimSpace(*e.comment) == "" {
+		return fmt.Errorf("Security audit failure: AuditAs() must be called before Save()")
+	}
+	if !e.markedAsDelete {
+		operation := core.MutationUpdate
+		if e.isNew { operation = core.MutationInsert }
+		if operation == core.MutationUpdate {
+			if !e.IsLoaded("id") {
+				result := runtime.CheckResult{RuleID: "invalid_type", CanonicalLocation: runtime.Location().Property("id"), Message: "Mutation requires a fully loaded entity"}
+				return &runtime.RuntimeError{Type: "Check", CheckResults: []runtime.CheckResult{result}}
+			}
+			if !e.IsLoaded("title") {
+				result := runtime.CheckResult{RuleID: "invalid_type", CanonicalLocation: runtime.Location().Property("title"), Message: "Mutation requires a fully loaded entity"}
+				return &runtime.RuntimeError{Type: "Check", CheckResults: []runtime.CheckResult{result}}
+			}
+			if !e.IsLoaded("description") {
+				result := runtime.CheckResult{RuleID: "invalid_type", CanonicalLocation: runtime.Location().Property("description"), Message: "Mutation requires a fully loaded entity"}
+				return &runtime.RuntimeError{Type: "Check", CheckResults: []runtime.CheckResult{result}}
+			}
+			if !e.IsLoaded("platform_id") {
+				result := runtime.CheckResult{RuleID: "invalid_type", CanonicalLocation: runtime.Location().Property("platform"), Message: "Mutation requires a fully loaded entity"}
+				return &runtime.RuntimeError{Type: "Check", CheckResults: []runtime.CheckResult{result}}
+			}
+			if !e.IsLoaded("version") {
+				result := runtime.CheckResult{RuleID: "invalid_type", CanonicalLocation: runtime.Location().Property("version"), Message: "Mutation requires a fully loaded entity"}
+				return &runtime.RuntimeError{Type: "Check", CheckResults: []runtime.CheckResult{result}}
+			}
+		}
+		checkedValues := e.IntoRecord()
+		valuesBeforeCheck := e.IntoRecord()
+		checkErr := context.CheckAndFix(&runtime.CheckAndFixInput{Entity: "Work Item", Operation: operation, Values: checkedValues})
+		for field, value := range checkedValues {
+			if before, exists := valuesBeforeCheck[field]; !exists || !reflect.DeepEqual(before, value) {
+				e.base.PutDynamic(field, value)
+				e.root.Set(e.EntityKey(), field, value)
+			}
+		}
+		if checkErr != nil { return checkErr }
+	}
+	return nil
+}
+
+type teaqlWorkItemSaveSnapshot struct {
+	record core.Record
+	dirtyFields map[string]bool
+	isNew bool
+	markedAsDelete bool
+	loadState map[string]bool
+	restrictLoadState bool
+	ledgerID core.Value
+}
+
+func (e *WorkItem) teaqlSaveSnapshot() teaqlWorkItemSaveSnapshot {
+	dirty := make(map[string]bool, len(e.dirtyFields))
+	for field, value := range e.dirtyFields { dirty[field] = value }
+	loaded := make(map[string]bool, len(e.loadState))
+	for field, value := range e.loadState { loaded[field] = value }
+	return teaqlWorkItemSaveSnapshot{
+		record: e.IntoRecord(), dirtyFields: dirty, isNew: e.isNew,
+		markedAsDelete: e.markedAsDelete, loadState: loaded,
+		restrictLoadState: e.restrictLoadState, ledgerID: e.ledgerID,
+	}
+}
+
+func (e *WorkItem) teaqlRegisterGraphOutcome(context *runtime.UserContext, snapshot teaqlWorkItemSaveSnapshot) {
+	context.AfterGraphRollback(func() {
+		if err := e.FromRecord(snapshot.record); err != nil { panic(err) }
+		e.dirtyFields = snapshot.dirtyFields
+		e.isNew = snapshot.isNew
+		e.markedAsDelete = snapshot.markedAsDelete
+		e.loadState = snapshot.loadState
+		e.restrictLoadState = snapshot.restrictLoadState
+		e.ledgerID = snapshot.ledgerID
+	})
+	context.AfterGraphCommit(func() { e.root.ClearEntity(e.EntityKey()) })
+}
+
+// TeaqlSaveWithinGraph is generated infrastructure used by related entity
+// packages after the public root Save has opened the graph transaction.
+func (e *WorkItem) TeaqlSaveWithinGraph(context *runtime.UserContext) (*WorkItem, error) {
+	snapshot := e.teaqlSaveSnapshot()
+	e.teaqlRegisterGraphOutcome(context, snapshot)
 	dsRaw := context.GetResource("dataService")
 	if dsRaw == nil {
 		return nil, fmt.Errorf("dataService not found in UserContext")
@@ -217,12 +328,8 @@ func (e *WorkItem) Save(context *runtime.UserContext) (*WorkItem, error) {
 				e.root.Set(e.EntityKey(), field, value)
 			}
 		}
-		if checkErr != nil {
-			return nil, checkErr
-		}
-		if err := e.FromRecord(checkedValues); err != nil {
-			return nil, err
-		}
+		if checkErr != nil { return nil, checkErr }
+		if err := e.FromRecord(checkedValues); err != nil { return nil, err }
 		type idGenerator interface {
 			GenerateId(entity string) (uint64, error)
 		}
@@ -277,10 +384,7 @@ func (e *WorkItem) Save(context *runtime.UserContext) (*WorkItem, error) {
 		if err := e.FromRecord(res.PersistedRecord); err != nil {
 			return nil, err
 		}
-		if err := e.saveCascade(context); err != nil {
-			return nil, err
-		}
-		e.root.ClearEntity(e.EntityKey())
+		if err := e.saveCascade(context); err != nil { return nil, err }
 		return e, nil
 	} else if e.markedAsDelete {
 		expectedVersion := e.base.Version
@@ -290,9 +394,7 @@ func (e *WorkItem) Save(context *runtime.UserContext) (*WorkItem, error) {
 			cmd.TraceChain = append(cmd.TraceChain, &core.TraceNode{Comment: *e.comment})
 		}
 		res, err := ds.Mutate(context, &data_service.DeleteMutation{Cmd: cmd})
-		if err != nil {
-			return nil, err
-		}
+		if err != nil { return nil, err }
 		if res.AffectedRows == 0 {
 			return nil, fmt.Errorf("optimistic lock failed for %s(%d) at version %d", e.EntityName(), e.base.Id, expectedVersion)
 		}
@@ -302,10 +404,7 @@ func (e *WorkItem) Save(context *runtime.UserContext) (*WorkItem, error) {
 		if res.PersistedRecord == nil {
 			return nil, fmt.Errorf("mutation did not return the authoritative persisted record")
 		}
-		if err := e.FromRecord(res.PersistedRecord); err != nil {
-			return nil, err
-		}
-		e.root.ClearEntity(e.EntityKey())
+		if err := e.FromRecord(res.PersistedRecord); err != nil { return nil, err }
 		return e, nil
 	} else {
 		checkedValues := e.IntoRecord()
@@ -316,12 +415,8 @@ func (e *WorkItem) Save(context *runtime.UserContext) (*WorkItem, error) {
 				e.root.Set(e.EntityKey(), field, value)
 			}
 		}
-		if checkErr != nil {
-			return nil, checkErr
-		}
-		if err := e.FromRecord(checkedValues); err != nil {
-			return nil, err
-		}
+		if checkErr != nil { return nil, checkErr }
+		if err := e.FromRecord(checkedValues); err != nil { return nil, err }
 		cmd := core.NewUpdateCommand("Work Item", core.ValU64(e.base.Id))
 		cmd.Values = e.root.Change(e.EntityKey())
 		expectedVersion := e.base.Version
@@ -343,13 +438,8 @@ func (e *WorkItem) Save(context *runtime.UserContext) (*WorkItem, error) {
 		if res.PersistedRecord == nil {
 			return nil, fmt.Errorf("mutation did not return the authoritative persisted record")
 		}
-		if err := e.FromRecord(res.PersistedRecord); err != nil {
-			return nil, err
-		}
-		if err := e.saveCascade(context); err != nil {
-			return nil, err
-		}
-		e.root.ClearEntity(e.EntityKey())
+		if err := e.FromRecord(res.PersistedRecord); err != nil { return nil, err }
+		if err := e.saveCascade(context); err != nil { return nil, err }
 		return e, nil
 	}
 }
@@ -371,8 +461,7 @@ func (e *WorkItem) UpdateId(value uint64) *WorkItem {
 func (e *WorkItem) Title() string {
 	val, _ := e.base.GetDynamic("title")
 	res, _ := val.TryText()
-	return res
-}
+	return res}
 
 func (e *WorkItem) UpdateTitle(value string) *WorkItem {
 	e.base.PutDynamic("title", core.ValText(value))
@@ -385,23 +474,12 @@ func (e *WorkItem) UpdateTitle(value string) *WorkItem {
 func (e *WorkItem) Description() *string {
 	val, _ := e.base.GetDynamic("description")
 	res, _ := val.TryText()
-	return &res
-}
+	return &res}
 
 func (e *WorkItem) UpdateDescription(value *string) *WorkItem {
-	e.base.PutDynamic("description", func() core.Value {
-		if value == nil {
-			return core.ValNull()
-		}
-		return core.ValText(*value)
-	}())
+	e.base.PutDynamic("description", func() core.Value { if value == nil { return core.ValNull() }; return core.ValText((*value)) }())
 	e.dirtyFields["description"] = true
-	e.root.Set(e.EntityKey(), "description", func() core.Value {
-		if value == nil {
-			return core.ValNull()
-		}
-		return core.ValText(*value)
-	}())
+	e.root.Set(e.EntityKey(), "description", func() core.Value { if value == nil { return core.ValNull() }; return core.ValText((*value)) }())
 	e.loadState["description"] = true
 	return e
 }
@@ -428,5 +506,6 @@ func (e *WorkItem) UpdatePlatformId(value uint64) *WorkItem {
 	e.loadState["platform_id"] = true
 	return e
 }
-
 // DEBUG: constantObjectField is false
+
+

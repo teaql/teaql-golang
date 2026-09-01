@@ -1,3 +1,5 @@
+
+
 package platform
 
 import (
@@ -19,8 +21,10 @@ var (
 
 type PlatformRequest struct {
 	Query       *core.SelectQuery
+	queryOptions *core.QueryOptions
 	purposeText string
 	commentText string
+	relationFactories map[string]func() core.Entity
 }
 
 type ExecutablePlatformRequest struct {
@@ -30,6 +34,8 @@ type ExecutablePlatformRequest struct {
 func NewPlatformRequest() *PlatformRequest {
 	r := &PlatformRequest{
 		Query: core.NewSelectQuery("Platform"),
+		queryOptions: core.NewQueryOptions(),
+		relationFactories: make(map[string]func() core.Entity),
 	}
 	r.Query.AndFilter(core.ExprGte("version", core.ValI64(1)))
 	return r
@@ -43,6 +49,14 @@ func NewPlatformMinimalRequest() *PlatformRequest {
 
 func (r *PlatformRequest) GetQuery() *core.SelectQuery {
 	return r.Query
+}
+
+func (r *PlatformRequest) GetEntityDescriptor() *core.EntityDescriptor {
+	return NewPlatform().EntityDescriptor()
+}
+
+func (r *PlatformRequest) NewRelationEntity() core.Entity {
+	return NewPlatform()
 }
 
 func (r *PlatformRequest) Comment(comment string) *PlatformRequest {
@@ -80,29 +94,36 @@ func (r *PlatformRequest) OptimizeForContinuousPageFetchWith(namespace string, t
 	return r
 }
 
+func (r *PlatformRequest) OptimizePaginationWithIDSet() *PlatformRequest {
+	r.Query.OptimizePaginationWithIDSet()
+	return r
+}
+
+func (r *PlatformRequest) OptimizePaginationWithIDSetConfig(namespace string, ttlSeconds, maxIDs uint64) *PlatformRequest {
+	r.Query.OptimizePaginationWithIDSetConfig(namespace, ttlSeconds, maxIDs)
+	return r
+}
+
+func (r *PlatformRequest) TopNProbeParentThreshold(threshold uint64) *PlatformRequest {
+	r.Query.TopNProbeParentThreshold(threshold)
+	return r
+}
+
 func removePlatformVersionFilter(expr *core.Expr) *core.Expr {
-	if expr == nil {
-		return nil
-	}
+	if expr == nil { return nil }
 	if expr.Type == core.ExprTypeBinary && expr.Left != nil &&
 		expr.Left.Type == core.ExprTypeColumn && expr.Left.Column == "version" {
 		return nil
 	}
-	if expr.Type != core.ExprTypeAnd {
-		return expr
-	}
+	if expr.Type != core.ExprTypeAnd { return expr }
 	parts := make([]*core.Expr, 0, len(expr.Parts))
 	for _, part := range expr.Parts {
 		if kept := removePlatformVersionFilter(part); kept != nil {
 			parts = append(parts, kept)
 		}
 	}
-	if len(parts) == 0 {
-		return nil
-	}
-	if len(parts) == 1 {
-		return parts[0]
-	}
+	if len(parts) == 0 { return nil }
+	if len(parts) == 1 { return parts[0] }
 	return core.ExprAndNode(parts...)
 }
 
@@ -162,6 +183,22 @@ func (r *PlatformRequest) WithIdLessThanOrEqualTo(value uint64) *PlatformRequest
 	r.Query.AndFilter(core.ExprLte("id", core.ValU64(value)))
 	return r
 }
+func (r *PlatformRequest) WithIdBetween(lower uint64, upper uint64) *PlatformRequest {
+	value := lower
+	from := core.ValU64(value)
+	value = upper
+	to := core.ValU64(value)
+	r.Query.AndFilter(core.ExprBetweenNode("id", from, to))
+	return r
+}
+func (r *PlatformRequest) WithIdIsKnown() *PlatformRequest {
+	r.Query.AndFilter(core.ExprIsNotNullNode("id"))
+	return r
+}
+func (r *PlatformRequest) WithIdIsUnknown() *PlatformRequest {
+	r.Query.AndFilter(core.ExprIsNullNode("id"))
+	return r
+}
 func (r *PlatformRequest) OrderByIdAsc() *PlatformRequest {
 	r.Query.OrderAsc("id")
 	return r
@@ -215,6 +252,22 @@ func (r *PlatformRequest) WithNameLessThanOrEqualTo(value string) *PlatformReque
 	r.Query.AndFilter(core.ExprLte("name", core.ValText(value)))
 	return r
 }
+func (r *PlatformRequest) WithNameBetween(lower string, upper string) *PlatformRequest {
+	value := lower
+	from := core.ValText(value)
+	value = upper
+	to := core.ValText(value)
+	r.Query.AndFilter(core.ExprBetweenNode("name", from, to))
+	return r
+}
+func (r *PlatformRequest) WithNameIsKnown() *PlatformRequest {
+	r.Query.AndFilter(core.ExprIsNotNullNode("name"))
+	return r
+}
+func (r *PlatformRequest) WithNameIsUnknown() *PlatformRequest {
+	r.Query.AndFilter(core.ExprIsNullNode("name"))
+	return r
+}
 func (r *PlatformRequest) WithNameContaining(term string) *PlatformRequest {
 	r.Query.AndFilter(core.ExprContain("name", term))
 	return r
@@ -227,8 +280,20 @@ func (r *PlatformRequest) WithNameStartingWith(term string) *PlatformRequest {
 	r.Query.AndFilter(core.ExprBeginWith("name", term))
 	return r
 }
+func (r *PlatformRequest) WithNameNotStartingWith(term string) *PlatformRequest {
+	r.Query.AndFilter(core.ExprNotBeginWith("name", term))
+	return r
+}
 func (r *PlatformRequest) WithNameEndingWith(term string) *PlatformRequest {
 	r.Query.AndFilter(core.ExprEndWith("name", term))
+	return r
+}
+func (r *PlatformRequest) WithNameNotEndingWith(term string) *PlatformRequest {
+	r.Query.AndFilter(core.ExprNotEndWith("name", term))
+	return r
+}
+func (r *PlatformRequest) WithNameSoundingLike(term string) *PlatformRequest {
+	r.Query.AndFilter(core.ExprSoundLike("name", core.ValText(term)))
 	return r
 }
 func (r *PlatformRequest) OrderByNameAsc() *PlatformRequest {
@@ -284,6 +349,22 @@ func (r *PlatformRequest) WithVersionLessThanOrEqualTo(value int64) *PlatformReq
 	r.Query.AndFilter(core.ExprLte("version", core.ValI64(value)))
 	return r
 }
+func (r *PlatformRequest) WithVersionBetween(lower int64, upper int64) *PlatformRequest {
+	value := lower
+	from := core.ValI64(value)
+	value = upper
+	to := core.ValI64(value)
+	r.Query.AndFilter(core.ExprBetweenNode("version", from, to))
+	return r
+}
+func (r *PlatformRequest) WithVersionIsKnown() *PlatformRequest {
+	r.Query.AndFilter(core.ExprIsNotNullNode("version"))
+	return r
+}
+func (r *PlatformRequest) WithVersionIsUnknown() *PlatformRequest {
+	r.Query.AndFilter(core.ExprIsNullNode("version"))
+	return r
+}
 func (r *PlatformRequest) OrderByVersionAsc() *PlatformRequest {
 	r.Query.OrderAsc("version")
 	return r
@@ -293,10 +374,22 @@ func (r *PlatformRequest) OrderByVersionDesc() *PlatformRequest {
 	return r
 }
 
+
+
 func (r *PlatformRequest) CountWorkItems() *PlatformRequest {
-	r.Query.Count("count_work_items")
+	return r.CountWorkItemsAs("countWorkItems")
+
+}
+func (r *PlatformRequest) CountWorkItemsAs(alias string) *PlatformRequest {
+	return r.CountWorkItemsWith(alias, work_item.NewWorkItemRequest())
+}
+func (r *PlatformRequest) CountWorkItemsWith(alias string, child *work_item.WorkItemRequest) *PlatformRequest {
+	child.Query.Count(alias)
+	r.Query.RelationAggregates = append(r.Query.RelationAggregates, core.NewRelationAggregate("workItemList", alias, child.Query, true))
 	return r
 }
+
+
 
 func (r *PlatformRequest) SelectWorkItemList() *PlatformRequest {
 	return r.SelectWorkItemListWith(work_item.NewWorkItemRequest())
@@ -307,13 +400,30 @@ func (r *PlatformRequest) SelectWorkItemListWith(child *work_item.WorkItemReques
 	return r
 }
 
+func (r *PlatformRequest) HaveWorkItems() *PlatformRequest {
+	return r.WithWorkItemListMatching(work_item.NewWorkItemRequest())
+}
+
+func (r *PlatformRequest) HaveNoWorkItems() *PlatformRequest {
+	return r.WithoutWorkItemListMatching(work_item.NewWorkItemRequest())
+}
+
+func (r *PlatformRequest) WithWorkItemListMatching(child *work_item.WorkItemRequest) *PlatformRequest {
+	r.Query.AndFilter(core.ExprInSubQuery("id", child.GetEntityDescriptor(), child.GetQuery(), "platform_id"))
+	return r
+}
+
+func (r *PlatformRequest) WithoutWorkItemListMatching(child *work_item.WorkItemRequest) *PlatformRequest {
+	r.Query.AndFilter(core.ExprNotInSubQuery("id", child.GetEntityDescriptor(), child.GetQuery(), "platform_id"))
+	return r
+}
+
 func (e *ExecutablePlatformRequest) NewEntity(context *runtime.UserContext) *Platform {
 	r := e.request
 	if strings.TrimSpace(r.purposeText) == "" || strings.TrimSpace(r.commentText) == "" {
 		panic("security audit failure: non-empty Comment() and Purpose() are required before NewEntity()")
 	}
 	entity := NewPlatform()
-	entity.AttachEntityRoot(core.NewEntityRoot())
 	initialized := context.InitializeEntity("Platform", entity)
 	typed, ok := initialized.(*Platform)
 	if !ok {
@@ -340,29 +450,36 @@ func (e *ExecutablePlatformRequest) ExecuteForList(context *runtime.UserContext)
 	}
 
 	var results []*Platform
+	queryRoot := core.NewEntityRoot()
 	for _, rec := range rows {
 		entity := NewPlatform()
-		entity.AttachEntityRoot(core.NewEntityRoot())
+		entity.AttachEntityRoot(queryRoot)
 		if err := entity.FromRecord(rec); err != nil {
 			return nil, err
 		}
 		if relationValue, selected := rec["workItemList"]; selected {
 			childRecords, ok := relationValue.V.([]core.Record)
-			if !ok {
-				return nil, fmt.Errorf("relation workItemList has unexpected runtime type %T", relationValue.V)
-			}
-			for _, childRecord := range childRecords {
-				childEntity := work_item.NewWorkItem()
-				childEntity.AttachEntityRoot(entity.EntityRoot())
-				if err := childEntity.FromRecord(childRecord); err != nil {
-					return nil, err
-				}
-				entity.WorkItemList().Add(childEntity)
-			}
-		}
+				if !ok { return nil, fmt.Errorf("relation workItemList has unexpected runtime type %T", relationValue.V) }
+				for _, childRecord := range childRecords {
+					childEntity := work_item.NewWorkItem()
+					childEntity.AttachEntityRoot(entity.EntityRoot())
+					if err := childEntity.FromRecord(childRecord); err != nil { return nil, err }
+					entity.WorkItemList().Add(childEntity)
+				}}
 		results = append(results, entity)
 	}
-	return core.NewSmartList(results), nil
+	list := core.NewSmartList(results)
+	if len(e.request.queryOptions.Facets) > 0 {
+		dsRaw := context.GetResource("dataService")
+		ds, ok := dsRaw.(data_service.QueryExecutor)
+		if !ok { return nil, fmt.Errorf("dataService does not implement data_service.QueryExecutor") }
+		facets, err := runtime.ExecuteFacets(
+			context, runtime.NewRuntimeDataService(context.Metadata, ds),
+			e.request.Query, e.request.queryOptions)
+		if err != nil { return nil, err }
+		core.AttachFacets(list, facets)
+	}
+	return list, nil
 }
 
 // ExecuteForPage applies trusted policy once, then derives exact-count and row
@@ -375,54 +492,54 @@ func (e *ExecutablePlatformRequest) ExecuteForPage(context *runtime.UserContext,
 	if size == 0 {
 		return nil, fmt.Errorf("QUERY_INVALID_LIMIT: size must be positive")
 	}
-	r.Query.Page(offset, size).Comment(fmt.Sprintf("comment=%s; purpose=%s", r.commentText, r.purposeText))
+	r.Query.Page(offset, size).Comment(r.commentText).Purpose(r.purposeText)
 	authorized, err := context.PrepareQuery(r.Query)
-	if err != nil {
-		return nil, err
-	}
+	if err != nil { return nil, err }
 	dsRaw := context.GetResource("dataService")
 	ds, ok := dsRaw.(data_service.QueryExecutor)
-	if !ok {
-		return nil, fmt.Errorf("dataService does not implement data_service.QueryExecutor")
-	}
+	if !ok { return nil, fmt.Errorf("dataService does not implement data_service.QueryExecutor") }
 	service := runtime.NewRuntimeDataService(context.Metadata, ds)
 	const countAlias = "__teaql_total"
-	countRows, err := service.FetchAll(context, authorized.ForExactCount(countAlias))
-	if err != nil {
-		return nil, err
-	}
-	if len(countRows) != 1 {
-		return nil, fmt.Errorf("exact count returned %d rows", len(countRows))
-	}
-	total, ok := countRows[0][countAlias].TryU64()
-	if !ok {
-		return nil, fmt.Errorf("exact count did not return an unsigned integer")
-	}
-	rows, err := service.FetchAll(context, authorized)
-	if err != nil {
-		return nil, err
+	var rows []core.Record
+	var total uint64
+	if authorized.IDSetPagination != nil {
+		rows, err = service.FetchAll(context, authorized)
+		if err != nil { return nil, err }
+		if retainedCount, accuracy := context.IDSetCount(); accuracy == "EXACT" {
+			total = retainedCount
+		} else {
+			countRows, countErr := service.FetchAll(context, authorized.ForExactCount(countAlias))
+			if countErr != nil { return nil, countErr }
+			if len(countRows) != 1 { return nil, fmt.Errorf("exact count returned %d rows", len(countRows)) }
+			var ok bool
+			total, ok = countRows[0][countAlias].TryU64()
+			if !ok { return nil, fmt.Errorf("exact count did not return an unsigned integer") }
+		}
+	} else {
+		countRows, countErr := service.FetchAll(context, authorized.ForExactCount(countAlias))
+		if countErr != nil { return nil, countErr }
+		if len(countRows) != 1 { return nil, fmt.Errorf("exact count returned %d rows", len(countRows)) }
+		var ok bool
+		total, ok = countRows[0][countAlias].TryU64()
+		if !ok { return nil, fmt.Errorf("exact count did not return an unsigned integer") }
+		rows, err = service.FetchAll(context, authorized)
+		if err != nil { return nil, err }
 	}
 	results := make([]*Platform, 0, len(rows))
+	queryRoot := core.NewEntityRoot()
 	for _, rec := range rows {
 		entity := NewPlatform()
-		entity.AttachEntityRoot(core.NewEntityRoot())
-		if err := entity.FromRecord(rec); err != nil {
-			return nil, err
-		}
+		entity.AttachEntityRoot(queryRoot)
+		if err := entity.FromRecord(rec); err != nil { return nil, err }
 		if relationValue, selected := rec["workItemList"]; selected {
 			childRecords, ok := relationValue.V.([]core.Record)
-			if !ok {
-				return nil, fmt.Errorf("relation workItemList has unexpected runtime type %T", relationValue.V)
-			}
-			for _, childRecord := range childRecords {
-				childEntity := work_item.NewWorkItem()
-				childEntity.AttachEntityRoot(entity.EntityRoot())
-				if err := childEntity.FromRecord(childRecord); err != nil {
-					return nil, err
-				}
-				entity.WorkItemList().Add(childEntity)
-			}
-		}
+				if !ok { return nil, fmt.Errorf("relation workItemList has unexpected runtime type %T", relationValue.V) }
+				for _, childRecord := range childRecords {
+					childEntity := work_item.NewWorkItem()
+					childEntity.AttachEntityRoot(entity.EntityRoot())
+					if err := childEntity.FromRecord(childRecord); err != nil { return nil, err }
+					entity.WorkItemList().Add(childEntity)
+				}}
 		results = append(results, entity)
 	}
 	return core.NewSmartList(results).WithTotalCount(total), nil
@@ -438,17 +555,21 @@ func (e *ExecutablePlatformRequest) ExecuteForStream(context *runtime.UserContex
 	if yield == nil {
 		return fmt.Errorf("stream consumer must not be nil")
 	}
-	r.Query.Comment(fmt.Sprintf("comment=%s; purpose=%s", r.commentText, r.purposeText))
+	r.Query.Comment(r.commentText).Purpose(r.purposeText)
 	dsRaw := context.GetResource("dataService")
 	ds, ok := dsRaw.(data_service.StreamQueryExecutor)
 	if !ok {
 		return fmt.Errorf("dataService does not implement data_service.StreamQueryExecutor")
 	}
-	req := &data_service.QueryRequest{Query: r.Query, TraceChain: r.Query.TraceChain, Comment: r.Query.CommentText}
+	req := &data_service.QueryRequest{
+		Query: r.Query, TraceChain: r.Query.TraceChain,
+		Comment: r.Query.CommentText, Purpose: r.Query.PurposeText,
+	}
+	queryRoot := core.NewEntityRoot()
 	return ds.QueryStream(context, req, chunkSize, func(chunk *data_service.StreamChunk) error {
 		for _, rec := range chunk.Rows {
 			entity := NewPlatform()
-			entity.AttachEntityRoot(core.NewEntityRoot())
+			entity.AttachEntityRoot(queryRoot)
 			if err := entity.FromRecord(rec); err != nil {
 				return err
 			}
@@ -465,7 +586,7 @@ func (e *ExecutablePlatformRequest) ExecuteRecords(context *runtime.UserContext)
 	if strings.TrimSpace(r.purposeText) == "" || strings.TrimSpace(r.commentText) == "" {
 		return nil, fmt.Errorf("security audit failure: Comment() and Purpose() must be called before ExecuteForList()")
 	}
-	r.Query.Comment(fmt.Sprintf("comment=%s; purpose=%s", r.commentText, r.purposeText))
+	r.Query.Comment(r.commentText).Purpose(r.purposeText)
 
 	dsRaw := context.GetResource("dataService")
 	if dsRaw == nil {
@@ -484,6 +605,14 @@ func (e *ExecutablePlatformRequest) ExecuteRecords(context *runtime.UserContext)
 	return rows, nil
 }
 
+// ExecuteForRows preserves aggregate/group projections as records while keeping
+// the cross-language SmartList result boundary.
+func (e *ExecutablePlatformRequest) ExecuteForRows(context *runtime.UserContext) (*core.SmartList[core.Record], error) {
+	rows, err := e.ExecuteRecords(context)
+	if err != nil { return nil, err }
+	return core.NewSmartList(rows), nil
+}
+
 func (r *PlatformRequest) Count() *PlatformRequest {
 	return r.CountAs("count")
 }
@@ -492,6 +621,7 @@ func (r *PlatformRequest) CountAs(alias string) *PlatformRequest {
 	r.Query.CountField("id", alias)
 	return r
 }
+
 
 func (r *PlatformRequest) GroupById() *PlatformRequest {
 	r.Query.WithGroupBy("id")

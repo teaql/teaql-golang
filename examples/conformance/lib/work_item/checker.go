@@ -14,14 +14,11 @@ type WorkItemCheckerLogic interface {
 
 type NoopWorkItemChecker struct{}
 
-func (c *NoopWorkItemChecker) CheckAndFix(context *runtime.UserContext, entity *WorkItem, status any, location any, results any) {
-}
-func (c *NoopWorkItemChecker) Required(value bool, field string, location any, results any)       {}
+func (c *NoopWorkItemChecker) CheckAndFix(context *runtime.UserContext, entity *WorkItem, status any, location any, results any) {}
+func (c *NoopWorkItemChecker) Required(value bool, field string, location any, results any) {}
 func (c *NoopWorkItemChecker) RequiredText(value string, field string, location any, results any) {}
-func (c *NoopWorkItemChecker) MinStringLength(value string, field string, minLen int, location any, results any) {
-}
-func (c *NoopWorkItemChecker) MaxStringLength(value string, field string, maxLen int, location any, results any) {
-}
+func (c *NoopWorkItemChecker) MinStringLength(value string, field string, minLen int, location any, results any) {}
+func (c *NoopWorkItemChecker) MaxStringLength(value string, field string, maxLen int, location any, results any) {}
 
 type WorkItemChecker struct {
 	logic WorkItemCheckerLogic

@@ -1,3 +1,5 @@
+
+
 package work_item
 
 import (
@@ -18,8 +20,10 @@ var (
 
 type WorkItemRequest struct {
 	Query       *core.SelectQuery
+	queryOptions *core.QueryOptions
 	purposeText string
 	commentText string
+	relationFactories map[string]func() core.Entity
 }
 
 type ExecutableWorkItemRequest struct {
@@ -29,6 +33,8 @@ type ExecutableWorkItemRequest struct {
 func NewWorkItemRequest() *WorkItemRequest {
 	r := &WorkItemRequest{
 		Query: core.NewSelectQuery("Work Item"),
+		queryOptions: core.NewQueryOptions(),
+		relationFactories: make(map[string]func() core.Entity),
 	}
 	r.Query.AndFilter(core.ExprGte("version", core.ValI64(1)))
 	return r
@@ -42,6 +48,14 @@ func NewWorkItemMinimalRequest() *WorkItemRequest {
 
 func (r *WorkItemRequest) GetQuery() *core.SelectQuery {
 	return r.Query
+}
+
+func (r *WorkItemRequest) GetEntityDescriptor() *core.EntityDescriptor {
+	return NewWorkItem().EntityDescriptor()
+}
+
+func (r *WorkItemRequest) NewRelationEntity() core.Entity {
+	return NewWorkItem()
 }
 
 func (r *WorkItemRequest) Comment(comment string) *WorkItemRequest {
@@ -79,29 +93,36 @@ func (r *WorkItemRequest) OptimizeForContinuousPageFetchWith(namespace string, t
 	return r
 }
 
+func (r *WorkItemRequest) OptimizePaginationWithIDSet() *WorkItemRequest {
+	r.Query.OptimizePaginationWithIDSet()
+	return r
+}
+
+func (r *WorkItemRequest) OptimizePaginationWithIDSetConfig(namespace string, ttlSeconds, maxIDs uint64) *WorkItemRequest {
+	r.Query.OptimizePaginationWithIDSetConfig(namespace, ttlSeconds, maxIDs)
+	return r
+}
+
+func (r *WorkItemRequest) TopNProbeParentThreshold(threshold uint64) *WorkItemRequest {
+	r.Query.TopNProbeParentThreshold(threshold)
+	return r
+}
+
 func removeWorkItemVersionFilter(expr *core.Expr) *core.Expr {
-	if expr == nil {
-		return nil
-	}
+	if expr == nil { return nil }
 	if expr.Type == core.ExprTypeBinary && expr.Left != nil &&
 		expr.Left.Type == core.ExprTypeColumn && expr.Left.Column == "version" {
 		return nil
 	}
-	if expr.Type != core.ExprTypeAnd {
-		return expr
-	}
+	if expr.Type != core.ExprTypeAnd { return expr }
 	parts := make([]*core.Expr, 0, len(expr.Parts))
 	for _, part := range expr.Parts {
 		if kept := removeWorkItemVersionFilter(part); kept != nil {
 			parts = append(parts, kept)
 		}
 	}
-	if len(parts) == 0 {
-		return nil
-	}
-	if len(parts) == 1 {
-		return parts[0]
-	}
+	if len(parts) == 0 { return nil }
+	if len(parts) == 1 { return parts[0] }
 	return core.ExprAndNode(parts...)
 }
 
@@ -161,6 +182,22 @@ func (r *WorkItemRequest) WithIdLessThanOrEqualTo(value uint64) *WorkItemRequest
 	r.Query.AndFilter(core.ExprLte("id", core.ValU64(value)))
 	return r
 }
+func (r *WorkItemRequest) WithIdBetween(lower uint64, upper uint64) *WorkItemRequest {
+	value := lower
+	from := core.ValU64(value)
+	value = upper
+	to := core.ValU64(value)
+	r.Query.AndFilter(core.ExprBetweenNode("id", from, to))
+	return r
+}
+func (r *WorkItemRequest) WithIdIsKnown() *WorkItemRequest {
+	r.Query.AndFilter(core.ExprIsNotNullNode("id"))
+	return r
+}
+func (r *WorkItemRequest) WithIdIsUnknown() *WorkItemRequest {
+	r.Query.AndFilter(core.ExprIsNullNode("id"))
+	return r
+}
 func (r *WorkItemRequest) OrderByIdAsc() *WorkItemRequest {
 	r.Query.OrderAsc("id")
 	return r
@@ -214,6 +251,22 @@ func (r *WorkItemRequest) WithTitleLessThanOrEqualTo(value string) *WorkItemRequ
 	r.Query.AndFilter(core.ExprLte("title", core.ValText(value)))
 	return r
 }
+func (r *WorkItemRequest) WithTitleBetween(lower string, upper string) *WorkItemRequest {
+	value := lower
+	from := core.ValText(value)
+	value = upper
+	to := core.ValText(value)
+	r.Query.AndFilter(core.ExprBetweenNode("title", from, to))
+	return r
+}
+func (r *WorkItemRequest) WithTitleIsKnown() *WorkItemRequest {
+	r.Query.AndFilter(core.ExprIsNotNullNode("title"))
+	return r
+}
+func (r *WorkItemRequest) WithTitleIsUnknown() *WorkItemRequest {
+	r.Query.AndFilter(core.ExprIsNullNode("title"))
+	return r
+}
 func (r *WorkItemRequest) WithTitleContaining(term string) *WorkItemRequest {
 	r.Query.AndFilter(core.ExprContain("title", term))
 	return r
@@ -226,8 +279,20 @@ func (r *WorkItemRequest) WithTitleStartingWith(term string) *WorkItemRequest {
 	r.Query.AndFilter(core.ExprBeginWith("title", term))
 	return r
 }
+func (r *WorkItemRequest) WithTitleNotStartingWith(term string) *WorkItemRequest {
+	r.Query.AndFilter(core.ExprNotBeginWith("title", term))
+	return r
+}
 func (r *WorkItemRequest) WithTitleEndingWith(term string) *WorkItemRequest {
 	r.Query.AndFilter(core.ExprEndWith("title", term))
+	return r
+}
+func (r *WorkItemRequest) WithTitleNotEndingWith(term string) *WorkItemRequest {
+	r.Query.AndFilter(core.ExprNotEndWith("title", term))
+	return r
+}
+func (r *WorkItemRequest) WithTitleSoundingLike(term string) *WorkItemRequest {
+	r.Query.AndFilter(core.ExprSoundLike("title", core.ValText(term)))
 	return r
 }
 func (r *WorkItemRequest) OrderByTitleAsc() *WorkItemRequest {
@@ -244,32 +309,17 @@ func (r *WorkItemRequest) SelectDescription() *WorkItemRequest {
 }
 
 func (r *WorkItemRequest) WithDescriptionIs(value *string) *WorkItemRequest {
-	r.Query.AndFilter(core.ExprEq("description", func() core.Value {
-		if value == nil {
-			return core.ValNull()
-		}
-		return core.ValText(*value)
-	}()))
+	r.Query.AndFilter(core.ExprEq("description", func() core.Value { if value == nil { return core.ValNull() }; return core.ValText((*value)) }()))
 	return r
 }
 func (r *WorkItemRequest) WithDescriptionIsNot(value *string) *WorkItemRequest {
-	r.Query.AndFilter(core.ExprNe("description", func() core.Value {
-		if value == nil {
-			return core.ValNull()
-		}
-		return core.ValText(*value)
-	}()))
+	r.Query.AndFilter(core.ExprNe("description", func() core.Value { if value == nil { return core.ValNull() }; return core.ValText((*value)) }()))
 	return r
 }
 func (r *WorkItemRequest) WithDescriptionIn(values []*string) *WorkItemRequest {
 	converted := make([]core.Value, 0, len(values))
 	for _, value := range values {
-		converted = append(converted, func() core.Value {
-			if value == nil {
-				return core.ValNull()
-			}
-			return core.ValText(*value)
-		}())
+		converted = append(converted, func() core.Value { if value == nil { return core.ValNull() }; return core.ValText((*value)) }())
 	}
 	r.Query.AndFilter(core.ExprInList("description", converted))
 	return r
@@ -277,50 +327,41 @@ func (r *WorkItemRequest) WithDescriptionIn(values []*string) *WorkItemRequest {
 func (r *WorkItemRequest) WithDescriptionNotIn(values []*string) *WorkItemRequest {
 	converted := make([]core.Value, 0, len(values))
 	for _, value := range values {
-		converted = append(converted, func() core.Value {
-			if value == nil {
-				return core.ValNull()
-			}
-			return core.ValText(*value)
-		}())
+		converted = append(converted, func() core.Value { if value == nil { return core.ValNull() }; return core.ValText((*value)) }())
 	}
 	r.Query.AndFilter(core.ExprNotInList("description", converted))
 	return r
 }
 func (r *WorkItemRequest) WithDescriptionGreaterThan(value *string) *WorkItemRequest {
-	r.Query.AndFilter(core.ExprGt("description", func() core.Value {
-		if value == nil {
-			return core.ValNull()
-		}
-		return core.ValText(*value)
-	}()))
+	r.Query.AndFilter(core.ExprGt("description", func() core.Value { if value == nil { return core.ValNull() }; return core.ValText((*value)) }()))
 	return r
 }
 func (r *WorkItemRequest) WithDescriptionGreaterThanOrEqualTo(value *string) *WorkItemRequest {
-	r.Query.AndFilter(core.ExprGte("description", func() core.Value {
-		if value == nil {
-			return core.ValNull()
-		}
-		return core.ValText(*value)
-	}()))
+	r.Query.AndFilter(core.ExprGte("description", func() core.Value { if value == nil { return core.ValNull() }; return core.ValText((*value)) }()))
 	return r
 }
 func (r *WorkItemRequest) WithDescriptionLessThan(value *string) *WorkItemRequest {
-	r.Query.AndFilter(core.ExprLt("description", func() core.Value {
-		if value == nil {
-			return core.ValNull()
-		}
-		return core.ValText(*value)
-	}()))
+	r.Query.AndFilter(core.ExprLt("description", func() core.Value { if value == nil { return core.ValNull() }; return core.ValText((*value)) }()))
 	return r
 }
 func (r *WorkItemRequest) WithDescriptionLessThanOrEqualTo(value *string) *WorkItemRequest {
-	r.Query.AndFilter(core.ExprLte("description", func() core.Value {
-		if value == nil {
-			return core.ValNull()
-		}
-		return core.ValText(*value)
-	}()))
+	r.Query.AndFilter(core.ExprLte("description", func() core.Value { if value == nil { return core.ValNull() }; return core.ValText((*value)) }()))
+	return r
+}
+func (r *WorkItemRequest) WithDescriptionBetween(lower *string, upper *string) *WorkItemRequest {
+	value := lower
+	from := func() core.Value { if value == nil { return core.ValNull() }; return core.ValText((*value)) }()
+	value = upper
+	to := func() core.Value { if value == nil { return core.ValNull() }; return core.ValText((*value)) }()
+	r.Query.AndFilter(core.ExprBetweenNode("description", from, to))
+	return r
+}
+func (r *WorkItemRequest) WithDescriptionIsKnown() *WorkItemRequest {
+	r.Query.AndFilter(core.ExprIsNotNullNode("description"))
+	return r
+}
+func (r *WorkItemRequest) WithDescriptionIsUnknown() *WorkItemRequest {
+	r.Query.AndFilter(core.ExprIsNullNode("description"))
 	return r
 }
 func (r *WorkItemRequest) WithDescriptionContaining(term string) *WorkItemRequest {
@@ -335,8 +376,20 @@ func (r *WorkItemRequest) WithDescriptionStartingWith(term string) *WorkItemRequ
 	r.Query.AndFilter(core.ExprBeginWith("description", term))
 	return r
 }
+func (r *WorkItemRequest) WithDescriptionNotStartingWith(term string) *WorkItemRequest {
+	r.Query.AndFilter(core.ExprNotBeginWith("description", term))
+	return r
+}
 func (r *WorkItemRequest) WithDescriptionEndingWith(term string) *WorkItemRequest {
 	r.Query.AndFilter(core.ExprEndWith("description", term))
+	return r
+}
+func (r *WorkItemRequest) WithDescriptionNotEndingWith(term string) *WorkItemRequest {
+	r.Query.AndFilter(core.ExprNotEndWith("description", term))
+	return r
+}
+func (r *WorkItemRequest) WithDescriptionSoundingLike(term string) *WorkItemRequest {
+	r.Query.AndFilter(core.ExprSoundLike("description", core.ValText(term)))
 	return r
 }
 func (r *WorkItemRequest) OrderByDescriptionAsc() *WorkItemRequest {
@@ -392,10 +445,31 @@ func (r *WorkItemRequest) WithPlatformLessThanOrEqualTo(value uint64) *WorkItemR
 	r.Query.AndFilter(core.ExprLte("platform_id", core.ValU64(value)))
 	return r
 }
-func (r *WorkItemRequest) FacetByPlatformAs(name string, nestedReq any) *WorkItemRequest {
-	if req, ok := nestedReq.(interface{ GetQuery() *core.SelectQuery }); ok {
-		r.Query.WithObjectGroupBy(name, "platform_id", req.GetQuery())
-	}
+func (r *WorkItemRequest) WithPlatformBetween(lower uint64, upper uint64) *WorkItemRequest {
+	value := lower
+	from := core.ValU64(value)
+	value = upper
+	to := core.ValU64(value)
+	r.Query.AndFilter(core.ExprBetweenNode("platform_id", from, to))
+	return r
+}
+func (r *WorkItemRequest) WithPlatformIsKnown() *WorkItemRequest {
+	r.Query.AndFilter(core.ExprIsNotNullNode("platform_id"))
+	return r
+}
+func (r *WorkItemRequest) WithPlatformIsUnknown() *WorkItemRequest {
+	r.Query.AndFilter(core.ExprIsNullNode("platform_id"))
+	return r
+}
+func (r *WorkItemRequest) FacetByPlatformAs(
+	name string,
+	nestedReq interface{ GetQuery() *core.SelectQuery },
+	includeAllFacets ...bool,
+) *WorkItemRequest {
+	includeAll := true
+	if len(includeAllFacets) > 0 { includeAll = includeAllFacets[0] }
+	r.queryOptions.Facets = append(r.queryOptions.Facets, core.NewFacetRequest(
+		name, "platform_id", core.NewQuerySelection(nestedReq.GetQuery()), includeAll))
 	return r
 }
 func (r *WorkItemRequest) OrderByPlatformAsc() *WorkItemRequest {
@@ -451,6 +525,22 @@ func (r *WorkItemRequest) WithVersionLessThanOrEqualTo(value int64) *WorkItemReq
 	r.Query.AndFilter(core.ExprLte("version", core.ValI64(value)))
 	return r
 }
+func (r *WorkItemRequest) WithVersionBetween(lower int64, upper int64) *WorkItemRequest {
+	value := lower
+	from := core.ValI64(value)
+	value = upper
+	to := core.ValI64(value)
+	r.Query.AndFilter(core.ExprBetweenNode("version", from, to))
+	return r
+}
+func (r *WorkItemRequest) WithVersionIsKnown() *WorkItemRequest {
+	r.Query.AndFilter(core.ExprIsNotNullNode("version"))
+	return r
+}
+func (r *WorkItemRequest) WithVersionIsUnknown() *WorkItemRequest {
+	r.Query.AndFilter(core.ExprIsNullNode("version"))
+	return r
+}
 func (r *WorkItemRequest) OrderByVersionAsc() *WorkItemRequest {
 	r.Query.OrderAsc("version")
 	return r
@@ -460,13 +550,41 @@ func (r *WorkItemRequest) OrderByVersionDesc() *WorkItemRequest {
 	return r
 }
 
+func (r *WorkItemRequest) SelectPlatformWith(child interface {
+	GetQuery() *core.SelectQuery
+	NewRelationEntity() core.Entity
+}) *WorkItemRequest {
+	r.Query.Project("platform_id")
+	r.Query.RelationQuery("platformEntity", child.GetQuery())
+	r.relationFactories["platformEntity"] = child.NewRelationEntity
+	return r
+}
+
+func (r *WorkItemRequest) WithPlatformMatching(child interface {
+	GetQuery() *core.SelectQuery
+	GetEntityDescriptor() *core.EntityDescriptor
+}) *WorkItemRequest {
+	r.Query.AndFilter(core.ExprInSubQuery("platform_id", child.GetEntityDescriptor(), child.GetQuery(), "id"))
+	return r
+}
+
+func (r *WorkItemRequest) WithoutPlatformMatching(child interface {
+	GetQuery() *core.SelectQuery
+	GetEntityDescriptor() *core.EntityDescriptor
+}) *WorkItemRequest {
+	r.Query.AndFilter(core.ExprNotInSubQuery("platform_id", child.GetEntityDescriptor(), child.GetQuery(), "id"))
+	return r
+}
+
+
+
+
 func (e *ExecutableWorkItemRequest) NewEntity(context *runtime.UserContext) *WorkItem {
 	r := e.request
 	if strings.TrimSpace(r.purposeText) == "" || strings.TrimSpace(r.commentText) == "" {
 		panic("security audit failure: non-empty Comment() and Purpose() are required before NewEntity()")
 	}
 	entity := NewWorkItem()
-	entity.AttachEntityRoot(core.NewEntityRoot())
 	initialized := context.InitializeEntity("WorkItem", entity)
 	typed, ok := initialized.(*WorkItem)
 	if !ok {
@@ -493,15 +611,38 @@ func (e *ExecutableWorkItemRequest) ExecuteForList(context *runtime.UserContext)
 	}
 
 	var results []*WorkItem
+	queryRoot := core.NewEntityRoot()
 	for _, rec := range rows {
 		entity := NewWorkItem()
-		entity.AttachEntityRoot(core.NewEntityRoot())
+		entity.AttachEntityRoot(queryRoot)
 		if err := entity.FromRecord(rec); err != nil {
 			return nil, err
 		}
+		if relationValue, selected := rec["platformEntity"]; selected {
+			entity.markRelationLoaded("platformEntity")
+			if childRecord, ok := relationValue.V.(core.Record); ok {
+				if factory := e.request.relationFactories["platformEntity"]; factory != nil {
+					childEntity := factory()
+					if attachable, ok := childEntity.(interface { AttachEntityRoot(*core.EntityRoot) }); ok { attachable.AttachEntityRoot(entity.EntityRoot()) }
+					if err := childEntity.FromRecord(childRecord); err != nil { return nil, err }
+					entity.setRelationEntity("platformEntity", childEntity)
+				}
+			}
+		}
 		results = append(results, entity)
 	}
-	return core.NewSmartList(results), nil
+	list := core.NewSmartList(results)
+	if len(e.request.queryOptions.Facets) > 0 {
+		dsRaw := context.GetResource("dataService")
+		ds, ok := dsRaw.(data_service.QueryExecutor)
+		if !ok { return nil, fmt.Errorf("dataService does not implement data_service.QueryExecutor") }
+		facets, err := runtime.ExecuteFacets(
+			context, runtime.NewRuntimeDataService(context.Metadata, ds),
+			e.request.Query, e.request.queryOptions)
+		if err != nil { return nil, err }
+		core.AttachFacets(list, facets)
+	}
+	return list, nil
 }
 
 // ExecuteForPage applies trusted policy once, then derives exact-count and row
@@ -514,39 +655,55 @@ func (e *ExecutableWorkItemRequest) ExecuteForPage(context *runtime.UserContext,
 	if size == 0 {
 		return nil, fmt.Errorf("QUERY_INVALID_LIMIT: size must be positive")
 	}
-	r.Query.Page(offset, size).Comment(fmt.Sprintf("comment=%s; purpose=%s", r.commentText, r.purposeText))
+	r.Query.Page(offset, size).Comment(r.commentText).Purpose(r.purposeText)
 	authorized, err := context.PrepareQuery(r.Query)
-	if err != nil {
-		return nil, err
-	}
+	if err != nil { return nil, err }
 	dsRaw := context.GetResource("dataService")
 	ds, ok := dsRaw.(data_service.QueryExecutor)
-	if !ok {
-		return nil, fmt.Errorf("dataService does not implement data_service.QueryExecutor")
-	}
+	if !ok { return nil, fmt.Errorf("dataService does not implement data_service.QueryExecutor") }
 	service := runtime.NewRuntimeDataService(context.Metadata, ds)
 	const countAlias = "__teaql_total"
-	countRows, err := service.FetchAll(context, authorized.ForExactCount(countAlias))
-	if err != nil {
-		return nil, err
-	}
-	if len(countRows) != 1 {
-		return nil, fmt.Errorf("exact count returned %d rows", len(countRows))
-	}
-	total, ok := countRows[0][countAlias].TryU64()
-	if !ok {
-		return nil, fmt.Errorf("exact count did not return an unsigned integer")
-	}
-	rows, err := service.FetchAll(context, authorized)
-	if err != nil {
-		return nil, err
+	var rows []core.Record
+	var total uint64
+	if authorized.IDSetPagination != nil {
+		rows, err = service.FetchAll(context, authorized)
+		if err != nil { return nil, err }
+		if retainedCount, accuracy := context.IDSetCount(); accuracy == "EXACT" {
+			total = retainedCount
+		} else {
+			countRows, countErr := service.FetchAll(context, authorized.ForExactCount(countAlias))
+			if countErr != nil { return nil, countErr }
+			if len(countRows) != 1 { return nil, fmt.Errorf("exact count returned %d rows", len(countRows)) }
+			var ok bool
+			total, ok = countRows[0][countAlias].TryU64()
+			if !ok { return nil, fmt.Errorf("exact count did not return an unsigned integer") }
+		}
+	} else {
+		countRows, countErr := service.FetchAll(context, authorized.ForExactCount(countAlias))
+		if countErr != nil { return nil, countErr }
+		if len(countRows) != 1 { return nil, fmt.Errorf("exact count returned %d rows", len(countRows)) }
+		var ok bool
+		total, ok = countRows[0][countAlias].TryU64()
+		if !ok { return nil, fmt.Errorf("exact count did not return an unsigned integer") }
+		rows, err = service.FetchAll(context, authorized)
+		if err != nil { return nil, err }
 	}
 	results := make([]*WorkItem, 0, len(rows))
+	queryRoot := core.NewEntityRoot()
 	for _, rec := range rows {
 		entity := NewWorkItem()
-		entity.AttachEntityRoot(core.NewEntityRoot())
-		if err := entity.FromRecord(rec); err != nil {
-			return nil, err
+		entity.AttachEntityRoot(queryRoot)
+		if err := entity.FromRecord(rec); err != nil { return nil, err }
+		if relationValue, selected := rec["platformEntity"]; selected {
+			entity.markRelationLoaded("platformEntity")
+			if childRecord, ok := relationValue.V.(core.Record); ok {
+				if factory := e.request.relationFactories["platformEntity"]; factory != nil {
+					childEntity := factory()
+					if attachable, ok := childEntity.(interface { AttachEntityRoot(*core.EntityRoot) }); ok { attachable.AttachEntityRoot(entity.EntityRoot()) }
+					if err := childEntity.FromRecord(childRecord); err != nil { return nil, err }
+					entity.setRelationEntity("platformEntity", childEntity)
+				}
+			}
 		}
 		results = append(results, entity)
 	}
@@ -563,17 +720,21 @@ func (e *ExecutableWorkItemRequest) ExecuteForStream(context *runtime.UserContex
 	if yield == nil {
 		return fmt.Errorf("stream consumer must not be nil")
 	}
-	r.Query.Comment(fmt.Sprintf("comment=%s; purpose=%s", r.commentText, r.purposeText))
+	r.Query.Comment(r.commentText).Purpose(r.purposeText)
 	dsRaw := context.GetResource("dataService")
 	ds, ok := dsRaw.(data_service.StreamQueryExecutor)
 	if !ok {
 		return fmt.Errorf("dataService does not implement data_service.StreamQueryExecutor")
 	}
-	req := &data_service.QueryRequest{Query: r.Query, TraceChain: r.Query.TraceChain, Comment: r.Query.CommentText}
+	req := &data_service.QueryRequest{
+		Query: r.Query, TraceChain: r.Query.TraceChain,
+		Comment: r.Query.CommentText, Purpose: r.Query.PurposeText,
+	}
+	queryRoot := core.NewEntityRoot()
 	return ds.QueryStream(context, req, chunkSize, func(chunk *data_service.StreamChunk) error {
 		for _, rec := range chunk.Rows {
 			entity := NewWorkItem()
-			entity.AttachEntityRoot(core.NewEntityRoot())
+			entity.AttachEntityRoot(queryRoot)
 			if err := entity.FromRecord(rec); err != nil {
 				return err
 			}
@@ -590,7 +751,7 @@ func (e *ExecutableWorkItemRequest) ExecuteRecords(context *runtime.UserContext)
 	if strings.TrimSpace(r.purposeText) == "" || strings.TrimSpace(r.commentText) == "" {
 		return nil, fmt.Errorf("security audit failure: Comment() and Purpose() must be called before ExecuteForList()")
 	}
-	r.Query.Comment(fmt.Sprintf("comment=%s; purpose=%s", r.commentText, r.purposeText))
+	r.Query.Comment(r.commentText).Purpose(r.purposeText)
 
 	dsRaw := context.GetResource("dataService")
 	if dsRaw == nil {
@@ -609,6 +770,14 @@ func (e *ExecutableWorkItemRequest) ExecuteRecords(context *runtime.UserContext)
 	return rows, nil
 }
 
+// ExecuteForRows preserves aggregate/group projections as records while keeping
+// the cross-language SmartList result boundary.
+func (e *ExecutableWorkItemRequest) ExecuteForRows(context *runtime.UserContext) (*core.SmartList[core.Record], error) {
+	rows, err := e.ExecuteRecords(context)
+	if err != nil { return nil, err }
+	return core.NewSmartList(rows), nil
+}
+
 func (r *WorkItemRequest) Count() *WorkItemRequest {
 	return r.CountAs("count")
 }
@@ -617,6 +786,7 @@ func (r *WorkItemRequest) CountAs(alias string) *WorkItemRequest {
 	r.Query.CountField("id", alias)
 	return r
 }
+
 
 func (r *WorkItemRequest) GroupById() *WorkItemRequest {
 	r.Query.WithGroupBy("id")

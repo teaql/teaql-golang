@@ -21,6 +21,7 @@ type QueryRequest struct {
 	Query      *core.SelectQuery
 	TraceChain []*core.TraceNode
 	Comment    *string
+	Purpose    *string
 }
 
 type QueryResult struct {
@@ -118,6 +119,8 @@ type ExecutionMetadata struct {
 	ResultCount      *int
 	TraceChain       []*core.TraceNode
 	Comment          *string
+	Purpose          *string
+	AuditReason      *string
 	BackendRequestId *string
 	DebugQuery       *string
 }

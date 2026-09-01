@@ -221,6 +221,7 @@ func idSetQueryKey(context *UserContext, query *core.SelectQuery, namespace stri
 	normalized.Relations = nil
 	normalized.RelationAggregates = nil
 	normalized.CommentText = nil
+	normalized.PurposeText = nil
 	normalized.TraceChain = nil
 	normalized.IDSetPagination = nil
 	payload, _ := json.Marshal(normalized)
@@ -348,6 +349,7 @@ func continuousPageQueryKey(context *UserContext, query *core.SelectQuery, names
 	normalized := cloneSelectQuery(query, query.Entity)
 	normalized.Slice.Offset = 0
 	normalized.CommentText = nil
+	normalized.PurposeText = nil
 	normalized.TraceChain = nil
 	payload, _ := json.Marshal(normalized)
 	digest := sha256.Sum256(append([]byte(namespace+"|"+context.userIdentifier+"|"), payload...))
@@ -379,6 +381,7 @@ func (s *RuntimeDataService) fetchRows(context stdcontext.Context, query *core.S
 		Query:      query,
 		TraceChain: query.TraceChain,
 		Comment:    query.CommentText,
+		Purpose:    query.PurposeText,
 	}
 
 	res, err := qExec.Query(context, req)
@@ -415,6 +418,10 @@ func (s *RuntimeDataService) enhanceRelations(context stdcontext.Context, parent
 			}
 		}
 		childQuery := cloneSelectQuery(load.Query, relation.TargetEntity)
+		childQuery.CommentText = query.CommentText
+		childQuery.PurposeText = query.PurposeText
+		childQuery.TraceChain = append(canonicalTraceFrames(query.TraceChain),
+			core.NewTypedTraceNode("relation", query.Entity+"."+load.Name, load.Name))
 		ensureProjection(childQuery, relation.ForKey)
 		bounded := relation.IsMany && childQuery.Slice != nil && childQuery.Slice.Limit != nil
 		useProbes := false
@@ -537,6 +544,10 @@ func (s *RuntimeDataService) enhanceRelationAggregates(context stdcontext.Contex
 			continue
 		}
 		childQuery := cloneSelectQuery(aggregate.Query, relation.TargetEntity)
+		childQuery.CommentText = query.CommentText
+		childQuery.PurposeText = query.PurposeText
+		childQuery.TraceChain = append(canonicalTraceFrames(query.TraceChain),
+			core.NewTypedTraceNode("relation", query.Entity+"."+aggregate.RelationName, aggregate.RelationName))
 		childQuery.Projection = nil
 		childQuery.ExprProjection = nil
 		childQuery.OrderBy = nil

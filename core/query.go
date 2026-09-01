@@ -246,6 +246,7 @@ type SelectQuery struct {
 	RelationAggregates   []*RelationAggregate
 	AggregationCache     *AggregationCacheOptions
 	CommentText          *string
+	PurposeText          *string
 	TraceChain           []*TraceNode
 	RawSql               *string
 	RawSqlSearchCriteria []string
@@ -543,12 +544,18 @@ func (q *SelectQuery) PropagateAggregationCache(cacheExpiredMillis uint64) *Sele
 
 func (q *SelectQuery) Comment(comment string) *SelectQuery {
 	q.CommentText = &comment
-	q.TraceChain = append(q.TraceChain, NewTraceNode(q.Entity, nil, comment))
+	q.TraceChain = append(q.TraceChain, NewTypedTraceNode("comment", q.Entity, comment))
 	return q
 }
 
 func (q *SelectQuery) WithComment(comment string) *SelectQuery {
 	return q.Comment(comment)
+}
+
+func (q *SelectQuery) Purpose(purpose string) *SelectQuery {
+	q.PurposeText = &purpose
+	q.TraceChain = append(q.TraceChain, NewTypedTraceNode("purpose", q.Entity, purpose))
+	return q
 }
 
 func (q *SelectQuery) WithRawSql(rawSql string) *SelectQuery {

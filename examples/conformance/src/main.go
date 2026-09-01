@@ -34,9 +34,16 @@ func main() {
 		panic(err)
 	}
 
-	items, err := lib.Q.WorkItems().OrderByIdAsc().Comment("load retained example rows").Purpose("verify typed Q and SmartList").ExecuteForList(context)
+	items, err := lib.Q.WorkItems().OrderByIdAsc().
+		SelectPlatformWith(lib.Q.Platforms().SelectName()).
+		Comment("load retained example rows and their platform").
+		Purpose("verify typed Q, relation trace, and SmartList").ExecuteForList(context)
 	if err != nil {
 		panic(err)
+	}
+	loadedPlatform, loaded := lib.Q.WorkItemPlatform(items.Data[0])
+	if !loaded || loadedPlatform.Name() != "Runtime Example" {
+		panic("generated forward relation was not loaded")
 	}
 	fmt.Printf("Go retained conformance example passed: %d item(s)\n", len(items.Data))
 }

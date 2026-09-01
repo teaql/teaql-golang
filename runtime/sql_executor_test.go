@@ -330,8 +330,13 @@ func TestSqlExecutionEvidenceIsParameterizedAndFilterable(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	comment, purpose := "what: load governed users", "why: verify trace inheritance"
 	_, err = exec.Query(context, &data_service.QueryRequest{Query: &core.SelectQuery{
 		Entity: "User", Filter: core.ExprEq("name", core.ValText("secret-value")),
+	}, Comment: &comment, Purpose: &purpose, TraceChain: []*core.TraceNode{
+		core.NewTypedTraceNode("relation", "User.organization", "organization"),
+		core.NewTypedTraceNode("relation", "Organization.region", "region"),
+		core.NewTypedTraceNode("relation", "Region.country", "country"),
 	}})
 	if err != nil {
 		t.Fatal(err)
@@ -355,6 +360,19 @@ func TestSqlExecutionEvidenceIsParameterizedAndFilterable(t *testing.T) {
 	if entries[0].AffectedRows == nil || entries[1].ResultCount == nil {
 		t.Fatal("missing outcome metadata")
 	}
+	if entries[1].Comment == nil || *entries[1].Comment != comment ||
+		entries[1].Purpose == nil || *entries[1].Purpose != purpose {
+		t.Fatal("query intent was not retained as structured fields")
+	}
+	wantKinds := []string{"operation", "request", "relation", "relation", "relation", "provider", "sql"}
+	if len(entries[1].TraceChain) != len(wantKinds) {
+		t.Fatalf("unexpected trace depth: %d", len(entries[1].TraceChain))
+	}
+	for index, kind := range wantKinds {
+		if entries[1].TraceChain[index].Kind != kind {
+			t.Fatalf("trace[%d] kind=%q want %q", index, entries[1].TraceChain[index].Kind, kind)
+		}
+	}
 
 	store.EnableQuery()
 	if len(store.Snapshot()) != 0 {
@@ -376,28 +394,37 @@ func TestSqlExecutionEvidenceIsParameterizedAndFilterable(t *testing.T) {
 	}
 }
 
-func TestDiagnosticSQLLogSinkIsExplicitAndUsesDebugQuery(t *testing.T) {
+func TestDiagnosticSQLLogDefaultsOnHasStructuredFieldsAndIndependentSwitches(t *testing.T) {
 	var output bytes.Buffer
 	debug := "SELECT * FROM users WHERE name = 'O''Brien 学校'"
 	count := 1
 	metadata := data_service.ExecutionMetadata{
 		Operation: data_service.OpQuery, DebugQuery: &debug,
-		StartedAt: time.Unix(1, 0), EndedAt: time.Unix(1, 25_000), ResultCount: &count,
+		ParameterizedSQL: "SELECT * FROM users WHERE name = ?",
+		Parameters:       []core.Value{core.ValText("O'Brien 学校")},
+		StartedAt:        time.Unix(1, 0), EndedAt: time.Unix(1, 25_000), ResultCount: &count,
 	}
 	context := runtime.NewUserContext()
-	context.RecordExecutionMetadata(metadata)
-	if output.Len() != 0 {
-		t.Fatal("diagnostic SQL must be disabled by default")
+	if !context.QuerySqlLogEnabled() || !context.MutationSqlLogEnabled() {
+		t.Fatal("query and mutation SQL logs must be enabled by default")
 	}
 	context.WithDiagnosticSQLLogSink(runtime.NewTextDiagnosticSQLLogSink(&output))
 	context.RecordExecutionMetadata(metadata)
-	if !strings.Contains(output.String(), debug) || !strings.Contains(output.String(), "1 rows returned") {
+	if !strings.Contains(output.String(), "Parameterized SQL:") ||
+		!strings.Contains(output.String(), "Debug SQL:") ||
+		!strings.Contains(output.String(), debug) || !strings.Contains(output.String(), "1 rows returned") {
 		t.Fatalf("operator log did not contain copy-paste SQL and summary: %s", output.String())
 	}
-	context.WithDiagnosticSQLLogSink(nil)
+	context.DisableSelectSqlLog()
 	before := output.Len()
 	context.RecordExecutionMetadata(metadata)
 	if output.Len() != before {
-		t.Fatal("removing diagnostic SQL sink must stop value-bearing output")
+		t.Fatal("query disable flag did not stop query output")
+	}
+	affected := uint64(1)
+	metadata.Operation, metadata.AffectedRows, metadata.ResultCount = data_service.OpUpdate, &affected, nil
+	context.RecordExecutionMetadata(metadata)
+	if output.Len() == before {
+		t.Fatal("query disable flag must not stop mutation output")
 	}
 }
