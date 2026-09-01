@@ -14,14 +14,11 @@ type SchoolTypeCheckerLogic interface {
 
 type NoopSchoolTypeChecker struct{}
 
-func (c *NoopSchoolTypeChecker) CheckAndFix(context *runtime.UserContext, entity *SchoolType, status any, location any, results any) {
-}
-func (c *NoopSchoolTypeChecker) Required(value bool, field string, location any, results any)       {}
+func (c *NoopSchoolTypeChecker) CheckAndFix(context *runtime.UserContext, entity *SchoolType, status any, location any, results any) {}
+func (c *NoopSchoolTypeChecker) Required(value bool, field string, location any, results any) {}
 func (c *NoopSchoolTypeChecker) RequiredText(value string, field string, location any, results any) {}
-func (c *NoopSchoolTypeChecker) MinStringLength(value string, field string, minLen int, location any, results any) {
-}
-func (c *NoopSchoolTypeChecker) MaxStringLength(value string, field string, maxLen int, location any, results any) {
-}
+func (c *NoopSchoolTypeChecker) MinStringLength(value string, field string, minLen int, location any, results any) {}
+func (c *NoopSchoolTypeChecker) MaxStringLength(value string, field string, maxLen int, location any, results any) {}
 
 type SchoolTypeChecker struct {
 	logic SchoolTypeCheckerLogic

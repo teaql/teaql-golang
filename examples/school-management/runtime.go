@@ -13,41 +13,41 @@ import (
 	"github.com/shopspring/decimal"
 
 	"github.com/teaql/teaql-golang/core"
-	provider "github.com/teaql/teaql-golang/provider/sqlite"
 	"github.com/teaql/teaql-golang/runtime"
 	teaql_sql "github.com/teaql/teaql-golang/sql"
+	provider "github.com/teaql/teaql-golang/provider/sqlite"
 
 	"school-management-service-core-workspace/lib/platform"
-	"school-management-service-core-workspace/lib/school"
 	"school-management-service-core-workspace/lib/school_type"
+	"school-management-service-core-workspace/lib/school"
 )
 
 var _ = time.Time{}
 var _ = decimal.Decimal{}
 
 var generatedRootGraph = &runtime.GraphNode{
-	Entity: "Platform",
-	Values: core.Record{"id": core.Value{V: uint64(1)},
-		"name":        core.Value{V: "Campus Learning Platform"},
-		"base_url":    core.Value{V: "https://campus.example.com"},
-		"create_time": core.Value{V: time.Now().UTC()},
-		"update_time": core.Value{V: time.Now().UTC()}},
-}
+		Entity: "Platform",
+		Values: core.Record{"id": core.Value{V: uint64(1)},
+			"name": core.Value{V: "Campus Learning Platform"},
+			"base_url": core.Value{V: "https://campus.example.com"},
+			"create_time": core.Value{V: time.Now().UTC()},
+			"update_time": core.Value{V: time.Now().UTC()}},
+	}
 var generatedInitialGraphs = []*runtime.GraphNode{
 	&runtime.GraphNode{
 		Entity: "School Type",
 		Values: core.Record{"id": core.Value{V: uint64(1001)},
-			"platform_id":   core.Value{V: uint64(1)},
-			"name":          core.Value{V: "Primary"},
-			"code":          core.Value{V: "PRIMARY"},
+			"platform_id": core.Value{V: uint64(1)},
+			"name": core.Value{V: "Primary"},
+			"code": core.Value{V: "PRIMARY"},
 			"display_order": core.Value{V: decimal.RequireFromString("1")}},
 	},
 	&runtime.GraphNode{
 		Entity: "School Type",
 		Values: core.Record{"id": core.Value{V: uint64(1002)},
-			"platform_id":   core.Value{V: uint64(1)},
-			"name":          core.Value{V: "Secondary"},
-			"code":          core.Value{V: "SECONDARY"},
+			"platform_id": core.Value{V: uint64(1)},
+			"name": core.Value{V: "Secondary"},
+			"code": core.Value{V: "SECONDARY"},
 			"display_order": core.Value{V: decimal.RequireFromString("2")}},
 	},
 }
@@ -57,12 +57,12 @@ func Module() *runtime.RuntimeModule {
 	{
 		descriptor := core.NewEntityDescriptor("Platform").
 			TableName("platform_data")
-		descriptor.Property(core.NewPropertyDescriptor("id", core.TypeU64).ColumnName("id").Id())
-		descriptor.Property(core.NewPropertyDescriptor("name", core.TypeText).ColumnName("name"))
-		descriptor.Property(core.NewPropertyDescriptor("base_url", core.TypeText).ColumnName("base_url"))
-		descriptor.Property(core.NewPropertyDescriptor("create_time", core.TypeTimestamp).ColumnName("create_time"))
-		descriptor.Property(core.NewPropertyDescriptor("update_time", core.TypeTimestamp).ColumnName("update_time"))
-		descriptor.Property(core.NewPropertyDescriptor("version", core.TypeI64).ColumnName("version").Version())
+		descriptor.Property(core.NewPropertyDescriptor("id", core.TypeU64).ColumnName("id").NotNull().Id())
+		descriptor.Property(core.NewPropertyDescriptor("name", core.TypeText).ColumnName("name").NotNull())
+		descriptor.Property(core.NewPropertyDescriptor("base_url", core.TypeText).ColumnName("base_url").NotNull())
+		descriptor.Property(core.NewPropertyDescriptor("create_time", core.TypeTimestamp).ColumnName("create_time").NotNull())
+		descriptor.Property(core.NewPropertyDescriptor("update_time", core.TypeTimestamp).ColumnName("update_time").NotNull())
+		descriptor.Property(core.NewPropertyDescriptor("version", core.TypeI64).ColumnName("version").NotNull().Version())
 		descriptor.Relation(core.NewRelationDescriptor("schoolTypeList", "School Type").LocalKey("id").ForeignKey("platform_id").Many())
 		descriptor.Relation(core.NewRelationDescriptor("schoolList", "School").LocalKey("id").ForeignKey("platform_id").Many())
 		module.Entity(descriptor)
@@ -70,12 +70,12 @@ func Module() *runtime.RuntimeModule {
 	{
 		descriptor := core.NewEntityDescriptor("School Type").
 			TableName("school_type_data")
-		descriptor.Property(core.NewPropertyDescriptor("id", core.TypeU64).ColumnName("id").Id())
-		descriptor.Property(core.NewPropertyDescriptor("name", core.TypeText).ColumnName("name"))
-		descriptor.Property(core.NewPropertyDescriptor("code", core.TypeText).ColumnName("code"))
-		descriptor.Property(core.NewPropertyDescriptor("display_order", core.TypeDecimal).ColumnName("display_order"))
-		descriptor.Property(core.NewPropertyDescriptor("version", core.TypeI64).ColumnName("version").Version())
-		descriptor.Property(core.NewPropertyDescriptor("platform_id", core.TypeU64).ColumnName("platform"))
+		descriptor.Property(core.NewPropertyDescriptor("id", core.TypeU64).ColumnName("id").NotNull().Id())
+		descriptor.Property(core.NewPropertyDescriptor("name", core.TypeText).ColumnName("name").NotNull())
+		descriptor.Property(core.NewPropertyDescriptor("code", core.TypeText).ColumnName("code").NotNull())
+		descriptor.Property(core.NewPropertyDescriptor("display_order", core.TypeDecimal).ColumnName("display_order").NotNull())
+		descriptor.Property(core.NewPropertyDescriptor("version", core.TypeI64).ColumnName("version").NotNull().Version())
+		descriptor.Property(core.NewPropertyDescriptor("platform_id", core.TypeU64).ColumnName("platform").NotNull())
 		descriptor.Relation(core.NewRelationDescriptor("platformEntity", "Platform").LocalKey("platform_id").ForeignKey("id"))
 		descriptor.Relation(core.NewRelationDescriptor("schoolList", "School").LocalKey("id").ForeignKey("school_type_id").Many())
 		module.Entity(descriptor)
@@ -83,17 +83,17 @@ func Module() *runtime.RuntimeModule {
 	{
 		descriptor := core.NewEntityDescriptor("School").
 			TableName("school_data")
-		descriptor.Property(core.NewPropertyDescriptor("id", core.TypeU64).ColumnName("id").Id())
-		descriptor.Property(core.NewPropertyDescriptor("name", core.TypeText).ColumnName("name"))
-		descriptor.Property(core.NewPropertyDescriptor("address", core.TypeText).ColumnName("address"))
-		descriptor.Property(core.NewPropertyDescriptor("established_date", core.TypeDate).ColumnName("established_date"))
-		descriptor.Property(core.NewPropertyDescriptor("student_capacity", core.TypeI64).ColumnName("student_capacity"))
-		descriptor.Property(core.NewPropertyDescriptor("active", core.TypeBool).ColumnName("active"))
-		descriptor.Property(core.NewPropertyDescriptor("create_time", core.TypeTimestamp).ColumnName("create_time"))
-		descriptor.Property(core.NewPropertyDescriptor("update_time", core.TypeTimestamp).ColumnName("update_time"))
-		descriptor.Property(core.NewPropertyDescriptor("version", core.TypeI64).ColumnName("version").Version())
-		descriptor.Property(core.NewPropertyDescriptor("platform_id", core.TypeU64).ColumnName("platform"))
-		descriptor.Property(core.NewPropertyDescriptor("school_type_id", core.TypeU64).ColumnName("school_type"))
+		descriptor.Property(core.NewPropertyDescriptor("id", core.TypeU64).ColumnName("id").NotNull().Id())
+		descriptor.Property(core.NewPropertyDescriptor("name", core.TypeText).ColumnName("name").NotNull())
+		descriptor.Property(core.NewPropertyDescriptor("address", core.TypeText).ColumnName("address").NotNull())
+		descriptor.Property(core.NewPropertyDescriptor("established_date", core.TypeDate).ColumnName("established_date").NotNull())
+		descriptor.Property(core.NewPropertyDescriptor("student_capacity", core.TypeI64).ColumnName("student_capacity").NotNull())
+		descriptor.Property(core.NewPropertyDescriptor("active", core.TypeBool).ColumnName("active").NotNull())
+		descriptor.Property(core.NewPropertyDescriptor("create_time", core.TypeTimestamp).ColumnName("create_time").NotNull())
+		descriptor.Property(core.NewPropertyDescriptor("update_time", core.TypeTimestamp).ColumnName("update_time").NotNull())
+		descriptor.Property(core.NewPropertyDescriptor("version", core.TypeI64).ColumnName("version").NotNull().Version())
+		descriptor.Property(core.NewPropertyDescriptor("platform_id", core.TypeU64).ColumnName("platform").NotNull())
+		descriptor.Property(core.NewPropertyDescriptor("school_type_id", core.TypeU64).ColumnName("school_type").NotNull())
 		descriptor.Relation(core.NewRelationDescriptor("platformEntity", "Platform").LocalKey("platform_id").ForeignKey("id"))
 		descriptor.Relation(core.NewRelationDescriptor("schoolTypeEntity", "School Type").LocalKey("school_type_id").ForeignKey("id"))
 		module.Entity(descriptor)
@@ -118,24 +118,15 @@ func (r *generatedCheckerRegistry) CheckAndFix(context *runtime.UserContext, inp
 
 func generatedNumber(value any) (float64, bool) {
 	switch number := value.(type) {
-	case int:
-		return float64(number), true
-	case int32:
-		return float64(number), true
-	case int64:
-		return float64(number), true
-	case uint:
-		return float64(number), true
-	case uint32:
-		return float64(number), true
-	case uint64:
-		return float64(number), true
-	case float32:
-		return float64(number), true
-	case float64:
-		return number, true
-	default:
-		return 0, false
+	case int: return float64(number), true
+	case int32: return float64(number), true
+	case int64: return float64(number), true
+	case uint: return float64(number), true
+	case uint32: return float64(number), true
+	case uint64: return float64(number), true
+	case float32: return float64(number), true
+	case float64: return number, true
+	default: return 0, false
 	}
 }
 
@@ -143,44 +134,45 @@ func checkPlatform(context *runtime.UserContext, input *runtime.CheckAndFixInput
 	results := make([]runtime.CheckResult, 0)
 	if input.Operation == core.MutationInsert {
 		if value, exists := input.Values["create_time"]; !exists || value.V == nil {
-			input.Values["create_time"] = core.Value{V: input.Now}
+			input.Values["create_time"] = core.ValTimestamp(input.Now.UnixMilli())
+			if err := context.RecordFixEvidence(runtime.FixEvidence{EntityType: "Platform", ModelPath: "create_time", Source: runtime.FixEvidenceClock, SourceLabel: "graphClock"}); err != nil { panic(err) }
 		}
 	}
 
 	if input.Operation == core.MutationInsert {
 		if value, exists := input.Values["update_time"]; !exists || value.V == nil {
-			input.Values["update_time"] = core.Value{V: input.Now}
+			input.Values["update_time"] = core.ValTimestamp(input.Now.UnixMilli())
+			if err := context.RecordFixEvidence(runtime.FixEvidence{EntityType: "Platform", ModelPath: "update_time", Source: runtime.FixEvidenceClock, SourceLabel: "graphClock"}); err != nil { panic(err) }
 		}
 	}
 	if input.Operation == core.MutationUpdate {
-		input.Values["update_time"] = core.Value{V: input.Now}
+		input.Values["update_time"] = core.ValTimestamp(input.Now.UnixMilli())
+		if err := context.RecordFixEvidence(runtime.FixEvidence{EntityType: "Platform", ModelPath: "update_time", Source: runtime.FixEvidenceClock, SourceLabel: "graphClock"}); err != nil { panic(err) }
 	}
 
+
 	if value, exists := input.Values["name"]; (input.Operation == core.MutationInsert && !exists) || (exists && value.V == nil) {
-		results = append(results, runtime.CheckResult{RuleID: "required", Location: "name"})
+		results = append(results, runtime.CheckResult{RuleID: "required", CanonicalLocation: runtime.Location().Property("name")})
 	}
 	if value, exists := input.Values["name"]; exists {
-		if text, ok := value.V.(string); ok && len([]rune(text)) > 100 {
-			results = append(results, runtime.CheckResult{RuleID: "max_length", Location: "name", InputValue: text, SystemValue: 100})
-		}
+		if text, ok := value.V.(string); ok && len([]rune(text)) > 100 { results = append(results, runtime.CheckResult{RuleID: "max_length", CanonicalLocation: runtime.Location().Property("name"), InputValue: text, SystemValue: 100}) }
 	}
 
 	if value, exists := input.Values["base_url"]; (input.Operation == core.MutationInsert && !exists) || (exists && value.V == nil) {
-		results = append(results, runtime.CheckResult{RuleID: "required", Location: "base_url"})
+		results = append(results, runtime.CheckResult{RuleID: "required", CanonicalLocation: runtime.Location().Property("base_url")})
 	}
 	if value, exists := input.Values["base_url"]; exists {
-		if text, ok := value.V.(string); ok && len([]rune(text)) > 100 {
-			results = append(results, runtime.CheckResult{RuleID: "max_length", Location: "base_url", InputValue: text, SystemValue: 100})
-		}
+		if text, ok := value.V.(string); ok && len([]rune(text)) > 100 { results = append(results, runtime.CheckResult{RuleID: "max_length", CanonicalLocation: runtime.Location().Property("base_url"), InputValue: text, SystemValue: 100}) }
 	}
 
 	if value, exists := input.Values["create_time"]; (input.Operation == core.MutationInsert && !exists) || (exists && value.V == nil) {
-		results = append(results, runtime.CheckResult{RuleID: "required", Location: "create_time"})
+		results = append(results, runtime.CheckResult{RuleID: "required", CanonicalLocation: runtime.Location().Property("create_time")})
 	}
 
 	if value, exists := input.Values["update_time"]; (input.Operation == core.MutationInsert && !exists) || (exists && value.V == nil) {
-		results = append(results, runtime.CheckResult{RuleID: "required", Location: "update_time"})
+		results = append(results, runtime.CheckResult{RuleID: "required", CanonicalLocation: runtime.Location().Property("update_time")})
 	}
+
 
 	return results
 }
@@ -188,30 +180,28 @@ func checkPlatform(context *runtime.UserContext, input *runtime.CheckAndFixInput
 func checkSchoolType(context *runtime.UserContext, input *runtime.CheckAndFixInput) []runtime.CheckResult {
 	results := make([]runtime.CheckResult, 0)
 	if value, exists := input.Values["platform_id"]; (input.Operation == core.MutationInsert && !exists) || (exists && value.V == nil) {
-		results = append(results, runtime.CheckResult{RuleID: "required", Location: "platform"})
+		results = append(results, runtime.CheckResult{RuleID: "required", CanonicalLocation: runtime.Location().Property("platform")})
 	}
 
+
 	if value, exists := input.Values["name"]; (input.Operation == core.MutationInsert && !exists) || (exists && value.V == nil) {
-		results = append(results, runtime.CheckResult{RuleID: "required", Location: "name"})
+		results = append(results, runtime.CheckResult{RuleID: "required", CanonicalLocation: runtime.Location().Property("name")})
 	}
 	if value, exists := input.Values["name"]; exists {
-		if text, ok := value.V.(string); ok && len([]rune(text)) > 100 {
-			results = append(results, runtime.CheckResult{RuleID: "max_length", Location: "name", InputValue: text, SystemValue: 100})
-		}
+		if text, ok := value.V.(string); ok && len([]rune(text)) > 100 { results = append(results, runtime.CheckResult{RuleID: "max_length", CanonicalLocation: runtime.Location().Property("name"), InputValue: text, SystemValue: 100}) }
 	}
 
 	if value, exists := input.Values["code"]; (input.Operation == core.MutationInsert && !exists) || (exists && value.V == nil) {
-		results = append(results, runtime.CheckResult{RuleID: "required", Location: "code"})
+		results = append(results, runtime.CheckResult{RuleID: "required", CanonicalLocation: runtime.Location().Property("code")})
 	}
 	if value, exists := input.Values["code"]; exists {
-		if text, ok := value.V.(string); ok && len([]rune(text)) > 100 {
-			results = append(results, runtime.CheckResult{RuleID: "max_length", Location: "code", InputValue: text, SystemValue: 100})
-		}
+		if text, ok := value.V.(string); ok && len([]rune(text)) > 100 { results = append(results, runtime.CheckResult{RuleID: "max_length", CanonicalLocation: runtime.Location().Property("code"), InputValue: text, SystemValue: 100}) }
 	}
 
 	if value, exists := input.Values["display_order"]; (input.Operation == core.MutationInsert && !exists) || (exists && value.V == nil) {
-		results = append(results, runtime.CheckResult{RuleID: "required", Location: "display_order"})
+		results = append(results, runtime.CheckResult{RuleID: "required", CanonicalLocation: runtime.Location().Property("display_order")})
 	}
+
 
 	return results
 }
@@ -220,64 +210,65 @@ func checkSchool(context *runtime.UserContext, input *runtime.CheckAndFixInput) 
 	results := make([]runtime.CheckResult, 0)
 	if input.Operation == core.MutationInsert {
 		if value, exists := input.Values["create_time"]; !exists || value.V == nil {
-			input.Values["create_time"] = core.Value{V: input.Now}
+			input.Values["create_time"] = core.ValTimestamp(input.Now.UnixMilli())
+			if err := context.RecordFixEvidence(runtime.FixEvidence{EntityType: "School", ModelPath: "create_time", Source: runtime.FixEvidenceClock, SourceLabel: "graphClock"}); err != nil { panic(err) }
 		}
 	}
 
 	if input.Operation == core.MutationInsert {
 		if value, exists := input.Values["update_time"]; !exists || value.V == nil {
-			input.Values["update_time"] = core.Value{V: input.Now}
+			input.Values["update_time"] = core.ValTimestamp(input.Now.UnixMilli())
+			if err := context.RecordFixEvidence(runtime.FixEvidence{EntityType: "School", ModelPath: "update_time", Source: runtime.FixEvidenceClock, SourceLabel: "graphClock"}); err != nil { panic(err) }
 		}
 	}
 	if input.Operation == core.MutationUpdate {
-		input.Values["update_time"] = core.Value{V: input.Now}
+		input.Values["update_time"] = core.ValTimestamp(input.Now.UnixMilli())
+		if err := context.RecordFixEvidence(runtime.FixEvidence{EntityType: "School", ModelPath: "update_time", Source: runtime.FixEvidenceClock, SourceLabel: "graphClock"}); err != nil { panic(err) }
 	}
 
+
 	if value, exists := input.Values["platform_id"]; (input.Operation == core.MutationInsert && !exists) || (exists && value.V == nil) {
-		results = append(results, runtime.CheckResult{RuleID: "required", Location: "platform"})
+		results = append(results, runtime.CheckResult{RuleID: "required", CanonicalLocation: runtime.Location().Property("platform")})
 	}
 
 	if value, exists := input.Values["school_type_id"]; (input.Operation == core.MutationInsert && !exists) || (exists && value.V == nil) {
-		results = append(results, runtime.CheckResult{RuleID: "required", Location: "school_type"})
+		results = append(results, runtime.CheckResult{RuleID: "required", CanonicalLocation: runtime.Location().Property("school_type")})
 	}
 
 	if value, exists := input.Values["name"]; (input.Operation == core.MutationInsert && !exists) || (exists && value.V == nil) {
-		results = append(results, runtime.CheckResult{RuleID: "required", Location: "name"})
+		results = append(results, runtime.CheckResult{RuleID: "required", CanonicalLocation: runtime.Location().Property("name")})
 	}
 	if value, exists := input.Values["name"]; exists {
-		if text, ok := value.V.(string); ok && len([]rune(text)) > 100 {
-			results = append(results, runtime.CheckResult{RuleID: "max_length", Location: "name", InputValue: text, SystemValue: 100})
-		}
+		if text, ok := value.V.(string); ok && len([]rune(text)) > 100 { results = append(results, runtime.CheckResult{RuleID: "max_length", CanonicalLocation: runtime.Location().Property("name"), InputValue: text, SystemValue: 100}) }
 	}
 
 	if value, exists := input.Values["address"]; (input.Operation == core.MutationInsert && !exists) || (exists && value.V == nil) {
-		results = append(results, runtime.CheckResult{RuleID: "required", Location: "address"})
+		results = append(results, runtime.CheckResult{RuleID: "required", CanonicalLocation: runtime.Location().Property("address")})
 	}
 	if value, exists := input.Values["address"]; exists {
-		if text, ok := value.V.(string); ok && len([]rune(text)) > 100 {
-			results = append(results, runtime.CheckResult{RuleID: "max_length", Location: "address", InputValue: text, SystemValue: 100})
-		}
+		if text, ok := value.V.(string); ok && len([]rune(text)) > 100 { results = append(results, runtime.CheckResult{RuleID: "max_length", CanonicalLocation: runtime.Location().Property("address"), InputValue: text, SystemValue: 100}) }
 	}
 
 	if value, exists := input.Values["established_date"]; (input.Operation == core.MutationInsert && !exists) || (exists && value.V == nil) {
-		results = append(results, runtime.CheckResult{RuleID: "required", Location: "established_date"})
+		results = append(results, runtime.CheckResult{RuleID: "required", CanonicalLocation: runtime.Location().Property("established_date")})
 	}
 
 	if value, exists := input.Values["student_capacity"]; (input.Operation == core.MutationInsert && !exists) || (exists && value.V == nil) {
-		results = append(results, runtime.CheckResult{RuleID: "required", Location: "student_capacity"})
+		results = append(results, runtime.CheckResult{RuleID: "required", CanonicalLocation: runtime.Location().Property("student_capacity")})
 	}
 
 	if value, exists := input.Values["active"]; (input.Operation == core.MutationInsert && !exists) || (exists && value.V == nil) {
-		results = append(results, runtime.CheckResult{RuleID: "required", Location: "active"})
+		results = append(results, runtime.CheckResult{RuleID: "required", CanonicalLocation: runtime.Location().Property("active")})
 	}
 
 	if value, exists := input.Values["create_time"]; (input.Operation == core.MutationInsert && !exists) || (exists && value.V == nil) {
-		results = append(results, runtime.CheckResult{RuleID: "required", Location: "create_time"})
+		results = append(results, runtime.CheckResult{RuleID: "required", CanonicalLocation: runtime.Location().Property("create_time")})
 	}
 
 	if value, exists := input.Values["update_time"]; (input.Operation == core.MutationInsert && !exists) || (exists && value.V == nil) {
-		results = append(results, runtime.CheckResult{RuleID: "required", Location: "update_time"})
+		results = append(results, runtime.CheckResult{RuleID: "required", CanonicalLocation: runtime.Location().Property("update_time")})
 	}
+
 
 	return results
 }
@@ -287,12 +278,12 @@ func ModuleWithBehaviors() *runtime.RuntimeModule {
 	{
 		descriptor := core.NewEntityDescriptor("Platform").
 			TableName("platform_data")
-		descriptor.Property(core.NewPropertyDescriptor("id", core.TypeU64).ColumnName("id").Id())
-		descriptor.Property(core.NewPropertyDescriptor("name", core.TypeText).ColumnName("name"))
-		descriptor.Property(core.NewPropertyDescriptor("base_url", core.TypeText).ColumnName("base_url"))
-		descriptor.Property(core.NewPropertyDescriptor("create_time", core.TypeTimestamp).ColumnName("create_time"))
-		descriptor.Property(core.NewPropertyDescriptor("update_time", core.TypeTimestamp).ColumnName("update_time"))
-		descriptor.Property(core.NewPropertyDescriptor("version", core.TypeI64).ColumnName("version").Version())
+		descriptor.Property(core.NewPropertyDescriptor("id", core.TypeU64).ColumnName("id").NotNull().Id())
+		descriptor.Property(core.NewPropertyDescriptor("name", core.TypeText).ColumnName("name").NotNull())
+		descriptor.Property(core.NewPropertyDescriptor("base_url", core.TypeText).ColumnName("base_url").NotNull())
+		descriptor.Property(core.NewPropertyDescriptor("create_time", core.TypeTimestamp).ColumnName("create_time").NotNull())
+		descriptor.Property(core.NewPropertyDescriptor("update_time", core.TypeTimestamp).ColumnName("update_time").NotNull())
+		descriptor.Property(core.NewPropertyDescriptor("version", core.TypeI64).ColumnName("version").NotNull().Version())
 		descriptor.Relation(core.NewRelationDescriptor("schoolTypeList", "School Type").LocalKey("id").ForeignKey("platform_id").Many())
 		descriptor.Relation(core.NewRelationDescriptor("schoolList", "School").LocalKey("id").ForeignKey("platform_id").Many())
 		module.EntityWithBehavior(
@@ -303,12 +294,12 @@ func ModuleWithBehaviors() *runtime.RuntimeModule {
 	{
 		descriptor := core.NewEntityDescriptor("School Type").
 			TableName("school_type_data")
-		descriptor.Property(core.NewPropertyDescriptor("id", core.TypeU64).ColumnName("id").Id())
-		descriptor.Property(core.NewPropertyDescriptor("name", core.TypeText).ColumnName("name"))
-		descriptor.Property(core.NewPropertyDescriptor("code", core.TypeText).ColumnName("code"))
-		descriptor.Property(core.NewPropertyDescriptor("display_order", core.TypeDecimal).ColumnName("display_order"))
-		descriptor.Property(core.NewPropertyDescriptor("version", core.TypeI64).ColumnName("version").Version())
-		descriptor.Property(core.NewPropertyDescriptor("platform_id", core.TypeU64).ColumnName("platform"))
+		descriptor.Property(core.NewPropertyDescriptor("id", core.TypeU64).ColumnName("id").NotNull().Id())
+		descriptor.Property(core.NewPropertyDescriptor("name", core.TypeText).ColumnName("name").NotNull())
+		descriptor.Property(core.NewPropertyDescriptor("code", core.TypeText).ColumnName("code").NotNull())
+		descriptor.Property(core.NewPropertyDescriptor("display_order", core.TypeDecimal).ColumnName("display_order").NotNull())
+		descriptor.Property(core.NewPropertyDescriptor("version", core.TypeI64).ColumnName("version").NotNull().Version())
+		descriptor.Property(core.NewPropertyDescriptor("platform_id", core.TypeU64).ColumnName("platform").NotNull())
 		descriptor.Relation(core.NewRelationDescriptor("platformEntity", "Platform").LocalKey("platform_id").ForeignKey("id"))
 		descriptor.Relation(core.NewRelationDescriptor("schoolList", "School").LocalKey("id").ForeignKey("school_type_id").Many())
 		module.EntityWithBehavior(
@@ -319,17 +310,17 @@ func ModuleWithBehaviors() *runtime.RuntimeModule {
 	{
 		descriptor := core.NewEntityDescriptor("School").
 			TableName("school_data")
-		descriptor.Property(core.NewPropertyDescriptor("id", core.TypeU64).ColumnName("id").Id())
-		descriptor.Property(core.NewPropertyDescriptor("name", core.TypeText).ColumnName("name"))
-		descriptor.Property(core.NewPropertyDescriptor("address", core.TypeText).ColumnName("address"))
-		descriptor.Property(core.NewPropertyDescriptor("established_date", core.TypeDate).ColumnName("established_date"))
-		descriptor.Property(core.NewPropertyDescriptor("student_capacity", core.TypeI64).ColumnName("student_capacity"))
-		descriptor.Property(core.NewPropertyDescriptor("active", core.TypeBool).ColumnName("active"))
-		descriptor.Property(core.NewPropertyDescriptor("create_time", core.TypeTimestamp).ColumnName("create_time"))
-		descriptor.Property(core.NewPropertyDescriptor("update_time", core.TypeTimestamp).ColumnName("update_time"))
-		descriptor.Property(core.NewPropertyDescriptor("version", core.TypeI64).ColumnName("version").Version())
-		descriptor.Property(core.NewPropertyDescriptor("platform_id", core.TypeU64).ColumnName("platform"))
-		descriptor.Property(core.NewPropertyDescriptor("school_type_id", core.TypeU64).ColumnName("school_type"))
+		descriptor.Property(core.NewPropertyDescriptor("id", core.TypeU64).ColumnName("id").NotNull().Id())
+		descriptor.Property(core.NewPropertyDescriptor("name", core.TypeText).ColumnName("name").NotNull())
+		descriptor.Property(core.NewPropertyDescriptor("address", core.TypeText).ColumnName("address").NotNull())
+		descriptor.Property(core.NewPropertyDescriptor("established_date", core.TypeDate).ColumnName("established_date").NotNull())
+		descriptor.Property(core.NewPropertyDescriptor("student_capacity", core.TypeI64).ColumnName("student_capacity").NotNull())
+		descriptor.Property(core.NewPropertyDescriptor("active", core.TypeBool).ColumnName("active").NotNull())
+		descriptor.Property(core.NewPropertyDescriptor("create_time", core.TypeTimestamp).ColumnName("create_time").NotNull())
+		descriptor.Property(core.NewPropertyDescriptor("update_time", core.TypeTimestamp).ColumnName("update_time").NotNull())
+		descriptor.Property(core.NewPropertyDescriptor("version", core.TypeI64).ColumnName("version").NotNull().Version())
+		descriptor.Property(core.NewPropertyDescriptor("platform_id", core.TypeU64).ColumnName("platform").NotNull())
+		descriptor.Property(core.NewPropertyDescriptor("school_type_id", core.TypeU64).ColumnName("school_type").NotNull())
 		descriptor.Relation(core.NewRelationDescriptor("platformEntity", "Platform").LocalKey("platform_id").ForeignKey("id"))
 		descriptor.Relation(core.NewRelationDescriptor("schoolTypeEntity", "School Type").LocalKey("school_type_id").ForeignKey("id"))
 		module.EntityWithBehavior(
@@ -381,10 +372,9 @@ func ServiceRuntimeFromEnv() (*runtime.UserContext, error) {
 // Installing Module() or starting ServiceRuntimeFromEnv never changes database schema.
 func EnsureSchema(context *runtime.UserContext) error {
 	db, ok := context.GetResource("db").(*sql.DB)
-	if !ok || db == nil {
-		return fmt.Errorf("db not found in UserContext")
-	}
-	dialect := teaql_sql.SqlDialect(&provider.SqliteDialect{})
+	if !ok || db == nil { return fmt.Errorf("db not found in UserContext") }
+	if err := provider.EnsureSoundex(db); err != nil { return fmt.Errorf("register SQLite soundex: %w", err) }
+dialect := teaql_sql.SqlDialect(&provider.SqliteDialect{})
 	metadata := context.Metadata
 	for _, statement := range dialect.SchemaSetupSqls() {
 		if _, err := db.Exec(statement); err != nil {
@@ -405,14 +395,12 @@ func EnsureSchema(context *runtime.UserContext) error {
 			return fmt.Errorf("compile indexes for %s: %w", entity.Name, err)
 		}
 		for _, indexStatement := range indexes {
-			if _, err := db.Exec(indexStatement); err != nil {
-				return fmt.Errorf("create index for %s: %w", entity.Name, err)
-			}
+		if _, err := db.Exec(indexStatement); err != nil {
+			return fmt.Errorf("create index for %s: %w", entity.Name, err)
+		}
 		}
 	}
-	if err := ensureGeneratedBootstrap(context, db, dialect); err != nil {
-		return err
-	}
+	if err := ensureGeneratedBootstrap(context, db, dialect); err != nil { return err }
 	return nil
 }
 
@@ -421,94 +409,46 @@ type generatedIDFloorEnsurer interface {
 }
 
 func ensureGeneratedBootstrap(context *runtime.UserContext, db *sql.DB, dialect teaql_sql.SqlDialect) error {
-	type item struct {
-		graph     *runtime.GraphNode
-		reconcile bool
-	}
+	type item struct { graph *runtime.GraphNode; reconcile bool }
 	items := make([]item, 0, 1+len(generatedInitialGraphs))
 	items = append(items, item{generatedRootGraph, false})
-	for _, graph := range generatedInitialGraphs {
-		items = append(items, item{graph, true})
-	}
+	for _, graph := range generatedInitialGraphs { items = append(items, item{graph, true}) }
 	for _, seed := range items {
 		entity := context.Metadata.Entity(seed.graph.Entity)
-		if entity == nil {
-			return fmt.Errorf("bootstrap entity %s is not registered", seed.graph.Entity)
-		}
+		if entity == nil { return fmt.Errorf("bootstrap entity %s is not registered", seed.graph.Entity) }
 		idValue, ok := seed.graph.Values["id"]
-		if !ok {
-			return fmt.Errorf("bootstrap entity %s has no id", seed.graph.Entity)
-		}
+		if !ok { return fmt.Errorf("bootstrap entity %s has no id", seed.graph.Entity) }
 		id, ok := idValue.TryU64()
-		if !ok {
-			return fmt.Errorf("bootstrap entity %s has invalid id", seed.graph.Entity)
-		}
+		if !ok { return fmt.Errorf("bootstrap entity %s has invalid id", seed.graph.Entity) }
 		var count int
-		if err := db.QueryRow("SELECT COUNT(*) FROM "+dialect.QuoteIdent(entity.TabName)+" WHERE "+dialect.QuoteIdent("id")+" = "+dialect.Placeholder(1), id).Scan(&count); err != nil {
-			return err
-		}
+		if err := db.QueryRow("SELECT COUNT(*) FROM "+dialect.QuoteIdent(entity.TabName)+" WHERE "+dialect.QuoteIdent("id")+" = "+dialect.Placeholder(1), id).Scan(&count); err != nil { return err }
 		keys := make([]string, 0, len(seed.graph.Values))
-		for key := range seed.graph.Values {
-			if key != "version" {
-				keys = append(keys, key)
-			}
-		}
+		for key := range seed.graph.Values { if key != "version" { keys = append(keys, key) } }
 		sort.Strings(keys)
-		column := func(key string) string {
-			for _, property := range entity.Properties {
-				if property.Name == key {
-					return property.ColName
-				}
-			}
-			return key
-		}
+		column := func(key string) string { for _, property := range entity.Properties { if property.Name == key { return property.ColName } }; return key }
 		if count == 0 {
 			columns, placeholders, args := make([]string, 0, len(keys)+1), make([]string, 0, len(keys)+1), make([]any, 0, len(keys)+1)
-			for _, key := range keys {
-				columns = append(columns, dialect.QuoteIdent(column(key)))
-				placeholders = append(placeholders, dialect.Placeholder(len(args)+1))
-				args = append(args, seed.graph.Values[key].V)
-			}
-			columns = append(columns, dialect.QuoteIdent("version"))
-			placeholders = append(placeholders, dialect.Placeholder(len(args)+1))
-			args = append(args, int64(1))
-			statement := "INSERT INTO " + dialect.QuoteIdent(entity.TabName) + " (" + strings.Join(columns, ", ") + ") VALUES (" + strings.Join(placeholders, ", ") + ")"
+			for _, key := range keys { columns = append(columns, dialect.QuoteIdent(column(key))); placeholders = append(placeholders, dialect.Placeholder(len(args)+1)); args = append(args, seed.graph.Values[key].V) }
+			columns = append(columns, dialect.QuoteIdent("version")); placeholders = append(placeholders, dialect.Placeholder(len(args)+1)); args = append(args, int64(1))
+			statement := "INSERT INTO "+dialect.QuoteIdent(entity.TabName)+" ("+strings.Join(columns, ", ")+") VALUES ("+strings.Join(placeholders, ", ")+")"
 			if _, err := db.Exec(statement, args...); err != nil {
 				return fmt.Errorf("bootstrap %s(%d): %w", seed.graph.Entity, id, err)
 			}
 		} else if seed.reconcile {
 			assignments, changes, args := make([]string, 0, len(keys)), make([]string, 0, len(keys)), make([]any, 0, len(keys)*2+1)
-			for _, key := range keys {
-				if key == "id" {
-					continue
-				}
-				args = append(args, seed.graph.Values[key].V)
-				assignments = append(assignments, dialect.QuoteIdent(column(key))+" = "+dialect.Placeholder(len(args)))
-			}
+			for _, key := range keys { if key == "id" { continue }; args = append(args, seed.graph.Values[key].V); assignments = append(assignments, dialect.QuoteIdent(column(key))+" = "+dialect.Placeholder(len(args))) }
 			if len(assignments) > 0 {
 				assignments = append(assignments, dialect.QuoteIdent("version")+" = "+dialect.QuoteIdent("version")+" + 1")
 				args = append(args, id)
 				idPlaceholder := dialect.Placeholder(len(args))
-				for _, key := range keys {
-					if key == "id" {
-						continue
-					}
-					args = append(args, seed.graph.Values[key].V)
-					changes = append(changes, "NOT ("+dialect.QuoteIdent(column(key))+" = "+dialect.Placeholder(len(args))+")")
-				}
-				statement := "UPDATE " + dialect.QuoteIdent(entity.TabName) + " SET " + strings.Join(assignments, ", ") + " WHERE " + dialect.QuoteIdent("id") + " = " + idPlaceholder + " AND (" + strings.Join(changes, " OR ") + ")"
-				if _, err := db.Exec(statement, args...); err != nil {
-					return err
-				}
+				for _, key := range keys { if key == "id" { continue }; args = append(args, seed.graph.Values[key].V); changes = append(changes, "NOT ("+dialect.QuoteIdent(column(key))+" = "+dialect.Placeholder(len(args))+")") }
+				statement := "UPDATE "+dialect.QuoteIdent(entity.TabName)+" SET "+strings.Join(assignments, ", ")+" WHERE "+dialect.QuoteIdent("id")+" = "+idPlaceholder+" AND ("+strings.Join(changes, " OR ")+")"
+				if _, err := db.Exec(statement, args...); err != nil { return err }
 			}
 		}
 		ensurer, ok := context.GetResource("idGenerator").(generatedIDFloorEnsurer)
-		if !ok {
-			return fmt.Errorf("idGenerator does not support ID floor synchronization")
-		}
-		if err := ensurer.EnsureIdFloor(context, seed.graph.Entity, id); err != nil {
-			return err
-		}
+		if !ok { return fmt.Errorf("idGenerator does not support ID floor synchronization") }
+		if err := ensurer.EnsureIdFloor(context, seed.graph.Entity, id); err != nil { return err }
 	}
 	return nil
 }

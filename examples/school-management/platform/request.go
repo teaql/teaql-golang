@@ -1,3 +1,5 @@
+
+
 package platform
 
 import (
@@ -9,8 +11,8 @@ import (
 	"github.com/teaql/teaql-golang/core"
 	"github.com/teaql/teaql-golang/data_service"
 	"github.com/teaql/teaql-golang/runtime"
-	"school-management-service-core-workspace/lib/school"
 	"school-management-service-core-workspace/lib/school_type"
+	"school-management-service-core-workspace/lib/school"
 )
 
 var (
@@ -19,9 +21,10 @@ var (
 )
 
 type PlatformRequest struct {
-	Query             *core.SelectQuery
-	purposeText       string
-	commentText       string
+	Query       *core.SelectQuery
+	queryOptions *core.QueryOptions
+	purposeText string
+	commentText string
 	relationFactories map[string]func() core.Entity
 }
 
@@ -31,7 +34,8 @@ type ExecutablePlatformRequest struct {
 
 func NewPlatformRequest() *PlatformRequest {
 	r := &PlatformRequest{
-		Query:             core.NewSelectQuery("Platform"),
+		Query: core.NewSelectQuery("Platform"),
+		queryOptions: core.NewQueryOptions(),
 		relationFactories: make(map[string]func() core.Entity),
 	}
 	r.Query.AndFilter(core.ExprGte("version", core.ValI64(1)))
@@ -46,6 +50,10 @@ func NewPlatformMinimalRequest() *PlatformRequest {
 
 func (r *PlatformRequest) GetQuery() *core.SelectQuery {
 	return r.Query
+}
+
+func (r *PlatformRequest) GetEntityDescriptor() *core.EntityDescriptor {
+	return NewPlatform().EntityDescriptor()
 }
 
 func (r *PlatformRequest) NewRelationEntity() core.Entity {
@@ -87,29 +95,36 @@ func (r *PlatformRequest) OptimizeForContinuousPageFetchWith(namespace string, t
 	return r
 }
 
+func (r *PlatformRequest) OptimizePaginationWithIDSet() *PlatformRequest {
+	r.Query.OptimizePaginationWithIDSet()
+	return r
+}
+
+func (r *PlatformRequest) OptimizePaginationWithIDSetConfig(namespace string, ttlSeconds, maxIDs uint64) *PlatformRequest {
+	r.Query.OptimizePaginationWithIDSetConfig(namespace, ttlSeconds, maxIDs)
+	return r
+}
+
+func (r *PlatformRequest) TopNProbeParentThreshold(threshold uint64) *PlatformRequest {
+	r.Query.TopNProbeParentThreshold(threshold)
+	return r
+}
+
 func removePlatformVersionFilter(expr *core.Expr) *core.Expr {
-	if expr == nil {
-		return nil
-	}
+	if expr == nil { return nil }
 	if expr.Type == core.ExprTypeBinary && expr.Left != nil &&
 		expr.Left.Type == core.ExprTypeColumn && expr.Left.Column == "version" {
 		return nil
 	}
-	if expr.Type != core.ExprTypeAnd {
-		return expr
-	}
+	if expr.Type != core.ExprTypeAnd { return expr }
 	parts := make([]*core.Expr, 0, len(expr.Parts))
 	for _, part := range expr.Parts {
 		if kept := removePlatformVersionFilter(part); kept != nil {
 			parts = append(parts, kept)
 		}
 	}
-	if len(parts) == 0 {
-		return nil
-	}
-	if len(parts) == 1 {
-		return parts[0]
-	}
+	if len(parts) == 0 { return nil }
+	if len(parts) == 1 { return parts[0] }
 	return core.ExprAndNode(parts...)
 }
 
@@ -278,6 +293,10 @@ func (r *PlatformRequest) WithNameNotEndingWith(term string) *PlatformRequest {
 	r.Query.AndFilter(core.ExprNotEndWith("name", term))
 	return r
 }
+func (r *PlatformRequest) WithNameSoundingLike(term string) *PlatformRequest {
+	r.Query.AndFilter(core.ExprSoundLike("name", core.ValText(term)))
+	return r
+}
 func (r *PlatformRequest) OrderByNameAsc() *PlatformRequest {
 	r.Query.OrderAsc("name")
 	return r
@@ -369,6 +388,10 @@ func (r *PlatformRequest) WithBaseUrlEndingWith(term string) *PlatformRequest {
 }
 func (r *PlatformRequest) WithBaseUrlNotEndingWith(term string) *PlatformRequest {
 	r.Query.AndFilter(core.ExprNotEndWith("base_url", term))
+	return r
+}
+func (r *PlatformRequest) WithBaseUrlSoundingLike(term string) *PlatformRequest {
+	r.Query.AndFilter(core.ExprSoundLike("base_url", core.ValText(term)))
 	return r
 }
 func (r *PlatformRequest) OrderByBaseUrlAsc() *PlatformRequest {
@@ -587,12 +610,208 @@ func (r *PlatformRequest) OrderByVersionDesc() *PlatformRequest {
 	return r
 }
 
+
+
 func (r *PlatformRequest) CountSchoolTypes() *PlatformRequest {
-	r.Query.Count("count_school_types")
+	return r.CountSchoolTypesAs("countSchoolTypes")
+
+}
+func (r *PlatformRequest) CountSchoolTypesAs(alias string) *PlatformRequest {
+	return r.CountSchoolTypesWith(alias, school_type.NewSchoolTypeRequest())
+}
+func (r *PlatformRequest) CountSchoolTypesWith(alias string, child *school_type.SchoolTypeRequest) *PlatformRequest {
+	child.Query.Count(alias)
+	r.Query.RelationAggregates = append(r.Query.RelationAggregates, core.NewRelationAggregate("schoolTypeList", alias, child.Query, true))
+	return r
+}
+
+func (r *PlatformRequest) SumDisplayOrderOfSchoolTypes() *PlatformRequest {
+	return r.SumDisplayOrderOfSchoolTypesAs("sumDisplayOrderOfSchoolTypes", school_type.NewSchoolTypeRequest())
+}
+func (r *PlatformRequest) SumDisplayOrderOfSchoolTypesAs(alias string, child *school_type.SchoolTypeRequest) *PlatformRequest {
+	child.Query.Sum("display_order", "sum_displayOrder")
+	r.Query.RelationAggregates = append(r.Query.RelationAggregates, core.NewRelationAggregate("schoolTypeList", alias, child.Query, true))
+	return r
+}
+func (r *PlatformRequest) MinDisplayOrderOfSchoolTypes() *PlatformRequest {
+	return r.MinDisplayOrderOfSchoolTypesAs("minDisplayOrderOfSchoolTypes", school_type.NewSchoolTypeRequest())
+}
+func (r *PlatformRequest) MinDisplayOrderOfSchoolTypesAs(alias string, child *school_type.SchoolTypeRequest) *PlatformRequest {
+	child.Query.Min("display_order", "min_displayOrder")
+	r.Query.RelationAggregates = append(r.Query.RelationAggregates, core.NewRelationAggregate("schoolTypeList", alias, child.Query, true))
+	return r
+}
+func (r *PlatformRequest) MaxDisplayOrderOfSchoolTypes() *PlatformRequest {
+	return r.MaxDisplayOrderOfSchoolTypesAs("maxDisplayOrderOfSchoolTypes", school_type.NewSchoolTypeRequest())
+}
+func (r *PlatformRequest) MaxDisplayOrderOfSchoolTypesAs(alias string, child *school_type.SchoolTypeRequest) *PlatformRequest {
+	child.Query.Max("display_order", "max_displayOrder")
+	r.Query.RelationAggregates = append(r.Query.RelationAggregates, core.NewRelationAggregate("schoolTypeList", alias, child.Query, true))
+	return r
+}
+func (r *PlatformRequest) AvgDisplayOrderOfSchoolTypes() *PlatformRequest {
+	return r.AvgDisplayOrderOfSchoolTypesAs("avgDisplayOrderOfSchoolTypes", school_type.NewSchoolTypeRequest())
+}
+func (r *PlatformRequest) AvgDisplayOrderOfSchoolTypesAs(alias string, child *school_type.SchoolTypeRequest) *PlatformRequest {
+	child.Query.Avg("display_order", "avg_displayOrder")
+	r.Query.RelationAggregates = append(r.Query.RelationAggregates, core.NewRelationAggregate("schoolTypeList", alias, child.Query, true))
+	return r
+}
+func (r *PlatformRequest) StandardDeviationDisplayOrderOfSchoolTypes() *PlatformRequest {
+	return r.StandardDeviationDisplayOrderOfSchoolTypesAs("standardDeviationDisplayOrderOfSchoolTypes", school_type.NewSchoolTypeRequest())
+}
+func (r *PlatformRequest) StandardDeviationDisplayOrderOfSchoolTypesAs(alias string, child *school_type.SchoolTypeRequest) *PlatformRequest {
+	child.Query.Stddev("display_order", "stdDev_displayOrder")
+	r.Query.RelationAggregates = append(r.Query.RelationAggregates, core.NewRelationAggregate("schoolTypeList", alias, child.Query, true))
+	return r
+}
+func (r *PlatformRequest) SquareRootOfPopulationStandardDeviationDisplayOrderOfSchoolTypes() *PlatformRequest {
+	return r.SquareRootOfPopulationStandardDeviationDisplayOrderOfSchoolTypesAs("squareRootOfPopulationStandardDeviationDisplayOrderOfSchoolTypes", school_type.NewSchoolTypeRequest())
+}
+func (r *PlatformRequest) SquareRootOfPopulationStandardDeviationDisplayOrderOfSchoolTypesAs(alias string, child *school_type.SchoolTypeRequest) *PlatformRequest {
+	child.Query.StddevPop("display_order", "stdDevPop_displayOrder")
+	r.Query.RelationAggregates = append(r.Query.RelationAggregates, core.NewRelationAggregate("schoolTypeList", alias, child.Query, true))
+	return r
+}
+func (r *PlatformRequest) SampleVarianceDisplayOrderOfSchoolTypes() *PlatformRequest {
+	return r.SampleVarianceDisplayOrderOfSchoolTypesAs("sampleVarianceDisplayOrderOfSchoolTypes", school_type.NewSchoolTypeRequest())
+}
+func (r *PlatformRequest) SampleVarianceDisplayOrderOfSchoolTypesAs(alias string, child *school_type.SchoolTypeRequest) *PlatformRequest {
+	child.Query.VarSamp("display_order", "varSamp_displayOrder")
+	r.Query.RelationAggregates = append(r.Query.RelationAggregates, core.NewRelationAggregate("schoolTypeList", alias, child.Query, true))
+	return r
+}
+func (r *PlatformRequest) SamplePopulationVarianceDisplayOrderOfSchoolTypes() *PlatformRequest {
+	return r.SamplePopulationVarianceDisplayOrderOfSchoolTypesAs("samplePopulationVarianceDisplayOrderOfSchoolTypes", school_type.NewSchoolTypeRequest())
+}
+func (r *PlatformRequest) SamplePopulationVarianceDisplayOrderOfSchoolTypesAs(alias string, child *school_type.SchoolTypeRequest) *PlatformRequest {
+	child.Query.VarPop("display_order", "varPop_displayOrder")
+	r.Query.RelationAggregates = append(r.Query.RelationAggregates, core.NewRelationAggregate("schoolTypeList", alias, child.Query, true))
 	return r
 }
 func (r *PlatformRequest) CountSchools() *PlatformRequest {
-	r.Query.Count("count_schools")
+	return r.CountSchoolsAs("countSchools")
+
+}
+func (r *PlatformRequest) CountSchoolsAs(alias string) *PlatformRequest {
+	return r.CountSchoolsWith(alias, school.NewSchoolRequest())
+}
+func (r *PlatformRequest) CountSchoolsWith(alias string, child *school.SchoolRequest) *PlatformRequest {
+	child.Query.Count(alias)
+	r.Query.RelationAggregates = append(r.Query.RelationAggregates, core.NewRelationAggregate("schoolList", alias, child.Query, true))
+	return r
+}
+
+func (r *PlatformRequest) MinEstablishedDateOfSchools() *PlatformRequest {
+	return r.MinEstablishedDateOfSchoolsAs("minEstablishedDateOfSchools", school.NewSchoolRequest())
+}
+func (r *PlatformRequest) MinEstablishedDateOfSchoolsAs(alias string, child *school.SchoolRequest) *PlatformRequest {
+	child.Query.Min("established_date", "min_establishedDate")
+	r.Query.RelationAggregates = append(r.Query.RelationAggregates, core.NewRelationAggregate("schoolList", alias, child.Query, true))
+	return r
+}
+func (r *PlatformRequest) MaxEstablishedDateOfSchools() *PlatformRequest {
+	return r.MaxEstablishedDateOfSchoolsAs("maxEstablishedDateOfSchools", school.NewSchoolRequest())
+}
+func (r *PlatformRequest) MaxEstablishedDateOfSchoolsAs(alias string, child *school.SchoolRequest) *PlatformRequest {
+	child.Query.Max("established_date", "max_establishedDate")
+	r.Query.RelationAggregates = append(r.Query.RelationAggregates, core.NewRelationAggregate("schoolList", alias, child.Query, true))
+	return r
+}
+func (r *PlatformRequest) SumStudentCapacityOfSchools() *PlatformRequest {
+	return r.SumStudentCapacityOfSchoolsAs("sumStudentCapacityOfSchools", school.NewSchoolRequest())
+}
+func (r *PlatformRequest) SumStudentCapacityOfSchoolsAs(alias string, child *school.SchoolRequest) *PlatformRequest {
+	child.Query.Sum("student_capacity", "sum_studentCapacity")
+	r.Query.RelationAggregates = append(r.Query.RelationAggregates, core.NewRelationAggregate("schoolList", alias, child.Query, true))
+	return r
+}
+func (r *PlatformRequest) MinStudentCapacityOfSchools() *PlatformRequest {
+	return r.MinStudentCapacityOfSchoolsAs("minStudentCapacityOfSchools", school.NewSchoolRequest())
+}
+func (r *PlatformRequest) MinStudentCapacityOfSchoolsAs(alias string, child *school.SchoolRequest) *PlatformRequest {
+	child.Query.Min("student_capacity", "min_studentCapacity")
+	r.Query.RelationAggregates = append(r.Query.RelationAggregates, core.NewRelationAggregate("schoolList", alias, child.Query, true))
+	return r
+}
+func (r *PlatformRequest) MaxStudentCapacityOfSchools() *PlatformRequest {
+	return r.MaxStudentCapacityOfSchoolsAs("maxStudentCapacityOfSchools", school.NewSchoolRequest())
+}
+func (r *PlatformRequest) MaxStudentCapacityOfSchoolsAs(alias string, child *school.SchoolRequest) *PlatformRequest {
+	child.Query.Max("student_capacity", "max_studentCapacity")
+	r.Query.RelationAggregates = append(r.Query.RelationAggregates, core.NewRelationAggregate("schoolList", alias, child.Query, true))
+	return r
+}
+func (r *PlatformRequest) AvgStudentCapacityOfSchools() *PlatformRequest {
+	return r.AvgStudentCapacityOfSchoolsAs("avgStudentCapacityOfSchools", school.NewSchoolRequest())
+}
+func (r *PlatformRequest) AvgStudentCapacityOfSchoolsAs(alias string, child *school.SchoolRequest) *PlatformRequest {
+	child.Query.Avg("student_capacity", "avg_studentCapacity")
+	r.Query.RelationAggregates = append(r.Query.RelationAggregates, core.NewRelationAggregate("schoolList", alias, child.Query, true))
+	return r
+}
+func (r *PlatformRequest) StandardDeviationStudentCapacityOfSchools() *PlatformRequest {
+	return r.StandardDeviationStudentCapacityOfSchoolsAs("standardDeviationStudentCapacityOfSchools", school.NewSchoolRequest())
+}
+func (r *PlatformRequest) StandardDeviationStudentCapacityOfSchoolsAs(alias string, child *school.SchoolRequest) *PlatformRequest {
+	child.Query.Stddev("student_capacity", "stdDev_studentCapacity")
+	r.Query.RelationAggregates = append(r.Query.RelationAggregates, core.NewRelationAggregate("schoolList", alias, child.Query, true))
+	return r
+}
+func (r *PlatformRequest) SquareRootOfPopulationStandardDeviationStudentCapacityOfSchools() *PlatformRequest {
+	return r.SquareRootOfPopulationStandardDeviationStudentCapacityOfSchoolsAs("squareRootOfPopulationStandardDeviationStudentCapacityOfSchools", school.NewSchoolRequest())
+}
+func (r *PlatformRequest) SquareRootOfPopulationStandardDeviationStudentCapacityOfSchoolsAs(alias string, child *school.SchoolRequest) *PlatformRequest {
+	child.Query.StddevPop("student_capacity", "stdDevPop_studentCapacity")
+	r.Query.RelationAggregates = append(r.Query.RelationAggregates, core.NewRelationAggregate("schoolList", alias, child.Query, true))
+	return r
+}
+func (r *PlatformRequest) SampleVarianceStudentCapacityOfSchools() *PlatformRequest {
+	return r.SampleVarianceStudentCapacityOfSchoolsAs("sampleVarianceStudentCapacityOfSchools", school.NewSchoolRequest())
+}
+func (r *PlatformRequest) SampleVarianceStudentCapacityOfSchoolsAs(alias string, child *school.SchoolRequest) *PlatformRequest {
+	child.Query.VarSamp("student_capacity", "varSamp_studentCapacity")
+	r.Query.RelationAggregates = append(r.Query.RelationAggregates, core.NewRelationAggregate("schoolList", alias, child.Query, true))
+	return r
+}
+func (r *PlatformRequest) SamplePopulationVarianceStudentCapacityOfSchools() *PlatformRequest {
+	return r.SamplePopulationVarianceStudentCapacityOfSchoolsAs("samplePopulationVarianceStudentCapacityOfSchools", school.NewSchoolRequest())
+}
+func (r *PlatformRequest) SamplePopulationVarianceStudentCapacityOfSchoolsAs(alias string, child *school.SchoolRequest) *PlatformRequest {
+	child.Query.VarPop("student_capacity", "varPop_studentCapacity")
+	r.Query.RelationAggregates = append(r.Query.RelationAggregates, core.NewRelationAggregate("schoolList", alias, child.Query, true))
+	return r
+}
+func (r *PlatformRequest) MinCreateTimeOfSchools() *PlatformRequest {
+	return r.MinCreateTimeOfSchoolsAs("minCreateTimeOfSchools", school.NewSchoolRequest())
+}
+func (r *PlatformRequest) MinCreateTimeOfSchoolsAs(alias string, child *school.SchoolRequest) *PlatformRequest {
+	child.Query.Min("create_time", "min_createTime")
+	r.Query.RelationAggregates = append(r.Query.RelationAggregates, core.NewRelationAggregate("schoolList", alias, child.Query, true))
+	return r
+}
+func (r *PlatformRequest) MaxCreateTimeOfSchools() *PlatformRequest {
+	return r.MaxCreateTimeOfSchoolsAs("maxCreateTimeOfSchools", school.NewSchoolRequest())
+}
+func (r *PlatformRequest) MaxCreateTimeOfSchoolsAs(alias string, child *school.SchoolRequest) *PlatformRequest {
+	child.Query.Max("create_time", "max_createTime")
+	r.Query.RelationAggregates = append(r.Query.RelationAggregates, core.NewRelationAggregate("schoolList", alias, child.Query, true))
+	return r
+}
+func (r *PlatformRequest) MinUpdateTimeOfSchools() *PlatformRequest {
+	return r.MinUpdateTimeOfSchoolsAs("minUpdateTimeOfSchools", school.NewSchoolRequest())
+}
+func (r *PlatformRequest) MinUpdateTimeOfSchoolsAs(alias string, child *school.SchoolRequest) *PlatformRequest {
+	child.Query.Min("update_time", "min_updateTime")
+	r.Query.RelationAggregates = append(r.Query.RelationAggregates, core.NewRelationAggregate("schoolList", alias, child.Query, true))
+	return r
+}
+func (r *PlatformRequest) MaxUpdateTimeOfSchools() *PlatformRequest {
+	return r.MaxUpdateTimeOfSchoolsAs("maxUpdateTimeOfSchools", school.NewSchoolRequest())
+}
+func (r *PlatformRequest) MaxUpdateTimeOfSchoolsAs(alias string, child *school.SchoolRequest) *PlatformRequest {
+	child.Query.Max("update_time", "max_updateTime")
+	r.Query.RelationAggregates = append(r.Query.RelationAggregates, core.NewRelationAggregate("schoolList", alias, child.Query, true))
 	return r
 }
 
@@ -613,13 +832,47 @@ func (r *PlatformRequest) SelectSchoolListWith(child *school.SchoolRequest) *Pla
 	return r
 }
 
+func (r *PlatformRequest) HaveSchoolTypes() *PlatformRequest {
+	return r.WithSchoolTypeListMatching(school_type.NewSchoolTypeRequest())
+}
+
+func (r *PlatformRequest) HaveNoSchoolTypes() *PlatformRequest {
+	return r.WithoutSchoolTypeListMatching(school_type.NewSchoolTypeRequest())
+}
+
+func (r *PlatformRequest) WithSchoolTypeListMatching(child *school_type.SchoolTypeRequest) *PlatformRequest {
+	r.Query.AndFilter(core.ExprInSubQuery("id", child.GetEntityDescriptor(), child.GetQuery(), "platform_id"))
+	return r
+}
+
+func (r *PlatformRequest) WithoutSchoolTypeListMatching(child *school_type.SchoolTypeRequest) *PlatformRequest {
+	r.Query.AndFilter(core.ExprNotInSubQuery("id", child.GetEntityDescriptor(), child.GetQuery(), "platform_id"))
+	return r
+}
+func (r *PlatformRequest) HaveSchools() *PlatformRequest {
+	return r.WithSchoolListMatching(school.NewSchoolRequest())
+}
+
+func (r *PlatformRequest) HaveNoSchools() *PlatformRequest {
+	return r.WithoutSchoolListMatching(school.NewSchoolRequest())
+}
+
+func (r *PlatformRequest) WithSchoolListMatching(child *school.SchoolRequest) *PlatformRequest {
+	r.Query.AndFilter(core.ExprInSubQuery("id", child.GetEntityDescriptor(), child.GetQuery(), "platform_id"))
+	return r
+}
+
+func (r *PlatformRequest) WithoutSchoolListMatching(child *school.SchoolRequest) *PlatformRequest {
+	r.Query.AndFilter(core.ExprNotInSubQuery("id", child.GetEntityDescriptor(), child.GetQuery(), "platform_id"))
+	return r
+}
+
 func (e *ExecutablePlatformRequest) NewEntity(context *runtime.UserContext) *Platform {
 	r := e.request
 	if strings.TrimSpace(r.purposeText) == "" || strings.TrimSpace(r.commentText) == "" {
 		panic("security audit failure: non-empty Comment() and Purpose() are required before NewEntity()")
 	}
 	entity := NewPlatform()
-	entity.AttachEntityRoot(context.EntityRoot())
 	initialized := context.InitializeEntity("Platform", entity)
 	typed, ok := initialized.(*Platform)
 	if !ok {
@@ -646,43 +899,45 @@ func (e *ExecutablePlatformRequest) ExecuteForList(context *runtime.UserContext)
 	}
 
 	var results []*Platform
+	queryRoot := core.NewEntityRoot()
 	for _, rec := range rows {
 		entity := NewPlatform()
-		entity.AttachEntityRoot(context.EntityRoot())
+		entity.AttachEntityRoot(queryRoot)
 		if err := entity.FromRecord(rec); err != nil {
 			return nil, err
 		}
 		if relationValue, selected := rec["schoolTypeList"]; selected {
 			childRecords, ok := relationValue.V.([]core.Record)
-			if !ok {
-				return nil, fmt.Errorf("relation schoolTypeList has unexpected runtime type %T", relationValue.V)
-			}
-			for _, childRecord := range childRecords {
-				childEntity := school_type.NewSchoolType()
-				childEntity.AttachEntityRoot(entity.EntityRoot())
-				if err := childEntity.FromRecord(childRecord); err != nil {
-					return nil, err
-				}
-				entity.SchoolTypeList().Add(childEntity)
-			}
-		}
+				if !ok { return nil, fmt.Errorf("relation schoolTypeList has unexpected runtime type %T", relationValue.V) }
+				for _, childRecord := range childRecords {
+					childEntity := school_type.NewSchoolType()
+					childEntity.AttachEntityRoot(entity.EntityRoot())
+					if err := childEntity.FromRecord(childRecord); err != nil { return nil, err }
+					entity.SchoolTypeList().Add(childEntity)
+				}}
 		if relationValue, selected := rec["schoolList"]; selected {
 			childRecords, ok := relationValue.V.([]core.Record)
-			if !ok {
-				return nil, fmt.Errorf("relation schoolList has unexpected runtime type %T", relationValue.V)
-			}
-			for _, childRecord := range childRecords {
-				childEntity := school.NewSchool()
-				childEntity.AttachEntityRoot(entity.EntityRoot())
-				if err := childEntity.FromRecord(childRecord); err != nil {
-					return nil, err
-				}
-				entity.SchoolList().Add(childEntity)
-			}
-		}
+				if !ok { return nil, fmt.Errorf("relation schoolList has unexpected runtime type %T", relationValue.V) }
+				for _, childRecord := range childRecords {
+					childEntity := school.NewSchool()
+					childEntity.AttachEntityRoot(entity.EntityRoot())
+					if err := childEntity.FromRecord(childRecord); err != nil { return nil, err }
+					entity.SchoolList().Add(childEntity)
+				}}
 		results = append(results, entity)
 	}
-	return core.NewSmartList(results), nil
+	list := core.NewSmartList(results)
+	if len(e.request.queryOptions.Facets) > 0 {
+		dsRaw := context.GetResource("dataService")
+		ds, ok := dsRaw.(data_service.QueryExecutor)
+		if !ok { return nil, fmt.Errorf("dataService does not implement data_service.QueryExecutor") }
+		facets, err := runtime.ExecuteFacets(
+			context, runtime.NewRuntimeDataService(context.Metadata, ds),
+			e.request.Query, e.request.queryOptions)
+		if err != nil { return nil, err }
+		core.AttachFacets(list, facets)
+	}
+	return list, nil
 }
 
 // ExecuteForPage applies trusted policy once, then derives exact-count and row
@@ -695,68 +950,63 @@ func (e *ExecutablePlatformRequest) ExecuteForPage(context *runtime.UserContext,
 	if size == 0 {
 		return nil, fmt.Errorf("QUERY_INVALID_LIMIT: size must be positive")
 	}
-	r.Query.Page(offset, size).Comment(fmt.Sprintf("comment=%s; purpose=%s", r.commentText, r.purposeText))
+	r.Query.Page(offset, size).Comment(r.commentText).Purpose(r.purposeText)
 	authorized, err := context.PrepareQuery(r.Query)
-	if err != nil {
-		return nil, err
-	}
+	if err != nil { return nil, err }
 	dsRaw := context.GetResource("dataService")
 	ds, ok := dsRaw.(data_service.QueryExecutor)
-	if !ok {
-		return nil, fmt.Errorf("dataService does not implement data_service.QueryExecutor")
-	}
+	if !ok { return nil, fmt.Errorf("dataService does not implement data_service.QueryExecutor") }
 	service := runtime.NewRuntimeDataService(context.Metadata, ds)
 	const countAlias = "__teaql_total"
-	countRows, err := service.FetchAll(context, authorized.ForExactCount(countAlias))
-	if err != nil {
-		return nil, err
-	}
-	if len(countRows) != 1 {
-		return nil, fmt.Errorf("exact count returned %d rows", len(countRows))
-	}
-	total, ok := countRows[0][countAlias].TryU64()
-	if !ok {
-		return nil, fmt.Errorf("exact count did not return an unsigned integer")
-	}
-	rows, err := service.FetchAll(context, authorized)
-	if err != nil {
-		return nil, err
+	var rows []core.Record
+	var total uint64
+	if authorized.IDSetPagination != nil {
+		rows, err = service.FetchAll(context, authorized)
+		if err != nil { return nil, err }
+		if retainedCount, accuracy := context.IDSetCount(); accuracy == "EXACT" {
+			total = retainedCount
+		} else {
+			countRows, countErr := service.FetchAll(context, authorized.ForExactCount(countAlias))
+			if countErr != nil { return nil, countErr }
+			if len(countRows) != 1 { return nil, fmt.Errorf("exact count returned %d rows", len(countRows)) }
+			var ok bool
+			total, ok = countRows[0][countAlias].TryU64()
+			if !ok { return nil, fmt.Errorf("exact count did not return an unsigned integer") }
+		}
+	} else {
+		countRows, countErr := service.FetchAll(context, authorized.ForExactCount(countAlias))
+		if countErr != nil { return nil, countErr }
+		if len(countRows) != 1 { return nil, fmt.Errorf("exact count returned %d rows", len(countRows)) }
+		var ok bool
+		total, ok = countRows[0][countAlias].TryU64()
+		if !ok { return nil, fmt.Errorf("exact count did not return an unsigned integer") }
+		rows, err = service.FetchAll(context, authorized)
+		if err != nil { return nil, err }
 	}
 	results := make([]*Platform, 0, len(rows))
+	queryRoot := core.NewEntityRoot()
 	for _, rec := range rows {
 		entity := NewPlatform()
-		entity.AttachEntityRoot(context.EntityRoot())
-		if err := entity.FromRecord(rec); err != nil {
-			return nil, err
-		}
+		entity.AttachEntityRoot(queryRoot)
+		if err := entity.FromRecord(rec); err != nil { return nil, err }
 		if relationValue, selected := rec["schoolTypeList"]; selected {
 			childRecords, ok := relationValue.V.([]core.Record)
-			if !ok {
-				return nil, fmt.Errorf("relation schoolTypeList has unexpected runtime type %T", relationValue.V)
-			}
-			for _, childRecord := range childRecords {
-				childEntity := school_type.NewSchoolType()
-				childEntity.AttachEntityRoot(entity.EntityRoot())
-				if err := childEntity.FromRecord(childRecord); err != nil {
-					return nil, err
-				}
-				entity.SchoolTypeList().Add(childEntity)
-			}
-		}
+				if !ok { return nil, fmt.Errorf("relation schoolTypeList has unexpected runtime type %T", relationValue.V) }
+				for _, childRecord := range childRecords {
+					childEntity := school_type.NewSchoolType()
+					childEntity.AttachEntityRoot(entity.EntityRoot())
+					if err := childEntity.FromRecord(childRecord); err != nil { return nil, err }
+					entity.SchoolTypeList().Add(childEntity)
+				}}
 		if relationValue, selected := rec["schoolList"]; selected {
 			childRecords, ok := relationValue.V.([]core.Record)
-			if !ok {
-				return nil, fmt.Errorf("relation schoolList has unexpected runtime type %T", relationValue.V)
-			}
-			for _, childRecord := range childRecords {
-				childEntity := school.NewSchool()
-				childEntity.AttachEntityRoot(entity.EntityRoot())
-				if err := childEntity.FromRecord(childRecord); err != nil {
-					return nil, err
-				}
-				entity.SchoolList().Add(childEntity)
-			}
-		}
+				if !ok { return nil, fmt.Errorf("relation schoolList has unexpected runtime type %T", relationValue.V) }
+				for _, childRecord := range childRecords {
+					childEntity := school.NewSchool()
+					childEntity.AttachEntityRoot(entity.EntityRoot())
+					if err := childEntity.FromRecord(childRecord); err != nil { return nil, err }
+					entity.SchoolList().Add(childEntity)
+				}}
 		results = append(results, entity)
 	}
 	return core.NewSmartList(results).WithTotalCount(total), nil
@@ -772,17 +1022,21 @@ func (e *ExecutablePlatformRequest) ExecuteForStream(context *runtime.UserContex
 	if yield == nil {
 		return fmt.Errorf("stream consumer must not be nil")
 	}
-	r.Query.Comment(fmt.Sprintf("comment=%s; purpose=%s", r.commentText, r.purposeText))
+	r.Query.Comment(r.commentText).Purpose(r.purposeText)
 	dsRaw := context.GetResource("dataService")
 	ds, ok := dsRaw.(data_service.StreamQueryExecutor)
 	if !ok {
 		return fmt.Errorf("dataService does not implement data_service.StreamQueryExecutor")
 	}
-	req := &data_service.QueryRequest{Query: r.Query, TraceChain: r.Query.TraceChain, Comment: r.Query.CommentText}
+	req := &data_service.QueryRequest{
+		Query: r.Query, TraceChain: r.Query.TraceChain,
+		Comment: r.Query.CommentText, Purpose: r.Query.PurposeText,
+	}
+	queryRoot := core.NewEntityRoot()
 	return ds.QueryStream(context, req, chunkSize, func(chunk *data_service.StreamChunk) error {
 		for _, rec := range chunk.Rows {
 			entity := NewPlatform()
-			entity.AttachEntityRoot(context.EntityRoot())
+			entity.AttachEntityRoot(queryRoot)
 			if err := entity.FromRecord(rec); err != nil {
 				return err
 			}
@@ -799,7 +1053,7 @@ func (e *ExecutablePlatformRequest) ExecuteRecords(context *runtime.UserContext)
 	if strings.TrimSpace(r.purposeText) == "" || strings.TrimSpace(r.commentText) == "" {
 		return nil, fmt.Errorf("security audit failure: Comment() and Purpose() must be called before ExecuteForList()")
 	}
-	r.Query.Comment(fmt.Sprintf("comment=%s; purpose=%s", r.commentText, r.purposeText))
+	r.Query.Comment(r.commentText).Purpose(r.purposeText)
 
 	dsRaw := context.GetResource("dataService")
 	if dsRaw == nil {
@@ -818,6 +1072,14 @@ func (e *ExecutablePlatformRequest) ExecuteRecords(context *runtime.UserContext)
 	return rows, nil
 }
 
+// ExecuteForRows preserves aggregate/group projections as records while keeping
+// the cross-language SmartList result boundary.
+func (e *ExecutablePlatformRequest) ExecuteForRows(context *runtime.UserContext) (*core.SmartList[core.Record], error) {
+	rows, err := e.ExecuteRecords(context)
+	if err != nil { return nil, err }
+	return core.NewSmartList(rows), nil
+}
+
 func (r *PlatformRequest) Count() *PlatformRequest {
 	return r.CountAs("count")
 }
@@ -826,6 +1088,7 @@ func (r *PlatformRequest) CountAs(alias string) *PlatformRequest {
 	r.Query.CountField("id", alias)
 	return r
 }
+
 
 func (r *PlatformRequest) GroupById() *PlatformRequest {
 	r.Query.WithGroupBy("id")

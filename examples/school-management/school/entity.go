@@ -2,16 +2,17 @@ package school
 
 import (
 	stdcontext "context"
+	"errors"
 	"fmt"
 	"reflect"
 	"strings"
 	"sync/atomic"
 
+	"time"
 	"github.com/shopspring/decimal"
 	"github.com/teaql/teaql-golang/core"
 	"github.com/teaql/teaql-golang/data_service"
 	"github.com/teaql/teaql-golang/runtime"
-	"time"
 )
 
 var (
@@ -19,35 +20,37 @@ var (
 	_ = decimal.Decimal{}
 	_ = fmt.Sprint
 	_ = strings.Join
+	_ = errors.As
 )
 
 var teaqlTemporaryEntityID int64
 
 type School struct {
-	base              *core.BaseEntityData
-	dirtyFields       map[string]bool
-	isNew             bool
-	markedAsDelete    bool
-	comment           *string
-	purpose           *string
-	loadState         map[string]bool
+	base        *core.BaseEntityData
+	dirtyFields map[string]bool
+	isNew       bool
+	markedAsDelete bool
+	comment     *string
+	purpose     *string
+	loadState   map[string]bool
 	restrictLoadState bool
-	root              *core.EntityRoot
-	ledgerID          core.Value
-	relations         map[string]core.Entity
-	loadedRelations   map[string]bool
+	root        *core.EntityRoot
+	ledgerID    core.Value
+	relations   map[string]core.Entity
+	loadedRelations map[string]bool
 }
+
 
 func NewSchool() *School {
 	temporaryID := -atomic.AddInt64(&teaqlTemporaryEntityID, 1)
 	entity := &School{
-		base:            core.NewBaseEntityData(),
-		dirtyFields:     make(map[string]bool),
-		isNew:           true,
-		loadState:       make(map[string]bool),
-		root:            core.NewEntityRoot(),
-		ledgerID:        core.ValI64(temporaryID),
-		relations:       make(map[string]core.Entity),
+		base:        core.NewBaseEntityData(),
+		dirtyFields: make(map[string]bool),
+		isNew:       true,
+		loadState:   make(map[string]bool),
+		root:        core.NewEntityRoot(),
+		ledgerID:    core.ValI64(temporaryID),
+		relations:   make(map[string]core.Entity),
 		loadedRelations: make(map[string]bool),
 	}
 	entity.root.MarkAsNew(entity.EntityKey())
@@ -55,18 +58,14 @@ func NewSchool() *School {
 }
 
 func (e *School) EntityKey() core.EntityKey {
-	if e.base.Id != 0 {
-		return core.NewEntityKey(e.EntityName(), core.ValU64(e.base.Id))
-	}
+	if e.base.Id != 0 { return core.NewEntityKey(e.EntityName(), core.ValU64(e.base.Id)) }
 	return core.NewEntityKey(e.EntityName(), e.ledgerID)
 }
 
 func (e *School) EntityRoot() *core.EntityRoot { return e.root }
 
 func (e *School) AttachEntityRoot(root *core.EntityRoot) {
-	if root == nil || root == e.root {
-		return
-	}
+	if root == nil || root == e.root { return }
 	root.MergeFrom(e.root)
 	e.root = root
 }
@@ -91,16 +90,12 @@ func (e *School) isRelationLoaded(name string) bool {
 func (e *School) MarkLoadedOnly(fields ...string) *School {
 	e.restrictLoadState = true
 	e.loadState = make(map[string]bool, len(fields))
-	for _, field := range fields {
-		e.loadState[field] = true
-	}
+	for _, field := range fields { e.loadState[field] = true }
 	return e
 }
 
 func (e *School) IsLoaded(field string) bool {
-	if e.isNew && !e.restrictLoadState {
-		return true
-	}
+	if e.isNew && !e.restrictLoadState { return true }
 	return e.loadState[field]
 }
 
@@ -120,6 +115,8 @@ func (e *School) IdValue() core.Value {
 	return core.ValU64(e.base.Id)
 }
 
+
+
 func (e *School) FromRecord(record core.Record) error {
 	oldKey := e.EntityKey()
 	base, err := core.BaseEntityDataFromRecord(record)
@@ -133,9 +130,7 @@ func (e *School) FromRecord(record core.Record) error {
 	e.dirtyFields = make(map[string]bool)
 	e.loadState = make(map[string]bool, len(record))
 	e.restrictLoadState = true
-	for field := range record {
-		e.loadState[field] = true
-	}
+	for field := range record { e.loadState[field] = true }
 	return nil
 }
 
@@ -213,6 +208,125 @@ func (e *School) IntoJson() any {
 }
 
 func (e *School) Save(context *runtime.UserContext) (*School, error) {
+	var saved *School
+	err := context.ExecuteGraphSave(func() error {
+		if preflightErr := e.TeaqlPreflightGraph(context); preflightErr != nil { return preflightErr }
+		var innerErr error
+		saved, innerErr = e.TeaqlSaveWithinGraph(context)
+		return innerErr
+	})
+	return saved, err
+}
+
+// TeaqlPreflightGraph runs Checker/Fix for the complete aggregate before the
+// first provider mutation. It is generated infrastructure, not application API.
+func (e *School) TeaqlPreflightGraph(context *runtime.UserContext) error {
+	if e.comment == nil || strings.TrimSpace(*e.comment) == "" {
+		return fmt.Errorf("Security audit failure: AuditAs() must be called before Save()")
+	}
+	if !e.markedAsDelete {
+		operation := core.MutationUpdate
+		if e.isNew { operation = core.MutationInsert }
+		if operation == core.MutationUpdate {
+			if !e.IsLoaded("id") {
+				result := runtime.CheckResult{RuleID: "invalid_type", CanonicalLocation: runtime.Location().Property("id"), Message: "Mutation requires a fully loaded entity"}
+				return &runtime.RuntimeError{Type: "Check", CheckResults: []runtime.CheckResult{result}}
+			}
+			if !e.IsLoaded("platform_id") {
+				result := runtime.CheckResult{RuleID: "invalid_type", CanonicalLocation: runtime.Location().Property("platform"), Message: "Mutation requires a fully loaded entity"}
+				return &runtime.RuntimeError{Type: "Check", CheckResults: []runtime.CheckResult{result}}
+			}
+			if !e.IsLoaded("school_type_id") {
+				result := runtime.CheckResult{RuleID: "invalid_type", CanonicalLocation: runtime.Location().Property("school_type"), Message: "Mutation requires a fully loaded entity"}
+				return &runtime.RuntimeError{Type: "Check", CheckResults: []runtime.CheckResult{result}}
+			}
+			if !e.IsLoaded("name") {
+				result := runtime.CheckResult{RuleID: "invalid_type", CanonicalLocation: runtime.Location().Property("name"), Message: "Mutation requires a fully loaded entity"}
+				return &runtime.RuntimeError{Type: "Check", CheckResults: []runtime.CheckResult{result}}
+			}
+			if !e.IsLoaded("address") {
+				result := runtime.CheckResult{RuleID: "invalid_type", CanonicalLocation: runtime.Location().Property("address"), Message: "Mutation requires a fully loaded entity"}
+				return &runtime.RuntimeError{Type: "Check", CheckResults: []runtime.CheckResult{result}}
+			}
+			if !e.IsLoaded("established_date") {
+				result := runtime.CheckResult{RuleID: "invalid_type", CanonicalLocation: runtime.Location().Property("established_date"), Message: "Mutation requires a fully loaded entity"}
+				return &runtime.RuntimeError{Type: "Check", CheckResults: []runtime.CheckResult{result}}
+			}
+			if !e.IsLoaded("student_capacity") {
+				result := runtime.CheckResult{RuleID: "invalid_type", CanonicalLocation: runtime.Location().Property("student_capacity"), Message: "Mutation requires a fully loaded entity"}
+				return &runtime.RuntimeError{Type: "Check", CheckResults: []runtime.CheckResult{result}}
+			}
+			if !e.IsLoaded("active") {
+				result := runtime.CheckResult{RuleID: "invalid_type", CanonicalLocation: runtime.Location().Property("active"), Message: "Mutation requires a fully loaded entity"}
+				return &runtime.RuntimeError{Type: "Check", CheckResults: []runtime.CheckResult{result}}
+			}
+			if !e.IsLoaded("create_time") {
+				result := runtime.CheckResult{RuleID: "invalid_type", CanonicalLocation: runtime.Location().Property("create_time"), Message: "Mutation requires a fully loaded entity"}
+				return &runtime.RuntimeError{Type: "Check", CheckResults: []runtime.CheckResult{result}}
+			}
+			if !e.IsLoaded("update_time") {
+				result := runtime.CheckResult{RuleID: "invalid_type", CanonicalLocation: runtime.Location().Property("update_time"), Message: "Mutation requires a fully loaded entity"}
+				return &runtime.RuntimeError{Type: "Check", CheckResults: []runtime.CheckResult{result}}
+			}
+			if !e.IsLoaded("version") {
+				result := runtime.CheckResult{RuleID: "invalid_type", CanonicalLocation: runtime.Location().Property("version"), Message: "Mutation requires a fully loaded entity"}
+				return &runtime.RuntimeError{Type: "Check", CheckResults: []runtime.CheckResult{result}}
+			}
+		}
+		checkedValues := e.IntoRecord()
+		valuesBeforeCheck := e.IntoRecord()
+		checkErr := context.CheckAndFix(&runtime.CheckAndFixInput{Entity: "School", Operation: operation, Values: checkedValues})
+		for field, value := range checkedValues {
+			if before, exists := valuesBeforeCheck[field]; !exists || !reflect.DeepEqual(before, value) {
+				e.base.PutDynamic(field, value)
+				e.root.Set(e.EntityKey(), field, value)
+			}
+		}
+		if checkErr != nil { return checkErr }
+	}
+	return nil
+}
+
+type teaqlSchoolSaveSnapshot struct {
+	record core.Record
+	dirtyFields map[string]bool
+	isNew bool
+	markedAsDelete bool
+	loadState map[string]bool
+	restrictLoadState bool
+	ledgerID core.Value
+}
+
+func (e *School) teaqlSaveSnapshot() teaqlSchoolSaveSnapshot {
+	dirty := make(map[string]bool, len(e.dirtyFields))
+	for field, value := range e.dirtyFields { dirty[field] = value }
+	loaded := make(map[string]bool, len(e.loadState))
+	for field, value := range e.loadState { loaded[field] = value }
+	return teaqlSchoolSaveSnapshot{
+		record: e.IntoRecord(), dirtyFields: dirty, isNew: e.isNew,
+		markedAsDelete: e.markedAsDelete, loadState: loaded,
+		restrictLoadState: e.restrictLoadState, ledgerID: e.ledgerID,
+	}
+}
+
+func (e *School) teaqlRegisterGraphOutcome(context *runtime.UserContext, snapshot teaqlSchoolSaveSnapshot) {
+	context.AfterGraphRollback(func() {
+		if err := e.FromRecord(snapshot.record); err != nil { panic(err) }
+		e.dirtyFields = snapshot.dirtyFields
+		e.isNew = snapshot.isNew
+		e.markedAsDelete = snapshot.markedAsDelete
+		e.loadState = snapshot.loadState
+		e.restrictLoadState = snapshot.restrictLoadState
+		e.ledgerID = snapshot.ledgerID
+	})
+	context.AfterGraphCommit(func() { e.root.ClearEntity(e.EntityKey()) })
+}
+
+// TeaqlSaveWithinGraph is generated infrastructure used by related entity
+// packages after the public root Save has opened the graph transaction.
+func (e *School) TeaqlSaveWithinGraph(context *runtime.UserContext) (*School, error) {
+	snapshot := e.teaqlSaveSnapshot()
+	e.teaqlRegisterGraphOutcome(context, snapshot)
 	dsRaw := context.GetResource("dataService")
 	if dsRaw == nil {
 		return nil, fmt.Errorf("dataService not found in UserContext")
@@ -238,12 +352,8 @@ func (e *School) Save(context *runtime.UserContext) (*School, error) {
 				e.root.Set(e.EntityKey(), field, value)
 			}
 		}
-		if checkErr != nil {
-			return nil, checkErr
-		}
-		if err := e.FromRecord(checkedValues); err != nil {
-			return nil, err
-		}
+		if checkErr != nil { return nil, checkErr }
+		if err := e.FromRecord(checkedValues); err != nil { return nil, err }
 		type idGenerator interface {
 			GenerateId(entity string) (uint64, error)
 		}
@@ -298,10 +408,7 @@ func (e *School) Save(context *runtime.UserContext) (*School, error) {
 		if err := e.FromRecord(res.PersistedRecord); err != nil {
 			return nil, err
 		}
-		if err := e.saveCascade(context); err != nil {
-			return nil, err
-		}
-		e.root.ClearEntity(e.EntityKey())
+		if err := e.saveCascade(context); err != nil { return nil, err }
 		return e, nil
 	} else if e.markedAsDelete {
 		expectedVersion := e.base.Version
@@ -311,9 +418,7 @@ func (e *School) Save(context *runtime.UserContext) (*School, error) {
 			cmd.TraceChain = append(cmd.TraceChain, &core.TraceNode{Comment: *e.comment})
 		}
 		res, err := ds.Mutate(context, &data_service.DeleteMutation{Cmd: cmd})
-		if err != nil {
-			return nil, err
-		}
+		if err != nil { return nil, err }
 		if res.AffectedRows == 0 {
 			return nil, fmt.Errorf("optimistic lock failed for %s(%d) at version %d", e.EntityName(), e.base.Id, expectedVersion)
 		}
@@ -323,10 +428,7 @@ func (e *School) Save(context *runtime.UserContext) (*School, error) {
 		if res.PersistedRecord == nil {
 			return nil, fmt.Errorf("mutation did not return the authoritative persisted record")
 		}
-		if err := e.FromRecord(res.PersistedRecord); err != nil {
-			return nil, err
-		}
-		e.root.ClearEntity(e.EntityKey())
+		if err := e.FromRecord(res.PersistedRecord); err != nil { return nil, err }
 		return e, nil
 	} else {
 		checkedValues := e.IntoRecord()
@@ -337,12 +439,8 @@ func (e *School) Save(context *runtime.UserContext) (*School, error) {
 				e.root.Set(e.EntityKey(), field, value)
 			}
 		}
-		if checkErr != nil {
-			return nil, checkErr
-		}
-		if err := e.FromRecord(checkedValues); err != nil {
-			return nil, err
-		}
+		if checkErr != nil { return nil, checkErr }
+		if err := e.FromRecord(checkedValues); err != nil { return nil, err }
 		cmd := core.NewUpdateCommand("School", core.ValU64(e.base.Id))
 		cmd.Values = e.root.Change(e.EntityKey())
 		expectedVersion := e.base.Version
@@ -364,13 +462,8 @@ func (e *School) Save(context *runtime.UserContext) (*School, error) {
 		if res.PersistedRecord == nil {
 			return nil, fmt.Errorf("mutation did not return the authoritative persisted record")
 		}
-		if err := e.FromRecord(res.PersistedRecord); err != nil {
-			return nil, err
-		}
-		if err := e.saveCascade(context); err != nil {
-			return nil, err
-		}
-		e.root.ClearEntity(e.EntityKey())
+		if err := e.FromRecord(res.PersistedRecord); err != nil { return nil, err }
+		if err := e.saveCascade(context); err != nil { return nil, err }
 		return e, nil
 	}
 }
@@ -392,8 +485,7 @@ func (e *School) UpdateId(value uint64) *School {
 func (e *School) Name() string {
 	val, _ := e.base.GetDynamic("name")
 	res, _ := val.TryText()
-	return res
-}
+	return res}
 
 func (e *School) UpdateName(value string) *School {
 	e.base.PutDynamic("name", core.ValText(value))
@@ -406,8 +498,7 @@ func (e *School) UpdateName(value string) *School {
 func (e *School) Address() string {
 	val, _ := e.base.GetDynamic("address")
 	res, _ := val.TryText()
-	return res
-}
+	return res}
 
 func (e *School) UpdateAddress(value string) *School {
 	e.base.PutDynamic("address", core.ValText(value))
@@ -420,8 +511,7 @@ func (e *School) UpdateAddress(value string) *School {
 func (e *School) EstablishedDate() time.Time {
 	val, _ := e.base.GetDynamic("established_date")
 	res, _ := val.TryDate()
-	return res
-}
+	return res}
 
 func (e *School) UpdateEstablishedDate(value time.Time) *School {
 	e.base.PutDynamic("established_date", core.ValDate(value))
@@ -434,8 +524,7 @@ func (e *School) UpdateEstablishedDate(value time.Time) *School {
 func (e *School) StudentCapacity() int64 {
 	val, _ := e.base.GetDynamic("student_capacity")
 	res, _ := val.TryI64()
-	return res
-}
+	return res}
 
 func (e *School) UpdateStudentCapacity(value int64) *School {
 	e.base.PutDynamic("student_capacity", core.ValI64(value))
@@ -448,8 +537,7 @@ func (e *School) UpdateStudentCapacity(value int64) *School {
 func (e *School) Active() bool {
 	val, _ := e.base.GetDynamic("active")
 	res, _ := val.TryBool()
-	return res
-}
+	return res}
 
 func (e *School) UpdateActive(value bool) *School {
 	e.base.PutDynamic("active", core.ValBool(value))
@@ -462,8 +550,7 @@ func (e *School) UpdateActive(value bool) *School {
 func (e *School) CreateTime() time.Time {
 	val, _ := e.base.GetDynamic("create_time")
 	res, _ := val.TryTime()
-	return res
-}
+	return res}
 
 func (e *School) UpdateCreateTime(value time.Time) *School {
 	e.base.PutDynamic("create_time", core.ValTimestamp(value.UnixMilli()))
@@ -476,8 +563,7 @@ func (e *School) UpdateCreateTime(value time.Time) *School {
 func (e *School) UpdateTime() time.Time {
 	val, _ := e.base.GetDynamic("update_time")
 	res, _ := val.TryTime()
-	return res
-}
+	return res}
 
 func (e *School) UpdateUpdateTime(value time.Time) *School {
 	e.base.PutDynamic("update_time", core.ValTimestamp(value.UnixMilli()))
@@ -509,8 +595,8 @@ func (e *School) UpdatePlatformId(value uint64) *School {
 	e.loadState["platform_id"] = true
 	return e
 }
-
 // DEBUG: constantObjectField is false
+
 
 func (e *School) SchoolTypeId() uint64 {
 	val, _ := e.base.GetDynamic("school_type_id")
@@ -525,7 +611,6 @@ func (e *School) updateSchoolTypeId(value uint64) *School {
 	e.loadState["school_type_id"] = true
 	return e
 }
-
 // DEBUG: constantObjectField is true
 
 func (e *School) UpdateSchoolTypeToPrimary() *School {
@@ -535,3 +620,5 @@ func (e *School) UpdateSchoolTypeToPrimary() *School {
 func (e *School) SchoolTypeIsPrimary() bool {
 	return e.SchoolTypeId() == 1001
 }
+
+

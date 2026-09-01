@@ -39,7 +39,7 @@ func TestRetainedMinimumConformance(t *testing.T) {
 		t.Fatalf("expected title checker error, got %v", err)
 	}
 	var checkError *runtime.RuntimeError
-	if !errors.As(err, &checkError) || checkError.Type != "Check" || len(checkError.CheckResults) == 0 || checkError.CheckResults[0].Location != "title" {
+	if !errors.As(err, &checkError) || checkError.Type != "Check" || len(checkError.CheckResults) == 0 || checkError.CheckResults[0].ModelPath() != "title" {
 		t.Fatalf("expected machine-readable title checker error, got %#v", err)
 	}
 	assertWorkItemCount(t, context, 0)

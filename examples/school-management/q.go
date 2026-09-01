@@ -32,3 +32,24 @@ func (q *QType) Schools() *school.SchoolRequest {
 func (q *QType) SchoolsMinimal() *school.SchoolRequest {
 	return school.NewSchoolMinimalRequest()
 }
+
+func (q *QType) SchoolTypePlatform(entity *school_type.SchoolType) (*platform.Platform, bool) {
+	value, ok := entity.RelationEntity("platformEntity")
+	if !ok { return nil, false }
+	typed, ok := value.(*platform.Platform)
+	return typed, ok
+}
+
+func (q *QType) SchoolPlatform(entity *school.School) (*platform.Platform, bool) {
+	value, ok := entity.RelationEntity("platformEntity")
+	if !ok { return nil, false }
+	typed, ok := value.(*platform.Platform)
+	return typed, ok
+}
+
+func (q *QType) SchoolSchoolType(entity *school.School) (*school_type.SchoolType, bool) {
+	value, ok := entity.RelationEntity("schoolTypeEntity")
+	if !ok { return nil, false }
+	typed, ok := value.(*school_type.SchoolType)
+	return typed, ok
+}
