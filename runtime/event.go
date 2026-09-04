@@ -36,6 +36,8 @@ type RawAuditEvent struct {
 	NewValues     *core.Record
 	Changes       []*EntityPropertyChange
 	TraceChain    []*core.TraceNode
+	Actor         string
+	Category      string
 }
 
 func Created(entity string, values core.Record) *RawAuditEvent {
@@ -408,6 +410,8 @@ func (e *RawAuditEvent) BuildSafeEvent(auditMaskFields []string, auditValueMaxLe
 		Entity:     e.Entity,
 		Fields:     safeFields,
 		TraceChain: e.TraceChain,
+		Actor:      e.Actor,
+		Category:   e.Category,
 	}
 }
 
@@ -427,6 +431,8 @@ type SafeAuditEvent struct {
 	Entity     string
 	Fields     []*SafeAuditField
 	TraceChain []*core.TraceNode
+	Actor      string
+	Category   string
 }
 
 type RawAuditEventSink interface {

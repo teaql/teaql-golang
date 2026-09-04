@@ -66,6 +66,15 @@ func TestRawAuditEventCreated(t *testing.T) {
 	}
 }
 
+func TestBootstrapAuditIdentitySurvivesSafeProjection(t *testing.T) {
+	event := Created("School Type", core.Record{"code": core.ValText("PRIMARY")})
+	event.Actor = "teaql-generated-bootstrap"
+	event.Category = "runtime-bootstrap"
+	safe := event.BuildSafeEvent(nil, nil)
+	assert.Equal(t, "teaql-generated-bootstrap", safe.Actor)
+	assert.Equal(t, "runtime-bootstrap", safe.Category)
+}
+
 func TestRawAuditEventUpdated(t *testing.T) {
 	values := core.Record{"a": core.ValI64(2)}
 	event := Updated("User", values)

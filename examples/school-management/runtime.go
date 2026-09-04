@@ -1,11 +1,10 @@
 package lib
 
 import (
-	stdcontext "context"
 	"database/sql"
 	"fmt"
 	"os"
-	"sort"
+	"reflect"
 	"strings"
 	"time"
 
@@ -13,43 +12,171 @@ import (
 	"github.com/shopspring/decimal"
 
 	"github.com/teaql/teaql-golang/core"
+	provider "github.com/teaql/teaql-golang/provider/sqlite"
 	"github.com/teaql/teaql-golang/runtime"
 	teaql_sql "github.com/teaql/teaql-golang/sql"
-	provider "github.com/teaql/teaql-golang/provider/sqlite"
 
 	"school-management-service-core-workspace/lib/platform"
-	"school-management-service-core-workspace/lib/school_type"
 	"school-management-service-core-workspace/lib/school"
+	"school-management-service-core-workspace/lib/school_type"
 )
 
 var _ = time.Time{}
 var _ = decimal.Decimal{}
+var _ = reflect.DeepEqual
+var _ = strings.Join
 
-var generatedRootGraph = &runtime.GraphNode{
-		Entity: "Platform",
-		Values: core.Record{"id": core.Value{V: uint64(1)},
-			"name": core.Value{V: "Campus Learning Platform"},
-			"base_url": core.Value{V: "https://campus.example.com"},
-			"create_time": core.Value{V: time.Now().UTC()},
-			"update_time": core.Value{V: time.Now().UTC()}},
+func ensureGeneratedBootstrapOnce(context *runtime.UserContext) error {
+	previousActor := context.UserIdentifier()
+	previousCategory := context.GetResource("bootstrapCategory")
+	context.SetUserIdentifier("teaql-generated-bootstrap")
+	context.InsertResource("bootstrapCategory", "runtime-bootstrap")
+	defer func() {
+		context.SetUserIdentifier(previousActor)
+		context.InsertResource("bootstrapCategory", previousCategory)
+	}()
+	platform1, err := Q.Platforms().WithIdIs(uint64(1)).Comment("what: locate generated bootstrap entity").Purpose("why: idempotent runtime bootstrap").ExecuteForOne(context)
+	if err != nil {
+		return fmt.Errorf("query bootstrap Platform(1): %w", err)
 	}
-var generatedInitialGraphs = []*runtime.GraphNode{
-	&runtime.GraphNode{
-		Entity: "School Type",
-		Values: core.Record{"id": core.Value{V: uint64(1001)},
-			"platform_id": core.Value{V: uint64(1)},
-			"name": core.Value{V: "Primary"},
-			"code": core.Value{V: "PRIMARY"},
-			"display_order": core.Value{V: decimal.RequireFromString("1")}},
-	},
-	&runtime.GraphNode{
-		Entity: "School Type",
-		Values: core.Record{"id": core.Value{V: uint64(1002)},
-			"platform_id": core.Value{V: uint64(1)},
-			"name": core.Value{V: "Secondary"},
-			"code": core.Value{V: "SECONDARY"},
-			"display_order": core.Value{V: decimal.RequireFromString("2")}},
-	},
+	if platform1 == nil {
+		platform1 = platform.NewPlatform().UpdateId(uint64(1))
+		platform1.UpdateName("Campus Learning Platform")
+		platform1.UpdateBaseUrl("https://campus.example.com")
+		if _, err = platform1.AuditAs("create model root Platform(1)").Save(context); err != nil {
+			createErr := err
+			// A concurrent bootstrap may have inserted the same fixed identity.
+			for attempt := 0; attempt < 5; attempt++ {
+				platform1, err = Q.Platforms().WithIdIs(uint64(1)).Comment("what: recover concurrent bootstrap").Purpose("why: make generated bootstrap idempotent").ExecuteForOne(context)
+				if err == nil && platform1 != nil {
+					break
+				}
+				if attempt < 4 {
+					time.Sleep(time.Duration(attempt+1) * 10 * time.Millisecond)
+				}
+			}
+			if platform1 == nil {
+				return fmt.Errorf("create bootstrap Platform(1): %w", createErr)
+			}
+		}
+	}
+	context.WithActiveRoot(runtime.EntityReference{Entity: "Platform", ID: 1})
+	school_type1001, err := Q.SchoolTypes().WithIdIs(uint64(1001)).Comment("what: locate generated bootstrap entity").Purpose("why: idempotent runtime bootstrap").ExecuteForOne(context)
+	if err != nil {
+		return fmt.Errorf("query bootstrap SchoolType(1001): %w", err)
+	}
+	if school_type1001 == nil {
+		school_type1001 = school_type.NewSchoolType().UpdateId(uint64(1001))
+		school_type1001.UpdatePlatformId(uint64(1))
+		school_type1001.UpdateName("Primary")
+		school_type1001.UpdateCode("PRIMARY")
+		school_type1001.UpdateDisplayOrder(decimal.RequireFromString("1"))
+		if _, err = school_type1001.AuditAs("create model constant SchoolType(1001)").Save(context); err != nil {
+			createErr := err
+			// A concurrent bootstrap may have inserted the same fixed identity.
+			for attempt := 0; attempt < 5; attempt++ {
+				school_type1001, err = Q.SchoolTypes().WithIdIs(uint64(1001)).Comment("what: recover concurrent bootstrap").Purpose("why: make generated bootstrap idempotent").ExecuteForOne(context)
+				if err == nil && school_type1001 != nil {
+					break
+				}
+				if attempt < 4 {
+					time.Sleep(time.Duration(attempt+1) * 10 * time.Millisecond)
+				}
+			}
+			if school_type1001 == nil {
+				return fmt.Errorf("create bootstrap SchoolType(1001): %w", createErr)
+			}
+		}
+	}
+	{
+		changed := false
+		if !reflect.DeepEqual(school_type1001.PlatformId(), uint64(1)) {
+			school_type1001.UpdatePlatformId(uint64(1))
+			changed = true
+		}
+		if !reflect.DeepEqual(school_type1001.Name(), "Primary") {
+			school_type1001.UpdateName("Primary")
+			changed = true
+		}
+		if !reflect.DeepEqual(school_type1001.Code(), "PRIMARY") {
+			school_type1001.UpdateCode("PRIMARY")
+			changed = true
+		}
+		if !reflect.DeepEqual(school_type1001.DisplayOrder(), decimal.RequireFromString("1")) {
+			school_type1001.UpdateDisplayOrder(decimal.RequireFromString("1"))
+			changed = true
+		}
+		if changed {
+			if _, err = school_type1001.AuditAs("reconcile model constant SchoolType(1001)").Save(context); err != nil {
+				return fmt.Errorf("reconcile bootstrap SchoolType(1001): %w", err)
+			}
+		}
+	}
+	school_type1002, err := Q.SchoolTypes().WithIdIs(uint64(1002)).Comment("what: locate generated bootstrap entity").Purpose("why: idempotent runtime bootstrap").ExecuteForOne(context)
+	if err != nil {
+		return fmt.Errorf("query bootstrap SchoolType(1002): %w", err)
+	}
+	if school_type1002 == nil {
+		school_type1002 = school_type.NewSchoolType().UpdateId(uint64(1002))
+		school_type1002.UpdatePlatformId(uint64(1))
+		school_type1002.UpdateName("Secondary")
+		school_type1002.UpdateCode("SECONDARY")
+		school_type1002.UpdateDisplayOrder(decimal.RequireFromString("2"))
+		if _, err = school_type1002.AuditAs("create model constant SchoolType(1002)").Save(context); err != nil {
+			createErr := err
+			// A concurrent bootstrap may have inserted the same fixed identity.
+			for attempt := 0; attempt < 5; attempt++ {
+				school_type1002, err = Q.SchoolTypes().WithIdIs(uint64(1002)).Comment("what: recover concurrent bootstrap").Purpose("why: make generated bootstrap idempotent").ExecuteForOne(context)
+				if err == nil && school_type1002 != nil {
+					break
+				}
+				if attempt < 4 {
+					time.Sleep(time.Duration(attempt+1) * 10 * time.Millisecond)
+				}
+			}
+			if school_type1002 == nil {
+				return fmt.Errorf("create bootstrap SchoolType(1002): %w", createErr)
+			}
+		}
+	}
+	{
+		changed := false
+		if !reflect.DeepEqual(school_type1002.PlatformId(), uint64(1)) {
+			school_type1002.UpdatePlatformId(uint64(1))
+			changed = true
+		}
+		if !reflect.DeepEqual(school_type1002.Name(), "Secondary") {
+			school_type1002.UpdateName("Secondary")
+			changed = true
+		}
+		if !reflect.DeepEqual(school_type1002.Code(), "SECONDARY") {
+			school_type1002.UpdateCode("SECONDARY")
+			changed = true
+		}
+		if !reflect.DeepEqual(school_type1002.DisplayOrder(), decimal.RequireFromString("2")) {
+			school_type1002.UpdateDisplayOrder(decimal.RequireFromString("2"))
+			changed = true
+		}
+		if changed {
+			if _, err = school_type1002.AuditAs("reconcile model constant SchoolType(1002)").Save(context); err != nil {
+				return fmt.Errorf("reconcile bootstrap SchoolType(1002): %w", err)
+			}
+		}
+	}
+	return nil
+}
+
+func ensureGeneratedBootstrap(context *runtime.UserContext) error {
+	var err error
+	for attempt := 0; attempt < 5; attempt++ {
+		if err = ensureGeneratedBootstrapOnce(context); err == nil {
+			return nil
+		}
+		if attempt < 4 {
+			time.Sleep(time.Duration(attempt+1) * 10 * time.Millisecond)
+		}
+	}
+	return fmt.Errorf("generated bootstrap did not converge after bounded retry: %w", err)
 }
 
 func Module() *runtime.RuntimeModule {
@@ -118,15 +245,24 @@ func (r *generatedCheckerRegistry) CheckAndFix(context *runtime.UserContext, inp
 
 func generatedNumber(value any) (float64, bool) {
 	switch number := value.(type) {
-	case int: return float64(number), true
-	case int32: return float64(number), true
-	case int64: return float64(number), true
-	case uint: return float64(number), true
-	case uint32: return float64(number), true
-	case uint64: return float64(number), true
-	case float32: return float64(number), true
-	case float64: return number, true
-	default: return 0, false
+	case int:
+		return float64(number), true
+	case int32:
+		return float64(number), true
+	case int64:
+		return float64(number), true
+	case uint:
+		return float64(number), true
+	case uint32:
+		return float64(number), true
+	case uint64:
+		return float64(number), true
+	case float32:
+		return float64(number), true
+	case float64:
+		return number, true
+	default:
+		return 0, false
 	}
 }
 
@@ -135,34 +271,43 @@ func checkPlatform(context *runtime.UserContext, input *runtime.CheckAndFixInput
 	if input.Operation == core.MutationInsert {
 		if value, exists := input.Values["create_time"]; !exists || value.V == nil {
 			input.Values["create_time"] = core.ValTimestamp(input.Now.UnixMilli())
-			if err := context.RecordFixEvidence(runtime.FixEvidence{EntityType: "Platform", ModelPath: "create_time", Source: runtime.FixEvidenceClock, SourceLabel: "graphClock"}); err != nil { panic(err) }
+			if err := context.RecordFixEvidence(runtime.FixEvidence{EntityType: "Platform", ModelPath: "create_time", Source: runtime.FixEvidenceClock, SourceLabel: "graphClock"}); err != nil {
+				panic(err)
+			}
 		}
 	}
 
 	if input.Operation == core.MutationInsert {
 		if value, exists := input.Values["update_time"]; !exists || value.V == nil {
 			input.Values["update_time"] = core.ValTimestamp(input.Now.UnixMilli())
-			if err := context.RecordFixEvidence(runtime.FixEvidence{EntityType: "Platform", ModelPath: "update_time", Source: runtime.FixEvidenceClock, SourceLabel: "graphClock"}); err != nil { panic(err) }
+			if err := context.RecordFixEvidence(runtime.FixEvidence{EntityType: "Platform", ModelPath: "update_time", Source: runtime.FixEvidenceClock, SourceLabel: "graphClock"}); err != nil {
+				panic(err)
+			}
 		}
 	}
 	if input.Operation == core.MutationUpdate {
 		input.Values["update_time"] = core.ValTimestamp(input.Now.UnixMilli())
-		if err := context.RecordFixEvidence(runtime.FixEvidence{EntityType: "Platform", ModelPath: "update_time", Source: runtime.FixEvidenceClock, SourceLabel: "graphClock"}); err != nil { panic(err) }
+		if err := context.RecordFixEvidence(runtime.FixEvidence{EntityType: "Platform", ModelPath: "update_time", Source: runtime.FixEvidenceClock, SourceLabel: "graphClock"}); err != nil {
+			panic(err)
+		}
 	}
-
 
 	if value, exists := input.Values["name"]; (input.Operation == core.MutationInsert && !exists) || (exists && value.V == nil) {
 		results = append(results, runtime.CheckResult{RuleID: "required", CanonicalLocation: runtime.Location().Property("name")})
 	}
 	if value, exists := input.Values["name"]; exists {
-		if text, ok := value.V.(string); ok && len([]rune(text)) > 100 { results = append(results, runtime.CheckResult{RuleID: "max_length", CanonicalLocation: runtime.Location().Property("name"), InputValue: text, SystemValue: 100}) }
+		if text, ok := value.V.(string); ok && len([]rune(text)) > 100 {
+			results = append(results, runtime.CheckResult{RuleID: "max_length", CanonicalLocation: runtime.Location().Property("name"), InputValue: text, SystemValue: 100})
+		}
 	}
 
 	if value, exists := input.Values["base_url"]; (input.Operation == core.MutationInsert && !exists) || (exists && value.V == nil) {
 		results = append(results, runtime.CheckResult{RuleID: "required", CanonicalLocation: runtime.Location().Property("base_url")})
 	}
 	if value, exists := input.Values["base_url"]; exists {
-		if text, ok := value.V.(string); ok && len([]rune(text)) > 100 { results = append(results, runtime.CheckResult{RuleID: "max_length", CanonicalLocation: runtime.Location().Property("base_url"), InputValue: text, SystemValue: 100}) }
+		if text, ok := value.V.(string); ok && len([]rune(text)) > 100 {
+			results = append(results, runtime.CheckResult{RuleID: "max_length", CanonicalLocation: runtime.Location().Property("base_url"), InputValue: text, SystemValue: 100})
+		}
 	}
 
 	if value, exists := input.Values["create_time"]; (input.Operation == core.MutationInsert && !exists) || (exists && value.V == nil) {
@@ -173,7 +318,6 @@ func checkPlatform(context *runtime.UserContext, input *runtime.CheckAndFixInput
 		results = append(results, runtime.CheckResult{RuleID: "required", CanonicalLocation: runtime.Location().Property("update_time")})
 	}
 
-
 	return results
 }
 
@@ -183,25 +327,27 @@ func checkSchoolType(context *runtime.UserContext, input *runtime.CheckAndFixInp
 		results = append(results, runtime.CheckResult{RuleID: "required", CanonicalLocation: runtime.Location().Property("platform")})
 	}
 
-
 	if value, exists := input.Values["name"]; (input.Operation == core.MutationInsert && !exists) || (exists && value.V == nil) {
 		results = append(results, runtime.CheckResult{RuleID: "required", CanonicalLocation: runtime.Location().Property("name")})
 	}
 	if value, exists := input.Values["name"]; exists {
-		if text, ok := value.V.(string); ok && len([]rune(text)) > 100 { results = append(results, runtime.CheckResult{RuleID: "max_length", CanonicalLocation: runtime.Location().Property("name"), InputValue: text, SystemValue: 100}) }
+		if text, ok := value.V.(string); ok && len([]rune(text)) > 100 {
+			results = append(results, runtime.CheckResult{RuleID: "max_length", CanonicalLocation: runtime.Location().Property("name"), InputValue: text, SystemValue: 100})
+		}
 	}
 
 	if value, exists := input.Values["code"]; (input.Operation == core.MutationInsert && !exists) || (exists && value.V == nil) {
 		results = append(results, runtime.CheckResult{RuleID: "required", CanonicalLocation: runtime.Location().Property("code")})
 	}
 	if value, exists := input.Values["code"]; exists {
-		if text, ok := value.V.(string); ok && len([]rune(text)) > 100 { results = append(results, runtime.CheckResult{RuleID: "max_length", CanonicalLocation: runtime.Location().Property("code"), InputValue: text, SystemValue: 100}) }
+		if text, ok := value.V.(string); ok && len([]rune(text)) > 100 {
+			results = append(results, runtime.CheckResult{RuleID: "max_length", CanonicalLocation: runtime.Location().Property("code"), InputValue: text, SystemValue: 100})
+		}
 	}
 
 	if value, exists := input.Values["display_order"]; (input.Operation == core.MutationInsert && !exists) || (exists && value.V == nil) {
 		results = append(results, runtime.CheckResult{RuleID: "required", CanonicalLocation: runtime.Location().Property("display_order")})
 	}
-
 
 	return results
 }
@@ -211,21 +357,26 @@ func checkSchool(context *runtime.UserContext, input *runtime.CheckAndFixInput) 
 	if input.Operation == core.MutationInsert {
 		if value, exists := input.Values["create_time"]; !exists || value.V == nil {
 			input.Values["create_time"] = core.ValTimestamp(input.Now.UnixMilli())
-			if err := context.RecordFixEvidence(runtime.FixEvidence{EntityType: "School", ModelPath: "create_time", Source: runtime.FixEvidenceClock, SourceLabel: "graphClock"}); err != nil { panic(err) }
+			if err := context.RecordFixEvidence(runtime.FixEvidence{EntityType: "School", ModelPath: "create_time", Source: runtime.FixEvidenceClock, SourceLabel: "graphClock"}); err != nil {
+				panic(err)
+			}
 		}
 	}
 
 	if input.Operation == core.MutationInsert {
 		if value, exists := input.Values["update_time"]; !exists || value.V == nil {
 			input.Values["update_time"] = core.ValTimestamp(input.Now.UnixMilli())
-			if err := context.RecordFixEvidence(runtime.FixEvidence{EntityType: "School", ModelPath: "update_time", Source: runtime.FixEvidenceClock, SourceLabel: "graphClock"}); err != nil { panic(err) }
+			if err := context.RecordFixEvidence(runtime.FixEvidence{EntityType: "School", ModelPath: "update_time", Source: runtime.FixEvidenceClock, SourceLabel: "graphClock"}); err != nil {
+				panic(err)
+			}
 		}
 	}
 	if input.Operation == core.MutationUpdate {
 		input.Values["update_time"] = core.ValTimestamp(input.Now.UnixMilli())
-		if err := context.RecordFixEvidence(runtime.FixEvidence{EntityType: "School", ModelPath: "update_time", Source: runtime.FixEvidenceClock, SourceLabel: "graphClock"}); err != nil { panic(err) }
+		if err := context.RecordFixEvidence(runtime.FixEvidence{EntityType: "School", ModelPath: "update_time", Source: runtime.FixEvidenceClock, SourceLabel: "graphClock"}); err != nil {
+			panic(err)
+		}
 	}
-
 
 	if value, exists := input.Values["platform_id"]; (input.Operation == core.MutationInsert && !exists) || (exists && value.V == nil) {
 		results = append(results, runtime.CheckResult{RuleID: "required", CanonicalLocation: runtime.Location().Property("platform")})
@@ -239,14 +390,18 @@ func checkSchool(context *runtime.UserContext, input *runtime.CheckAndFixInput) 
 		results = append(results, runtime.CheckResult{RuleID: "required", CanonicalLocation: runtime.Location().Property("name")})
 	}
 	if value, exists := input.Values["name"]; exists {
-		if text, ok := value.V.(string); ok && len([]rune(text)) > 100 { results = append(results, runtime.CheckResult{RuleID: "max_length", CanonicalLocation: runtime.Location().Property("name"), InputValue: text, SystemValue: 100}) }
+		if text, ok := value.V.(string); ok && len([]rune(text)) > 100 {
+			results = append(results, runtime.CheckResult{RuleID: "max_length", CanonicalLocation: runtime.Location().Property("name"), InputValue: text, SystemValue: 100})
+		}
 	}
 
 	if value, exists := input.Values["address"]; (input.Operation == core.MutationInsert && !exists) || (exists && value.V == nil) {
 		results = append(results, runtime.CheckResult{RuleID: "required", CanonicalLocation: runtime.Location().Property("address")})
 	}
 	if value, exists := input.Values["address"]; exists {
-		if text, ok := value.V.(string); ok && len([]rune(text)) > 100 { results = append(results, runtime.CheckResult{RuleID: "max_length", CanonicalLocation: runtime.Location().Property("address"), InputValue: text, SystemValue: 100}) }
+		if text, ok := value.V.(string); ok && len([]rune(text)) > 100 {
+			results = append(results, runtime.CheckResult{RuleID: "max_length", CanonicalLocation: runtime.Location().Property("address"), InputValue: text, SystemValue: 100})
+		}
 	}
 
 	if value, exists := input.Values["established_date"]; (input.Operation == core.MutationInsert && !exists) || (exists && value.V == nil) {
@@ -268,7 +423,6 @@ func checkSchool(context *runtime.UserContext, input *runtime.CheckAndFixInput) 
 	if value, exists := input.Values["update_time"]; (input.Operation == core.MutationInsert && !exists) || (exists && value.V == nil) {
 		results = append(results, runtime.CheckResult{RuleID: "required", CanonicalLocation: runtime.Location().Property("update_time")})
 	}
-
 
 	return results
 }
@@ -372,9 +526,13 @@ func ServiceRuntimeFromEnv() (*runtime.UserContext, error) {
 // Installing Module() or starting ServiceRuntimeFromEnv never changes database schema.
 func EnsureSchema(context *runtime.UserContext) error {
 	db, ok := context.GetResource("db").(*sql.DB)
-	if !ok || db == nil { return fmt.Errorf("db not found in UserContext") }
-	if err := provider.EnsureSoundex(db); err != nil { return fmt.Errorf("register SQLite soundex: %w", err) }
-dialect := teaql_sql.SqlDialect(&provider.SqliteDialect{})
+	if !ok || db == nil {
+		return fmt.Errorf("db not found in UserContext")
+	}
+	if err := provider.EnsureSoundex(db); err != nil {
+		return fmt.Errorf("register SQLite soundex: %w", err)
+	}
+	dialect := teaql_sql.SqlDialect(&provider.SqliteDialect{})
 	metadata := context.Metadata
 	for _, statement := range dialect.SchemaSetupSqls() {
 		if _, err := db.Exec(statement); err != nil {
@@ -395,60 +553,13 @@ dialect := teaql_sql.SqlDialect(&provider.SqliteDialect{})
 			return fmt.Errorf("compile indexes for %s: %w", entity.Name, err)
 		}
 		for _, indexStatement := range indexes {
-		if _, err := db.Exec(indexStatement); err != nil {
-			return fmt.Errorf("create index for %s: %w", entity.Name, err)
-		}
+			if _, err := db.Exec(indexStatement); err != nil {
+				return fmt.Errorf("create index for %s: %w", entity.Name, err)
+			}
 		}
 	}
-	if err := ensureGeneratedBootstrap(context, db, dialect); err != nil { return err }
-	return nil
-}
-
-type generatedIDFloorEnsurer interface {
-	EnsureIdFloor(stdcontext.Context, string, uint64) error
-}
-
-func ensureGeneratedBootstrap(context *runtime.UserContext, db *sql.DB, dialect teaql_sql.SqlDialect) error {
-	type item struct { graph *runtime.GraphNode; reconcile bool }
-	items := make([]item, 0, 1+len(generatedInitialGraphs))
-	items = append(items, item{generatedRootGraph, false})
-	for _, graph := range generatedInitialGraphs { items = append(items, item{graph, true}) }
-	for _, seed := range items {
-		entity := context.Metadata.Entity(seed.graph.Entity)
-		if entity == nil { return fmt.Errorf("bootstrap entity %s is not registered", seed.graph.Entity) }
-		idValue, ok := seed.graph.Values["id"]
-		if !ok { return fmt.Errorf("bootstrap entity %s has no id", seed.graph.Entity) }
-		id, ok := idValue.TryU64()
-		if !ok { return fmt.Errorf("bootstrap entity %s has invalid id", seed.graph.Entity) }
-		var count int
-		if err := db.QueryRow("SELECT COUNT(*) FROM "+dialect.QuoteIdent(entity.TabName)+" WHERE "+dialect.QuoteIdent("id")+" = "+dialect.Placeholder(1), id).Scan(&count); err != nil { return err }
-		keys := make([]string, 0, len(seed.graph.Values))
-		for key := range seed.graph.Values { if key != "version" { keys = append(keys, key) } }
-		sort.Strings(keys)
-		column := func(key string) string { for _, property := range entity.Properties { if property.Name == key { return property.ColName } }; return key }
-		if count == 0 {
-			columns, placeholders, args := make([]string, 0, len(keys)+1), make([]string, 0, len(keys)+1), make([]any, 0, len(keys)+1)
-			for _, key := range keys { columns = append(columns, dialect.QuoteIdent(column(key))); placeholders = append(placeholders, dialect.Placeholder(len(args)+1)); args = append(args, seed.graph.Values[key].V) }
-			columns = append(columns, dialect.QuoteIdent("version")); placeholders = append(placeholders, dialect.Placeholder(len(args)+1)); args = append(args, int64(1))
-			statement := "INSERT INTO "+dialect.QuoteIdent(entity.TabName)+" ("+strings.Join(columns, ", ")+") VALUES ("+strings.Join(placeholders, ", ")+")"
-			if _, err := db.Exec(statement, args...); err != nil {
-				return fmt.Errorf("bootstrap %s(%d): %w", seed.graph.Entity, id, err)
-			}
-		} else if seed.reconcile {
-			assignments, changes, args := make([]string, 0, len(keys)), make([]string, 0, len(keys)), make([]any, 0, len(keys)*2+1)
-			for _, key := range keys { if key == "id" { continue }; args = append(args, seed.graph.Values[key].V); assignments = append(assignments, dialect.QuoteIdent(column(key))+" = "+dialect.Placeholder(len(args))) }
-			if len(assignments) > 0 {
-				assignments = append(assignments, dialect.QuoteIdent("version")+" = "+dialect.QuoteIdent("version")+" + 1")
-				args = append(args, id)
-				idPlaceholder := dialect.Placeholder(len(args))
-				for _, key := range keys { if key == "id" { continue }; args = append(args, seed.graph.Values[key].V); changes = append(changes, "NOT ("+dialect.QuoteIdent(column(key))+" = "+dialect.Placeholder(len(args))+")") }
-				statement := "UPDATE "+dialect.QuoteIdent(entity.TabName)+" SET "+strings.Join(assignments, ", ")+" WHERE "+dialect.QuoteIdent("id")+" = "+idPlaceholder+" AND ("+strings.Join(changes, " OR ")+")"
-				if _, err := db.Exec(statement, args...); err != nil { return err }
-			}
-		}
-		ensurer, ok := context.GetResource("idGenerator").(generatedIDFloorEnsurer)
-		if !ok { return fmt.Errorf("idGenerator does not support ID floor synchronization") }
-		if err := ensurer.EnsureIdFloor(context, seed.graph.Entity, id); err != nil { return err }
+	if err := ensureGeneratedBootstrap(context); err != nil {
+		return err
 	}
 	return nil
 }

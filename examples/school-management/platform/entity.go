@@ -8,13 +8,13 @@ import (
 	"strings"
 	"sync/atomic"
 
-	"time"
 	"github.com/shopspring/decimal"
 	"github.com/teaql/teaql-golang/core"
 	"github.com/teaql/teaql-golang/data_service"
 	"github.com/teaql/teaql-golang/runtime"
-	"school-management-service-core-workspace/lib/school_type"
 	"school-management-service-core-workspace/lib/school"
+	"school-management-service-core-workspace/lib/school_type"
+	"time"
 )
 
 var (
@@ -28,20 +28,20 @@ var (
 var teaqlTemporaryEntityID int64
 
 type Platform struct {
-	base        *core.BaseEntityData
-	dirtyFields map[string]bool
-	isNew       bool
-	markedAsDelete bool
-	comment     *string
-	purpose     *string
-	loadState   map[string]bool
+	base              *core.BaseEntityData
+	dirtyFields       map[string]bool
+	isNew             bool
+	markedAsDelete    bool
+	comment           *string
+	purpose           *string
+	loadState         map[string]bool
 	restrictLoadState bool
-	root        *core.EntityRoot
-	ledgerID    core.Value
-	relations   map[string]core.Entity
-	loadedRelations map[string]bool
-	schoolTypeList *SchoolTypeList
-	schoolList *SchoolList
+	root              *core.EntityRoot
+	ledgerID          core.Value
+	relations         map[string]core.Entity
+	loadedRelations   map[string]bool
+	schoolTypeList    *SchoolTypeList
+	schoolList        *SchoolList
 }
 
 type SchoolTypeList struct {
@@ -79,34 +79,42 @@ func (l *SchoolList) Items() []*school.School {
 func NewPlatform() *Platform {
 	temporaryID := -atomic.AddInt64(&teaqlTemporaryEntityID, 1)
 	entity := &Platform{
-		base:        core.NewBaseEntityData(),
-		dirtyFields: make(map[string]bool),
-		isNew:       true,
-		loadState:   make(map[string]bool),
-		root:        core.NewEntityRoot(),
-		ledgerID:    core.ValI64(temporaryID),
-		relations:   make(map[string]core.Entity),
+		base:            core.NewBaseEntityData(),
+		dirtyFields:     make(map[string]bool),
+		isNew:           true,
+		loadState:       make(map[string]bool),
+		root:            core.NewEntityRoot(),
+		ledgerID:        core.ValI64(temporaryID),
+		relations:       make(map[string]core.Entity),
 		loadedRelations: make(map[string]bool),
-		schoolTypeList: newSchoolTypeList(),
-		schoolList: newSchoolList(),
+		schoolTypeList:  newSchoolTypeList(),
+		schoolList:      newSchoolList(),
 	}
 	entity.root.MarkAsNew(entity.EntityKey())
 	return entity
 }
 
 func (e *Platform) EntityKey() core.EntityKey {
-	if e.base.Id != 0 { return core.NewEntityKey(e.EntityName(), core.ValU64(e.base.Id)) }
+	if e.base.Id != 0 {
+		return core.NewEntityKey(e.EntityName(), core.ValU64(e.base.Id))
+	}
 	return core.NewEntityKey(e.EntityName(), e.ledgerID)
 }
 
 func (e *Platform) EntityRoot() *core.EntityRoot { return e.root }
 
 func (e *Platform) AttachEntityRoot(root *core.EntityRoot) {
-	if root == nil || root == e.root { return }
+	if root == nil || root == e.root {
+		return
+	}
 	root.MergeFrom(e.root)
 	e.root = root
-		for _, child := range e.schoolTypeList.Items() { child.AttachEntityRoot(root) }
-		for _, child := range e.schoolList.Items() { child.AttachEntityRoot(root) }
+	for _, child := range e.schoolTypeList.Items() {
+		child.AttachEntityRoot(root)
+	}
+	for _, child := range e.schoolList.Items() {
+		child.AttachEntityRoot(root)
+	}
 }
 
 func (e *Platform) RelationEntity(name string) (core.Entity, bool) {
@@ -129,12 +137,16 @@ func (e *Platform) isRelationLoaded(name string) bool {
 func (e *Platform) MarkLoadedOnly(fields ...string) *Platform {
 	e.restrictLoadState = true
 	e.loadState = make(map[string]bool, len(fields))
-	for _, field := range fields { e.loadState[field] = true }
+	for _, field := range fields {
+		e.loadState[field] = true
+	}
 	return e
 }
 
 func (e *Platform) IsLoaded(field string) bool {
-	if e.isNew && !e.restrictLoadState { return true }
+	if e.isNew && !e.restrictLoadState {
+		return true
+	}
 	return e.loadState[field]
 }
 
@@ -154,8 +166,6 @@ func (e *Platform) IdValue() core.Value {
 	return core.ValU64(e.base.Id)
 }
 
-
-
 func (e *Platform) FromRecord(record core.Record) error {
 	oldKey := e.EntityKey()
 	base, err := core.BaseEntityDataFromRecord(record)
@@ -169,7 +179,9 @@ func (e *Platform) FromRecord(record core.Record) error {
 	e.dirtyFields = make(map[string]bool)
 	e.loadState = make(map[string]bool, len(record))
 	e.restrictLoadState = true
-	for field := range record { e.loadState[field] = true }
+	for field := range record {
+		e.loadState[field] = true
+	}
 	return nil
 }
 
@@ -249,7 +261,9 @@ func (e *Platform) IntoJson() any {
 func (e *Platform) Save(context *runtime.UserContext) (*Platform, error) {
 	var saved *Platform
 	err := context.ExecuteGraphSave(func() error {
-		if preflightErr := e.TeaqlPreflightGraph(context); preflightErr != nil { return preflightErr }
+		if preflightErr := e.TeaqlPreflightGraph(context); preflightErr != nil {
+			return preflightErr
+		}
 		var innerErr error
 		saved, innerErr = e.TeaqlSaveWithinGraph(context)
 		return innerErr
@@ -265,7 +279,9 @@ func (e *Platform) TeaqlPreflightGraph(context *runtime.UserContext) error {
 	}
 	if !e.markedAsDelete {
 		operation := core.MutationUpdate
-		if e.isNew { operation = core.MutationInsert }
+		if e.isNew {
+			operation = core.MutationInsert
+		}
 		if operation == core.MutationUpdate {
 			if !e.IsLoaded("id") {
 				result := runtime.CheckResult{RuleID: "invalid_type", CanonicalLocation: runtime.Location().Property("id"), Message: "Mutation requires a fully loaded entity"}
@@ -301,12 +317,16 @@ func (e *Platform) TeaqlPreflightGraph(context *runtime.UserContext) error {
 				e.root.Set(e.EntityKey(), field, value)
 			}
 		}
-		if checkErr != nil { return checkErr }
+		if checkErr != nil {
+			return checkErr
+		}
 	}
 	for index, child := range e.schoolTypeList.Items() {
 		child.AttachEntityRoot(e.root)
 		parentID := core.ValU64(e.base.Id)
-		if e.base.Id == 0 { parentID = e.ledgerID }
+		if e.base.Id == 0 {
+			parentID = e.ledgerID
+		}
 		child.Base().PutDynamic("platform_id", parentID)
 		child.SetComment(*e.comment)
 		if err := child.TeaqlPreflightGraph(context); err != nil {
@@ -314,7 +334,9 @@ func (e *Platform) TeaqlPreflightGraph(context *runtime.UserContext) error {
 			if errors.As(err, &checkError) && checkError.Type == "Check" {
 				prefix := runtime.Location().Property("school_type_list").At(index)
 				prefixed := make([]runtime.CheckResult, len(checkError.CheckResults))
-				for resultIndex, result := range checkError.CheckResults { prefixed[resultIndex] = result.PrefixedBy(prefix) }
+				for resultIndex, result := range checkError.CheckResults {
+					prefixed[resultIndex] = result.PrefixedBy(prefix)
+				}
 				return &runtime.RuntimeError{Type: "Check", CheckResults: prefixed}
 			}
 			return fmt.Errorf("preflight child from schoolTypeList: %w", err)
@@ -323,7 +345,9 @@ func (e *Platform) TeaqlPreflightGraph(context *runtime.UserContext) error {
 	for index, child := range e.schoolList.Items() {
 		child.AttachEntityRoot(e.root)
 		parentID := core.ValU64(e.base.Id)
-		if e.base.Id == 0 { parentID = e.ledgerID }
+		if e.base.Id == 0 {
+			parentID = e.ledgerID
+		}
 		child.Base().PutDynamic("platform_id", parentID)
 		child.SetComment(*e.comment)
 		if err := child.TeaqlPreflightGraph(context); err != nil {
@@ -331,7 +355,9 @@ func (e *Platform) TeaqlPreflightGraph(context *runtime.UserContext) error {
 			if errors.As(err, &checkError) && checkError.Type == "Check" {
 				prefix := runtime.Location().Property("school_list").At(index)
 				prefixed := make([]runtime.CheckResult, len(checkError.CheckResults))
-				for resultIndex, result := range checkError.CheckResults { prefixed[resultIndex] = result.PrefixedBy(prefix) }
+				for resultIndex, result := range checkError.CheckResults {
+					prefixed[resultIndex] = result.PrefixedBy(prefix)
+				}
 				return &runtime.RuntimeError{Type: "Check", CheckResults: prefixed}
 			}
 			return fmt.Errorf("preflight child from schoolList: %w", err)
@@ -341,20 +367,24 @@ func (e *Platform) TeaqlPreflightGraph(context *runtime.UserContext) error {
 }
 
 type teaqlPlatformSaveSnapshot struct {
-	record core.Record
-	dirtyFields map[string]bool
-	isNew bool
-	markedAsDelete bool
-	loadState map[string]bool
+	record            core.Record
+	dirtyFields       map[string]bool
+	isNew             bool
+	markedAsDelete    bool
+	loadState         map[string]bool
 	restrictLoadState bool
-	ledgerID core.Value
+	ledgerID          core.Value
 }
 
 func (e *Platform) teaqlSaveSnapshot() teaqlPlatformSaveSnapshot {
 	dirty := make(map[string]bool, len(e.dirtyFields))
-	for field, value := range e.dirtyFields { dirty[field] = value }
+	for field, value := range e.dirtyFields {
+		dirty[field] = value
+	}
 	loaded := make(map[string]bool, len(e.loadState))
-	for field, value := range e.loadState { loaded[field] = value }
+	for field, value := range e.loadState {
+		loaded[field] = value
+	}
 	return teaqlPlatformSaveSnapshot{
 		record: e.IntoRecord(), dirtyFields: dirty, isNew: e.isNew,
 		markedAsDelete: e.markedAsDelete, loadState: loaded,
@@ -364,7 +394,9 @@ func (e *Platform) teaqlSaveSnapshot() teaqlPlatformSaveSnapshot {
 
 func (e *Platform) teaqlRegisterGraphOutcome(context *runtime.UserContext, snapshot teaqlPlatformSaveSnapshot) {
 	context.AfterGraphRollback(func() {
-		if err := e.FromRecord(snapshot.record); err != nil { panic(err) }
+		if err := e.FromRecord(snapshot.record); err != nil {
+			panic(err)
+		}
 		e.dirtyFields = snapshot.dirtyFields
 		e.isNew = snapshot.isNew
 		e.markedAsDelete = snapshot.markedAsDelete
@@ -405,8 +437,12 @@ func (e *Platform) TeaqlSaveWithinGraph(context *runtime.UserContext) (*Platform
 				e.root.Set(e.EntityKey(), field, value)
 			}
 		}
-		if checkErr != nil { return nil, checkErr }
-		if err := e.FromRecord(checkedValues); err != nil { return nil, err }
+		if checkErr != nil {
+			return nil, checkErr
+		}
+		if err := e.FromRecord(checkedValues); err != nil {
+			return nil, err
+		}
 		type idGenerator interface {
 			GenerateId(entity string) (uint64, error)
 		}
@@ -461,7 +497,9 @@ func (e *Platform) TeaqlSaveWithinGraph(context *runtime.UserContext) (*Platform
 		if err := e.FromRecord(res.PersistedRecord); err != nil {
 			return nil, err
 		}
-		if err := e.saveCascade(context); err != nil { return nil, err }
+		if err := e.saveCascade(context); err != nil {
+			return nil, err
+		}
 		return e, nil
 	} else if e.markedAsDelete {
 		expectedVersion := e.base.Version
@@ -471,7 +509,9 @@ func (e *Platform) TeaqlSaveWithinGraph(context *runtime.UserContext) (*Platform
 			cmd.TraceChain = append(cmd.TraceChain, &core.TraceNode{Comment: *e.comment})
 		}
 		res, err := ds.Mutate(context, &data_service.DeleteMutation{Cmd: cmd})
-		if err != nil { return nil, err }
+		if err != nil {
+			return nil, err
+		}
 		if res.AffectedRows == 0 {
 			return nil, fmt.Errorf("optimistic lock failed for %s(%d) at version %d", e.EntityName(), e.base.Id, expectedVersion)
 		}
@@ -481,7 +521,9 @@ func (e *Platform) TeaqlSaveWithinGraph(context *runtime.UserContext) (*Platform
 		if res.PersistedRecord == nil {
 			return nil, fmt.Errorf("mutation did not return the authoritative persisted record")
 		}
-		if err := e.FromRecord(res.PersistedRecord); err != nil { return nil, err }
+		if err := e.FromRecord(res.PersistedRecord); err != nil {
+			return nil, err
+		}
 		return e, nil
 	} else {
 		checkedValues := e.IntoRecord()
@@ -492,8 +534,12 @@ func (e *Platform) TeaqlSaveWithinGraph(context *runtime.UserContext) (*Platform
 				e.root.Set(e.EntityKey(), field, value)
 			}
 		}
-		if checkErr != nil { return nil, checkErr }
-		if err := e.FromRecord(checkedValues); err != nil { return nil, err }
+		if checkErr != nil {
+			return nil, checkErr
+		}
+		if err := e.FromRecord(checkedValues); err != nil {
+			return nil, err
+		}
 		cmd := core.NewUpdateCommand("Platform", core.ValU64(e.base.Id))
 		cmd.Values = e.root.Change(e.EntityKey())
 		expectedVersion := e.base.Version
@@ -515,8 +561,12 @@ func (e *Platform) TeaqlSaveWithinGraph(context *runtime.UserContext) (*Platform
 		if res.PersistedRecord == nil {
 			return nil, fmt.Errorf("mutation did not return the authoritative persisted record")
 		}
-		if err := e.FromRecord(res.PersistedRecord); err != nil { return nil, err }
-		if err := e.saveCascade(context); err != nil { return nil, err }
+		if err := e.FromRecord(res.PersistedRecord); err != nil {
+			return nil, err
+		}
+		if err := e.saveCascade(context); err != nil {
+			return nil, err
+		}
 		return e, nil
 	}
 }
@@ -531,7 +581,9 @@ func (e *Platform) saveCascade(context *runtime.UserContext) error {
 			if errors.As(err, &checkError) && checkError.Type == "Check" {
 				prefix := runtime.Location().Property("school_type_list").At(index)
 				prefixed := make([]runtime.CheckResult, len(checkError.CheckResults))
-				for resultIndex, result := range checkError.CheckResults { prefixed[resultIndex] = result.PrefixedBy(prefix) }
+				for resultIndex, result := range checkError.CheckResults {
+					prefixed[resultIndex] = result.PrefixedBy(prefix)
+				}
 				return &runtime.RuntimeError{Type: "Check", CheckResults: prefixed}
 			}
 			return fmt.Errorf("save child from schoolTypeList: %w", err)
@@ -546,7 +598,9 @@ func (e *Platform) saveCascade(context *runtime.UserContext) error {
 			if errors.As(err, &checkError) && checkError.Type == "Check" {
 				prefix := runtime.Location().Property("school_list").At(index)
 				prefixed := make([]runtime.CheckResult, len(checkError.CheckResults))
-				for resultIndex, result := range checkError.CheckResults { prefixed[resultIndex] = result.PrefixedBy(prefix) }
+				for resultIndex, result := range checkError.CheckResults {
+					prefixed[resultIndex] = result.PrefixedBy(prefix)
+				}
 				return &runtime.RuntimeError{Type: "Check", CheckResults: prefixed}
 			}
 			return fmt.Errorf("save child from schoolList: %w", err)
@@ -560,7 +614,9 @@ func (e *Platform) Id() uint64 {
 }
 
 func (e *Platform) UpdateId(value uint64) *Platform {
+	oldKey := e.EntityKey()
 	e.base.Id = value
+	e.root.Rekey(oldKey, e.EntityKey())
 	e.loadState["id"] = true
 	return e
 }
@@ -568,7 +624,8 @@ func (e *Platform) UpdateId(value uint64) *Platform {
 func (e *Platform) Name() string {
 	val, _ := e.base.GetDynamic("name")
 	res, _ := val.TryText()
-	return res}
+	return res
+}
 
 func (e *Platform) UpdateName(value string) *Platform {
 	e.base.PutDynamic("name", core.ValText(value))
@@ -581,7 +638,8 @@ func (e *Platform) UpdateName(value string) *Platform {
 func (e *Platform) BaseUrl() string {
 	val, _ := e.base.GetDynamic("base_url")
 	res, _ := val.TryText()
-	return res}
+	return res
+}
 
 func (e *Platform) UpdateBaseUrl(value string) *Platform {
 	e.base.PutDynamic("base_url", core.ValText(value))
@@ -594,7 +652,8 @@ func (e *Platform) UpdateBaseUrl(value string) *Platform {
 func (e *Platform) CreateTime() time.Time {
 	val, _ := e.base.GetDynamic("create_time")
 	res, _ := val.TryTime()
-	return res}
+	return res
+}
 
 func (e *Platform) UpdateCreateTime(value time.Time) *Platform {
 	e.base.PutDynamic("create_time", core.ValTimestamp(value.UnixMilli()))
@@ -607,7 +666,8 @@ func (e *Platform) UpdateCreateTime(value time.Time) *Platform {
 func (e *Platform) UpdateTime() time.Time {
 	val, _ := e.base.GetDynamic("update_time")
 	res, _ := val.TryTime()
-	return res}
+	return res
+}
 
 func (e *Platform) UpdateUpdateTime(value time.Time) *Platform {
 	e.base.PutDynamic("update_time", core.ValTimestamp(value.UnixMilli()))
@@ -633,4 +693,3 @@ func (e *Platform) SchoolTypeList() *SchoolTypeList {
 func (e *Platform) SchoolList() *SchoolList {
 	return e.schoolList
 }
-

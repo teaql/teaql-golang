@@ -1,5 +1,3 @@
-
-
 package school_type
 
 import (
@@ -20,10 +18,10 @@ var (
 )
 
 type SchoolTypeRequest struct {
-	Query       *core.SelectQuery
-	queryOptions *core.QueryOptions
-	purposeText string
-	commentText string
+	Query             *core.SelectQuery
+	queryOptions      *core.QueryOptions
+	purposeText       string
+	commentText       string
 	relationFactories map[string]func() core.Entity
 }
 
@@ -33,8 +31,8 @@ type ExecutableSchoolTypeRequest struct {
 
 func NewSchoolTypeRequest() *SchoolTypeRequest {
 	r := &SchoolTypeRequest{
-		Query: core.NewSelectQuery("School Type"),
-		queryOptions: core.NewQueryOptions(),
+		Query:             core.NewSelectQuery("School Type"),
+		queryOptions:      core.NewQueryOptions(),
 		relationFactories: make(map[string]func() core.Entity),
 	}
 	r.Query.AndFilter(core.ExprGte("version", core.ValI64(1)))
@@ -110,20 +108,28 @@ func (r *SchoolTypeRequest) TopNProbeParentThreshold(threshold uint64) *SchoolTy
 }
 
 func removeSchoolTypeVersionFilter(expr *core.Expr) *core.Expr {
-	if expr == nil { return nil }
+	if expr == nil {
+		return nil
+	}
 	if expr.Type == core.ExprTypeBinary && expr.Left != nil &&
 		expr.Left.Type == core.ExprTypeColumn && expr.Left.Column == "version" {
 		return nil
 	}
-	if expr.Type != core.ExprTypeAnd { return expr }
+	if expr.Type != core.ExprTypeAnd {
+		return expr
+	}
 	parts := make([]*core.Expr, 0, len(expr.Parts))
 	for _, part := range expr.Parts {
 		if kept := removeSchoolTypeVersionFilter(part); kept != nil {
 			parts = append(parts, kept)
 		}
 	}
-	if len(parts) == 0 { return nil }
-	if len(parts) == 1 { return parts[0] }
+	if len(parts) == 0 {
+		return nil
+	}
+	if len(parts) == 1 {
+		return parts[0]
+	}
 	return core.ExprAndNode(parts...)
 }
 
@@ -205,7 +211,9 @@ func (r *SchoolTypeRequest) FacetByPlatformAs(
 	includeAllFacets ...bool,
 ) *SchoolTypeRequest {
 	includeAll := true
-	if len(includeAllFacets) > 0 { includeAll = includeAllFacets[0] }
+	if len(includeAllFacets) > 0 {
+		includeAll = includeAllFacets[0]
+	}
 	r.queryOptions.Facets = append(r.queryOptions.Facets, core.NewFacetRequest(
 		name, "platform_id", core.NewQuerySelection(nestedReq.GetQuery()), includeAll))
 	return r
@@ -843,32 +851,45 @@ func (e *ExecutableSchoolTypeRequest) ExecuteForList(context *runtime.UserContex
 			if childRecord, ok := relationValue.V.(core.Record); ok {
 				if factory := e.request.relationFactories["platformEntity"]; factory != nil {
 					childEntity := factory()
-					if attachable, ok := childEntity.(interface { AttachEntityRoot(*core.EntityRoot) }); ok { attachable.AttachEntityRoot(entity.EntityRoot()) }
-					if err := childEntity.FromRecord(childRecord); err != nil { return nil, err }
+					if attachable, ok := childEntity.(interface{ AttachEntityRoot(*core.EntityRoot) }); ok {
+						attachable.AttachEntityRoot(entity.EntityRoot())
+					}
+					if err := childEntity.FromRecord(childRecord); err != nil {
+						return nil, err
+					}
 					entity.setRelationEntity("platformEntity", childEntity)
 				}
 			}
 		}
 		if relationValue, selected := rec["schoolList"]; selected {
 			childRecords, ok := relationValue.V.([]core.Record)
-				if !ok { return nil, fmt.Errorf("relation schoolList has unexpected runtime type %T", relationValue.V) }
-				for _, childRecord := range childRecords {
-					childEntity := school.NewSchool()
-					childEntity.AttachEntityRoot(entity.EntityRoot())
-					if err := childEntity.FromRecord(childRecord); err != nil { return nil, err }
-					entity.SchoolList().Add(childEntity)
-				}}
+			if !ok {
+				return nil, fmt.Errorf("relation schoolList has unexpected runtime type %T", relationValue.V)
+			}
+			for _, childRecord := range childRecords {
+				childEntity := school.NewSchool()
+				childEntity.AttachEntityRoot(entity.EntityRoot())
+				if err := childEntity.FromRecord(childRecord); err != nil {
+					return nil, err
+				}
+				entity.SchoolList().Add(childEntity)
+			}
+		}
 		results = append(results, entity)
 	}
 	list := core.NewSmartList(results)
 	if len(e.request.queryOptions.Facets) > 0 {
 		dsRaw := context.GetResource("dataService")
 		ds, ok := dsRaw.(data_service.QueryExecutor)
-		if !ok { return nil, fmt.Errorf("dataService does not implement data_service.QueryExecutor") }
+		if !ok {
+			return nil, fmt.Errorf("dataService does not implement data_service.QueryExecutor")
+		}
 		facets, err := runtime.ExecuteFacets(
 			context, runtime.NewRuntimeDataService(context.Metadata, ds),
 			e.request.Query, e.request.queryOptions)
-		if err != nil { return nil, err }
+		if err != nil {
+			return nil, err
+		}
 		core.AttachFacets(list, facets)
 	}
 	return list, nil
@@ -886,63 +907,94 @@ func (e *ExecutableSchoolTypeRequest) ExecuteForPage(context *runtime.UserContex
 	}
 	r.Query.Page(offset, size).Comment(r.commentText).Purpose(r.purposeText)
 	authorized, err := context.PrepareQuery(r.Query)
-	if err != nil { return nil, err }
+	if err != nil {
+		return nil, err
+	}
 	dsRaw := context.GetResource("dataService")
 	ds, ok := dsRaw.(data_service.QueryExecutor)
-	if !ok { return nil, fmt.Errorf("dataService does not implement data_service.QueryExecutor") }
+	if !ok {
+		return nil, fmt.Errorf("dataService does not implement data_service.QueryExecutor")
+	}
 	service := runtime.NewRuntimeDataService(context.Metadata, ds)
 	const countAlias = "__teaql_total"
 	var rows []core.Record
 	var total uint64
 	if authorized.IDSetPagination != nil {
 		rows, err = service.FetchAll(context, authorized)
-		if err != nil { return nil, err }
+		if err != nil {
+			return nil, err
+		}
 		if retainedCount, accuracy := context.IDSetCount(); accuracy == "EXACT" {
 			total = retainedCount
 		} else {
 			countRows, countErr := service.FetchAll(context, authorized.ForExactCount(countAlias))
-			if countErr != nil { return nil, countErr }
-			if len(countRows) != 1 { return nil, fmt.Errorf("exact count returned %d rows", len(countRows)) }
+			if countErr != nil {
+				return nil, countErr
+			}
+			if len(countRows) != 1 {
+				return nil, fmt.Errorf("exact count returned %d rows", len(countRows))
+			}
 			var ok bool
 			total, ok = countRows[0][countAlias].TryU64()
-			if !ok { return nil, fmt.Errorf("exact count did not return an unsigned integer") }
+			if !ok {
+				return nil, fmt.Errorf("exact count did not return an unsigned integer")
+			}
 		}
 	} else {
 		countRows, countErr := service.FetchAll(context, authorized.ForExactCount(countAlias))
-		if countErr != nil { return nil, countErr }
-		if len(countRows) != 1 { return nil, fmt.Errorf("exact count returned %d rows", len(countRows)) }
+		if countErr != nil {
+			return nil, countErr
+		}
+		if len(countRows) != 1 {
+			return nil, fmt.Errorf("exact count returned %d rows", len(countRows))
+		}
 		var ok bool
 		total, ok = countRows[0][countAlias].TryU64()
-		if !ok { return nil, fmt.Errorf("exact count did not return an unsigned integer") }
+		if !ok {
+			return nil, fmt.Errorf("exact count did not return an unsigned integer")
+		}
 		rows, err = service.FetchAll(context, authorized)
-		if err != nil { return nil, err }
+		if err != nil {
+			return nil, err
+		}
 	}
 	results := make([]*SchoolType, 0, len(rows))
 	queryRoot := core.NewEntityRoot()
 	for _, rec := range rows {
 		entity := NewSchoolType()
 		entity.AttachEntityRoot(queryRoot)
-		if err := entity.FromRecord(rec); err != nil { return nil, err }
+		if err := entity.FromRecord(rec); err != nil {
+			return nil, err
+		}
 		if relationValue, selected := rec["platformEntity"]; selected {
 			entity.markRelationLoaded("platformEntity")
 			if childRecord, ok := relationValue.V.(core.Record); ok {
 				if factory := e.request.relationFactories["platformEntity"]; factory != nil {
 					childEntity := factory()
-					if attachable, ok := childEntity.(interface { AttachEntityRoot(*core.EntityRoot) }); ok { attachable.AttachEntityRoot(entity.EntityRoot()) }
-					if err := childEntity.FromRecord(childRecord); err != nil { return nil, err }
+					if attachable, ok := childEntity.(interface{ AttachEntityRoot(*core.EntityRoot) }); ok {
+						attachable.AttachEntityRoot(entity.EntityRoot())
+					}
+					if err := childEntity.FromRecord(childRecord); err != nil {
+						return nil, err
+					}
 					entity.setRelationEntity("platformEntity", childEntity)
 				}
 			}
 		}
 		if relationValue, selected := rec["schoolList"]; selected {
 			childRecords, ok := relationValue.V.([]core.Record)
-				if !ok { return nil, fmt.Errorf("relation schoolList has unexpected runtime type %T", relationValue.V) }
-				for _, childRecord := range childRecords {
-					childEntity := school.NewSchool()
-					childEntity.AttachEntityRoot(entity.EntityRoot())
-					if err := childEntity.FromRecord(childRecord); err != nil { return nil, err }
-					entity.SchoolList().Add(childEntity)
-				}}
+			if !ok {
+				return nil, fmt.Errorf("relation schoolList has unexpected runtime type %T", relationValue.V)
+			}
+			for _, childRecord := range childRecords {
+				childEntity := school.NewSchool()
+				childEntity.AttachEntityRoot(entity.EntityRoot())
+				if err := childEntity.FromRecord(childRecord); err != nil {
+					return nil, err
+				}
+				entity.SchoolList().Add(childEntity)
+			}
+		}
 		results = append(results, entity)
 	}
 	return core.NewSmartList(results).WithTotalCount(total), nil
@@ -1012,7 +1064,9 @@ func (e *ExecutableSchoolTypeRequest) ExecuteRecords(context *runtime.UserContex
 // the cross-language SmartList result boundary.
 func (e *ExecutableSchoolTypeRequest) ExecuteForRows(context *runtime.UserContext) (*core.SmartList[core.Record], error) {
 	rows, err := e.ExecuteRecords(context)
-	if err != nil { return nil, err }
+	if err != nil {
+		return nil, err
+	}
 	return core.NewSmartList(rows), nil
 }
 

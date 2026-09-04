@@ -1,12 +1,14 @@
 package lib
 
 import (
+	"database/sql"
 	"os"
 	"path/filepath"
+	"sync"
 	"testing"
 	"time"
 
-	"github.com/teaql/teaql-golang/core"
+	"github.com/teaql/teaql-golang/runtime"
 	"school-management-service-core-workspace/lib/school"
 )
 
@@ -42,15 +44,35 @@ func TestSchoolBootstrapWithLocalRuntime(t *testing.T) {
 		t.Fatalf("idempotent versions=%d,%d", constants.Data[0].Version(), constants.Data[1].Version())
 	}
 
-	generatedInitialGraphs[0].Values["name"] = core.ValText("Primary School")
+	db := context.GetResource("db").(*sql.DB)
+	var idFloor uint64
+	if err := db.QueryRow("SELECT current_level FROM teaql_id_space WHERE type_name = ?", "School Type").Scan(&idFloor); err != nil {
+		t.Fatal(err)
+	}
+	if idFloor < 1002 {
+		t.Fatalf("constant ID floor=%d", idFloor)
+	}
+	if _, err := db.Exec("UPDATE platform_data SET name = 'Deployment Campus' WHERE id = 1"); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := db.Exec("UPDATE school_type_data SET name = 'Drifted Primary' WHERE id = 1001"); err != nil {
+		t.Fatal(err)
+	}
 	if err := EnsureSchema(context); err != nil {
+		t.Fatal(err)
+	}
+	preservedRoot, err := Q.Platforms().WithIdIs(1).Comment("verify preserved root").Purpose("local runtime verification").ExecuteForOne(context)
+	if err != nil {
 		t.Fatal(err)
 	}
 	changed, err := Q.SchoolTypes().WithIdIs(1001).Comment("verify constant reconciliation").Purpose("local runtime verification").ExecuteForOne(context)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if changed.Name() != "Primary School" || changed.Version() != 2 {
+	if preservedRoot.Name() != "Deployment Campus" {
+		t.Fatalf("root was overwritten: %q", preservedRoot.Name())
+	}
+	if changed.Name() != "Primary" || changed.Version() != 2 {
 		t.Fatalf("name=%q version=%d", changed.Name(), changed.Version())
 	}
 
@@ -100,7 +122,7 @@ func TestSchoolBootstrapWithLocalRuntime(t *testing.T) {
 	}
 	platformName, platformOK := E.School(related).Platform().Name().Eval()
 	typeCode, typeOK := E.School(related).SchoolType().Code().Eval()
-	if !platformOK || platformName != "Campus Learning Platform" || !typeOK || typeCode != "PRIMARY" {
+	if !platformOK || platformName != "Deployment Campus" || !typeOK || typeCode != "PRIMARY" {
 		t.Fatalf("forward relations platform=%q/%t schoolType=%q/%t", platformName, platformOK, typeCode, typeOK)
 	}
 	projected, err := Q.Schools().SelectName().OrderByIdDesc().Comment("Query parity: projection and ordering").Purpose("Execute the shared School Query conformance case").ExecuteForList(context)
@@ -113,5 +135,77 @@ func TestSchoolBootstrapWithLocalRuntime(t *testing.T) {
 
 	if _, err := os.Stat(database); err != nil {
 		t.Fatal(err)
+	}
+}
+
+func TestGeneratedBootstrapConvergesAcrossContexts(t *testing.T) {
+	database := filepath.Join(t.TempDir(), "concurrent-school.sqlite")
+	t.Setenv("SCHOOL_MANAGEMENT_SERVICE_CORE_DATABASE_URL", database)
+	initial, err := ServiceRuntimeFromEnv()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := EnsureSchema(initial); err != nil {
+		t.Fatal(err)
+	}
+	db := initial.GetResource("db").(*sql.DB)
+	if _, err := db.Exec("DELETE FROM school_type_data"); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := db.Exec("DELETE FROM platform_data"); err != nil {
+		t.Fatal(err)
+	}
+	if err := db.Close(); err != nil {
+		t.Fatal(err)
+	}
+
+	left, err := ServiceRuntimeFromEnv()
+	if err != nil {
+		t.Fatal(err)
+	}
+	right, err := ServiceRuntimeFromEnv()
+	if err != nil {
+		t.Fatal(err)
+	}
+	runTogether := func() {
+		t.Helper()
+		failures := make(chan error, 2)
+		var wait sync.WaitGroup
+		for _, context := range []*runtime.UserContext{left, right} {
+			wait.Add(1)
+			go func(current *runtime.UserContext) { defer wait.Done(); failures <- EnsureSchema(current) }(context)
+		}
+		wait.Wait()
+		close(failures)
+		for failure := range failures {
+			if failure != nil {
+				t.Fatal(failure)
+			}
+		}
+	}
+	runTogether()
+	roots, err := Q.Platforms().Comment("read root").Purpose("verify concurrent bootstrap").ExecuteForList(left)
+	if err != nil {
+		t.Fatal(err)
+	}
+	constants, err := Q.SchoolTypes().Comment("read constants").Purpose("verify concurrent bootstrap").ExecuteForList(left)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(roots.Data) != 1 || len(constants.Data) != 2 {
+		t.Fatal("concurrent bootstrap did not converge")
+	}
+
+	db = left.GetResource("db").(*sql.DB)
+	if _, err := db.Exec("UPDATE school_type_data SET name = 'DRIFT' WHERE id = 1001"); err != nil {
+		t.Fatal(err)
+	}
+	runTogether()
+	reconciled, err := Q.SchoolTypes().WithIdIs(1001).Comment("read constant").Purpose("verify concurrent reconcile").ExecuteForOne(left)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if reconciled.Name() != "Primary" || reconciled.Version() != 2 {
+		t.Fatalf("name=%q version=%d", reconciled.Name(), reconciled.Version())
 	}
 }

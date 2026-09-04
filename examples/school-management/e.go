@@ -2,8 +2,8 @@ package lib
 
 import (
 	"school-management-service-core-workspace/lib/platform"
-	"school-management-service-core-workspace/lib/school_type"
 	"school-management-service-core-workspace/lib/school"
+	"school-management-service-core-workspace/lib/school_type"
 )
 
 type expressionFacade struct{}
