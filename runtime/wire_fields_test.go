@@ -1,6 +1,7 @@
 package runtime
 
 import (
+	"encoding/json"
 	"errors"
 	"testing"
 )
@@ -35,5 +36,18 @@ func TestWireCheckResultDTO(t *testing.T) {
 	wire := (CheckResult{RuleID: "required", EntityType: "School", CanonicalLocation: Location().Property("school_type"), SourceInstancePath: "/school_type"}).ToWire(JsonFieldCamelCase)
 	if wire.InstancePath != "/schoolType" || wire.SourceInstancePath != "/school_type" {
 		t.Fatal(wire)
+	}
+	encoded, err := json.Marshal(wire)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var decoded map[string]any
+	if err := json.Unmarshal(encoded, &decoded); err != nil {
+		t.Fatal(err)
+	}
+	segments := decoded["location"].([]any)
+	first := segments[0].(map[string]any)
+	if first["kind"] != "property" || first["name"] != "school_type" {
+		t.Fatalf("unexpected wire location: %s", encoded)
 	}
 }

@@ -34,18 +34,33 @@ func (c *CheckResult) NativePath() string   { return c.ObjectLocation().NativePa
 func (c *CheckResult) InstancePath() string { return c.ObjectLocation().InstancePath() }
 
 type WireCheckResult struct {
-	RuleID             string                  `json:"ruleId"`
-	EntityType         string                  `json:"entityType,omitempty"`
-	Location           []ObjectLocationSegment `json:"location"`
-	InstancePath       string                  `json:"instancePath"`
-	SourceInstancePath string                  `json:"sourceInstancePath,omitempty"`
-	InputValue         any                     `json:"inputValue,omitempty"`
-	SystemValue        any                     `json:"systemValue,omitempty"`
-	Message            string                  `json:"message,omitempty"`
+	RuleID             string                `json:"ruleId"`
+	EntityType         string                `json:"entityType,omitempty"`
+	Location           []WireLocationSegment `json:"location"`
+	InstancePath       string                `json:"instancePath"`
+	SourceInstancePath string                `json:"sourceInstancePath,omitempty"`
+	InputValue         any                   `json:"inputValue,omitempty"`
+	SystemValue        any                   `json:"systemValue,omitempty"`
+	Message            string                `json:"message,omitempty"`
+}
+
+type WireLocationSegment struct {
+	Kind  string `json:"kind"`
+	Name  string `json:"name,omitempty"`
+	Index *int   `json:"index,omitempty"`
 }
 
 func (c CheckResult) ToWire(profile JsonFieldNamingProfile) WireCheckResult {
-	return WireCheckResult{c.RuleID, c.EntityType, c.ObjectLocation().Segments, c.ObjectLocation().InstancePathWith(profile), c.SourceInstancePath, c.InputValue, c.SystemValue, c.Message}
+	location := c.ObjectLocation()
+	segments := make([]WireLocationSegment, 0, len(location.Segments))
+	for _, segment := range location.Segments {
+		if segment.Property != nil {
+			segments = append(segments, WireLocationSegment{Kind: "property", Name: *segment.Property})
+		} else {
+			segments = append(segments, WireLocationSegment{Kind: "index", Index: segment.Index})
+		}
+	}
+	return WireCheckResult{c.RuleID, c.EntityType, segments, location.InstancePathWith(profile), c.SourceInstancePath, c.InputValue, c.SystemValue, c.Message}
 }
 
 type RuntimeError struct {
