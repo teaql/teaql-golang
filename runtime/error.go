@@ -8,11 +8,13 @@ import (
 type CheckResult struct {
 	RuleID string
 	// Location is a legacy presentation retained for source compatibility.
-	Location          string
-	CanonicalLocation ObjectLocation
-	InputValue        any
-	SystemValue       any
-	Message           string
+	Location           string
+	CanonicalLocation  ObjectLocation
+	InputValue         any
+	SystemValue        any
+	Message            string
+	EntityType         string
+	SourceInstancePath string
 }
 
 func (c *CheckResult) String() string { return c.Message }
@@ -30,6 +32,21 @@ func (c CheckResult) PrefixedBy(prefix ObjectLocation) CheckResult {
 func (c *CheckResult) ModelPath() string    { return c.ObjectLocation().ModelPath() }
 func (c *CheckResult) NativePath() string   { return c.ObjectLocation().NativePath() }
 func (c *CheckResult) InstancePath() string { return c.ObjectLocation().InstancePath() }
+
+type WireCheckResult struct {
+	RuleID             string                  `json:"ruleId"`
+	EntityType         string                  `json:"entityType,omitempty"`
+	Location           []ObjectLocationSegment `json:"location"`
+	InstancePath       string                  `json:"instancePath"`
+	SourceInstancePath string                  `json:"sourceInstancePath,omitempty"`
+	InputValue         any                     `json:"inputValue,omitempty"`
+	SystemValue        any                     `json:"systemValue,omitempty"`
+	Message            string                  `json:"message,omitempty"`
+}
+
+func (c CheckResult) ToWire(profile JsonFieldNamingProfile) WireCheckResult {
+	return WireCheckResult{c.RuleID, c.EntityType, c.ObjectLocation().Segments, c.ObjectLocation().InstancePathWith(profile), c.SourceInstancePath, c.InputValue, c.SystemValue, c.Message}
+}
 
 type RuntimeError struct {
 	Type                  string

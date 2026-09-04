@@ -6,6 +6,24 @@ import (
 	"unicode"
 )
 
+type JsonFieldNamingProfile string
+
+const (
+	JsonFieldCamelCase  JsonFieldNamingProfile = "camelCase"
+	JsonFieldSnakeCase  JsonFieldNamingProfile = "snake_case"
+	JsonFieldPascalCase JsonFieldNamingProfile = "PascalCase"
+)
+
+func (p JsonFieldNamingProfile) Render(name string) string {
+	if p == JsonFieldSnakeCase {
+		return name
+	}
+	if p == JsonFieldPascalCase {
+		return upperCamel(name)
+	}
+	return lowerCamel(name)
+}
+
 type ObjectLocationSegment struct {
 	Property *string
 	Index    *int
@@ -64,11 +82,14 @@ func (l ObjectLocation) PrefixedBy(prefix ObjectLocation) ObjectLocation {
 func (l ObjectLocation) ModelPath() string  { return l.render(func(s string) string { return s }) }
 func (l ObjectLocation) NativePath() string { return l.render(upperCamel) }
 func (l ObjectLocation) InstancePath() string {
+	return l.InstancePathWith(JsonFieldCamelCase)
+}
+func (l ObjectLocation) InstancePathWith(profile JsonFieldNamingProfile) string {
 	parts := make([]string, 0, len(l.Segments))
 	for _, segment := range l.Segments {
 		value := ""
 		if segment.Property != nil {
-			value = lowerCamel(*segment.Property)
+			value = profile.Render(*segment.Property)
 		} else {
 			value = strconv.Itoa(*segment.Index)
 		}

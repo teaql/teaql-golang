@@ -141,6 +141,7 @@ type RuntimeModule struct {
 	InitialGraphs   []*GraphNode
 	RootGraphs      []*GraphNode
 	CheckerRegistry CheckerRegistry
+	WireMetadata    map[string]WireEntityMetadata
 }
 
 func NewRuntimeModule() *RuntimeModule {
@@ -151,7 +152,12 @@ func NewRuntimeModule() *RuntimeModule {
 		EventSinks:     NewInMemoryRawAuditEventSink(),
 		InitialGraphs:  make([]*GraphNode, 0),
 		RootGraphs:     make([]*GraphNode, 0),
+		WireMetadata:   make(map[string]WireEntityMetadata),
 	}
+}
+func (m *RuntimeModule) WireEntity(metadata WireEntityMetadata) *RuntimeModule {
+	m.WireMetadata[metadata.EntityType] = metadata
+	return m
 }
 
 func (m *RuntimeModule) Entity(descriptor *core.EntityDescriptor) *RuntimeModule {
@@ -206,6 +212,12 @@ func (m *RuntimeModule) AddInitialGraphs(graphs []*GraphNode) *RuntimeModule {
 // And creates a composed manifest without modifying either input module.
 func (m *RuntimeModule) And(other *RuntimeModule) *RuntimeModule {
 	combined := NewRuntimeModule()
+	for name, metadata := range m.WireMetadata {
+		combined.WireMetadata[name] = metadata
+	}
+	for name, metadata := range other.WireMetadata {
+		combined.WireMetadata[name] = metadata
+	}
 	for _, descriptor := range m.Metadata.AllEntities() {
 		combined.Entity(descriptor)
 	}
