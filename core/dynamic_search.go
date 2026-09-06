@@ -235,7 +235,7 @@ func validSearchScalar(value any, kind string) bool {
 			return false
 		}
 		parsed, err := time.Parse("2006-01-02", text)
-		return err == nil && parsed.Format("2006-01-02") == text
+		return err == nil && parsed.Year() >= 1 && parsed.Format("2006-01-02") == text
 	}
 	return false
 }

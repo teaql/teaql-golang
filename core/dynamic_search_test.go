@@ -12,6 +12,12 @@ var searchModels = map[string]SearchModel{
 	"Customer": {Fields: map[string]string{"name": "string"}, Relations: map[string]string{}},
 }
 
+func TestDynamicSearchCalendarYearRange(t *testing.T) {
+	if validSearchScalar("0000-01-01", "date") || !validSearchScalar("0001-01-01", "date") {
+		t.Fatal("local search calendar dates must use years 0001 through 9999")
+	}
+}
+
 func TestDynamicSearchDriftAndWarningValues(t *testing.T) {
 	var emitted []DynamicSearchWarning
 	result, err := NormalizeDynamicSearch([]byte(`{"filter":{"removed":"SECRET","missing.name":"SECRET","customer.removed":"SECRET","name":"valid","customer.name":{"$eq":"Ada"}},"orderBy":[{"field":"removed","direction":"asc"},{"field":"id","direction":"desc"}]}`), "Order", searchModels, 100, func(w DynamicSearchWarning) { emitted = append(emitted, w) })
