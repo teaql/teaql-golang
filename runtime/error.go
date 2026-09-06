@@ -8,11 +8,13 @@ import (
 type CheckResult struct {
 	RuleID string
 	// Location is a legacy presentation retained for source compatibility.
-	Location          string
-	CanonicalLocation ObjectLocation
-	InputValue        any
-	SystemValue       any
-	Message           string
+	Location           string
+	CanonicalLocation  ObjectLocation
+	InputValue         any
+	SystemValue        any
+	Message            string
+	EntityType         string
+	SourceInstancePath string
 }
 
 func (c *CheckResult) String() string { return c.Message }
@@ -30,6 +32,36 @@ func (c CheckResult) PrefixedBy(prefix ObjectLocation) CheckResult {
 func (c *CheckResult) ModelPath() string    { return c.ObjectLocation().ModelPath() }
 func (c *CheckResult) NativePath() string   { return c.ObjectLocation().NativePath() }
 func (c *CheckResult) InstancePath() string { return c.ObjectLocation().InstancePath() }
+
+type WireCheckResult struct {
+	RuleID             string                `json:"ruleId"`
+	EntityType         string                `json:"entityType,omitempty"`
+	Location           []WireLocationSegment `json:"location"`
+	InstancePath       string                `json:"instancePath"`
+	SourceInstancePath string                `json:"sourceInstancePath,omitempty"`
+	InputValue         any                   `json:"inputValue,omitempty"`
+	SystemValue        any                   `json:"systemValue,omitempty"`
+	Message            string                `json:"message,omitempty"`
+}
+
+type WireLocationSegment struct {
+	Kind  string `json:"kind"`
+	Name  string `json:"name,omitempty"`
+	Index *int   `json:"index,omitempty"`
+}
+
+func (c CheckResult) ToWire(profile JsonFieldNamingProfile) WireCheckResult {
+	location := c.ObjectLocation()
+	segments := make([]WireLocationSegment, 0, len(location.Segments))
+	for _, segment := range location.Segments {
+		if segment.Property != nil {
+			segments = append(segments, WireLocationSegment{Kind: "property", Name: *segment.Property})
+		} else {
+			segments = append(segments, WireLocationSegment{Kind: "index", Index: segment.Index})
+		}
+	}
+	return WireCheckResult{c.RuleID, c.EntityType, segments, location.InstancePathWith(profile), c.SourceInstancePath, c.InputValue, c.SystemValue, c.Message}
+}
 
 type RuntimeError struct {
 	Type                  string
