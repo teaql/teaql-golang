@@ -5,11 +5,28 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/teaql/teaql-golang/core"
 	"github.com/teaql/teaql-golang/runtime"
 	"runtime-example-conformance-service-core-workspace/lib"
 )
 
 func TestRetainedMinimumConformance(t *testing.T) {
+	orderKey := core.NewEntityKey("Order", core.ValI64(1))
+	executionKey := core.NewEntityKey("InferenceExecution", core.ValI64(1))
+	target := core.NewEntityRoot()
+	source := core.NewEntityRoot()
+	target.SetOriginalVersion(orderKey, 3)
+	source.SetOriginalVersion(executionKey, 9)
+	source.Set(executionKey, "execution_status", core.ValText("COMPLETED"))
+	target.MergeFrom(source)
+	if version, ok := target.OriginalVersion(orderKey); !ok || version != 3 {
+		t.Fatalf("Order#1 version was overwritten: %d, %v", version, ok)
+	}
+	if version, ok := target.OriginalVersion(executionKey); !ok || version != 9 {
+		t.Fatalf("InferenceExecution#1 version was resolved through Order#1: %d, %v", version, ok)
+	}
+	t.Log("PASS Mutation ledger identity (same ID, different entity types keep versions 3/9)")
+
 	t.Setenv("RUNTIME_EXAMPLE_CONFORMANCE_SERVICE_CORE_DATABASE_URL", filepath.Join(t.TempDir(), "conformance.db"))
 	context, err := lib.ServiceRuntimeFromEnv()
 	if err != nil {

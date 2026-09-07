@@ -9,7 +9,8 @@ TeaQL runtime contract:
 4. typed `SmartList` query return;
 5. E-expression loaded, null, and not-loaded states;
 6. optimistic version advancement on update; and
-7. soft-delete visibility rules.
+7. soft-delete visibility rules; and
+8. optimistic-version isolation for different entity types sharing one numeric ID.
 
 Run it from this directory:
 
