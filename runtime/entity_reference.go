@@ -222,6 +222,9 @@ func (c *UserContext) EncodeEntityReference(entityType string, id uint64, versio
 	if !rawEntityReferencesEnabled() {
 		return "", &EntityReferenceTokenError{Code: "ENTITY_REFERENCE_CODEC_REQUIRED"}
 	}
+	if strings.TrimSpace(entityType) == "" || id == 0 || ttl <= 0 {
+		return "", &EntityReferenceTokenError{Code: "ENTITY_REFERENCE_INVALID"}
+	}
 	now := time.Now().UTC()
 	plain, err := encodeReferenceClaims(EntityReferenceClaims{EntityType: entityType, ID: id, Version: version, IssuedAt: now, ExpiresAt: now.Add(ttl), Purpose: purpose})
 	if err != nil {
@@ -241,7 +244,8 @@ func (c *UserContext) DecodeEntityReference(token, expectedEntityType, purpose s
 		return EntityReferenceClaims{}, &EntityReferenceTokenError{Code: "ENTITY_REFERENCE_INVALID"}
 	}
 	claims, err := decodeReferenceClaims(plain)
-	if err != nil || claims.EntityType != expectedEntityType || claims.Purpose != purpose || !claims.ExpiresAt.After(time.Now().UTC()) {
+	now := time.Now().UTC()
+	if err != nil || claims.EntityType != expectedEntityType || claims.Purpose != purpose || !claims.ExpiresAt.After(now) || claims.IssuedAt.After(now.Add(time.Minute)) {
 		return EntityReferenceClaims{}, &EntityReferenceTokenError{Code: "ENTITY_REFERENCE_INVALID"}
 	}
 	return claims, nil
