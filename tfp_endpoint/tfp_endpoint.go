@@ -4,6 +4,7 @@ import (
 	stdcontext "context"
 	"encoding/json"
 	"fmt"
+	"math"
 	"strings"
 
 	"github.com/teaql/teaql-golang/core"
@@ -24,7 +25,21 @@ func mapField(fields map[string]string, field string) (string, error) {
 	return mapped, nil
 }
 
-func parseFilter(node map[string]interface{}, fields map[string]string) (*core.Expr, error) {
+const (
+	maxSelectItems   = 256
+	maxOrderItems    = 32
+	maxGroupItems    = 64
+	maxPayloadFields = 256
+	maxFilterDepth   = 16
+	maxFilterNodes   = 256
+	maxInValues      = 100
+)
+
+func parseFilter(node map[string]interface{}, fields map[string]string, depth int, nodes *int) (*core.Expr, error) {
+	*nodes++
+	if depth > maxFilterDepth || *nodes > maxFilterNodes {
+		return nil, &TfpError{Code: "TFP_INVALID_REQUEST", Message: "filter complexity exceeds protocol budget"}
+	}
 	if len(node) != 1 {
 		return nil, &TfpError{Code: "TFP_INVALID_REQUEST", Message: "filter must contain one expression"}
 	}
@@ -40,7 +55,7 @@ func parseFilter(node map[string]interface{}, fields map[string]string) (*core.E
 				if !ok {
 					return nil, &TfpError{Code: "TFP_INVALID_REQUEST", Message: "invalid logical operand"}
 				}
-				expr, err := parseFilter(child, fields)
+				expr, err := parseFilter(child, fields, depth+1, nodes)
 				if err != nil {
 					return nil, err
 				}
@@ -75,7 +90,7 @@ func parseFilter(node map[string]interface{}, fields map[string]string) (*core.E
 				return core.ExprContain(field, text), nil
 			case "$in":
 				values, ok := value.([]interface{})
-				if !ok {
+				if !ok || len(values) > maxInValues {
 					return nil, &TfpError{Code: "TFP_INVALID_REQUEST", Message: "in requires array"}
 				}
 				list := make([]core.Value, len(values))
@@ -144,6 +159,7 @@ type TrustedFederalContext struct {
 	WritableFields    map[string]map[string]string
 	AllowedActions    map[string]map[string]bool
 	MaxPageSize       uint64
+	MaxOffset         uint64
 }
 
 type TfpError struct {
@@ -222,16 +238,34 @@ func (e *TfpEndpoint) HandleQuery(context stdcontext.Context, payload []byte) (m
 	if tfpQuery.PurposeText == nil || strings.TrimSpace(*tfpQuery.PurposeText) == "" {
 		return nil, &TfpError{Code: "TFP_POLICY_VIOLATION", Message: "purposeText is required"}
 	}
-	q := core.NewSelectQuery(tfpQuery.Entity)
-	if tfpQuery.LimitValue != nil {
-		if *tfpQuery.LimitValue == 0 || *tfpQuery.LimitValue > trusted.MaxPageSize {
-			return nil, &TfpError{Code: "TFP_POLICY_VIOLATION", Message: "invalid federation page size"}
-		}
-		q.Limit(*tfpQuery.LimitValue)
+	if err := validateIntentText(*tfpQuery.CommentText); err != nil {
+		return nil, err
 	}
+	if err := validateIntentText(*tfpQuery.PurposeText); err != nil {
+		return nil, err
+	}
+	if tfpQuery.LimitValue == nil {
+		return nil, &TfpError{Code: "TFP_POLICY_VIOLATION", Message: "limitValue is required"}
+	}
+	if len(tfpQuery.SelectItems) > maxSelectItems || len(tfpQuery.OrderItems) > maxOrderItems || len(tfpQuery.GroupByItems) > maxGroupItems {
+		return nil, &TfpError{Code: "TFP_INVALID_REQUEST", Message: "query shape exceeds protocol budget"}
+	}
+	q := core.NewSelectQuery(tfpQuery.Entity)
+	if *tfpQuery.LimitValue == 0 || *tfpQuery.LimitValue > trusted.MaxPageSize {
+		return nil, &TfpError{Code: "TFP_POLICY_VIOLATION", Message: "invalid federation page size"}
+	}
+	q.Limit(*tfpQuery.LimitValue)
 	if tfpQuery.OffsetValue != nil {
+		maxOffset := trusted.MaxOffset
+		if maxOffset == 0 {
+			maxOffset = 10_000
+		}
+		if *tfpQuery.OffsetValue > maxOffset {
+			return nil, &TfpError{Code: "TFP_POLICY_VIOLATION", Message: "offset exceeds federation policy"}
+		}
 		q.Offset(*tfpQuery.OffsetValue)
 	}
+	seen := map[string]bool{}
 	for _, o := range tfpQuery.OrderItems {
 		dir := core.SortAsc
 		if o.Direction == "Desc" {
@@ -244,6 +278,10 @@ func (e *TfpEndpoint) HandleQuery(context stdcontext.Context, payload []byte) (m
 		if err != nil {
 			return nil, err
 		}
+		if seen["order:"+mapped] {
+			return nil, &TfpError{Code: "TFP_INVALID_REQUEST", Message: "duplicate mapped order field"}
+		}
+		seen["order:"+mapped] = true
 		q.WithOrderBy(core.NewOrderBy(mapped, dir))
 	}
 	selected := make([]string, 0, len(tfpQuery.SelectItems))
@@ -252,6 +290,10 @@ func (e *TfpEndpoint) HandleQuery(context stdcontext.Context, payload []byte) (m
 		if err != nil {
 			return nil, err
 		}
+		if seen["select:"+mapped] {
+			return nil, &TfpError{Code: "TFP_INVALID_REQUEST", Message: "duplicate mapped select field"}
+		}
+		seen["select:"+mapped] = true
 		selected = append(selected, mapped)
 	}
 	q.Projects(selected...)
@@ -260,13 +302,18 @@ func (e *TfpEndpoint) HandleQuery(context stdcontext.Context, payload []byte) (m
 		if err != nil {
 			return nil, err
 		}
+		if seen["group:"+mapped] {
+			return nil, &TfpError{Code: "TFP_INVALID_REQUEST", Message: "duplicate mapped group field"}
+		}
+		seen["group:"+mapped] = true
 		q.WithGroupBy(mapped)
 	}
 	if len(tfpQuery.AggregateItems) > 0 {
 		return nil, &TfpError{Code: "TFP_INVALID_REQUEST", Message: "aggregation is not supported by this endpoint"}
 	}
 	if tfpQuery.FilterCondition != nil {
-		filter, err := parseFilter(tfpQuery.FilterCondition, fields)
+		nodes := 0
+		filter, err := parseFilter(tfpQuery.FilterCondition, fields, 1, &nodes)
 		if err != nil {
 			return nil, err
 		}
@@ -281,11 +328,12 @@ func (e *TfpEndpoint) HandleQuery(context stdcontext.Context, payload []byte) (m
 	req := &data_service.QueryRequest{
 		Query:   q,
 		Comment: tfpQuery.CommentText,
+		Purpose: tfpQuery.PurposeText,
 	}
 
 	res, err := e.queryExecutor.Query(context, req)
 	if err != nil {
-		return nil, fmt.Errorf("query execution failed: %w", err)
+		return nil, &TfpError{Code: "TFP_EXECUTION_FAILED", Message: "Data service execution failed"}
 	}
 
 	rows := make([]map[string]interface{}, 0, len(res.Rows))
@@ -332,6 +380,15 @@ func (e *TfpEndpoint) HandleMutation(context stdcontext.Context, payload []byte)
 	if tfpMut.Comment == nil || strings.TrimSpace(*tfpMut.Comment) == "" {
 		return nil, &TfpError{Code: "TFP_AUDIT_REASON_REQUIRED", Message: "mutation audit reason is required"}
 	}
+	if err := validateIntentText(*tfpMut.Comment); err != nil {
+		return nil, err
+	}
+	if len(tfpMut.Payload) > maxPayloadFields {
+		return nil, &TfpError{Code: "TFP_INVALID_REQUEST", Message: "mutation payload exceeds protocol budget"}
+	}
+	if err := validateMutationLifecycle(tfpMut); err != nil {
+		return nil, err
+	}
 	writable, ok := trusted.WritableFields[tfpMut.Entity]
 	if !ok {
 		return nil, &TfpError{Code: "TFP_POLICY_VIOLATION", Message: "no writable field policy"}
@@ -352,7 +409,8 @@ func (e *TfpEndpoint) HandleMutation(context stdcontext.Context, payload []byte)
 		record[mapped] = core.Value{V: v}
 	}
 	record[trusted.TenantField] = trusted.TenantID
-	idVal := core.Value{V: tfpMut.Id}
+	normalizedID := normalizeMutationID(tfpMut.Id)
+	idVal := core.Value{V: normalizedID}
 	if tfpMut.Id == nil {
 		idVal = core.ValNull()
 	}
@@ -376,6 +434,7 @@ func (e *TfpEndpoint) HandleMutation(context stdcontext.Context, payload []byte)
 				ExpectedVersion: expectedVersion,
 				Values:          record,
 				TraceChain:      trace,
+				Guards:          core.Record{trusted.TenantField: trusted.TenantID},
 			},
 		}
 	case "Delete":
@@ -386,23 +445,32 @@ func (e *TfpEndpoint) HandleMutation(context stdcontext.Context, payload []byte)
 				ExpectedVersion: expectedVersion,
 				SoftDelete:      true,
 				TraceChain:      trace,
+				Guards:          core.Record{trusted.TenantField: trusted.TenantID},
 			},
 		}
 	case "Recover":
 		mutReq = &data_service.RecoverMutation{
 			Cmd: &core.RecoverCommand{
-				Entity:     tfpMut.Entity,
-				Id:         idVal,
-				TraceChain: trace,
+				Entity:          tfpMut.Entity,
+				Id:              idVal,
+				ExpectedVersion: *expectedVersion,
+				TraceChain:      trace,
+				Guards:          core.Record{trusted.TenantField: trusted.TenantID},
 			},
 		}
 	default:
-		return nil, fmt.Errorf("unknown mutation action: %s", tfpMut.Action)
+		return nil, &TfpError{Code: "TFP_INVALID_REQUEST", Message: "unknown mutation action"}
 	}
 
 	res, err := e.mutationExecutor.Mutate(context, mutReq)
 	if err != nil {
-		return nil, fmt.Errorf("mutation execution failed: %w", err)
+		return nil, &TfpError{Code: "TFP_EXECUTION_FAILED", Message: "Data service execution failed"}
+	}
+	if tfpMut.Action == "Create" && res.AffectedRows != 1 {
+		return nil, &TfpError{Code: "TFP_EXECUTION_FAILED", Message: "Data service execution failed"}
+	}
+	if tfpMut.Action != "Create" && res.AffectedRows != 1 {
+		return nil, &TfpError{Code: "TFP_UNAVAILABLE", Message: "mutation target is unavailable"}
 	}
 
 	dataArr := []map[string]interface{}{}
@@ -422,4 +490,64 @@ func (e *TfpEndpoint) HandleMutation(context stdcontext.Context, payload []byte)
 	}
 
 	return response, nil
+}
+
+func validMutationID(id interface{}) bool {
+	switch value := id.(type) {
+	case string:
+		return strings.TrimSpace(value) != ""
+	case float64:
+		return value > 0 && value == math.Trunc(value)
+	case json.Number:
+		_, err := value.Int64()
+		return err == nil
+	case map[string]interface{}:
+		return len(value) == 1 && validMutationID(value["id"])
+	default:
+		return false
+	}
+}
+
+func normalizeMutationID(id interface{}) interface{} {
+	if wrapper, ok := id.(map[string]interface{}); ok && len(wrapper) == 1 {
+		return wrapper["id"]
+	}
+	return id
+}
+
+func validateIntentText(value string) error {
+	if len([]byte(value)) > 1024 {
+		return &TfpError{Code: "TFP_INVALID_REQUEST", Message: "intent text exceeds 1024 UTF-8 bytes"}
+	}
+	for _, r := range value {
+		if r < 0x20 || r == 0x7f {
+			return &TfpError{Code: "TFP_INVALID_REQUEST", Message: "intent text contains control characters"}
+		}
+	}
+	return nil
+}
+
+func validateMutationLifecycle(m TfpMutationQuery) error {
+	empty := len(m.Payload) == 0
+	switch m.Action {
+	case "Create":
+		if m.Id != nil || m.ExpectedVersion != nil {
+			return &TfpError{Code: "TFP_INVALID_REQUEST", Message: "create cannot provide id or expectedVersion"}
+		}
+	case "Update":
+		if !validMutationID(m.Id) || m.ExpectedVersion == nil || *m.ExpectedVersion <= 0 {
+			return &TfpError{Code: "TFP_INVALID_REQUEST", Message: "update requires id and positive expectedVersion"}
+		}
+	case "Delete":
+		if !validMutationID(m.Id) || m.ExpectedVersion == nil || *m.ExpectedVersion <= 0 || !empty {
+			return &TfpError{Code: "TFP_INVALID_REQUEST", Message: "delete requires id, positive expectedVersion and empty payload"}
+		}
+	case "Recover":
+		if !validMutationID(m.Id) || m.ExpectedVersion == nil || *m.ExpectedVersion >= 0 || !empty {
+			return &TfpError{Code: "TFP_INVALID_REQUEST", Message: "recover requires id, negative expectedVersion and empty payload"}
+		}
+	default:
+		return &TfpError{Code: "TFP_INVALID_REQUEST", Message: "unknown mutation action"}
+	}
+	return nil
 }

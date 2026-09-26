@@ -163,6 +163,15 @@ func TestCompilesInsertUpdateDeleteAndRecover(t *testing.T) {
 	assert.Equal(t, "UPDATE \"orders\" SET \"version\" = $1 WHERE \"id\" = $2 AND \"version\" = $3", recoverSql.Sql)
 }
 
+func TestMutationGuardIsCompiledInSameStatement(t *testing.T) {
+	descriptor := entity().Property(core.NewPropertyDescriptor("tenant_id", core.TypeI64).ColumnName("tenant_id"))
+	dialect := &DefaultSqlDialect{Dialect: &TestDialect{}}
+	update, err := dialect.CompileUpdate(descriptor, core.NewUpdateCommand("Order", core.ValU64(1)).WithExpectedVersion(3).Value("name", core.ValText("B")).Guard("tenant_id", core.ValI64(7)))
+	assert.NoError(t, err)
+	assert.Contains(t, update.Sql, `"tenant_id" = $5`)
+	assert.Equal(t, core.ValI64(7), update.Params[4])
+}
+
 func TestDefaultDialect_Schema(t *testing.T) {
 	dialect := &TestDialect{}
 	defaultDialect := &DefaultSqlDialect{Dialect: dialect}

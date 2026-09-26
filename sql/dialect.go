@@ -2,6 +2,7 @@ package sql
 
 import (
 	"fmt"
+	"sort"
 	"strings"
 
 	"github.com/teaql/teaql-golang/core"
@@ -448,7 +449,6 @@ func (d *DefaultSqlDialect) CompileUpdate(entity *core.EntityDescriptor, command
 		params = append(params, core.ValI64(*command.ExpectedVersion+1))
 		assignments = append(assignments, fmt.Sprintf("%s = %s", d.Dialect.QuoteIdent(versionProperty.ColName), d.Dialect.Placeholder(len(params))))
 	}
-
 	if len(assignments) == 0 {
 		return nil, ErrEmptyMutation("update")
 	}
@@ -460,6 +460,11 @@ func (d *DefaultSqlDialect) CompileUpdate(entity *core.EntityDescriptor, command
 		versionProperty := entity.VersionProperty()
 		params = append(params, core.ValI64(*command.ExpectedVersion))
 		predicates = append(predicates, fmt.Sprintf("%s = %s", d.Dialect.QuoteIdent(versionProperty.ColName), d.Dialect.Placeholder(len(params))))
+	}
+	var err error
+	predicates, params, err = d.appendMutationGuards(entity, predicates, params, command.Guards)
+	if err != nil {
+		return nil, err
 	}
 
 	return &CompiledQuery{
@@ -598,13 +603,17 @@ func (d *DefaultSqlDialect) CompileDelete(entity *core.EntityDescriptor, command
 		} else {
 			params = append(params, core.ValI64(-1))
 		}
-
 		params = append(params, command.Id)
 		predicates := []string{fmt.Sprintf("%s = %s", d.Dialect.QuoteIdent(idProperty.ColName), d.Dialect.Placeholder(len(params)))}
 
 		if command.ExpectedVersion != nil {
 			params = append(params, core.ValI64(*command.ExpectedVersion))
 			predicates = append(predicates, fmt.Sprintf("%s = %s", d.Dialect.QuoteIdent(versionProperty.ColName), d.Dialect.Placeholder(len(params))))
+		}
+		var err error
+		predicates, params, err = d.appendMutationGuards(entity, predicates, params, command.Guards)
+		if err != nil {
+			return nil, err
 		}
 
 		return &CompiledQuery{
@@ -627,6 +636,11 @@ func (d *DefaultSqlDialect) CompileDelete(entity *core.EntityDescriptor, command
 		}
 		params = append(params, core.ValI64(*command.ExpectedVersion))
 		predicates = append(predicates, fmt.Sprintf("%s = %s", d.Dialect.QuoteIdent(versionProperty.ColName), d.Dialect.Placeholder(len(params))))
+	}
+	var err error
+	predicates, params, err = d.appendMutationGuards(entity, predicates, params, command.Guards)
+	if err != nil {
+		return nil, err
 	}
 
 	return &CompiledQuery{
@@ -655,18 +669,41 @@ func (d *DefaultSqlDialect) CompileRecover(entity *core.EntityDescriptor, comman
 		core.ValI64(command.ExpectedVersion),
 	}
 
+	predicates := []string{
+		fmt.Sprintf("%s = %s", d.Dialect.QuoteIdent(idProperty.ColName), d.Dialect.Placeholder(2)),
+		fmt.Sprintf("%s = %s", d.Dialect.QuoteIdent(versionProperty.ColName), d.Dialect.Placeholder(3)),
+	}
+	var err error
+	predicates, params, err = d.appendMutationGuards(entity, predicates, params, command.Guards)
+	if err != nil {
+		return nil, err
+	}
 	return &CompiledQuery{
-		Sql: fmt.Sprintf("UPDATE %s SET %s = %s WHERE %s = %s AND %s = %s",
+		Sql: fmt.Sprintf("UPDATE %s SET %s = %s WHERE %s",
 			d.Dialect.QuoteIdent(entity.TabName),
 			d.Dialect.QuoteIdent(versionProperty.ColName),
 			d.Dialect.Placeholder(1),
-			d.Dialect.QuoteIdent(idProperty.ColName),
-			d.Dialect.Placeholder(2),
-			d.Dialect.QuoteIdent(versionProperty.ColName),
-			d.Dialect.Placeholder(3),
+			strings.Join(predicates, " AND "),
 		),
 		Params: params,
 	}, nil
+}
+
+func (d *DefaultSqlDialect) appendMutationGuards(entity *core.EntityDescriptor, predicates []string, params []core.Value, guards core.Record) ([]string, []core.Value, error) {
+	keys := make([]string, 0, len(guards))
+	for field := range guards {
+		keys = append(keys, field)
+	}
+	sort.Strings(keys)
+	for _, field := range keys {
+		property := entity.PropertyByName(field)
+		if property == nil {
+			return nil, nil, ErrUnknownField(field)
+		}
+		params = append(params, guards[field])
+		predicates = append(predicates, fmt.Sprintf("%s = %s", d.Dialect.QuoteIdent(property.ColName), d.Dialect.Placeholder(len(params))))
+	}
+	return predicates, params, nil
 }
 
 func (d *DefaultSqlDialect) columnSql(entity *core.EntityDescriptor, field string) (string, error) {
