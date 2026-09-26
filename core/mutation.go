@@ -35,6 +35,7 @@ type UpdateCommand struct {
 	Values          Record
 	TraceChain      []*TraceNode
 	OldValues       Record
+	Guards          Record
 }
 
 func NewUpdateCommand(entity string, id Value) *UpdateCommand {
@@ -43,7 +44,13 @@ func NewUpdateCommand(entity string, id Value) *UpdateCommand {
 		Id:         id,
 		Values:     make(Record),
 		TraceChain: make([]*TraceNode, 0),
+		Guards:     make(Record),
 	}
+}
+
+func (c *UpdateCommand) Guard(field string, value Value) *UpdateCommand {
+	c.Guards[field] = value
+	return c
 }
 
 func (c *UpdateCommand) WithExpectedVersion(version int64) *UpdateCommand {
@@ -98,6 +105,7 @@ type DeleteCommand struct {
 	ExpectedVersion *int64
 	SoftDelete      bool
 	TraceChain      []*TraceNode
+	Guards          Record
 }
 
 func NewDeleteCommand(entity string, id Value) *DeleteCommand {
@@ -106,7 +114,13 @@ func NewDeleteCommand(entity string, id Value) *DeleteCommand {
 		Id:         id,
 		SoftDelete: true,
 		TraceChain: make([]*TraceNode, 0),
+		Guards:     make(Record),
 	}
+}
+
+func (c *DeleteCommand) Guard(field string, value Value) *DeleteCommand {
+	c.Guards[field] = value
+	return c
 }
 
 func (c *DeleteCommand) WithExpectedVersion(version int64) *DeleteCommand {
@@ -124,6 +138,7 @@ type RecoverCommand struct {
 	Id              Value
 	ExpectedVersion int64
 	TraceChain      []*TraceNode
+	Guards          Record
 }
 
 func NewRecoverCommand(entity string, id Value, expectedVersion int64) *RecoverCommand {
@@ -132,5 +147,11 @@ func NewRecoverCommand(entity string, id Value, expectedVersion int64) *RecoverC
 		Id:              id,
 		ExpectedVersion: expectedVersion,
 		TraceChain:      make([]*TraceNode, 0),
+		Guards:          make(Record),
 	}
+}
+
+func (c *RecoverCommand) Guard(field string, value Value) *RecoverCommand {
+	c.Guards[field] = value
+	return c
 }

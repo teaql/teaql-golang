@@ -291,6 +291,7 @@ type UserContext struct {
 	appAuditSink              AppAuditEventSink
 	runtimeTelemetrySink      RuntimeTelemetrySink
 	diagnosticSQLLogSink      DiagnosticSQLLogSink
+	sensitiveSQLLogSink       DiagnosticSQLLogSink
 	querySQLLogEnabled        bool
 	mutationSQLLogEnabled     bool
 	runtimeTelemetry          RuntimeTelemetry
@@ -314,6 +315,7 @@ type UserContext struct {
 	graphFixTime              time.Time
 	currentFixEvidence        []FixEvidence
 	lastFixEvidence           []FixEvidence
+	entityReferenceCodec      EntityReferenceCodec
 }
 
 type FixEvidenceSource string
@@ -376,8 +378,9 @@ type RuntimeTelemetrySink interface {
 	RecordExecutionMetadata(data_service.ExecutionMetadata)
 }
 
-// DiagnosticSQLLogSink receives value-bearing operator logs. The text sink is
-// installed by default and can be disabled independently for queries/mutations.
+// DiagnosticSQLLogSink receives SQL execution metadata. Ordinary sinks receive
+// a redacted copy: parameter values and copy-paste SQL are available only to an
+// explicitly configured sensitive sink.
 type DiagnosticSQLLogSink interface {
 	WriteSQLLog(data_service.ExecutionMetadata)
 }
@@ -399,7 +402,7 @@ func NewTextDiagnosticSQLLogSink(writer io.Writer) *TextDiagnosticSQLLogSink {
 }
 
 func (s *TextDiagnosticSQLLogSink) WriteSQLLog(metadata data_service.ExecutionMetadata) {
-	if s == nil || s.writer == nil || metadata.DebugQuery == nil {
+	if s == nil || s.writer == nil {
 		return
 	}
 	s.mu.Lock()
@@ -411,10 +414,38 @@ func (s *TextDiagnosticSQLLogSink) WriteSQLLog(metadata data_service.ExecutionMe
 	} else if metadata.AffectedRows != nil {
 		summary = fmt.Sprintf("%d rows affected", *metadata.AffectedRows)
 	}
-	fmt.Fprintf(s.writer, "[TeaQL SQL][%s][%dus] %s comment=%q purpose=%q auditReason=%q tracePath=%v\nParameterized SQL: %s params=%v\nDebug SQL: %s\n",
+	fmt.Fprintf(s.writer, "[TeaQL SQL][%s][%dus] %s comment=%q purpose=%q auditReason=%q tracePath=%v\nParameterized SQL: %s parameterCount=%d\n",
 		strings.ToLower(string(metadata.Operation)), duration, summary,
 		sqlLogText(metadata.Comment), sqlLogText(metadata.Purpose), sqlLogText(metadata.AuditReason), metadata.TraceChain,
-		metadata.ParameterizedSQL, metadata.Parameters, *metadata.DebugQuery)
+		metadata.ParameterizedSQL, metadata.ParameterCount)
+}
+
+// SensitiveDiagnosticSQLLogSink emits parameter values and copy-paste SQL.
+// It is never installed by default and must only target a restricted operator
+// destination because values may contain credentials or personal data.
+type SensitiveDiagnosticSQLLogSink struct{ *TextDiagnosticSQLLogSink }
+
+func NewSensitiveDiagnosticSQLLogSink(writer io.Writer) *SensitiveDiagnosticSQLLogSink {
+	return &SensitiveDiagnosticSQLLogSink{TextDiagnosticSQLLogSink: NewTextDiagnosticSQLLogSink(writer)}
+}
+
+func (s *SensitiveDiagnosticSQLLogSink) WriteSQLLog(metadata data_service.ExecutionMetadata) {
+	if s == nil || s.TextDiagnosticSQLLogSink == nil || s.writer == nil {
+		return
+	}
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	duration := metadata.EndedAt.Sub(metadata.StartedAt).Microseconds()
+	summary := ""
+	if metadata.ResultCount != nil {
+		summary = fmt.Sprintf("%d rows returned", *metadata.ResultCount)
+	} else if metadata.AffectedRows != nil {
+		summary = fmt.Sprintf("%d rows affected", *metadata.AffectedRows)
+	}
+	fmt.Fprintf(s.writer, "[TeaQL SENSITIVE SQL][%s][%dus] %s comment=%q purpose=%q auditReason=%q tracePath=%v\nParameterized SQL: %s params=%v\nDebug SQL: %s\n",
+		strings.ToLower(string(metadata.Operation)), duration, summary,
+		sqlLogText(metadata.Comment), sqlLogText(metadata.Purpose), sqlLogText(metadata.AuditReason), metadata.TraceChain,
+		metadata.ParameterizedSQL, metadata.Parameters, sqlLogText(metadata.DebugQuery))
 }
 
 type SQLExecutionEvidenceMode int
@@ -449,6 +480,12 @@ func (s *SQLExecutionEvidenceStore) RecordExecutionMetadata(metadata data_servic
 	s.entries = append(s.entries, metadata)
 }
 
+// WriteSQLLog lets callers opt this value-bearing evidence store into the
+// explicit sensitive diagnostic surface.
+func (s *SQLExecutionEvidenceStore) WriteSQLLog(metadata data_service.ExecutionMetadata) {
+	s.RecordExecutionMetadata(metadata)
+}
+
 func (s *SQLExecutionEvidenceStore) setMode(mode SQLExecutionEvidenceMode) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -480,16 +517,34 @@ func (c *UserContext) WithDiagnosticSQLLogSink(sink DiagnosticSQLLogSink) *UserC
 	return c
 }
 
+// WithSensitiveDiagnosticSQLLogSink opts into value-bearing SQL diagnostics.
+// The caller owns access control, retention and redaction for this destination.
+func (c *UserContext) WithSensitiveDiagnosticSQLLogSink(sink DiagnosticSQLLogSink) *UserContext {
+	c.sensitiveSQLLogSink = sink
+	return c
+}
+
+func redactedExecutionMetadata(metadata data_service.ExecutionMetadata) data_service.ExecutionMetadata {
+	metadata.ParameterCount = len(metadata.Parameters)
+	metadata.Parameters = nil
+	metadata.DebugQuery = nil
+	return metadata
+}
+
 func (c *UserContext) RecordExecutionMetadata(metadata data_service.ExecutionMetadata) {
 	isQuery := metadata.Operation == data_service.OpQuery
 	if (isQuery && !c.querySQLLogEnabled) || (!isQuery && !c.mutationSQLLogEnabled) {
 		return
 	}
+	redacted := redactedExecutionMetadata(metadata)
 	if c.runtimeTelemetrySink != nil {
-		c.runtimeTelemetrySink.RecordExecutionMetadata(metadata)
+		c.runtimeTelemetrySink.RecordExecutionMetadata(redacted)
 	}
 	if c.diagnosticSQLLogSink != nil {
-		c.diagnosticSQLLogSink.WriteSQLLog(metadata)
+		c.diagnosticSQLLogSink.WriteSQLLog(redacted)
+	}
+	if c.sensitiveSQLLogSink != nil {
+		c.sensitiveSQLLogSink.WriteSQLLog(metadata)
 	}
 }
 

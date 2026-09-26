@@ -113,6 +113,7 @@ type ExecutionMetadata struct {
 	Operation        DataServiceOperation
 	ParameterizedSQL string
 	Parameters       []core.Value
+	ParameterCount   int
 	StartedAt        time.Time
 	EndedAt          time.Time
 	AffectedRows     *uint64

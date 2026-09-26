@@ -319,7 +319,7 @@ func TestSqlExecutionEvidenceIsParameterizedAndFilterable(t *testing.T) {
 		},
 	})
 	store := runtime.NewSQLExecutionEvidenceStore()
-	context := runtime.NewUserContext().WithRuntimeTelemetrySink(store)
+	context := runtime.NewUserContext().WithSensitiveDiagnosticSQLLogSink(store)
 	exec := runtime.NewSqlDataServiceExecutor(
 		&mockTransport{records: []core.Record{{"id": core.ValText("1")}}, affected: 1},
 		&mockDialect{}, meta)
@@ -411,9 +411,15 @@ func TestDiagnosticSQLLogDefaultsOnHasStructuredFieldsAndIndependentSwitches(t *
 	context.WithDiagnosticSQLLogSink(runtime.NewTextDiagnosticSQLLogSink(&output))
 	context.RecordExecutionMetadata(metadata)
 	if !strings.Contains(output.String(), "Parameterized SQL:") ||
-		!strings.Contains(output.String(), "Debug SQL:") ||
-		!strings.Contains(output.String(), debug) || !strings.Contains(output.String(), "1 rows returned") {
-		t.Fatalf("operator log did not contain copy-paste SQL and summary: %s", output.String())
+		strings.Contains(output.String(), "Debug SQL:") ||
+		strings.Contains(output.String(), "O'Brien") || !strings.Contains(output.String(), "1 rows returned") {
+		t.Fatalf("ordinary operator log was not safely redacted: %s", output.String())
+	}
+	var sensitive bytes.Buffer
+	context.WithSensitiveDiagnosticSQLLogSink(runtime.NewSensitiveDiagnosticSQLLogSink(&sensitive))
+	context.RecordExecutionMetadata(metadata)
+	if !strings.Contains(sensitive.String(), "Debug SQL:") || !strings.Contains(sensitive.String(), debug) {
+		t.Fatalf("explicit sensitive sink did not contain copy-paste SQL: %s", sensitive.String())
 	}
 	context.DisableSelectSqlLog()
 	before := output.Len()
