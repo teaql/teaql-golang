@@ -46,6 +46,37 @@ To maintain isomorphism with `teaql-rs`, this project strictly separates the fol
 *   **Cache and Web Integration**: Gin routing wrappers that perfectly match legacy API structures, along with a transparent distributed caching layer backed by Redis.
 *   **Cloud-Native Ready**: Provides microservice standard abstractions for service registration (`ServiceRegistry`), service discovery (`ServiceDiscovery`), and health monitoring (`HealthIndicator`), with out-of-the-box `Actuator` endpoint support.
 
+## Security Foundations
+
+TeaQL Go provides the backend security profile used by generated services:
+
+- default Query and Mutation logging preserves intent, trace, parameterized
+  SQL, timing, and outcome while omitting values;
+- value-bearing/copy-paste SQL requires an explicitly installed sensitive sink;
+- the TFP endpoint enforces bounded requests, trusted tenant policy, writable
+  fields, and optimistic version at the provider boundary;
+- `UserContext` issues short-lived opaque entity references instead of exposing
+  raw internal ID/version pairs.
+
+```go
+codec, err := runtime.NewAEADEntityReferenceCodec(2, map[uint32][]byte{
+    2: activeKeyFromSecretManager,
+})
+if err != nil { return err }
+context := runtime.NewUserContext().WithEntityReferenceCodec(codec)
+token, err := context.EncodeEntityReference(
+    "OrderItem", 42, 7, "edit-order", 15*time.Minute)
+claims, err := context.DecodeEntityReference(token, "OrderItem", "edit-order")
+```
+
+The AES-256-GCM envelope supports rotation, expiry, entity-type binding, and
+purpose binding. Invalid tokens have one non-disclosing error; missing key
+infrastructure fails closed. The shared Java/Rust/Go/.NET golden vector and the
+exact development-only raw-reference acknowledgement live in the canonical
+[opaque entity reference contract](https://github.com/teaql/teaql-conformance/blob/main/design/opaque-entity-references.md).
+Opaque references remain subject to normal authorization and optimistic-lock
+checks.
+
 ## Quick Start
 
 A ready-to-use SQLite application example is provided in `examples/basic/main.go`. Run it using:
