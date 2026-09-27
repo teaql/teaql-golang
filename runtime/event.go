@@ -2,6 +2,7 @@ package runtime
 
 import (
 	"fmt"
+	"sort"
 	"strings"
 	"unicode/utf8"
 
@@ -356,8 +357,9 @@ func BuildSafeAuditField(fieldName string, rawValue *string, auditMaskFields []s
 	}
 
 	value := raw
+	shouldMask = credentialLogName(fieldName) || (shouldMask && !plaintextLogsEnabled())
 	if shouldMask {
-		value = MaskAuditValue(raw)
+		value = "[REDACTED]"
 	}
 
 	truncated := false
@@ -393,24 +395,77 @@ func BuildSafeAuditField(fieldName string, rawValue *string, auditMaskFields []s
 
 func (e *RawAuditEvent) BuildSafeEvent(auditMaskFields []string, auditValueMaxLen *int) *SafeAuditEvent {
 	safeFields := make([]*SafeAuditField, 0, len(e.Changes))
+	allow := plaintextLogsEnabled()
+	masked := map[string]bool{}
+	var secrets []string
+	for _, change := range e.Changes {
+		mask := credentialLogName(change.Field)
+		for _, field := range auditMaskFields {
+			if field == change.Field && !allow {
+				mask = true
+			}
+		}
+		for _, value := range []*core.Value{change.OldValue, change.NewValue} {
+			if value != nil && logHasCredentials(*value) {
+				mask = true
+			}
+		}
+		masked[change.Field] = mask
+		if mask {
+			for _, value := range []*core.Value{change.OldValue, change.NewValue} {
+				if value != nil {
+					secrets = append(secrets, logValueStrings(*value)...)
+				}
+			}
+		}
+	}
+	sort.Slice(secrets, func(i, j int) bool { return len(secrets[i]) > len(secrets[j]) })
+	scrub := func(text string) string {
+		for _, value := range secrets {
+			text = strings.ReplaceAll(text, value, "[REDACTED]")
+		}
+		return text
+	}
 	for _, change := range e.Changes {
 		if strings.HasPrefix(change.Field, "_") {
 			continue
 		}
 		var rawValStr *string
-		if change.NewValue != nil {
-			str := fmt.Sprintf("%v", change.NewValue.V)
+		value := change.NewValue
+		if value != nil {
+			str := fmt.Sprintf("%v", value.V)
 			rawValStr = &str
 		}
-		safeFields = append(safeFields, BuildSafeAuditField(change.Field, rawValStr, auditMaskFields, auditValueMaxLen))
+		field := BuildSafeAuditField(change.Field, rawValStr, auditMaskFields, auditValueMaxLen)
+		if field.Value != nil {
+			text := scrub(*field.Value)
+			if masked[change.Field] {
+				text = "[REDACTED]"
+				field.Masked = true
+				field.Truncated = false
+			}
+			field.Value = &text
+			length := utf8.RuneCountInString(text)
+			field.OutputLength = &length
+		}
+		safeFields = append(safeFields, field)
+	}
+	trace := make([]*core.TraceNode, len(e.TraceChain))
+	for i, node := range e.TraceChain {
+		if node != nil {
+			clone := *node
+			clone.Comment = scrub(node.Comment)
+			clone.Name = scrub(node.Name)
+			trace[i] = &clone
+		}
 	}
 
 	return &SafeAuditEvent{
 		Kind:       e.Kind,
 		Entity:     e.Entity,
 		Fields:     safeFields,
-		TraceChain: e.TraceChain,
-		Actor:      e.Actor,
+		TraceChain: trace,
+		Actor:      scrub(e.Actor),
 		Category:   e.Category,
 	}
 }

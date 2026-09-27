@@ -402,6 +402,7 @@ func NewTextDiagnosticSQLLogSink(writer io.Writer) *TextDiagnosticSQLLogSink {
 }
 
 func (s *TextDiagnosticSQLLogSink) WriteSQLLog(metadata data_service.ExecutionMetadata) {
+	metadata = projectedSQLMetadata(metadata, false)
 	if s == nil || s.writer == nil {
 		return
 	}
@@ -431,6 +432,10 @@ func NewSensitiveDiagnosticSQLLogSink(writer io.Writer) *SensitiveDiagnosticSQLL
 
 func (s *SensitiveDiagnosticSQLLogSink) WriteSQLLog(metadata data_service.ExecutionMetadata) {
 	if s == nil || s.TextDiagnosticSQLLogSink == nil || s.writer == nil {
+		return
+	}
+	if !plaintextLogsEnabled() || credentialLogName(metadata.ParameterizedSQL) || credentialLogName(sqlLogText(metadata.DebugQuery)) || credentialLogName(fmt.Sprint(metadata.Parameters)) {
+		s.TextDiagnosticSQLLogSink.WriteSQLLog(metadata)
 		return
 	}
 	s.mu.Lock()
@@ -525,10 +530,7 @@ func (c *UserContext) WithSensitiveDiagnosticSQLLogSink(sink DiagnosticSQLLogSin
 }
 
 func redactedExecutionMetadata(metadata data_service.ExecutionMetadata) data_service.ExecutionMetadata {
-	metadata.ParameterCount = len(metadata.Parameters)
-	metadata.Parameters = nil
-	metadata.DebugQuery = nil
-	return metadata
+	return projectedSQLMetadata(metadata, false)
 }
 
 func (c *UserContext) RecordExecutionMetadata(metadata data_service.ExecutionMetadata) {
@@ -544,7 +546,7 @@ func (c *UserContext) RecordExecutionMetadata(metadata data_service.ExecutionMet
 		c.diagnosticSQLLogSink.WriteSQLLog(redacted)
 	}
 	if c.sensitiveSQLLogSink != nil {
-		c.sensitiveSQLLogSink.WriteSQLLog(metadata)
+		c.sensitiveSQLLogSink.WriteSQLLog(projectedSQLMetadata(metadata, plaintextLogsEnabled()))
 	}
 }
 

@@ -57,7 +57,7 @@ func verifyLogBoundary() {
 	})
 	require(!strings.Contains(ordinary.String(), "4111111111111111") && !strings.Contains(ordinary.String(), "Debug SQL:"), "ordinary SQL log leaked a value")
 	require(strings.Contains(ordinary.String(), "parameterCount=1"), "ordinary SQL log lost parameter count")
-	require(strings.Contains(sensitive.String(), debug), "explicit sensitive sink did not receive copy-paste SQL")
+	require(!strings.Contains(sensitive.String(), "4111111111111111"), "sensitive sink bypassed plaintext acknowledgement gate")
 }
 
 func verifyTrustedTFP() {

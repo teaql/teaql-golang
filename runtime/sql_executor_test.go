@@ -310,6 +310,7 @@ func TestSqlDataServiceExecutor_Mutate(t *testing.T) {
 }
 
 func TestSqlExecutionEvidenceIsParameterizedAndFilterable(t *testing.T) {
+	t.Setenv("TEAQL_ALLOW_SENSITIVE_PLAINTEXT_LOGS", "I_UNDERSTAND_SENSITIVE_DATA_MAY_BE_WRITTEN_TO_DISK")
 	meta := runtime.NewInMemoryMetadataStore()
 	meta.Register(&core.EntityDescriptor{
 		Name: "User", TabName: "users",
@@ -325,14 +326,14 @@ func TestSqlExecutionEvidenceIsParameterizedAndFilterable(t *testing.T) {
 		&mockDialect{}, meta)
 
 	_, err := exec.Mutate(context, &data_service.InsertMutation{Cmd: &core.InsertCommand{
-		Entity: "User", Values: core.Record{"id": core.ValText("1"), "name": core.ValText("secret-value")},
+		Entity: "User", Values: core.Record{"id": core.ValText("1"), "name": core.ValText("private-customer")},
 	}})
 	if err != nil {
 		t.Fatal(err)
 	}
 	comment, purpose := "what: load governed users", "why: verify trace inheritance"
 	_, err = exec.Query(context, &data_service.QueryRequest{Query: &core.SelectQuery{
-		Entity: "User", Filter: core.ExprEq("name", core.ValText("secret-value")),
+		Entity: "User", Filter: core.ExprEq("name", core.ValText("private-customer")),
 	}, Comment: &comment, Purpose: &purpose, TraceChain: []*core.TraceNode{
 		core.NewTypedTraceNode("relation", "User.organization", "organization"),
 		core.NewTypedTraceNode("relation", "Organization.region", "region"),
@@ -353,7 +354,7 @@ func TestSqlExecutionEvidenceIsParameterizedAndFilterable(t *testing.T) {
 		if len(entry.Parameters) == 0 {
 			t.Fatal("missing structured parameters")
 		}
-		if strings.Contains(entry.ParameterizedSQL, "secret-value") {
+		if strings.Contains(entry.ParameterizedSQL, "private-customer") {
 			t.Fatal("secret leaked into SQL")
 		}
 	}
@@ -395,6 +396,7 @@ func TestSqlExecutionEvidenceIsParameterizedAndFilterable(t *testing.T) {
 }
 
 func TestDiagnosticSQLLogDefaultsOnHasStructuredFieldsAndIndependentSwitches(t *testing.T) {
+	t.Setenv("TEAQL_ALLOW_SENSITIVE_PLAINTEXT_LOGS", "I_UNDERSTAND_SENSITIVE_DATA_MAY_BE_WRITTEN_TO_DISK")
 	var output bytes.Buffer
 	debug := "SELECT * FROM users WHERE name = 'O''Brien 学校'"
 	count := 1
