@@ -263,7 +263,7 @@ func TestBuildSafeAuditField(t *testing.T) {
 	if !field.Masked {
 		t.Errorf("Expected masked true")
 	}
-	if *field.Value != "my****et" {
+	if *field.Value != "[REDACTED]" {
 		t.Errorf("Expected masked value, got %s", *field.Value)
 	}
 
