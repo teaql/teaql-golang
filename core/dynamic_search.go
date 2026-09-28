@@ -43,7 +43,7 @@ func emitSearchWarnings(warnings []DynamicSearchWarning, sink func(DynamicSearch
 		if sink != nil {
 			sink(warning)
 		} else {
-			log.Printf("%s entity=%s clause=%s fieldPath=%s", warning.Code, warning.Entity, warning.Clause, warning.FieldPath)
+			log.Printf("%s entity=%s clause=%s fieldPath=<omitted>", warning.Code, warning.Entity, warning.Clause)
 		}
 	}
 }

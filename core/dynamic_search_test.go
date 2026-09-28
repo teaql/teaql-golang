@@ -1,7 +1,9 @@
 package core
 
 import (
+	"bytes"
 	"encoding/json"
+	"log"
 	"reflect"
 	"strings"
 	"testing"
@@ -35,6 +37,27 @@ func TestDynamicSearchDriftAndWarningValues(t *testing.T) {
 		if w.Code != "DYNAMIC_SEARCH_UNKNOWN_FIELD" || w.Entity != "Order" {
 			t.Fatal(w)
 		}
+	}
+}
+
+func TestDynamicSearchDefaultLogOmitsUntrustedPath(t *testing.T) {
+	const path = "CLIENT_SECRET_FIELD_PATH_91"
+	var output bytes.Buffer
+	previous := log.Writer()
+	log.SetOutput(&output)
+	defer log.SetOutput(previous)
+	result, err := NormalizeDynamicSearch([]byte(`{"filter":{"CLIENT_SECRET_FIELD_PATH_91":"SECRET_VALUE_99"}}`), "Order", searchModels, 100, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(result.Warnings) != 1 || result.Warnings[0].FieldPath != path {
+		t.Fatal("structured warning lost its original field path")
+	}
+	if strings.Contains(output.String(), path) || strings.Contains(output.String(), "SECRET_VALUE_99") {
+		t.Fatal("default log disclosed caller input")
+	}
+	if !strings.Contains(output.String(), "DYNAMIC_SEARCH_UNKNOWN_FIELD") || !strings.Contains(output.String(), "fieldPath=<omitted>") {
+		t.Fatal("default log lost its safe warning envelope")
 	}
 }
 
