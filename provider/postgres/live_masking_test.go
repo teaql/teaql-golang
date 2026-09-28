@@ -37,6 +37,9 @@ func TestLiveProviderMaskedQAndMutation(t *testing.T) {
 		t.Run(provider.name, func(t *testing.T) {
 			dsn := os.Getenv(provider.env)
 			if dsn == "" {
+				if strings.EqualFold(os.Getenv("TEAQL_REQUIRE_LIVE_DB"), "true") {
+					t.Fatalf("%s is required for live provider tests", provider.env)
+				}
 				t.Skip(provider.env + " is not set")
 			}
 			db, err := sql.Open(provider.driver, dsn)
