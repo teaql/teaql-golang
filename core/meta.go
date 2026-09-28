@@ -100,13 +100,14 @@ func (r *RelationDescriptor) KeepMissing() *RelationDescriptor {
 }
 
 type EntityDescriptor struct {
-	Name           string
-	TabName        string
-	DataSvc        *string
-	Properties     []*PropertyDescriptor
-	Relations      []*RelationDescriptor
-	AuditMaskFlds  []string
-	AuditValueMaxL *int
+	Name                    string
+	TabName                 string
+	DataSvc                 *string
+	Properties              []*PropertyDescriptor
+	Relations               []*RelationDescriptor
+	AuditMaskFlds           []string
+	AuditMaskFieldsDeclared bool
+	AuditValueMaxL          *int
 }
 
 func NewEntityDescriptor(name string) *EntityDescriptor {
@@ -143,6 +144,7 @@ func (e *EntityDescriptor) Relation(relation *RelationDescriptor) *EntityDescrip
 
 func (e *EntityDescriptor) AuditMaskFields(fields []string) *EntityDescriptor {
 	e.AuditMaskFlds = fields
+	e.AuditMaskFieldsDeclared = fields != nil
 	return e
 }
 

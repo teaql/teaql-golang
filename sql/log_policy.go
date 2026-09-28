@@ -14,6 +14,9 @@ func fieldLogPolicy(entity *core.EntityDescriptor, field string) string {
 	if logprivacy.CredentialName(field) || property != nil && logprivacy.CredentialName(property.ColName) {
 		return "credential"
 	}
+	if !entity.AuditMaskFieldsDeclared {
+		return "unknown"
+	}
 	for _, masked := range entity.AuditMaskFlds {
 		if masked == field {
 			return "masked"

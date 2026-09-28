@@ -15,6 +15,28 @@ func maskPolicyEntity() *core.EntityDescriptor {
 		Property(core.NewPropertyDescriptor("name", core.TypeText)).Property(active).AuditMaskFields([]string{"name"})
 }
 
+func TestLegacyMissingMaskMetadataFailsClosed(t *testing.T) {
+	name := core.NewPropertyDescriptor("name", core.TypeText)
+	name.LogPolicy = "plain" // Older generated descriptors could set this without declaring the entity policy.
+	entity := core.NewEntityDescriptor("Customer").Property(name).
+		Property(core.NewPropertyDescriptor("password", core.TypeText))
+	if got := fieldLogPolicy(entity, "name"); got != "unknown" {
+		t.Fatalf("missing entity policy must be unknown, got %q", got)
+	}
+	if got := fieldLogPolicy(entity, "password"); got != "credential" {
+		t.Fatalf("credentials must remain masked, got %q", got)
+	}
+	d := &DefaultSqlDialect{Dialect: &TestDialect{}}
+	compiled, err := d.CompileSelect(entity, core.NewSelectQuery("Customer").AndFilter(core.ExprEq("name", core.ValText("PRIVATE-CANARY"))))
+	if err != nil || !reflect.DeepEqual(compiled.ParameterLogPolicies, []string{"unknown"}) {
+		t.Fatalf("legacy binding policy: %v, %v", compiled, err)
+	}
+	entity.AuditMaskFields([]string{})
+	if got := fieldLogPolicy(entity, "name"); got != "plain" {
+		t.Fatalf("explicit empty policy should retain ordinary field, got %q", got)
+	}
+}
+
 func TestCompilerMaskPoliciesBatchAndGuards(t *testing.T) {
 	d := &DefaultSqlDialect{Dialect: &TestDialect{}}
 	entity := maskPolicyEntity()
