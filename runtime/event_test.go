@@ -455,17 +455,44 @@ func TestMutationAuditEmitsIndependentRawAndMaskedAppEvents(t *testing.T) {
 	app := &capturingAppAuditSink{}
 	descriptor := core.NewEntityDescriptor("User").AuditMaskFields([]string{"email"})
 	context := NewRuntimeModule().Entity(descriptor).EventSink(raw).IntoContext().WithAppAuditEventSink(app)
-	trace := []*core.TraceNode{{Comment: "approved change"}}
+	trace := []*core.TraceNode{{Comment: "approved change 1001"}}
 	request := &data_service.InsertMutation{Cmd: &core.InsertCommand{
 		Entity: "User", Values: core.Record{"email": core.ValText("person@example.invalid")}, TraceChain: trace,
+	}}
+
+	err := context.EmitMutationAudit(request, &data_service.MutationResult{
+		AffectedRows: 1, GeneratedValues: core.Record{"id": core.ValI64(1001)},
+	})
+	assert.NoError(t, err)
+	assert.Len(t, raw.events, 1)
+	assert.Equal(t, "person@example.invalid", raw.events[0].Changes[0].NewValue.V)
+	assert.Equal(t, "approved change 1001", raw.events[0].TraceChain[0].Comment)
+	assert.Len(t, app.events, 1)
+	assert.True(t, app.events[0].Fields[0].Masked)
+	assert.NotEqual(t, "person@example.invalid", *app.events[0].Fields[0].Value)
+	assert.Equal(t, "approved change [REDACTED]", app.events[0].TraceChain[0].Comment)
+}
+
+func TestUpdateAppAuditScrubsTargetIDWithoutMutatingCommand(t *testing.T) {
+	raw := &MockRawAuditEventSink{}
+	app := &capturingAppAuditSink{}
+	context := NewRuntimeModule().Entity(core.NewEntityDescriptor("User")).EventSink(raw).IntoContext().WithAppAuditEventSink(app)
+	request := &data_service.UpdateMutation{Cmd: &core.UpdateCommand{
+		Entity: "User", Id: core.ValI64(1001),
+		Values:     core.Record{"name": core.ValText("Changed")},
+		TraceChain: []*core.TraceNode{{Comment: "rename user 1001"}},
 	}}
 
 	err := context.EmitMutationAudit(request, &data_service.MutationResult{AffectedRows: 1})
 	assert.NoError(t, err)
 	assert.Len(t, raw.events, 1)
-	assert.Equal(t, "person@example.invalid", raw.events[0].Changes[0].NewValue.V)
-	assert.Equal(t, "approved change", raw.events[0].TraceChain[0].Comment)
+	assert.Equal(t, int64(1001), raw.events[0].TargetID.V)
+	_, rawValuesHaveID := raw.events[0].Values["id"]
+	assert.False(t, rawValuesHaveID)
+	assert.Equal(t, "rename user 1001", raw.events[0].TraceChain[0].Comment)
 	assert.Len(t, app.events, 1)
-	assert.True(t, app.events[0].Fields[0].Masked)
-	assert.NotEqual(t, "person@example.invalid", *app.events[0].Fields[0].Value)
+	assert.Equal(t, "rename user [REDACTED]", app.events[0].TraceChain[0].Comment)
+	_, commandHasID := request.Cmd.Values["id"]
+	assert.False(t, commandHasID)
+	assert.Equal(t, "rename user 1001", request.Cmd.TraceChain[0].Comment)
 }

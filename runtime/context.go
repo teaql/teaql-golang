@@ -873,6 +873,8 @@ func (c *UserContext) emitMutationAudit(context stdcontext.Context, request data
 		}
 		oldValues := req.Cmd.OldValues
 		event = UpdatedWithOldValues(req.Cmd.Entity, req.Cmd.Values, &oldValues, req.Cmd.Values, fields)
+		targetID := req.Cmd.Id
+		event.TargetID = &targetID
 	case *data_service.DeleteMutation:
 		event = Deleted(req.Cmd.Entity, req.Cmd.Id, req.Cmd.ExpectedVersion)
 	case *data_service.RecoverMutation:

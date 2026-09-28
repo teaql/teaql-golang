@@ -31,6 +31,7 @@ type EntityPropertyChange struct {
 type RawAuditEvent struct {
 	Kind          RawAuditEventKind
 	Entity        string
+	TargetID      *core.Value
 	Values        core.Record
 	UpdatedFields []string
 	OldValues     *core.Record
@@ -420,12 +421,13 @@ func (e *RawAuditEvent) BuildSafeEvent(auditMaskFields []string, auditValueMaxLe
 		}
 	}
 	sort.Slice(secrets, func(i, j int) bool { return len(secrets[i]) > len(secrets[j]) })
-	scrub := func(text string) string {
-		for _, value := range secrets {
+	scrubWith := func(text string, values []string) string {
+		for _, value := range values {
 			text = strings.ReplaceAll(text, value, "[REDACTED]")
 		}
 		return text
 	}
+	scrub := func(text string) string { return scrubWith(text, secrets) }
 	for _, change := range e.Changes {
 		if strings.HasPrefix(change.Field, "_") {
 			continue
@@ -456,12 +458,19 @@ func (e *RawAuditEvent) BuildSafeEvent(auditMaskFields []string, auditValueMaxLe
 		}
 		safeFields = append(safeFields, field)
 	}
+	intentValues := append([]string(nil), secrets...)
+	if e.TargetID != nil {
+		intentValues = append(intentValues, logValueStrings(*e.TargetID)...)
+	} else if id, ok := e.Values["id"]; ok {
+		intentValues = append(intentValues, logValueStrings(id)...)
+	}
+	sort.Slice(intentValues, func(i, j int) bool { return len(intentValues[i]) > len(intentValues[j]) })
 	trace := make([]*core.TraceNode, len(e.TraceChain))
 	for i, node := range e.TraceChain {
 		if node != nil {
 			clone := *node
-			clone.Comment = scrub(node.Comment)
-			clone.Name = scrub(node.Name)
+			clone.Comment = scrubWith(node.Comment, intentValues)
+			clone.Name = scrubWith(node.Name, intentValues)
 			trace[i] = &clone
 		}
 	}
@@ -471,7 +480,7 @@ func (e *RawAuditEvent) BuildSafeEvent(auditMaskFields []string, auditValueMaxLe
 		Entity:     e.Entity,
 		Fields:     safeFields,
 		TraceChain: trace,
-		Actor:      scrub(e.Actor),
+		Actor:      scrubWith(e.Actor, intentValues),
 		Category:   e.Category,
 	}
 }
