@@ -465,11 +465,22 @@ func TestMutationAuditEmitsIndependentRawAndMaskedAppEvents(t *testing.T) {
 	})
 	assert.NoError(t, err)
 	assert.Len(t, raw.events, 1)
-	assert.Equal(t, "person@example.invalid", raw.events[0].Changes[0].NewValue.V)
+	assert.Equal(t, "person@example.invalid", raw.events[0].Values["email"].V)
 	assert.Equal(t, "approved change 1001", raw.events[0].TraceChain[0].Comment)
 	assert.Len(t, app.events, 1)
-	assert.True(t, app.events[0].Fields[0].Masked)
-	assert.NotEqual(t, "person@example.invalid", *app.events[0].Fields[0].Value)
+	var maskedEmail *SafeAuditField
+	for _, field := range app.events[0].Fields {
+		if field.Name == "email" {
+			maskedEmail = field
+			break
+		}
+	}
+	if assert.NotNil(t, maskedEmail) {
+		assert.True(t, maskedEmail.Masked)
+		if assert.NotNil(t, maskedEmail.Value) {
+			assert.NotEqual(t, "person@example.invalid", *maskedEmail.Value)
+		}
+	}
 	assert.Equal(t, "approved change [REDACTED]", app.events[0].TraceChain[0].Comment)
 }
 
