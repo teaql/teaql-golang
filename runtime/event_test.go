@@ -496,3 +496,21 @@ func TestUpdateAppAuditScrubsTargetIDWithoutMutatingCommand(t *testing.T) {
 	assert.False(t, commandHasID)
 	assert.Equal(t, "rename user 1001", request.Cmd.TraceChain[0].Comment)
 }
+
+func TestAllMutationKindsScrubTargetIDFromSafeTrace(t *testing.T) {
+	id := core.ValI64(1001)
+	update := Updated("User", core.Record{"name": core.ValText("Changed")})
+	update.TargetID = &id
+	events := []*RawAuditEvent{
+		Created("User", core.Record{"id": id}),
+		update,
+		Deleted("User", id, nil),
+		Recovered("User", id, 1),
+	}
+	for _, event := range events {
+		event.TraceChain = []*core.TraceNode{{Comment: "change user 1001"}}
+		safe := event.BuildSafeEvent(nil, nil)
+		assert.Equal(t, "change user [REDACTED]", safe.TraceChain[0].Comment)
+		assert.Equal(t, "change user 1001", event.TraceChain[0].Comment)
+	}
+}
