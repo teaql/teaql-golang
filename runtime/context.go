@@ -539,20 +539,31 @@ func redactedExecutionMetadata(metadata data_service.ExecutionMetadata) data_ser
 	return projectedSQLMetadata(metadata, false)
 }
 
+func emitDiagnosticSafely(deliver func()) {
+	// Diagnostics must not change a successful query or mutation into a failure.
+	// Do not print the panic value: a custom sink may include raw SQL in it.
+	defer func() { _ = recover() }()
+	deliver()
+}
+
 func (c *UserContext) RecordExecutionMetadata(metadata data_service.ExecutionMetadata) {
 	isQuery := metadata.Operation == data_service.OpQuery
 	if (isQuery && !c.querySQLLogEnabled) || (!isQuery && !c.mutationSQLLogEnabled) {
 		return
 	}
+	// Projection is also part of diagnostics, not the business operation.
+	defer func() { _ = recover() }()
 	redacted := redactedExecutionMetadata(metadata)
 	if c.runtimeTelemetrySink != nil {
-		c.runtimeTelemetrySink.RecordExecutionMetadata(redacted)
+		emitDiagnosticSafely(func() { c.runtimeTelemetrySink.RecordExecutionMetadata(redacted) })
 	}
 	if c.diagnosticSQLLogSink != nil {
-		c.diagnosticSQLLogSink.WriteSQLLog(redacted)
+		emitDiagnosticSafely(func() { c.diagnosticSQLLogSink.WriteSQLLog(redacted) })
 	}
 	if c.sensitiveSQLLogSink != nil {
-		c.sensitiveSQLLogSink.WriteSQLLog(projectedSQLMetadata(metadata, plaintextLogsEnabled()))
+		emitDiagnosticSafely(func() {
+			c.sensitiveSQLLogSink.WriteSQLLog(projectedSQLMetadata(metadata, plaintextLogsEnabled()))
+		})
 	}
 }
 
