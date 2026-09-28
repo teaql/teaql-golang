@@ -7,9 +7,9 @@ cd examples/order-management/golang-app-console
 go run .
 ```
 
-The first run creates `../.local/order.db`, ensures schema from generated metadata, seeds through generated entity APIs, performs a governed query, and writes an audited preset. The second run demonstrates idempotency.
+The first run creates `../.local/order.db`, ensures schema and model-owned root/constants, seeds the remaining business entities through generated mutation APIs, performs a governed query, and writes an audited preset. The second run demonstrates idempotency. To choose a fresh database path, set `TEAQL_ORDER_MANAGEMENT_DB`; the regression test does this automatically and never deletes an existing `.local/order.db`. A database made by an older generated example may have an incompatible ID-space table and is not silently migrated here.
 
-Read `golang-app-console/main.go` first (handwritten), then `golang-lib-core/q.go`, `customer_order/request.go`, and `customer_order/entity.go` (generated). The library is a standard Go module; the console is a separate module with a local `replace` only for this source-tree example. TeaQL itself resolves from its published GitHub module version.
+Read `golang-app-console/main.go` first (handwritten). API discovery for the generated library should use model-aware Assist; `model.xml` is retained so the library can be regenerated. The console, generated library, and local TeaQL runtime are pinned together by `go.work` for source-tree verification.
 
 ## Verify the first result
 

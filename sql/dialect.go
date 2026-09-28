@@ -74,6 +74,9 @@ type SqlDialect interface {
 
 type DefaultSqlDialect struct {
 	Dialect SqlDialect
+	// Fresh per top-level compilation, never shared across requests.
+	logPolicies  map[int]string
+	generatedSQL bool
 }
 
 func (d *DefaultSqlDialect) SchemaSetupSqls() []string {
@@ -206,19 +209,24 @@ func (d *DefaultSqlDialect) CompileAddColumn(entity *core.EntityDescriptor, prop
 }
 
 func (d *DefaultSqlDialect) CompileSelect(entity *core.EntityDescriptor, query *core.SelectQuery) (*CompiledQuery, error) {
+	d = d.forCompilation()
 	var params []core.Value
 	resultSql, err := d.compileSelectSql(entity, query, &params)
 	if err != nil {
 		return nil, err
 	}
 	return &CompiledQuery{
-		Sql:     resultSql,
-		Params:  params,
+		Sql:                  resultSql,
+		Params:               params,
+		ParameterLogPolicies: d.parameterPolicies(params), GeneratedSQL: d.generatedSQL,
 		Comment: query.CommentText,
 	}, nil
 }
 
 func (d *DefaultSqlDialect) compileSelectSql(entity *core.EntityDescriptor, query *core.SelectQuery, params *[]core.Value) (string, error) {
+	if query.RawSql != nil || len(query.RawSqlSearchCriteria)+len(query.RawProjections)+len(query.DynamicProperties) > 0 {
+		d.generatedSQL = false
+	}
 	if query.RawSql != nil {
 		return *query.RawSql, nil
 	}
@@ -265,7 +273,7 @@ func (d *DefaultSqlDialect) compileSelectSql(entity *core.EntityDescriptor, quer
 		likeValue := fmt.Sprintf("%%%s%%", *query.SearchWithText)
 		for _, property := range entity.Properties {
 			if property.DataType == core.TypeText || property.DataType == core.TypeLargeText {
-				*params = append(*params, core.ValText(likeValue))
+				d.bindField(params, core.ValText(likeValue), entity, property.Name)
 				orParts = append(orParts, fmt.Sprintf("%s LIKE %s", d.Dialect.QuoteIdent(property.ColName), d.Dialect.Placeholder(len(*params))))
 			}
 		}
@@ -337,6 +345,7 @@ func (d *DefaultSqlDialect) compileSelectSql(entity *core.EntityDescriptor, quer
 }
 
 func (d *DefaultSqlDialect) CompileInsert(entity *core.EntityDescriptor, command *core.InsertCommand) (*CompiledQuery, error) {
+	d = d.forCompilation()
 	var columns []string
 	var placeholders []string
 	var params []core.Value
@@ -347,7 +356,7 @@ func (d *DefaultSqlDialect) CompileInsert(entity *core.EntityDescriptor, command
 			if value.V == nil {
 				value = core.ValTypedNull(property.DataType)
 			}
-			params = append(params, value)
+			d.bindField(&params, value, entity, property.Name)
 			placeholders = append(placeholders, d.Dialect.Placeholder(len(params)))
 		}
 	}
@@ -361,11 +370,13 @@ func (d *DefaultSqlDialect) CompileInsert(entity *core.EntityDescriptor, command
 			d.Dialect.QuoteIdent(entity.TabName),
 			strings.Join(columns, ", "),
 			strings.Join(placeholders, ", ")),
-		Params: params,
+		Params:               params,
+		ParameterLogPolicies: d.parameterPolicies(params), GeneratedSQL: d.generatedSQL,
 	}, nil
 }
 
 func (d *DefaultSqlDialect) CompileBatchInsert(entity *core.EntityDescriptor, command *core.BatchInsertCommand) (*CompiledQuery, error) {
+	d = d.forCompilation()
 	if len(command.BatchValues) == 0 {
 		return nil, ErrEmptyMutation("batch_insert")
 	}
@@ -401,7 +412,7 @@ func (d *DefaultSqlDialect) CompileBatchInsert(entity *core.EntityDescriptor, co
 			if value.V == nil {
 				value = core.ValTypedNull(property.DataType)
 			}
-			params = append(params, value)
+			d.bindField(&params, value, entity, property.Name)
 			rowPlaceholders = append(rowPlaceholders, d.Dialect.Placeholder(len(params)))
 		}
 		valuesClauses = append(valuesClauses, fmt.Sprintf("(%s)", strings.Join(rowPlaceholders, ", ")))
@@ -412,11 +423,13 @@ func (d *DefaultSqlDialect) CompileBatchInsert(entity *core.EntityDescriptor, co
 			d.Dialect.QuoteIdent(entity.TabName),
 			strings.Join(columnNames, ", "),
 			strings.Join(valuesClauses, ", ")),
-		Params: params,
+		Params:               params,
+		ParameterLogPolicies: d.parameterPolicies(params), GeneratedSQL: d.generatedSQL,
 	}, nil
 }
 
 func (d *DefaultSqlDialect) CompileUpdate(entity *core.EntityDescriptor, command *core.UpdateCommand) (*CompiledQuery, error) {
+	d = d.forCompilation()
 	idProperty := entity.IdProperty()
 	if idProperty == nil {
 		return nil, ErrMissingIdProperty(entity.Name)
@@ -436,7 +449,7 @@ func (d *DefaultSqlDialect) CompileUpdate(entity *core.EntityDescriptor, command
 			if value.V == nil {
 				value = core.ValTypedNull(property.DataType)
 			}
-			params = append(params, value)
+			d.bindField(&params, value, entity, property.Name)
 			assignments = append(assignments, fmt.Sprintf("%s = %s", d.Dialect.QuoteIdent(property.ColName), d.Dialect.Placeholder(len(params))))
 		}
 	}
@@ -446,19 +459,19 @@ func (d *DefaultSqlDialect) CompileUpdate(entity *core.EntityDescriptor, command
 		if versionProperty == nil {
 			return nil, ErrMissingVersionProperty(entity.Name)
 		}
-		params = append(params, core.ValI64(*command.ExpectedVersion+1))
+		d.bindField(&params, core.ValI64(*command.ExpectedVersion+1), entity, versionProperty.Name)
 		assignments = append(assignments, fmt.Sprintf("%s = %s", d.Dialect.QuoteIdent(versionProperty.ColName), d.Dialect.Placeholder(len(params))))
 	}
 	if len(assignments) == 0 {
 		return nil, ErrEmptyMutation("update")
 	}
 
-	params = append(params, command.Id)
+	d.bindField(&params, command.Id, entity, idProperty.Name)
 	predicates := []string{fmt.Sprintf("%s = %s", d.Dialect.QuoteIdent(idProperty.ColName), d.Dialect.Placeholder(len(params)))}
 
 	if command.ExpectedVersion != nil {
 		versionProperty := entity.VersionProperty()
-		params = append(params, core.ValI64(*command.ExpectedVersion))
+		d.bindField(&params, core.ValI64(*command.ExpectedVersion), entity, versionProperty.Name)
 		predicates = append(predicates, fmt.Sprintf("%s = %s", d.Dialect.QuoteIdent(versionProperty.ColName), d.Dialect.Placeholder(len(params))))
 	}
 	var err error
@@ -472,11 +485,13 @@ func (d *DefaultSqlDialect) CompileUpdate(entity *core.EntityDescriptor, command
 			d.Dialect.QuoteIdent(entity.TabName),
 			strings.Join(assignments, ", "),
 			strings.Join(predicates, " AND ")),
-		Params: params,
+		Params:               params,
+		ParameterLogPolicies: d.parameterPolicies(params), GeneratedSQL: d.generatedSQL,
 	}, nil
 }
 
 func (d *DefaultSqlDialect) CompileBatchUpdate(entity *core.EntityDescriptor, command *core.BatchUpdateCommand) (*CompiledQuery, error) {
+	d = d.forCompilation()
 	if len(command.BatchValues) == 0 {
 		return nil, ErrEmptyMutation("batch_update")
 	}
@@ -506,10 +521,10 @@ func (d *DefaultSqlDialect) CompileBatchUpdate(entity *core.EntityDescriptor, co
 			if val.V == nil {
 				val = core.ValTypedNull(property.DataType)
 			}
-			params = append(params, id)
+			d.bindField(&params, id, entity, idProperty.Name)
 			idPh := d.Dialect.Placeholder(len(params))
 
-			params = append(params, val)
+			d.bindField(&params, val, entity, property.Name)
 			valPh := d.Dialect.Placeholder(len(params))
 
 			caseParts = append(caseParts, fmt.Sprintf("WHEN %s THEN %s", idPh, valPh))
@@ -528,10 +543,10 @@ func (d *DefaultSqlDialect) CompileBatchUpdate(entity *core.EntityDescriptor, co
 				hasVersions = true
 				id := command.BatchIds[i]
 
-				params = append(params, id)
+				d.bindField(&params, id, entity, idProperty.Name)
 				idPh := d.Dialect.Placeholder(len(params))
 
-				params = append(params, core.ValI64(*expVerOpt+1))
+				d.bindField(&params, core.ValI64(*expVerOpt+1), entity, versionProperty.Name)
 				valPh := d.Dialect.Placeholder(len(params))
 
 				caseParts = append(caseParts, fmt.Sprintf("WHEN %s THEN %s", idPh, valPh))
@@ -550,7 +565,7 @@ func (d *DefaultSqlDialect) CompileBatchUpdate(entity *core.EntityDescriptor, co
 
 	var inPlaceholders []string
 	for _, id := range command.BatchIds {
-		params = append(params, id)
+		d.bindField(&params, id, entity, idProperty.Name)
 		inPlaceholders = append(inPlaceholders, d.Dialect.Placeholder(len(params)))
 	}
 
@@ -562,10 +577,10 @@ func (d *DefaultSqlDialect) CompileBatchUpdate(entity *core.EntityDescriptor, co
 			if expVerOpt != nil {
 				id := command.BatchIds[i]
 
-				params = append(params, id)
+				d.bindField(&params, id, entity, idProperty.Name)
 				idPh := d.Dialect.Placeholder(len(params))
 
-				params = append(params, core.ValI64(*expVerOpt))
+				d.bindField(&params, core.ValI64(*expVerOpt), entity, versionProperty.Name)
 				valPh := d.Dialect.Placeholder(len(params))
 
 				caseParts = append(caseParts, fmt.Sprintf("WHEN %s THEN %s", idPh, valPh))
@@ -580,11 +595,13 @@ func (d *DefaultSqlDialect) CompileBatchUpdate(entity *core.EntityDescriptor, co
 			d.Dialect.QuoteIdent(entity.TabName),
 			strings.Join(setClauses, ", "),
 			strings.Join(predicates, " AND ")),
-		Params: params,
+		Params:               params,
+		ParameterLogPolicies: d.parameterPolicies(params), GeneratedSQL: d.generatedSQL,
 	}, nil
 }
 
 func (d *DefaultSqlDialect) CompileDelete(entity *core.EntityDescriptor, command *core.DeleteCommand) (*CompiledQuery, error) {
+	d = d.forCompilation()
 	idProperty := entity.IdProperty()
 	if idProperty == nil {
 		return nil, ErrMissingIdProperty(entity.Name)
@@ -599,15 +616,15 @@ func (d *DefaultSqlDialect) CompileDelete(entity *core.EntityDescriptor, command
 		}
 
 		if command.ExpectedVersion != nil {
-			params = append(params, core.ValI64(-(*command.ExpectedVersion + 1)))
+			d.bindField(&params, core.ValI64(-(*command.ExpectedVersion + 1)), entity, versionProperty.Name)
 		} else {
-			params = append(params, core.ValI64(-1))
+			d.bindField(&params, core.ValI64(-1), entity, versionProperty.Name)
 		}
-		params = append(params, command.Id)
+		d.bindField(&params, command.Id, entity, idProperty.Name)
 		predicates := []string{fmt.Sprintf("%s = %s", d.Dialect.QuoteIdent(idProperty.ColName), d.Dialect.Placeholder(len(params)))}
 
 		if command.ExpectedVersion != nil {
-			params = append(params, core.ValI64(*command.ExpectedVersion))
+			d.bindField(&params, core.ValI64(*command.ExpectedVersion), entity, versionProperty.Name)
 			predicates = append(predicates, fmt.Sprintf("%s = %s", d.Dialect.QuoteIdent(versionProperty.ColName), d.Dialect.Placeholder(len(params))))
 		}
 		var err error
@@ -622,11 +639,12 @@ func (d *DefaultSqlDialect) CompileDelete(entity *core.EntityDescriptor, command
 				d.Dialect.QuoteIdent(versionProperty.ColName),
 				d.Dialect.Placeholder(1),
 				strings.Join(predicates, " AND ")),
-			Params: params,
+			Params:               params,
+			ParameterLogPolicies: d.parameterPolicies(params), GeneratedSQL: d.generatedSQL,
 		}, nil
 	}
 
-	params = append(params, command.Id)
+	d.bindField(&params, command.Id, entity, idProperty.Name)
 	predicates := []string{fmt.Sprintf("%s = %s", d.Dialect.QuoteIdent(idProperty.ColName), d.Dialect.Placeholder(len(params)))}
 
 	if command.ExpectedVersion != nil {
@@ -634,7 +652,7 @@ func (d *DefaultSqlDialect) CompileDelete(entity *core.EntityDescriptor, command
 		if versionProperty == nil {
 			return nil, ErrMissingVersionProperty(entity.Name)
 		}
-		params = append(params, core.ValI64(*command.ExpectedVersion))
+		d.bindField(&params, core.ValI64(*command.ExpectedVersion), entity, versionProperty.Name)
 		predicates = append(predicates, fmt.Sprintf("%s = %s", d.Dialect.QuoteIdent(versionProperty.ColName), d.Dialect.Placeholder(len(params))))
 	}
 	var err error
@@ -644,12 +662,14 @@ func (d *DefaultSqlDialect) CompileDelete(entity *core.EntityDescriptor, command
 	}
 
 	return &CompiledQuery{
-		Sql:    fmt.Sprintf("DELETE FROM %s WHERE %s", d.Dialect.QuoteIdent(entity.TabName), strings.Join(predicates, " AND ")),
-		Params: params,
+		Sql:                  fmt.Sprintf("DELETE FROM %s WHERE %s", d.Dialect.QuoteIdent(entity.TabName), strings.Join(predicates, " AND ")),
+		Params:               params,
+		ParameterLogPolicies: d.parameterPolicies(params), GeneratedSQL: d.generatedSQL,
 	}, nil
 }
 
 func (d *DefaultSqlDialect) CompileRecover(entity *core.EntityDescriptor, command *core.RecoverCommand) (*CompiledQuery, error) {
+	d = d.forCompilation()
 	if command.ExpectedVersion >= 0 {
 		return nil, ErrInvalidRecoverVersion(command.ExpectedVersion)
 	}
@@ -663,11 +683,10 @@ func (d *DefaultSqlDialect) CompileRecover(entity *core.EntityDescriptor, comman
 		return nil, ErrMissingVersionProperty(entity.Name)
 	}
 
-	params := []core.Value{
-		core.ValI64(-command.ExpectedVersion + 1),
-		command.Id,
-		core.ValI64(command.ExpectedVersion),
-	}
+	var params []core.Value
+	d.bindField(&params, core.ValI64(-command.ExpectedVersion+1), entity, versionProperty.Name)
+	d.bindField(&params, command.Id, entity, idProperty.Name)
+	d.bindField(&params, core.ValI64(command.ExpectedVersion), entity, versionProperty.Name)
 
 	predicates := []string{
 		fmt.Sprintf("%s = %s", d.Dialect.QuoteIdent(idProperty.ColName), d.Dialect.Placeholder(2)),
@@ -685,7 +704,8 @@ func (d *DefaultSqlDialect) CompileRecover(entity *core.EntityDescriptor, comman
 			d.Dialect.Placeholder(1),
 			strings.Join(predicates, " AND "),
 		),
-		Params: params,
+		Params:               params,
+		ParameterLogPolicies: d.parameterPolicies(params), GeneratedSQL: d.generatedSQL,
 	}, nil
 }
 
@@ -700,7 +720,7 @@ func (d *DefaultSqlDialect) appendMutationGuards(entity *core.EntityDescriptor, 
 		if property == nil {
 			return nil, nil, ErrUnknownField(field)
 		}
-		params = append(params, guards[field])
+		d.bindField(&params, guards[field], entity, field)
 		predicates = append(predicates, fmt.Sprintf("%s = %s", d.Dialect.QuoteIdent(property.ColName), d.Dialect.Placeholder(len(params))))
 	}
 	return predicates, params, nil
@@ -868,6 +888,19 @@ func (d *DefaultSqlDialect) aggregateFunctionSql(function core.AggregateFunction
 }
 
 func (d *DefaultSqlDialect) compileExpr(entity *core.EntityDescriptor, expr *core.Expr, params *[]core.Value) (string, error) {
+	start := len(*params)
+	result, err := d.compileExprSQL(entity, expr, params)
+	if policy := d.expressionPolicy(entity, expr); d.logPolicies != nil && policy != "" {
+		for i := start; i < len(*params); i++ {
+			if _, exists := d.logPolicies[i]; !exists {
+				d.logPolicies[i] = policy
+			}
+		}
+	}
+	return result, err
+}
+
+func (d *DefaultSqlDialect) compileExprSQL(entity *core.EntityDescriptor, expr *core.Expr, params *[]core.Value) (string, error) {
 	switch expr.Type {
 	case core.ExprTypeColumn:
 		return d.columnSql(entity, expr.Column)

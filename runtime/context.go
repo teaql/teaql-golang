@@ -415,10 +415,10 @@ func (s *TextDiagnosticSQLLogSink) WriteSQLLog(metadata data_service.ExecutionMe
 	} else if metadata.AffectedRows != nil {
 		summary = fmt.Sprintf("%d rows affected", *metadata.AffectedRows)
 	}
-	fmt.Fprintf(s.writer, "[TeaQL SQL][%s][%dus] %s comment=%q purpose=%q auditReason=%q tracePath=%v\nParameterized SQL: %s parameterCount=%d\n",
-		strings.ToLower(string(metadata.Operation)), duration, summary,
+	fmt.Fprintf(s.writer, "[TeaQL SQL][%s][%dus] %s outcome=%s comment=%q purpose=%q auditReason=%q tracePath=%v\nSQL omission reason: %s\nDebug SQL: %s\n",
+		strings.ToLower(string(metadata.Operation)), duration, summary, metadata.ExecutionOutcome,
 		sqlLogText(metadata.Comment), sqlLogText(metadata.Purpose), sqlLogText(metadata.AuditReason), metadata.TraceChain,
-		metadata.ParameterizedSQL, metadata.ParameterCount)
+		metadata.OmissionReason, sqlLogText(metadata.DebugQuery))
 }
 
 // SensitiveDiagnosticSQLLogSink emits parameter values and copy-paste SQL.
@@ -434,10 +434,11 @@ func (s *SensitiveDiagnosticSQLLogSink) WriteSQLLog(metadata data_service.Execut
 	if s == nil || s.TextDiagnosticSQLLogSink == nil || s.writer == nil {
 		return
 	}
-	if !plaintextLogsEnabled() || credentialLogName(metadata.ParameterizedSQL) || credentialLogName(sqlLogText(metadata.DebugQuery)) || credentialLogName(fmt.Sprint(metadata.Parameters)) {
+	if !plaintextLogsEnabled() {
 		s.TextDiagnosticSQLLogSink.WriteSQLLog(metadata)
 		return
 	}
+	metadata = projectedSQLMetadata(metadata, true)
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	duration := metadata.EndedAt.Sub(metadata.StartedAt).Microseconds()
@@ -447,10 +448,10 @@ func (s *SensitiveDiagnosticSQLLogSink) WriteSQLLog(metadata data_service.Execut
 	} else if metadata.AffectedRows != nil {
 		summary = fmt.Sprintf("%d rows affected", *metadata.AffectedRows)
 	}
-	fmt.Fprintf(s.writer, "[TeaQL SENSITIVE SQL][%s][%dus] %s comment=%q purpose=%q auditReason=%q tracePath=%v\nParameterized SQL: %s params=%v\nDebug SQL: %s\n",
-		strings.ToLower(string(metadata.Operation)), duration, summary,
+	fmt.Fprintf(s.writer, "[TeaQL SENSITIVE SQL][%s][%dus] %s outcome=%s comment=%q purpose=%q auditReason=%q tracePath=%v\nSQL omission reason: %s\nDebug SQL: %s\n",
+		strings.ToLower(string(metadata.Operation)), duration, summary, metadata.ExecutionOutcome,
 		sqlLogText(metadata.Comment), sqlLogText(metadata.Purpose), sqlLogText(metadata.AuditReason), metadata.TraceChain,
-		metadata.ParameterizedSQL, metadata.Parameters, sqlLogText(metadata.DebugQuery))
+		metadata.OmissionReason, sqlLogText(metadata.DebugQuery))
 }
 
 type SQLExecutionEvidenceMode int
@@ -473,6 +474,10 @@ func NewSQLExecutionEvidenceStore() *SQLExecutionEvidenceStore {
 }
 
 func (s *SQLExecutionEvidenceStore) RecordExecutionMetadata(metadata data_service.ExecutionMetadata) {
+	s.recordProjected(projectedSQLMetadata(metadata, false))
+}
+
+func (s *SQLExecutionEvidenceStore) recordProjected(metadata data_service.ExecutionMetadata) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	isQuery := metadata.Operation == data_service.OpQuery
@@ -488,7 +493,7 @@ func (s *SQLExecutionEvidenceStore) RecordExecutionMetadata(metadata data_servic
 // WriteSQLLog lets callers opt this value-bearing evidence store into the
 // explicit sensitive diagnostic surface.
 func (s *SQLExecutionEvidenceStore) WriteSQLLog(metadata data_service.ExecutionMetadata) {
-	s.RecordExecutionMetadata(metadata)
+	s.recordProjected(projectedSQLMetadata(metadata, plaintextLogsEnabled()))
 }
 
 func (s *SQLExecutionEvidenceStore) setMode(mode SQLExecutionEvidenceMode) {
@@ -507,7 +512,8 @@ func (s *SQLExecutionEvidenceStore) Snapshot() []data_service.ExecutionMetadata 
 	result := make([]data_service.ExecutionMetadata, len(s.entries))
 	copy(result, s.entries)
 	for i := range result {
-		result[i].Parameters = append([]core.Value(nil), result[i].Parameters...)
+		// Return a fresh deep projection, never mutable slices owned by the store.
+		result[i] = projectedSQLMetadata(result[i], result[i].LogMode == "debug-plaintext" && plaintextLogsEnabled())
 	}
 	return result
 }

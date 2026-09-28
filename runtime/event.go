@@ -358,8 +358,10 @@ func BuildSafeAuditField(fieldName string, rawValue *string, auditMaskFields []s
 
 	value := raw
 	shouldMask = credentialLogName(fieldName) || (shouldMask && !plaintextLogsEnabled())
-	if shouldMask {
+	if credentialLogName(fieldName) {
 		value = "[REDACTED]"
+	} else if shouldMask {
+		value = MaskAuditValue(raw)
 	}
 
 	truncated := false
@@ -396,7 +398,6 @@ func BuildSafeAuditField(fieldName string, rawValue *string, auditMaskFields []s
 func (e *RawAuditEvent) BuildSafeEvent(auditMaskFields []string, auditValueMaxLen *int) *SafeAuditEvent {
 	safeFields := make([]*SafeAuditField, 0, len(e.Changes))
 	allow := plaintextLogsEnabled()
-	masked := map[string]bool{}
 	var secrets []string
 	for _, change := range e.Changes {
 		mask := credentialLogName(change.Field)
@@ -410,7 +411,6 @@ func (e *RawAuditEvent) BuildSafeEvent(auditMaskFields []string, auditValueMaxLe
 				mask = true
 			}
 		}
-		masked[change.Field] = mask
 		if mask {
 			for _, value := range []*core.Value{change.OldValue, change.NewValue} {
 				if value != nil {
@@ -439,7 +439,13 @@ func (e *RawAuditEvent) BuildSafeEvent(auditMaskFields []string, auditValueMaxLe
 		field := BuildSafeAuditField(change.Field, rawValStr, auditMaskFields, auditValueMaxLen)
 		if field.Value != nil {
 			text := scrub(*field.Value)
-			if masked[change.Field] {
+			credential := credentialLogName(change.Field)
+			for _, value := range []*core.Value{change.OldValue, change.NewValue} {
+				if value != nil && logHasCredentials(*value) {
+					credential = true
+				}
+			}
+			if credential {
 				text = "[REDACTED]"
 				field.Masked = true
 				field.Truncated = false

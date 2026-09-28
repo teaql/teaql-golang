@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/teaql/teaql-golang/core"
+	"github.com/teaql/teaql-golang/internal/logprivacy"
 )
 
 type DataServiceCapabilities struct {
@@ -22,6 +23,8 @@ type QueryRequest struct {
 	TraceChain []*core.TraceNode
 	Comment    *string
 	Purpose    *string
+	// Internal invocation provenance, never serialized into a request or log.
+	InheritedIntent logprivacy.IntentSource `json:"-"`
 }
 
 type QueryResult struct {
@@ -109,21 +112,33 @@ const (
 )
 
 type ExecutionMetadata struct {
-	Backend          string
-	Operation        DataServiceOperation
-	ParameterizedSQL string
-	Parameters       []core.Value
-	ParameterCount   int
-	StartedAt        time.Time
-	EndedAt          time.Time
-	AffectedRows     *uint64
-	ResultCount      *int
-	TraceChain       []*core.TraceNode
-	Comment          *string
-	Purpose          *string
-	AuditReason      *string
-	BackendRequestId *string
-	DebugQuery       *string
+	// ExecutionOutcome describes statement/cursor termination, not transaction commit.
+	// Empty means the producer has not supplied an outcome.
+	ExecutionOutcome     string
+	Backend              string
+	Operation            DataServiceOperation
+	ParameterizedSQL     string
+	Parameters           []core.Value
+	ParameterCount       int
+	StartedAt            time.Time
+	EndedAt              time.Time
+	AffectedRows         *uint64
+	ResultCount          *int
+	TraceChain           []*core.TraceNode
+	Comment              *string
+	Purpose              *string
+	AuditReason          *string
+	BackendRequestId     *string
+	DebugQuery           *string
+	ParameterLogPolicies []string
+	GeneratedSQL         bool
+	MaskedParameters     []bool
+	LogMode              string
+	OmissionReason       string
+	// Internal runtime plumbing, not a workspace/wire contract. Removed by safe projection.
+	InheritedIntent logprivacy.IntentSource `json:"-"`
+	// Carries only an immutable safe alternative for debug revocation; not a wire API.
+	LogProjection logprivacy.ProjectionState `json:"-"`
 }
 
 type DataServiceExecutor interface {

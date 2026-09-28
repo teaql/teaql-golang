@@ -4,6 +4,7 @@ import (
 	"bytes"
 	stdcontext "context"
 	"errors"
+	"fmt"
 	"strings"
 	"testing"
 	"time"
@@ -23,7 +24,7 @@ func (d *mockDialect) QuoteIdent(ident string) string {
 	return `"` + ident + `"`
 }
 func (d *mockDialect) Placeholder(index int) string {
-	return "?"
+	return fmt.Sprintf("$%d", index)
 }
 func (d *mockDialect) SchemaSetupSqls() []string {
 	return nil
@@ -402,9 +403,10 @@ func TestDiagnosticSQLLogDefaultsOnHasStructuredFieldsAndIndependentSwitches(t *
 	count := 1
 	metadata := data_service.ExecutionMetadata{
 		Operation: data_service.OpQuery, DebugQuery: &debug,
-		ParameterizedSQL: "SELECT * FROM users WHERE name = ?",
-		Parameters:       []core.Value{core.ValText("O'Brien 学校")},
-		StartedAt:        time.Unix(1, 0), EndedAt: time.Unix(1, 25_000), ResultCount: &count,
+		ParameterizedSQL:     "SELECT * FROM users WHERE name = ?",
+		Parameters:           []core.Value{core.ValText("O'Brien 学校")},
+		ParameterLogPolicies: []string{"masked"},
+		StartedAt:            time.Unix(1, 0), EndedAt: time.Unix(1, 25_000), ResultCount: &count,
 	}
 	context := runtime.NewUserContext()
 	if !context.QuerySqlLogEnabled() || !context.MutationSqlLogEnabled() {
@@ -412,8 +414,9 @@ func TestDiagnosticSQLLogDefaultsOnHasStructuredFieldsAndIndependentSwitches(t *
 	}
 	context.WithDiagnosticSQLLogSink(runtime.NewTextDiagnosticSQLLogSink(&output))
 	context.RecordExecutionMetadata(metadata)
-	if !strings.Contains(output.String(), "Parameterized SQL:") ||
-		strings.Contains(output.String(), "Debug SQL:") ||
+	// #26/#58: retain expanded, masked SQL, not placeholders plus a parameter list.
+	if strings.Contains(output.String(), "Parameterized SQL:") ||
+		!strings.Contains(output.String(), "Debug SQL:") || !strings.Contains(output.String(), "/* masked */") ||
 		strings.Contains(output.String(), "O'Brien") || !strings.Contains(output.String(), "1 rows returned") {
 		t.Fatalf("ordinary operator log was not safely redacted: %s", output.String())
 	}

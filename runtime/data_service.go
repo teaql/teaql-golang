@@ -11,6 +11,7 @@ import (
 
 	"github.com/teaql/teaql-golang/core"
 	"github.com/teaql/teaql-golang/data_service"
+	"github.com/teaql/teaql-golang/internal/logprivacy"
 )
 
 type continuousPageExecution struct {
@@ -90,14 +91,19 @@ func (s *RuntimeDataService) FetchAll(context stdcontext.Context, query *core.Se
 		return []core.Record{}, nil
 	}
 	executionQuery, continuous := s.prepareContinuousPage(context, prepared)
-	rows, err = s.fetchRows(context, executionQuery)
+	var intent logprivacy.IntentSource
+	if len(executionQuery.Relations) > 0 || len(executionQuery.RelationAggregates) > 0 {
+		rows, err = s.fetchRows(context, executionQuery, &intent)
+	} else {
+		rows, err = s.fetchRows(context, executionQuery)
+	}
 	if err != nil {
 		return nil, err
 	}
-	if err := s.enhanceRelations(context, rows, executionQuery); err != nil {
+	if err := s.enhanceRelations(context, rows, executionQuery, intent); err != nil {
 		return nil, err
 	}
-	if err := s.enhanceRelationAggregates(context, rows, executionQuery); err != nil {
+	if err := s.enhanceRelationAggregates(context, rows, executionQuery, intent); err != nil {
 		return nil, err
 	}
 	if len(idSetOrder) > 0 {
@@ -356,7 +362,7 @@ func continuousPageQueryKey(context *UserContext, query *core.SelectQuery, names
 	return "teaql:continuous-page:v1:" + hex.EncodeToString(digest[:])
 }
 
-func (s *RuntimeDataService) fetchRows(context stdcontext.Context, query *core.SelectQuery) (rows []core.Record, err error) {
+func (s *RuntimeDataService) fetchRows(context stdcontext.Context, query *core.SelectQuery, intent ...*logprivacy.IntentSource) (rows []core.Record, err error) {
 	userCtx, _ := UserContextFrom(context)
 	telemetry := RuntimeTelemetry(NoopRuntimeTelemetry{})
 	if userCtx != nil {
@@ -383,6 +389,9 @@ func (s *RuntimeDataService) fetchRows(context stdcontext.Context, query *core.S
 		Comment:    query.CommentText,
 		Purpose:    query.PurposeText,
 	}
+	if len(intent) > 0 {
+		req.InheritedIntent = *intent[0]
+	}
 
 	res, err := qExec.Query(context, req)
 	if err != nil {
@@ -390,10 +399,31 @@ func (s *RuntimeDataService) fetchRows(context stdcontext.Context, query *core.S
 	}
 
 	rows = res.Rows
+	if len(intent) > 0 && (len(query.Relations) > 0 || len(query.RelationAggregates) > 0) {
+		*intent[0] = inheritQueryIntent(res.Metadata, *intent[0])
+	}
 	return rows, nil
 }
 
-func (s *RuntimeDataService) enhanceRelations(context stdcontext.Context, parents []core.Record, query *core.SelectQuery) error {
+// Normalize each statement before flattening; no raw source is attached to an
+// entity, shared UserContext, telemetry scope, or projected log record.
+func inheritQueryIntent(metadata data_service.ExecutionMetadata, inherited logprivacy.IntentSource) logprivacy.IntentSource {
+	var sources []data_service.ExecutionMetadata
+	if previous, ok := logprivacy.ReadIntentSource(inherited).(data_service.ExecutionMetadata); ok {
+		sources = append(sources, previous)
+	}
+	sources = append(sources, metadata)
+	result := data_service.ExecutionMetadata{GeneratedSQL: true}
+	for _, source := range sources {
+		for i, value := range source.Parameters {
+			result.Parameters = append(result.Parameters, cloneLogValue(value))
+			result.ParameterLogPolicies = append(result.ParameterLogPolicies, bindingLogPolicy(source, i))
+		}
+	}
+	return logprivacy.NewIntentSource(result)
+}
+
+func (s *RuntimeDataService) enhanceRelations(context stdcontext.Context, parents []core.Record, query *core.SelectQuery, intent ...logprivacy.IntentSource) error {
 	if len(parents) == 0 || len(query.Relations) == 0 {
 		return nil
 	}
@@ -455,6 +485,10 @@ func (s *RuntimeDataService) enhanceRelations(context stdcontext.Context, parent
 		}))
 		var children []core.Record
 		var err error
+		var childIntent logprivacy.IntentSource
+		if len(intent) > 0 {
+			childIntent = intent[0]
+		}
 		if useProbes {
 			children = make([]core.Record, 0)
 			for _, id := range ids {
@@ -462,7 +496,7 @@ func (s *RuntimeDataService) enhanceRelations(context stdcontext.Context, parent
 				probe.PartitionBy = nil
 				probe.AndFilter(core.ExprEq(relation.ForKey, id))
 				var rows []core.Record
-				rows, err = s.fetchRows(relationContext, probe)
+				rows, err = s.fetchRows(relationContext, probe, &childIntent)
 				if err != nil {
 					break
 				}
@@ -473,7 +507,7 @@ func (s *RuntimeDataService) enhanceRelations(context stdcontext.Context, parent
 			if bounded {
 				childQuery.PartitionByField(relation.ForKey)
 			}
-			children, err = s.fetchRows(relationContext, childQuery)
+			children, err = s.fetchRows(relationContext, childQuery, &childIntent)
 		}
 		if err != nil {
 			relationScope.Failure(RuntimeErrorType(err))
@@ -482,7 +516,7 @@ func (s *RuntimeDataService) enhanceRelations(context stdcontext.Context, parent
 		for _, child := range children {
 			delete(child, "__teaql_partition_rank")
 		}
-		if err := s.enhanceRelations(relationContext, children, childQuery); err != nil {
+		if err := s.enhanceRelations(relationContext, children, childQuery, childIntent); err != nil {
 			relationScope.Failure(RuntimeErrorType(err))
 			return err
 		}
@@ -520,7 +554,7 @@ func cloneSelectQuery(source *core.SelectQuery, entity string) *core.SelectQuery
 	return &clone
 }
 
-func (s *RuntimeDataService) enhanceRelationAggregates(context stdcontext.Context, parents []core.Record, query *core.SelectQuery) error {
+func (s *RuntimeDataService) enhanceRelationAggregates(context stdcontext.Context, parents []core.Record, query *core.SelectQuery, intent ...logprivacy.IntentSource) error {
 	if len(parents) == 0 || len(query.RelationAggregates) == 0 {
 		return nil
 	}
@@ -561,7 +595,11 @@ func (s *RuntimeDataService) enhanceRelationAggregates(context stdcontext.Contex
 			childQuery.GroupBy = append(childQuery.GroupBy, relation.ForKey)
 		}
 		childQuery.AndFilter(core.ExprInList(relation.ForKey, ids))
-		rows, err := s.fetchRows(context, childQuery)
+		var childIntent logprivacy.IntentSource
+		if len(intent) > 0 {
+			childIntent = intent[0]
+		}
+		rows, err := s.fetchRows(context, childQuery, &childIntent)
 		if err != nil {
 			return err
 		}

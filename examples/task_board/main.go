@@ -4,128 +4,92 @@ import (
 	"database/sql"
 	"fmt"
 	"log"
-
-	_ "github.com/mattn/go-sqlite3"
-
-	"github.com/teaql/teaql-golang/core"
-	"github.com/teaql/teaql-golang/provider/sqlite"
-	"github.com/teaql/teaql-golang/runtime"
-	teaql_sql "github.com/teaql/teaql-golang/sql"
+	"os"
 
 	gen "robot-kanban-service-core-workspace/lib"
-	"robot-kanban-service-core-workspace/lib/src/platform"
-	"robot-kanban-service-core-workspace/lib/src/task"
-	"robot-kanban-service-core-workspace/lib/src/task_execution_log"
-	"robot-kanban-service-core-workspace/lib/src/task_status"
 )
 
-type schemaAdapter struct{ meta runtime.MetadataStore }
+// Generated metadata/bootstrap/checkers remain library-owned; application declares intent.
+func run() error {
+	database := os.Getenv("TEAQL_TASK_BOARD_DB")
+	if database == "" {
+		file, err := os.CreateTemp("", "teaql-task-board-*.db")
+		if err != nil {
+			return err
+		}
+		database = file.Name()
+		if err := file.Close(); err != nil {
+			return err
+		}
+	}
+	if err := os.Setenv("ROBOT_KANBAN_SERVICE_CORE_DATABASE_URL", database); err != nil {
+		return err
+	}
+	context, err := gen.ServiceRuntimeFromEnv()
+	if err != nil {
+		return err
+	}
+	defer context.GetResource("db").(*sql.DB).Close()
+	if err := gen.EnsureSchema(context); err != nil {
+		return err
+	}
+	if err := gen.EnsureSchema(context); err != nil {
+		return err
+	}
 
-func (a *schemaAdapter) GetEntity(name string) *core.EntityDescriptor { return a.meta.Entity(name) }
+	task := gen.Q.Tasks().Comment("prepare task").Purpose("demonstrate governed task authoring").NewEntity(context)
+	task.UpdateName("Build Robot Arm").UpdateStatusToPlanned().UpdatePlatformId(1)
+	if _, err := task.AuditAs("create demo robot task").Save(context); err != nil {
+		return err
+	}
+	loaded, err := gen.Q.Tasks().WithIdIs(task.Id()).Limit(1).
+		SelectId().SelectName().SelectPlatform().SelectVersion().
+		SelectStatusWith(gen.Q.TaskStatuses().Limit(1)).
+		Comment("load task and planned status").Purpose("review complete task before editing").ExecuteForOne(context)
+	if err != nil {
+		return err
+	}
+	if loaded == nil {
+		return fmt.Errorf("created task was not loaded")
+	}
+	if name, present := gen.E.Task(loaded).Name().Eval(); !present || name != "Build Robot Arm" {
+		return fmt.Errorf("typed E name mismatch")
+	}
+	if status, present := gen.E.Task(loaded).Status().Name().Eval(); !present || status != "Planned" {
+		return fmt.Errorf("typed E status relation mismatch")
+	}
+	loaded.UpdateName("Build Robot Arm V2")
+	if _, err := loaded.AuditAs("rename demo robot task").Save(context); err != nil {
+		return err
+	}
+	updated, err := gen.Q.Tasks().WithIdIs(task.Id()).Limit(1).
+		Comment("read renamed task").Purpose("verify persisted mutation").ExecuteForOne(context)
+	if err != nil {
+		return err
+	}
+	if updated == nil || updated.Name() != "Build Robot Arm V2" {
+		return fmt.Errorf("rename not persisted")
+	}
+
+	entry := gen.Q.TaskExecutionLogs().Comment("prepare task log").Purpose("record the rename").NewEntity(context)
+	entry.UpdateTaskId(task.Id()).UpdateAction("RENAME").UpdateDetail("PRIVATE-TASK-DETAIL")
+	if _, err := entry.AuditAs("record PRIVATE-TASK-DETAIL rename evidence").Save(context); err != nil {
+		return err
+	}
+	rows, err := gen.Q.TaskExecutionLogs().WithIdIs(entry.Id()).WithDetailIs("PRIVATE-TASK-DETAIL").Limit(1).
+		Comment("read PRIVATE-TASK-DETAIL evidence").Purpose("verify PRIVATE-TASK-DETAIL is persisted").ExecuteForList(context)
+	if err != nil {
+		return err
+	}
+	if len(rows.Data) != 1 || rows.Data[0].Detail() != "PRIVATE-TASK-DETAIL" {
+		return fmt.Errorf("masking changed the stored detail")
+	}
+	fmt.Println("PASS task board: governed Q/E/mutation and masked detail")
+	return nil
+}
 
 func main() {
-	// 1. Create a SQLite dialect and executor
-	sqliteDialect := &sqlite.SqliteDialect{}
-	dialect := &teaql_sql.DefaultSqlDialect{Dialect: sqliteDialect}
-	db, err := sql.Open("sqlite3", ":memory:")
-	if err != nil {
+	if err := run(); err != nil {
 		log.Fatal(err)
-	}
-	defer db.Close()
-
-	// 2. Setup module and runtime context using generated DSL
-	module := gen.Module()
-
-	// 3. Create tables
-	// We can manually get the entities using the generated code's Module() logic if needed, but for now we'll just hardcode or get them via GetEntity
-	entities := []string{"Platform", "Task Status", "Task", "Task Execution Log"}
-	for _, name := range entities {
-		desc := module.Metadata.Entity(name)
-		createSql, err := dialect.CompileCreateTable(desc)
-		if err != nil {
-			log.Fatalf("CompileCreateTable %s: %v", desc.Name, err)
-		}
-		if _, err := db.Exec(createSql); err != nil {
-			log.Fatalf("Create table %s: %v", desc.Name, err)
-		}
-	}
-
-	transport := sqlite.NewSqliteMutationExecutor(db)
-
-	executor := teaql_sql.NewSqlDataServiceExecutor(sqliteDialect, transport, &schemaAdapter{module.Metadata})
-
-	context := module.IntoContext()
-	context.InsertResource("dataService", executor)
-	context.InsertResource("db", db)
-
-	// 4. Insert Platform
-	p := platform.NewPlatform().
-		UpdateId(1).
-		UpdateName("Robot System").
-		UpdateUserEmail("admin@robot.com").
-		UpdateVersion(1)
-	if err := p.Save(context); err != nil {
-		log.Fatal("Insert Platform:", err)
-	}
-
-	// 5. Insert TaskStatus
-	ts := task_status.NewTaskStatus().
-		UpdateId(1001).
-		UpdateName("Planned").
-		UpdateCode("PLANNED").
-		UpdateColor("#94A3B8").
-		UpdatePlatformId(1)
-	if err := ts.Save(context); err != nil {
-		log.Fatal("Insert TaskStatus:", err)
-	}
-
-	// 6. Insert Task
-	t := task.NewTask().
-		UpdateId(1).
-		UpdateName("Build Robot Arm").
-		UpdateStatusToPlanned().
-		UpdatePlatformId(1).
-		UpdateVersion(1)
-	if err := t.Save(context); err != nil {
-		log.Fatal("Insert Task:", err)
-	}
-
-	// 7. Update Task
-	t.UpdateName("Build Robot Arm V2")
-	if err := t.Save(context); err != nil {
-		log.Fatal("Update Task:", err)
-	}
-
-	// 8. Insert TaskExecutionLog
-	logEntry := task_execution_log.NewTaskExecutionLog().
-		UpdateId(1).
-		UpdateTaskId(1).
-		UpdateAction("RENAME").
-		UpdateDetail("Renamed task to V2").
-		UpdateVersion(1)
-	if err := logEntry.Save(context); err != nil {
-		log.Fatal("Insert TaskExecutionLog:", err)
-	}
-
-	// 9. Query tasks
-	taskReq := task.NewTaskRequest()
-	resultTask, err := taskReq.ExecuteForList(context)
-	if err != nil {
-		log.Fatal("Query Task:", err)
-	}
-	fmt.Printf("Fetched %d tasks:\n", len(resultTask.Data))
-	for _, row := range resultTask.Data {
-		fmt.Printf(" - %v\n", row.Name())
-	}
-
-	// 10. Query logs
-	logReq := task_execution_log.NewTaskExecutionLogRequest()
-	resultLog, err := logReq.ExecuteForList(context)
-	if err != nil {
-		log.Fatal("Query Log:", err)
-	}
-	fmt.Printf("Fetched %d logs:\n", len(resultLog.Data))
-	for _, row := range resultLog.Data {
-		fmt.Printf(" - %v: %v\n", row.Action(), row.Detail())
 	}
 }

@@ -2,14 +2,18 @@ package product
 
 import (
 	stdcontext "context"
+	"errors"
 	"fmt"
+	"reflect"
 	"strings"
+	"sync/atomic"
 
+	"time"
 	"github.com/shopspring/decimal"
 	"github.com/teaql/teaql-golang/core"
 	"github.com/teaql/teaql-golang/data_service"
 	"github.com/teaql/teaql-golang/runtime"
-	"time"
+	"order-management-service-core-workspace/lib/order_line"
 )
 
 var (
@@ -17,63 +21,105 @@ var (
 	_ = decimal.Decimal{}
 	_ = fmt.Sprint
 	_ = strings.Join
+	_ = errors.As
 )
 
+var teaqlTemporaryEntityID int64
+
 type Product struct {
-	base              *core.BaseEntityData
-	dirtyFields       map[string]bool
-	isNew             bool
-	comment           *string
-	purpose           *string
-	loadState         map[string]bool
+	base        *core.BaseEntityData
+	dirtyFields map[string]bool
+	isNew       bool
+	markedAsDelete bool
+	comment     *string
+	purpose     *string
+	loadState   map[string]bool
 	restrictLoadState bool
-	orderLineList     *OrderLineList
+	root        *core.EntityRoot
+	ledgerID    core.Value
+	relations   map[string]core.Entity
+	loadedRelations map[string]bool
+	orderLineList *OrderLineList
 }
 
 type OrderLineList struct {
-	items []any
+	items []*order_line.OrderLine
 }
 
 func newOrderLineList() *OrderLineList {
-	return &OrderLineList{items: make([]any, 0)}
+	return &OrderLineList{items: make([]*order_line.OrderLine, 0)}
 }
 
-func (l *OrderLineList) Add(entity any) {
+func (l *OrderLineList) Add(entity *order_line.OrderLine) {
 	l.items = append(l.items, entity)
 }
 
-func (l *OrderLineList) Items() []any {
+func (l *OrderLineList) Items() []*order_line.OrderLine {
 	return l.items
 }
 
 func NewProduct() *Product {
-	return &Product{
-		base:          core.NewBaseEntityData(),
-		dirtyFields:   make(map[string]bool),
-		isNew:         true,
-		loadState:     make(map[string]bool),
+	temporaryID := -atomic.AddInt64(&teaqlTemporaryEntityID, 1)
+	entity := &Product{
+		base:        core.NewBaseEntityData(),
+		dirtyFields: make(map[string]bool),
+		isNew:       true,
+		loadState:   make(map[string]bool),
+		root:        core.NewEntityRoot(),
+		ledgerID:    core.ValI64(temporaryID),
+		relations:   make(map[string]core.Entity),
+		loadedRelations: make(map[string]bool),
 		orderLineList: newOrderLineList(),
 	}
+	entity.root.MarkAsNew(entity.EntityKey())
+	return entity
+}
+
+func (e *Product) EntityKey() core.EntityKey {
+	if e.base.Id != 0 { return core.NewEntityKey(e.EntityName(), core.ValU64(e.base.Id)) }
+	return core.NewEntityKey(e.EntityName(), e.ledgerID)
+}
+
+func (e *Product) EntityRoot() *core.EntityRoot { return e.root }
+
+func (e *Product) AttachEntityRoot(root *core.EntityRoot) {
+	if root == nil || root == e.root { return }
+	root.MergeFrom(e.root)
+	e.root = root
+		for _, child := range e.orderLineList.Items() { child.AttachEntityRoot(root) }
+}
+
+func (e *Product) RelationEntity(name string) (core.Entity, bool) {
+	value, ok := e.relations[name]
+	return value, ok
+}
+
+func (e *Product) setRelationEntity(name string, value core.Entity) {
+	e.relations[name] = value
+}
+
+func (e *Product) markRelationLoaded(name string) {
+	e.loadedRelations[name] = true
+}
+
+func (e *Product) isRelationLoaded(name string) bool {
+	return e.loadedRelations[name]
 }
 
 func (e *Product) MarkLoadedOnly(fields ...string) *Product {
 	e.restrictLoadState = true
 	e.loadState = make(map[string]bool, len(fields))
-	for _, field := range fields {
-		e.loadState[field] = true
-	}
+	for _, field := range fields { e.loadState[field] = true }
 	return e
 }
 
 func (e *Product) IsLoaded(field string) bool {
-	if e.isNew && !e.restrictLoadState {
-		return true
-	}
+	if e.isNew && !e.restrictLoadState { return true }
 	return e.loadState[field]
 }
 
 func (e *Product) EntityName() string {
-	return "Product"
+	return "product"
 }
 
 func (e *Product) EntityDescriptor() *core.EntityDescriptor {
@@ -88,19 +134,22 @@ func (e *Product) IdValue() core.Value {
 	return core.ValU64(e.base.Id)
 }
 
+
+
 func (e *Product) FromRecord(record core.Record) error {
+	oldKey := e.EntityKey()
 	base, err := core.BaseEntityDataFromRecord(record)
 	if err != nil {
 		return err
 	}
 	e.base = base
+	e.root.Rekey(oldKey, e.EntityKey())
+	e.root.SetOriginalVersion(e.EntityKey(), e.base.Version)
 	e.isNew = false
 	e.dirtyFields = make(map[string]bool)
 	e.loadState = make(map[string]bool, len(record))
 	e.restrictLoadState = true
-	for field := range record {
-		e.loadState[field] = true
-	}
+	for field := range record { e.loadState[field] = true }
 	return nil
 }
 
@@ -123,7 +172,13 @@ func (e *Product) DirtyFields() []string {
 }
 
 func (e *Product) IsMarkedAsDelete() bool {
-	return false // Controlled by mutation command in Go
+	return e.markedAsDelete
+}
+
+func (e *Product) MarkForDeletion() *Product {
+	e.markedAsDelete = true
+	e.root.MarkAsDeleted(e.EntityKey())
+	return e
 }
 
 func (e *Product) IsNew() bool {
@@ -143,6 +198,9 @@ func (e *Product) SetComment(comment string) {
 }
 
 func (e *Product) AuditAs(comment string) *Product {
+	if strings.TrimSpace(comment) == "" {
+		panic("Security audit failure: AuditAs() requires a non-empty reason")
+	}
 	e.comment = &comment
 	return e
 }
@@ -168,10 +226,134 @@ func (e *Product) IntoJson() any {
 	return e.base.ToRecord()
 }
 
-func (e *Product) Save(context *runtime.UserContext) error {
+func (e *Product) Save(context *runtime.UserContext) (*Product, error) {
+	var saved *Product
+	err := context.ExecuteGraphSave(func() error {
+		if preflightErr := e.TeaqlPreflightGraph(context); preflightErr != nil { return preflightErr }
+		var innerErr error
+		saved, innerErr = e.TeaqlSaveWithinGraph(context)
+		return innerErr
+	})
+	return saved, err
+}
+
+// TeaqlPreflightGraph runs Checker/Fix for the complete aggregate before the
+// first provider mutation. It is generated infrastructure, not application API.
+func (e *Product) TeaqlPreflightGraph(context *runtime.UserContext) error {
+	if e.comment == nil || strings.TrimSpace(*e.comment) == "" {
+		return fmt.Errorf("Security audit failure: AuditAs() must be called before Save()")
+	}
+	if !e.markedAsDelete {
+		operation := core.MutationUpdate
+		if e.isNew { operation = core.MutationInsert }
+		if operation == core.MutationUpdate {
+			if !e.IsLoaded("id") {
+				result := runtime.CheckResult{RuleID: "invalid_type", CanonicalLocation: runtime.Location().Property("id"), Message: "Mutation requires a fully loaded entity"}
+				return &runtime.RuntimeError{Type: "Check", CheckResults: []runtime.CheckResult{result}}
+			}
+			if !e.IsLoaded("name") {
+				result := runtime.CheckResult{RuleID: "invalid_type", CanonicalLocation: runtime.Location().Property("name"), Message: "Mutation requires a fully loaded entity"}
+				return &runtime.RuntimeError{Type: "Check", CheckResults: []runtime.CheckResult{result}}
+			}
+			if !e.IsLoaded("sku") {
+				result := runtime.CheckResult{RuleID: "invalid_type", CanonicalLocation: runtime.Location().Property("sku"), Message: "Mutation requires a fully loaded entity"}
+				return &runtime.RuntimeError{Type: "Check", CheckResults: []runtime.CheckResult{result}}
+			}
+			if !e.IsLoaded("image_url") {
+				result := runtime.CheckResult{RuleID: "invalid_type", CanonicalLocation: runtime.Location().Property("image_url"), Message: "Mutation requires a fully loaded entity"}
+				return &runtime.RuntimeError{Type: "Check", CheckResults: []runtime.CheckResult{result}}
+			}
+			if !e.IsLoaded("commerce_platform_id") {
+				result := runtime.CheckResult{RuleID: "invalid_type", CanonicalLocation: runtime.Location().Property("commerce_platform"), Message: "Mutation requires a fully loaded entity"}
+				return &runtime.RuntimeError{Type: "Check", CheckResults: []runtime.CheckResult{result}}
+			}
+			if !e.IsLoaded("create_time") {
+				result := runtime.CheckResult{RuleID: "invalid_type", CanonicalLocation: runtime.Location().Property("create_time"), Message: "Mutation requires a fully loaded entity"}
+				return &runtime.RuntimeError{Type: "Check", CheckResults: []runtime.CheckResult{result}}
+			}
+			if !e.IsLoaded("update_time") {
+				result := runtime.CheckResult{RuleID: "invalid_type", CanonicalLocation: runtime.Location().Property("update_time"), Message: "Mutation requires a fully loaded entity"}
+				return &runtime.RuntimeError{Type: "Check", CheckResults: []runtime.CheckResult{result}}
+			}
+			if !e.IsLoaded("version") {
+				result := runtime.CheckResult{RuleID: "invalid_type", CanonicalLocation: runtime.Location().Property("version"), Message: "Mutation requires a fully loaded entity"}
+				return &runtime.RuntimeError{Type: "Check", CheckResults: []runtime.CheckResult{result}}
+			}
+		}
+		checkedValues := e.IntoRecord()
+		valuesBeforeCheck := e.IntoRecord()
+		checkErr := context.CheckAndFix(&runtime.CheckAndFixInput{Entity: "product", Operation: operation, Values: checkedValues})
+		for field, value := range checkedValues {
+			if before, exists := valuesBeforeCheck[field]; !exists || !reflect.DeepEqual(before, value) {
+				e.base.PutDynamic(field, value)
+				e.root.Set(e.EntityKey(), field, value)
+			}
+		}
+		if checkErr != nil { return checkErr }
+	}
+	for index, child := range e.orderLineList.Items() {
+		child.AttachEntityRoot(e.root)
+		parentID := core.ValU64(e.base.Id)
+		if e.base.Id == 0 { parentID = e.ledgerID }
+		child.Base().PutDynamic("product_id", parentID)
+		child.SetComment(*e.comment)
+		if err := child.TeaqlPreflightGraph(context); err != nil {
+			var checkError *runtime.RuntimeError
+			if errors.As(err, &checkError) && checkError.Type == "Check" {
+				prefix := runtime.Location().Property("order_line_list").At(index)
+				prefixed := make([]runtime.CheckResult, len(checkError.CheckResults))
+				for resultIndex, result := range checkError.CheckResults { prefixed[resultIndex] = result.PrefixedBy(prefix) }
+				return &runtime.RuntimeError{Type: "Check", CheckResults: prefixed}
+			}
+			return fmt.Errorf("preflight child from orderLineList: %w", err)
+		}
+	}
+	return nil
+}
+
+type teaqlProductSaveSnapshot struct {
+	record core.Record
+	dirtyFields map[string]bool
+	isNew bool
+	markedAsDelete bool
+	loadState map[string]bool
+	restrictLoadState bool
+	ledgerID core.Value
+}
+
+func (e *Product) teaqlSaveSnapshot() teaqlProductSaveSnapshot {
+	dirty := make(map[string]bool, len(e.dirtyFields))
+	for field, value := range e.dirtyFields { dirty[field] = value }
+	loaded := make(map[string]bool, len(e.loadState))
+	for field, value := range e.loadState { loaded[field] = value }
+	return teaqlProductSaveSnapshot{
+		record: e.IntoRecord(), dirtyFields: dirty, isNew: e.isNew,
+		markedAsDelete: e.markedAsDelete, loadState: loaded,
+		restrictLoadState: e.restrictLoadState, ledgerID: e.ledgerID,
+	}
+}
+
+func (e *Product) teaqlRegisterGraphOutcome(context *runtime.UserContext, snapshot teaqlProductSaveSnapshot) {
+	context.AfterGraphRollback(func() {
+		if err := e.FromRecord(snapshot.record); err != nil { panic(err) }
+		e.dirtyFields = snapshot.dirtyFields
+		e.isNew = snapshot.isNew
+		e.markedAsDelete = snapshot.markedAsDelete
+		e.loadState = snapshot.loadState
+		e.restrictLoadState = snapshot.restrictLoadState
+		e.ledgerID = snapshot.ledgerID
+	})
+	context.AfterGraphCommit(func() { e.root.ClearEntity(e.EntityKey()) })
+}
+
+// TeaqlSaveWithinGraph is generated infrastructure used by related entity
+// packages after the public root Save has opened the graph transaction.
+func (e *Product) TeaqlSaveWithinGraph(context *runtime.UserContext) (*Product, error) {
+	snapshot := e.teaqlSaveSnapshot()
+	e.teaqlRegisterGraphOutcome(context, snapshot)
 	dsRaw := context.GetResource("dataService")
 	if dsRaw == nil {
-		return fmt.Errorf("dataService not found in UserContext")
+		return nil, fmt.Errorf("dataService not found in UserContext")
 	}
 	// Dynamic assert
 	type mutator interface {
@@ -179,33 +361,50 @@ func (e *Product) Save(context *runtime.UserContext) error {
 	}
 	ds, ok := dsRaw.(mutator)
 	if !ok {
-		return fmt.Errorf("dataService does not implement Mutator")
+		return nil, fmt.Errorf("dataService does not implement Mutator")
 	}
-	if e.comment == nil {
-		return fmt.Errorf("Security audit failure: AuditAs() must be called before Save()")
+	if e.comment == nil || strings.TrimSpace(*e.comment) == "" {
+		return nil, fmt.Errorf("Security audit failure: AuditAs() must be called before Save()")
 	}
 
 	if e.isNew {
+		checkedValues := e.IntoRecord()
+		valuesBeforeCheck := e.IntoRecord()
+		checkErr := context.CheckAndFix(&runtime.CheckAndFixInput{Entity: "product", Operation: core.MutationInsert, Values: checkedValues})
+		for field, value := range checkedValues {
+			if before, exists := valuesBeforeCheck[field]; !exists || !reflect.DeepEqual(before, value) {
+				e.root.Set(e.EntityKey(), field, value)
+			}
+		}
+		if checkErr != nil { return nil, checkErr }
+		if err := e.FromRecord(checkedValues); err != nil { return nil, err }
+		type idGenerator interface {
+			GenerateId(entity string) (uint64, error)
+		}
+		generator := idGenerator(runtime.LocalIdGenerator())
+		if configured := context.GetResource("idGenerator"); configured != nil {
+			if typed, ok := configured.(idGenerator); ok {
+				generator = typed
+			}
+		}
 		if e.base.Id == 0 {
-			type idGenerator interface {
-				GenerateId(entity string) (uint64, error)
-			}
-			generator := idGenerator(runtime.LocalIdGenerator())
-			if configured := context.GetResource("idGenerator"); configured != nil {
-				if typed, ok := configured.(idGenerator); ok {
-					generator = typed
-				}
-			}
 			id, err := generator.GenerateId(e.EntityName())
 			if err != nil {
-				return fmt.Errorf("generate id for %s: %w", e.EntityName(), err)
+				return nil, fmt.Errorf("generate id for %s: %w", e.EntityName(), err)
 			}
 			e.base.Id = id
+			e.root.Rekey(core.NewEntityKey(e.EntityName(), e.ledgerID), e.EntityKey())
+		} else if floor, ok := generator.(interface {
+			EnsureIdFloor(stdcontext.Context, string, uint64) error
+		}); ok {
+			if err := floor.EnsureIdFloor(stdcontext.Background(), e.EntityName(), e.base.Id); err != nil {
+				return nil, fmt.Errorf("synchronize id floor for %s: %w", e.EntityName(), err)
+			}
 		}
 		if e.base.Version == 0 {
 			e.base.Version = 1
 		}
-		cmd := core.NewInsertCommand("Product")
+		cmd := core.NewInsertCommand("product")
 		cmd.Values = e.IntoRecord()
 		if e.comment != nil {
 			cmd.TraceChain = append(cmd.TraceChain, &core.TraceNode{Comment: *e.comment})
@@ -225,12 +424,49 @@ func (e *Product) Save(context *runtime.UserContext) error {
 			}
 		}
 		if err != nil {
-			return err
+			return nil, err
 		}
-		return e.saveCascade(context)
+		if res.PersistedRecord == nil {
+			return nil, fmt.Errorf("mutation did not return the authoritative persisted record")
+		}
+		if err := e.FromRecord(res.PersistedRecord); err != nil {
+			return nil, err
+		}
+		if err := e.saveCascade(context); err != nil { return nil, err }
+		return e, nil
+	} else if e.markedAsDelete {
+		expectedVersion := e.base.Version
+		cmd := core.NewDeleteCommand("product", core.ValU64(e.base.Id)).
+			WithExpectedVersion(expectedVersion)
+		if e.comment != nil {
+			cmd.TraceChain = append(cmd.TraceChain, &core.TraceNode{Comment: *e.comment})
+		}
+		res, err := ds.Mutate(context, &data_service.DeleteMutation{Cmd: cmd})
+		if err != nil { return nil, err }
+		if res.AffectedRows == 0 {
+			return nil, fmt.Errorf("optimistic lock failed for %s(%d) at version %d", e.EntityName(), e.base.Id, expectedVersion)
+		}
+		e.base.Version = -(expectedVersion + 1)
+		e.markedAsDelete = false
+		e.dirtyFields = make(map[string]bool)
+		if res.PersistedRecord == nil {
+			return nil, fmt.Errorf("mutation did not return the authoritative persisted record")
+		}
+		if err := e.FromRecord(res.PersistedRecord); err != nil { return nil, err }
+		return e, nil
 	} else {
-		cmd := core.NewUpdateCommand("Product", core.ValU64(e.base.Id))
-		cmd.Values = e.IntoRecord()
+		checkedValues := e.IntoRecord()
+		valuesBeforeCheck := e.IntoRecord()
+		checkErr := context.CheckAndFix(&runtime.CheckAndFixInput{Entity: "product", Operation: core.MutationUpdate, Values: checkedValues})
+		for field, value := range checkedValues {
+			if before, exists := valuesBeforeCheck[field]; !exists || !reflect.DeepEqual(before, value) {
+				e.root.Set(e.EntityKey(), field, value)
+			}
+		}
+		if checkErr != nil { return nil, checkErr }
+		if err := e.FromRecord(checkedValues); err != nil { return nil, err }
+		cmd := core.NewUpdateCommand("product", core.ValU64(e.base.Id))
+		cmd.Values = e.root.Change(e.EntityKey())
 		expectedVersion := e.base.Version
 		cmd.ExpectedVersion = &expectedVersion
 		if e.comment != nil {
@@ -239,31 +475,36 @@ func (e *Product) Save(context *runtime.UserContext) error {
 		res, err := ds.Mutate(context, &data_service.UpdateMutation{Cmd: cmd})
 		if err == nil {
 			if res.AffectedRows == 0 {
-				return fmt.Errorf("optimistic lock failed for %s(%d) at version %d", e.EntityName(), e.base.Id, expectedVersion)
+				return nil, fmt.Errorf("optimistic lock failed for %s(%d) at version %d", e.EntityName(), e.base.Id, expectedVersion)
 			}
 			e.base.Version = expectedVersion + 1
 			e.dirtyFields = make(map[string]bool)
 		}
 		if err != nil {
-			return err
+			return nil, err
 		}
-		return e.saveCascade(context)
+		if res.PersistedRecord == nil {
+			return nil, fmt.Errorf("mutation did not return the authoritative persisted record")
+		}
+		if err := e.FromRecord(res.PersistedRecord); err != nil { return nil, err }
+		if err := e.saveCascade(context); err != nil { return nil, err }
+		return e, nil
 	}
 }
 
 func (e *Product) saveCascade(context *runtime.UserContext) error {
-	for _, rawChild := range e.orderLineList.Items() {
-		child, ok := rawChild.(interface {
-			Base() *core.BaseEntityData
-			SetComment(string)
-			Save(*runtime.UserContext) error
-		})
-		if !ok {
-			return fmt.Errorf("invalid child in orderLineList")
-		}
+	for index, child := range e.orderLineList.Items() {
+		child.AttachEntityRoot(e.root)
 		child.Base().PutDynamic("product_id", core.ValU64(e.base.Id))
 		child.SetComment(*e.comment)
-		if err := child.Save(context); err != nil {
+		if _, err := child.TeaqlSaveWithinGraph(context); err != nil {
+			var checkError *runtime.RuntimeError
+			if errors.As(err, &checkError) && checkError.Type == "Check" {
+				prefix := runtime.Location().Property("order_line_list").At(index)
+				prefixed := make([]runtime.CheckResult, len(checkError.CheckResults))
+				for resultIndex, result := range checkError.CheckResults { prefixed[resultIndex] = result.PrefixedBy(prefix) }
+				return &runtime.RuntimeError{Type: "Check", CheckResults: prefixed}
+			}
 			return fmt.Errorf("save child from orderLineList: %w", err)
 		}
 	}
@@ -275,7 +516,9 @@ func (e *Product) Id() uint64 {
 }
 
 func (e *Product) UpdateId(value uint64) *Product {
+	oldKey := e.EntityKey()
 	e.base.Id = value
+	e.root.Rekey(oldKey, e.EntityKey())
 	e.loadState["id"] = true
 	return e
 }
@@ -283,12 +526,12 @@ func (e *Product) UpdateId(value uint64) *Product {
 func (e *Product) Name() string {
 	val, _ := e.base.GetDynamic("name")
 	res, _ := val.TryText()
-	return res
-}
+	return res}
 
 func (e *Product) UpdateName(value string) *Product {
 	e.base.PutDynamic("name", core.ValText(value))
 	e.dirtyFields["name"] = true
+	e.root.Set(e.EntityKey(), "name", core.ValText(value))
 	e.loadState["name"] = true
 	return e
 }
@@ -296,51 +539,51 @@ func (e *Product) UpdateName(value string) *Product {
 func (e *Product) Sku() string {
 	val, _ := e.base.GetDynamic("sku")
 	res, _ := val.TryText()
-	return res
-}
+	return res}
 
 func (e *Product) UpdateSku(value string) *Product {
 	e.base.PutDynamic("sku", core.ValText(value))
 	e.dirtyFields["sku"] = true
+	e.root.Set(e.EntityKey(), "sku", core.ValText(value))
 	e.loadState["sku"] = true
 	return e
 }
 
-func (e *Product) ImageUrl() string {
+func (e *Product) ImageUrl() *string {
 	val, _ := e.base.GetDynamic("image_url")
 	res, _ := val.TryText()
-	return res
-}
+	return &res}
 
-func (e *Product) UpdateImageUrl(value string) *Product {
-	e.base.PutDynamic("image_url", core.ValText(value))
+func (e *Product) UpdateImageUrl(value *string) *Product {
+	e.base.PutDynamic("image_url", func() core.Value { if value == nil { return core.ValNull() }; return core.ValText((*value)) }())
 	e.dirtyFields["image_url"] = true
+	e.root.Set(e.EntityKey(), "image_url", func() core.Value { if value == nil { return core.ValNull() }; return core.ValText((*value)) }())
 	e.loadState["image_url"] = true
 	return e
 }
 
 func (e *Product) CreateTime() time.Time {
 	val, _ := e.base.GetDynamic("create_time")
-	res, _ := val.TryTimestamp()
-	return time.UnixMilli(res).UTC()
-}
+	res, _ := val.TryTime()
+	return res}
 
 func (e *Product) UpdateCreateTime(value time.Time) *Product {
 	e.base.PutDynamic("create_time", core.ValTimestamp(value.UnixMilli()))
 	e.dirtyFields["create_time"] = true
+	e.root.Set(e.EntityKey(), "create_time", core.ValTimestamp(value.UnixMilli()))
 	e.loadState["create_time"] = true
 	return e
 }
 
 func (e *Product) UpdateTime() time.Time {
 	val, _ := e.base.GetDynamic("update_time")
-	res, _ := val.TryTimestamp()
-	return time.UnixMilli(res).UTC()
-}
+	res, _ := val.TryTime()
+	return res}
 
 func (e *Product) UpdateUpdateTime(value time.Time) *Product {
 	e.base.PutDynamic("update_time", core.ValTimestamp(value.UnixMilli()))
 	e.dirtyFields["update_time"] = true
+	e.root.Set(e.EntityKey(), "update_time", core.ValTimestamp(value.UnixMilli()))
 	e.loadState["update_time"] = true
 	return e
 }
@@ -363,10 +606,10 @@ func (e *Product) CommercePlatformId() uint64 {
 func (e *Product) UpdateCommercePlatformId(value uint64) *Product {
 	e.base.PutDynamic("commerce_platform_id", core.ValU64(value))
 	e.dirtyFields["commerce_platform_id"] = true
+	e.root.Set(e.EntityKey(), "commerce_platform_id", core.ValU64(value))
 	e.loadState["commerce_platform_id"] = true
 	return e
 }
-
 // DEBUG: constantObjectField is false
 
 func (e *Product) OrderLineList() *OrderLineList {

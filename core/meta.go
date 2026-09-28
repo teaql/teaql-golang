@@ -7,6 +7,8 @@ type PropertyDescriptor struct {
 	ColName   string
 	IsId      bool
 	IsVersion bool
+	// Trusted descriptor policy, never taken from a query/TFP request.
+	LogPolicy string
 }
 
 func NewPropertyDescriptor(name string, dataType DataType) *PropertyDescriptor {
@@ -39,7 +41,6 @@ func (p *PropertyDescriptor) Version() *PropertyDescriptor {
 	p.IsVersion = true
 	return p
 }
-
 
 type RelationDescriptor struct {
 	Name            string
@@ -98,25 +99,24 @@ func (r *RelationDescriptor) KeepMissing() *RelationDescriptor {
 	return r
 }
 
-
 type EntityDescriptor struct {
-	Name             string
-	TabName          string
-	DataSvc          *string
-	Properties       []*PropertyDescriptor
-	Relations        []*RelationDescriptor
-	AuditMaskFlds    []string
-	AuditValueMaxL   *int
+	Name           string
+	TabName        string
+	DataSvc        *string
+	Properties     []*PropertyDescriptor
+	Relations      []*RelationDescriptor
+	AuditMaskFlds  []string
+	AuditValueMaxL *int
 }
 
 func NewEntityDescriptor(name string) *EntityDescriptor {
 	return &EntityDescriptor{
-		Name:          name,
-		TabName:       DefaultTableName(name),
-		DataSvc:       nil,
-		Properties:    make([]*PropertyDescriptor, 0),
-		Relations:     make([]*RelationDescriptor, 0),
-		AuditMaskFlds: make([]string, 0),
+		Name:           name,
+		TabName:        DefaultTableName(name),
+		DataSvc:        nil,
+		Properties:     make([]*PropertyDescriptor, 0),
+		Relations:      make([]*RelationDescriptor, 0),
+		AuditMaskFlds:  make([]string, 0),
 		AuditValueMaxL: nil,
 	}
 }
@@ -150,7 +150,6 @@ func (e *EntityDescriptor) AuditValueMaxLen(maxLen int) *EntityDescriptor {
 	e.AuditValueMaxL = &maxLen
 	return e
 }
-
 
 // Lookups
 

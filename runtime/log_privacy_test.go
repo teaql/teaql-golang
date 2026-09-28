@@ -15,7 +15,7 @@ func TestPlaintextLogAcknowledgementAndFileOutput(t *testing.T) {
 		t.Run(ack, func(t *testing.T) {
 			t.Setenv(plaintextLogEnv, ack)
 			sql := "UPDATE customer SET name = 'PRIVATE-CUSTOMER'"
-			metadata := data_service.ExecutionMetadata{ParameterizedSQL: "UPDATE customer SET name = ?", Parameters: []core.Value{core.ValText("PRIVATE-CUSTOMER")}, DebugQuery: &sql}
+			metadata := data_service.ExecutionMetadata{ParameterizedSQL: "UPDATE customer SET name = ?", Parameters: []core.Value{core.ValText("PRIVATE-CUSTOMER")}, ParameterLogPolicies: []string{"masked"}, DebugQuery: &sql}
 			path := filepath.Join(t.TempDir(), "runtime.log")
 			file, err := os.Create(path)
 			if err != nil {

@@ -30,9 +30,11 @@ func (kind DatabaseKind) String() string {
 }
 
 type CompiledQuery struct {
-	Sql     string
-	Params  []core.Value
-	Comment *string
+	Sql                  string
+	Params               []core.Value
+	Comment              *string
+	ParameterLogPolicies []string
+	GeneratedSQL         bool
 }
 
 func (q *CompiledQuery) SqlWithComment() string {
@@ -57,7 +59,7 @@ func (q *CompiledQuery) DebugSql(kind DatabaseKind) string {
 	}
 }
 
-func replacePostgresPlaceholders(sql string, params []core.Value) string {
+func replacePostgresPlaceholders(sql string, params []core.Value, render ...func(int) string) string {
 	var output strings.Builder
 	output.Grow(len(sql))
 	state := scanSQL
@@ -72,6 +74,21 @@ func replacePostgresPlaceholders(sql string, params []core.Value) string {
 		if state == scanSQL && ch == '"' {
 			output.WriteRune(ch)
 			state = scanDoubleQuote
+			continue
+		}
+		if state == scanSQL && ch == '`' {
+			output.WriteRune(ch)
+			state = scanBacktick
+			continue
+		}
+		if state == scanBacktick {
+			output.WriteRune(ch)
+			if ch == '`' && i+1 < len(chars) && chars[i+1] == '`' {
+				output.WriteRune('`')
+				i++
+			} else if ch == '`' {
+				state = scanSQL
+			}
 			continue
 		}
 		if state == scanSQL && ch == '-' && i+1 < len(chars) && chars[i+1] == '-' {
@@ -131,6 +148,11 @@ func replacePostgresPlaceholders(sql string, params []core.Value) string {
 			}
 			var index int
 			fmt.Sscanf(idxStr, "%d", &index)
+			if len(render) > 0 {
+				output.WriteString(render[0](index - 1))
+				i = j - 1
+				continue
+			}
 			if index > 0 && index-1 < len(params) {
 				output.WriteString(sqlLiteral(params[index-1], DatabaseKindPostgreSQL))
 				i = j - 1
@@ -143,10 +165,13 @@ func replacePostgresPlaceholders(sql string, params []core.Value) string {
 		}
 		output.WriteRune(ch)
 	}
+	if len(render) > 0 && state != scanSQL && state != scanLineComment {
+		render[0](-1)
+	}
 	return output.String()
 }
 
-func replacePositionalPlaceholders(sql string, params []core.Value, kind DatabaseKind) string {
+func replacePositionalPlaceholders(sql string, params []core.Value, kind DatabaseKind, render ...func(int) string) string {
 	var output strings.Builder
 	output.Grow(len(sql))
 
@@ -165,6 +190,21 @@ func replacePositionalPlaceholders(sql string, params []core.Value, kind Databas
 		if state == scanSQL && ch == '"' {
 			output.WriteRune(ch)
 			state = scanDoubleQuote
+			continue
+		}
+		if state == scanSQL && ch == '`' {
+			output.WriteRune(ch)
+			state = scanBacktick
+			continue
+		}
+		if state == scanBacktick {
+			output.WriteRune(ch)
+			if ch == '`' && i+1 < len(chars) && chars[i+1] == '`' {
+				output.WriteRune('`')
+				i++
+			} else if ch == '`' {
+				state = scanSQL
+			}
 			continue
 		}
 		if state == scanSQL && ch == '-' && i+1 < len(chars) && chars[i+1] == '-' {
@@ -216,6 +256,11 @@ func replacePositionalPlaceholders(sql string, params []core.Value, kind Databas
 			continue
 		}
 		if ch == '?' {
+			if len(render) > 0 {
+				output.WriteString(render[0](paramIdx))
+				paramIdx++
+				continue
+			}
 			if paramIdx < len(params) {
 				output.WriteString(sqlLiteral(params[paramIdx], kind))
 				paramIdx++
@@ -226,6 +271,9 @@ func replacePositionalPlaceholders(sql string, params []core.Value, kind Databas
 		}
 		output.WriteRune(ch)
 	}
+	if len(render) > 0 && state != scanSQL && state != scanLineComment {
+		render[0](-1)
+	}
 	return output.String()
 }
 
@@ -235,6 +283,7 @@ const (
 	scanSQL sqlScanState = iota
 	scanSingleQuote
 	scanDoubleQuote
+	scanBacktick
 	scanLineComment
 	scanBlockComment
 )
@@ -244,6 +293,8 @@ func sqlLiteral(value core.Value, kind DatabaseKind) string {
 		return "NULL"
 	}
 	switch v := value.V.(type) {
+	case core.DataType:
+		return "NULL"
 	case bool:
 		if v {
 			return "TRUE"

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"database/sql"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -9,11 +10,9 @@ import (
 	"github.com/shopspring/decimal"
 	"github.com/teaql/teaql-golang/runtime"
 	lib "order-management-service-core-workspace/lib"
-	"order-management-service-core-workspace/lib/commerce_platform"
 	"order-management-service-core-workspace/lib/customer"
 	"order-management-service-core-workspace/lib/customer_order"
 	"order-management-service-core-workspace/lib/order_search_preset"
-	"order-management-service-core-workspace/lib/order_status"
 )
 
 type appAudit struct{}
@@ -30,7 +29,10 @@ func must(err error) {
 }
 
 func main() {
-	db := filepath.Join("..", ".local", "order.db")
+	db := os.Getenv("TEAQL_ORDER_MANAGEMENT_DB")
+	if db == "" {
+		db = filepath.Join("..", ".local", "order.db")
+	}
 	if _, err := os.Stat(db); os.IsNotExist(err) {
 		fmt.Printf("[database] %s was not found; TeaQL will create it\n", db)
 	}
@@ -38,58 +40,58 @@ func main() {
 	must(os.Setenv("ORDER_MANAGEMENT_SERVICE_CORE_DATABASE_URL", db))
 	context, err := lib.ServiceRuntimeFromEnv()
 	must(err)
+	defer context.GetResource("db").(*sql.DB).Close()
 	context.WithAppAuditEventSink(appAudit{})
+	must(lib.EnsureSchema(context))
+	must(lib.EnsureSchema(context))
 	fmt.Println("[schema] ensured 7 generated entity tables")
 
-	platforms, err := lib.Q.CommercePlatforms().WithNameIs("Northwind Demo").
-		Comment("Check whether deterministic quick-start data exists").
-		Purpose("Initialize the local order-management example").ExecuteForList(context)
+	platform, err := lib.Q.CommercePlatforms().WithIdIs(1).
+		Comment("Load the generated commerce root").
+		Purpose("Use the model-owned root for quick-start data").ExecuteForOne(context)
 	must(err)
-	var platformID uint64
-	if len(platforms.Data) == 0 {
+	if platform == nil {
+		panic("generated commerce root was not provisioned")
+	}
+	platformID := platform.Id()
+	orders, err := lib.Q.CustomerOrders().WithOrderNumberIs("WEB-2026-001").
+		Comment("Check whether deterministic quick-start data exists").
+		Purpose("Keep example mutations idempotent").ExecuteForList(context)
+	must(err)
+	if len(orders.Data) == 0 {
 		now := time.Date(2026, 8, 13, 9, 0, 0, 0, time.UTC)
-		platform := commerce_platform.NewCommercePlatform().
-			UpdateName("Northwind Demo").
-			UpdateCreateTime(now).
-			UpdateUpdateTime(now)
-		must(platform.AuditAs("Create quick-start commerce platform").Save(context))
-		platformID = platform.Id()
 		buyer := customer.NewCustomer().
 			UpdateName("Acme Retail").
 			UpdateEmail("masked-in-quick-start").
-			UpdateCommercePlatformId(platform.Id()).
+			UpdateCommercePlatformId(platformID).
 			UpdateCreateTime(now).
 			UpdateUpdateTime(now)
-		must(buyer.AuditAs("Create masked quick-start customer").Save(context))
-		pending := order_status.NewOrderStatus().
-			UpdateName("Pending").
-			UpdateCode("PENDING").
-			UpdateColor("#F97316").
-			UpdateDisplayOrder(decimal.NewFromInt(10)).
-			UpdateCommercePlatformId(platform.Id())
-		must(pending.AuditAs("Create quick-start pending status").Save(context))
+		if _, err := buyer.AuditAs("Create quick-start customer").Save(context); err != nil {
+			panic(err)
+		}
 		orderDate := time.Date(2026, 8, 12, 0, 0, 0, 0, time.UTC)
 		order := customer_order.NewCustomerOrder().
 			UpdateOrderNumber("WEB-2026-001").
 			UpdateOrderDate(orderDate).
 			UpdateTotalAmount(decimal.RequireFromString("129.95")).
 			UpdateCustomerId(buyer.Id()).
-			UpdateCommercePlatformId(platform.Id())
+			UpdateCommercePlatformId(platformID)
 		// The generated constant transition uses the stable status id from the model.
 		order.UpdateStatusToPending()
-		must(order.AuditAs("Create deterministic quick-start order").Save(context))
-		fmt.Println("[seed] inserted deterministic platform, customer, status, and order")
+		if _, err := order.AuditAs("Create deterministic quick-start order").Save(context); err != nil {
+			panic(err)
+		}
+		fmt.Println("[seed] inserted deterministic customer and order; reused generated root and status")
 	} else {
-		platformID = platforms.Data[0].Id()
 		fmt.Println("[seed] deterministic data already exists; no duplicate rows added")
 	}
 
-	orders, err := lib.Q.CustomerOrders().WithOrderNumberContaining("WEB-").OrderByIdAsc().
+	listedOrders, err := lib.Q.CustomerOrders().WithOrderNumberContaining("WEB-").OrderByIdAsc().
 		Comment("List WEB orders for the terminal quick start").
 		Purpose("Show the operator a deterministic order list").ExecuteForList(context)
 	must(err)
-	fmt.Printf("[query] matched %d order(s)\n", len(orders.Data))
-	for _, order := range orders.Data {
+	fmt.Printf("[query] matched %d order(s)\n", len(listedOrders.Data))
+	for _, order := range listedOrders.Data {
 		fmt.Printf("  %s  %s  %s\n", order.OrderNumber(), order.OrderDate().Format("2006-01-02"), order.TotalAmount())
 	}
 
@@ -103,7 +105,9 @@ func main() {
 			UpdateRequestId("quick-start-pending-orders").
 			UpdateOwnerUserId("quick-start-user").
 			UpdateCommercePlatformId(platformID)
-		must(preset.AuditAs("Save idempotent quick-start search preset").Save(context))
+		if _, err := preset.AuditAs("Save idempotent quick-start search preset").Save(context); err != nil {
+			panic(err)
+		}
 		fmt.Printf("[mutation] saved preset #%d\n", preset.Id())
 	} else {
 		fmt.Printf("[mutation] preset #%d already exists\n", presets.Data[0].Id())
