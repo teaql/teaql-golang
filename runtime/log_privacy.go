@@ -237,23 +237,38 @@ func projectedSQLMetadata(metadata data_service.ExecutionMetadata, allow bool) d
 			}
 		}
 	}
+	intentSecrets := append([]string(nil), secrets...)
+	if targetID, ok := logprivacy.ReadIntentSource(metadata.IntentTargetID).(core.Value); ok {
+		intentSecrets = append(intentSecrets, logValueStrings(targetID)...)
+	}
 	metadata.InheritedIntent = logprivacy.IntentSource{}
+	metadata.IntentTargetID = logprivacy.IntentSource{}
 	metadata.LogProjection = logprivacy.ProjectionState{}
 	sort.Slice(secrets, func(i, j int) bool { return len(secrets[i]) > len(secrets[j]) })
-	scrub := func(s string) string {
+	sort.Slice(intentSecrets, func(i, j int) bool { return len(intentSecrets[i]) > len(intentSecrets[j]) })
+	scrubWith := func(s string, values []string) string {
 		if orphanedDebug && s != "" {
 			return "[REDACTED]"
 		}
-		for _, v := range secrets {
+		for _, v := range values {
 			s = strings.ReplaceAll(s, v, "[REDACTED]")
 		}
 		return s
 	}
+	scrub := func(s string) string { return scrubWith(s, secrets) }
+	scrubIntent := func(s string) string { return scrubWith(s, intentSecrets) }
 	copyText := func(s *string) *string {
 		if s == nil {
 			return nil
 		}
 		value := scrub(*s)
+		return &value
+	}
+	copyIntent := func(s *string) *string {
+		if s == nil {
+			return nil
+		}
+		value := scrubIntent(*s)
 		return &value
 	}
 	unsafe := (!allow || credentials) && !metadata.GeneratedSQL && unsafeLogLiteral.MatchString(numberedLogBind.ReplaceAllString(metadata.ParameterizedSQL, "?"))
@@ -307,16 +322,16 @@ func projectedSQLMetadata(metadata data_service.ExecutionMetadata, allow bool) d
 		// that happens to equal a sensitive value, corrupting repeat projection.
 		metadata.ParameterizedSQL = scrub(metadata.ParameterizedSQL)
 	}
-	metadata.Comment, metadata.Purpose, metadata.AuditReason = copyText(metadata.Comment), copyText(metadata.Purpose), copyText(metadata.AuditReason)
+	metadata.Comment, metadata.Purpose, metadata.AuditReason = copyIntent(metadata.Comment), copyIntent(metadata.Purpose), copyIntent(metadata.AuditReason)
 	metadata.BackendRequestId = copyText(metadata.BackendRequestId)
 	trace := make([]*core.TraceNode, len(metadata.TraceChain))
 	for i, node := range metadata.TraceChain {
 		if node != nil {
 			cloned := *node
-			cloned.Comment = scrub(node.Comment)
-			cloned.Name = scrub(node.Name)
-			cloned.EntityType = scrub(node.EntityType)
-			cloned.Kind = scrub(node.Kind)
+			cloned.Comment = scrubIntent(node.Comment)
+			cloned.Name = scrubIntent(node.Name)
+			cloned.EntityType = scrubIntent(node.EntityType)
+			cloned.Kind = scrubIntent(node.Kind)
 			trace[i] = &cloned
 		}
 	}

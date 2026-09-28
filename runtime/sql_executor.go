@@ -8,6 +8,7 @@ import (
 
 	"github.com/teaql/teaql-golang/core"
 	"github.com/teaql/teaql-golang/data_service"
+	"github.com/teaql/teaql-golang/internal/logprivacy"
 	teaql_sql "github.com/teaql/teaql-golang/sql"
 )
 
@@ -185,6 +186,24 @@ func (e *SqlDataServiceExecutor) Mutate(context stdcontext.Context, request data
 		ParameterLogPolicies: append([]string(nil), compiled.ParameterLogPolicies...), GeneratedSQL: compiled.GeneratedSQL,
 		StartedAt: startedAt, EndedAt: time.Now(), AffectedRows: &affected,
 		TraceChain: tracePath, Comment: request.Comment(), AuditReason: request.Comment(), DebugQuery: &debugQuery,
+	}
+	switch req := request.(type) {
+	case *data_service.InsertMutation:
+		entity := e.metadata.Entity(req.Cmd.Entity)
+		if entity != nil {
+			for _, property := range entity.Properties {
+				if property.IsId {
+					if id, ok := req.Cmd.Values[property.Name]; ok {
+						metadata.IntentTargetID = logprivacy.NewIntentSource(id)
+					}
+					break
+				}
+			}
+		}
+	case *data_service.UpdateMutation:
+		metadata.IntentTargetID = logprivacy.NewIntentSource(req.Cmd.Id)
+	case *data_service.DeleteMutation:
+		metadata.IntentTargetID = logprivacy.NewIntentSource(req.Cmd.Id)
 	}
 	metadata.ExecutionOutcome = "success"
 	if err != nil {

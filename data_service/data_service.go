@@ -137,6 +137,8 @@ type ExecutionMetadata struct {
 	OmissionReason       string
 	// Internal runtime plumbing, not a workspace/wire contract. Removed by safe projection.
 	InheritedIntent logprivacy.IntentSource `json:"-"`
+	// Mutation target ID is private projection provenance for free-text SQL intent only.
+	IntentTargetID logprivacy.IntentSource `json:"-"`
 	// Carries only an immutable safe alternative for debug revocation; not a wire API.
 	LogProjection logprivacy.ProjectionState `json:"-"`
 }
