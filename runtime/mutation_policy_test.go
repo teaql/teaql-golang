@@ -2,6 +2,7 @@ package runtime
 
 import (
 	"errors"
+	"fmt"
 	"strings"
 	"sync"
 	"testing"
@@ -152,5 +153,81 @@ func TestAllowedPlannedGraphAttachesGovernanceToAuditAndWarningSinkIsFailOpen(t 
 	}
 	if context.CurrentMutationGovernance() != nil {
 		t.Fatal("governance scope must be cleared after graph save")
+	}
+}
+
+func TestMutationPlanFromEntityRootSnapshotsOnlyEffectiveGraphChanges(t *testing.T) {
+	root := core.NewEntityRoot()
+	order := core.NewEntityKey("Order", core.ValI64(-1))
+	line := core.NewEntityKey("OrderLine", core.ValU64(7))
+	deleted := core.NewEntityKey("OrderLine", core.ValU64(8))
+	cancelled := core.NewEntityKey("OrderLine", core.ValI64(-2))
+	unchanged := core.NewEntityKey("Customer", core.ValU64(3))
+	root.MarkAsNew(order)
+	root.Set(order, "state", core.ValText("DRAFT"))
+	root.SetOriginalVersion(line, 4)
+	root.Set(line, "quantity", core.ValI64(2))
+	root.SetOriginalVersion(deleted, 5)
+	root.MarkAsDeleted(deleted)
+	root.MarkAsNew(cancelled)
+	root.MarkAsDeleted(cancelled)
+	root.SetOriginalVersion(unchanged, 1)
+
+	plan := MutationPlanFromEntityRoot(root, "Order", "submit order")
+
+	if plan.RequestKey != "Order.saveGraph" || len(plan.Operations) != 3 {
+		t.Fatalf("unexpected graph plan: %+v", plan)
+	}
+	kinds := map[string]core.MutationKind{}
+	for _, operation := range plan.Operations {
+		kinds[operation.Entity+":"+fmt.Sprint(operation.ID.V)] = operation.Kind
+	}
+	if kinds["Order:-1"] != core.MutationInsert ||
+		kinds["OrderLine:7"] != core.MutationUpdate ||
+		kinds["OrderLine:8"] != core.MutationDelete {
+		t.Fatalf("plan lost lifecycle semantics: %+v", plan.Operations)
+	}
+}
+
+func TestPreparedGraphSaveRunsPreflightBeforePolicyAndTransaction(t *testing.T) {
+	probe := &graphTransactionProbe{}
+	policy := &testMutationPolicy{
+		identity: NewMutationPolicyIdentity("deny-prepared-order", "1", "sha256:deny-prepared"),
+		review: func(plan *MutationPlan) MutationDecision {
+			if len(plan.Operations) != 1 || plan.Operations[0].ChangedValues["state"].V != "SUBMITTED" {
+				t.Fatalf("policy did not receive the post-fix complete plan: %+v", plan)
+			}
+			return DenyMutation("PREPARED_ORDER_DENIED", "prepared order rejected", "Order.state")
+		},
+	}
+	userContext := NewUserContext().WithMutationPolicyRegistry(
+		MutationPolicyRegistryFunc(func(string) MutationPolicy { return policy }),
+	)
+	userContext.InsertResource("dataService", probe)
+	root := core.NewEntityRoot()
+	order := core.NewEntityKey("Order", core.ValU64(42))
+	root.SetOriginalVersion(order, 7)
+	workCalled := false
+	var firstFixTime, secondFixTime time.Time
+
+	err := userContext.ExecutePreparedGraphSave(func() (*MutationPlan, error) {
+		firstFixTime = userContext.FixTime()
+		time.Sleep(time.Millisecond)
+		secondFixTime = userContext.FixTime()
+		root.Set(order, "state", core.ValText("SUBMITTED"))
+		return MutationPlanFromEntityRoot(root, "Order", "submit order"), nil
+	}, func() error {
+		workCalled = true
+		return nil
+	})
+
+	if err == nil || !strings.Contains(err.Error(), "PREPARED_ORDER_DENIED") {
+		t.Fatalf("expected prepared policy denial, got %v", err)
+	}
+	if firstFixTime.IsZero() || !firstFixTime.Equal(secondFixTime) {
+		t.Fatalf("preflight must share one stable fix time: %v %v", firstFixTime, secondFixTime)
+	}
+	if workCalled || probe.begins != 0 {
+		t.Fatalf("denial must precede work and transaction begin: work=%t begins=%d", workCalled, probe.begins)
 	}
 }

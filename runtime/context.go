@@ -291,6 +291,7 @@ type UserContext struct {
 	appAuditSink                      AppAuditEventSink
 	runtimeTelemetrySink              RuntimeTelemetrySink
 	diagnosticSQLLogSink              DiagnosticSQLLogSink
+	sensitiveSQLLogSink               DiagnosticSQLLogSink
 	querySQLLogEnabled                bool
 	mutationSQLLogEnabled             bool
 	runtimeTelemetry                  RuntimeTelemetry
@@ -709,7 +710,7 @@ func (c *UserContext) ExecuteGraphSave(work func() error) error {
 	// from joining whichever transaction happens to be active on this context.
 	c.graphSaveGate.Lock()
 	defer c.graphSaveGate.Unlock()
-	return c.executeGraphSave(work)
+	return c.executeGraphSave(work, false)
 }
 
 // ExecutePlannedGraphSave reviews the immutable, complete graph mutation plan
@@ -730,28 +731,87 @@ func (c *UserContext) ExecutePlannedGraphSave(plan *MutationPlan, work func() er
 		c.activeMutationGovernance = nil
 		c.graphSaveMu.Unlock()
 	}()
-	return c.executeGraphSave(work)
+	return c.executeGraphSave(work, false)
 }
 
-func (c *UserContext) executeGraphSave(work func() error) error {
+// ExecutePreparedGraphSave gives generated root Save methods one governed
+// lifecycle: capture a stable Fix time, run complete graph Checker/Fix and
+// plan preparation, review the immutable plan, then begin the provider
+// transaction. A denial therefore cannot begin a transaction or mutate a row.
+func (c *UserContext) ExecutePreparedGraphSave(
+	prepare func() (*MutationPlan, error),
+	work func() error,
+) error {
+	if prepare == nil || work == nil {
+		return fmt.Errorf("prepared graph save requires prepare and work callbacks")
+	}
+	c.graphSaveGate.Lock()
+	defer c.graphSaveGate.Unlock()
+
+	c.startGraphPreparation()
+	plan, err := prepare()
+	if err != nil {
+		c.finishGraphPreparation()
+		return err
+	}
+	snapshot, err := c.ReviewMutationPlan(plan)
+	if err != nil {
+		c.finishGraphPreparation()
+		return err
+	}
+	c.graphSaveMu.Lock()
+	c.activeMutationGovernance = snapshot
+	c.graphSaveMu.Unlock()
+	defer func() {
+		c.graphSaveMu.Lock()
+		c.activeMutationGovernance = nil
+		c.graphSaveMu.Unlock()
+	}()
+	return c.executeGraphSave(work, true)
+}
+
+func (c *UserContext) startGraphPreparation() {
+	c.graphSaveMu.Lock()
+	c.graphFixTime = time.Now()
+	c.currentFixEvidence = nil
+	c.graphSaveMu.Unlock()
+}
+
+func (c *UserContext) finishGraphPreparation() {
+	c.graphSaveMu.Lock()
+	c.graphFixTime = time.Time{}
+	c.lastFixEvidence = append([]FixEvidence(nil), c.currentFixEvidence...)
+	c.currentFixEvidence = nil
+	c.graphSaveMu.Unlock()
+}
+
+func (c *UserContext) executeGraphSave(work func() error, preparationStarted bool) error {
 	c.graphSaveMu.Lock()
 	provider := c.resources["dataService"]
 	originalIDGenerator, hadIDGenerator := c.resources["idGenerator"]
 	executor, ok := provider.(data_service.TransactionExecutor)
 	if !ok {
 		c.graphSaveMu.Unlock()
+		if preparationStarted {
+			c.finishGraphPreparation()
+		}
 		return fmt.Errorf("configured dataService does not support graph transactions")
 	}
 	transaction, err := executor.Begin(c)
 	if err != nil {
 		c.graphSaveMu.Unlock()
+		if preparationStarted {
+			c.finishGraphPreparation()
+		}
 		return err
 	}
 	c.graphSaveActive = true
 	c.graphCommitActions = nil
 	c.graphRollbackActions = nil
-	c.graphFixTime = time.Now()
-	c.currentFixEvidence = nil
+	if !preparationStarted {
+		c.graphFixTime = time.Now()
+		c.currentFixEvidence = nil
+	}
 	c.resources["dataService"] = transaction
 	if _, ok := transaction.(interface{ GenerateId(string) (uint64, error) }); ok {
 		c.resources["idGenerator"] = transaction

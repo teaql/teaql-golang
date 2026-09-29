@@ -184,6 +184,55 @@ func cloneRecord(record core.Record) core.Record {
 	return copyRecord
 }
 
+// MutationPlanFromEntityRoot snapshots the complete shared mutation ledger
+// after generated Checker/Fix preflight. It deliberately omits unchanged
+// loaded entities and create-then-delete entities that have no persistence
+// effect. The returned plan is detached from the live ledger.
+func MutationPlanFromEntityRoot(root *core.EntityRoot, rootEntity, auditReason string) *MutationPlan {
+	plan := &MutationPlan{
+		RequestKey:  strings.TrimSpace(rootEntity) + ".saveGraph",
+		RootEntity:  strings.TrimSpace(rootEntity),
+		AuditReason: auditReason,
+	}
+	if root == nil {
+		return plan
+	}
+	for _, key := range root.Keys() {
+		isNew := root.IsNew(key)
+		isDeleted := root.IsDeleted(key)
+		if isNew && isDeleted {
+			continue
+		}
+		values := root.Change(key)
+		if !isNew && !isDeleted && len(values) == 0 {
+			continue
+		}
+		kind := core.MutationUpdate
+		switch {
+		case isDeleted:
+			kind = core.MutationDelete
+			values = make(core.Record)
+		case isNew:
+			kind = core.MutationInsert
+		}
+		var originalVersion *int64
+		if version, ok := root.OriginalVersion(key); ok {
+			copyVersion := version
+			originalVersion = &copyVersion
+		}
+		plan.Operations = append(plan.Operations, MutationOperation{
+			Kind: kind, Entity: key.Entity, ID: key.ID, OriginalVersion: originalVersion,
+			ChangedValues: cloneRecord(values),
+		})
+	}
+	sort.Slice(plan.Operations, func(left, right int) bool {
+		leftKey := plan.Operations[left].Entity + "\x00" + fmt.Sprintf("%T:%v", plan.Operations[left].ID.V, plan.Operations[left].ID.V)
+		rightKey := plan.Operations[right].Entity + "\x00" + fmt.Sprintf("%T:%v", plan.Operations[right].ID.V, plan.Operations[right].ID.V)
+		return leftKey < rightKey
+	})
+	return plan
+}
+
 func cloneMutationGovernance(snapshot *MutationGovernanceSnapshot) *MutationGovernanceSnapshot {
 	if snapshot == nil {
 		return nil
