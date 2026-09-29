@@ -90,6 +90,8 @@ func (e *RuntimeError) Error() string {
 		return fmt.Sprintf("entity event error: %s", e.Message)
 	case "Policy":
 		return fmt.Sprintf("request policy error: %s", e.Message)
+	case "MutationPolicy":
+		return fmt.Sprintf("mutation policy error: %s", e.Message)
 	case "Check":
 		messages := make([]string, len(e.CheckResults))
 		for i, res := range e.CheckResults {

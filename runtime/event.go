@@ -29,17 +29,18 @@ type EntityPropertyChange struct {
 }
 
 type RawAuditEvent struct {
-	Kind          RawAuditEventKind
-	Entity        string
-	TargetID      *core.Value
-	Values        core.Record
-	UpdatedFields []string
-	OldValues     *core.Record
-	NewValues     *core.Record
-	Changes       []*EntityPropertyChange
-	TraceChain    []*core.TraceNode
-	Actor         string
-	Category      string
+	Kind               RawAuditEventKind
+	Entity             string
+	TargetID           *core.Value
+	Values             core.Record
+	UpdatedFields      []string
+	OldValues          *core.Record
+	NewValues          *core.Record
+	Changes            []*EntityPropertyChange
+	TraceChain         []*core.TraceNode
+	Actor              string
+	Category           string
+	MutationGovernance *MutationGovernanceSnapshot
 }
 
 func Created(entity string, values core.Record) *RawAuditEvent {
@@ -476,12 +477,13 @@ func (e *RawAuditEvent) BuildSafeEvent(auditMaskFields []string, auditValueMaxLe
 	}
 
 	return &SafeAuditEvent{
-		Kind:       e.Kind,
-		Entity:     e.Entity,
-		Fields:     safeFields,
-		TraceChain: trace,
-		Actor:      scrubWith(e.Actor, intentValues),
-		Category:   e.Category,
+		Kind:               e.Kind,
+		Entity:             e.Entity,
+		Fields:             safeFields,
+		TraceChain:         trace,
+		Actor:              scrubWith(e.Actor, intentValues),
+		Category:           e.Category,
+		MutationGovernance: cloneMutationGovernance(e.MutationGovernance),
 	}
 }
 
@@ -497,12 +499,13 @@ type SafeAuditField struct {
 }
 
 type SafeAuditEvent struct {
-	Kind       RawAuditEventKind
-	Entity     string
-	Fields     []*SafeAuditField
-	TraceChain []*core.TraceNode
-	Actor      string
-	Category   string
+	Kind               RawAuditEventKind
+	Entity             string
+	Fields             []*SafeAuditField
+	TraceChain         []*core.TraceNode
+	Actor              string
+	Category           string
+	MutationGovernance *MutationGovernanceSnapshot
 }
 
 type RawAuditEventSink interface {

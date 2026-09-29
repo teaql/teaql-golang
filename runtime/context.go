@@ -284,38 +284,43 @@ type UserContext struct {
 	EntityRegistry EntityRegistry
 	Behaviors      EntityDataServiceBehaviorRegistry
 
-	initialGraphs             []*GraphNode
-	rootGraphs                []*GraphNode
-	resources                 map[string]interface{}
-	standardAuditSink         RawAuditEventSink
-	appAuditSink              AppAuditEventSink
-	runtimeTelemetrySink      RuntimeTelemetrySink
-	diagnosticSQLLogSink      DiagnosticSQLLogSink
-	sensitiveSQLLogSink       DiagnosticSQLLogSink
-	querySQLLogEnabled        bool
-	mutationSQLLogEnabled     bool
-	runtimeTelemetry          RuntimeTelemetry
-	continuousPageCursorStore ContinuousPageCursorStore
-	idSetStore                IDSetStore
-	idSetMu                   sync.Mutex
-	idSetPlan                 string
-	idSetCount                uint64
-	idSetCountAccuracy        string
-	continuousPageMu          sync.Mutex
-	continuousPagePlan        string
-	continuousPageCursorID    string
-	userIdentifier            string
-	requestPolicy             RequestPolicy
-	checkerRegistry           CheckerRegistry
-	graphSaveGate             sync.Mutex
-	graphSaveMu               sync.Mutex
-	graphSaveActive           bool
-	graphCommitActions        []func()
-	graphRollbackActions      []func()
-	graphFixTime              time.Time
-	currentFixEvidence        []FixEvidence
-	lastFixEvidence           []FixEvidence
-	entityReferenceCodec      EntityReferenceCodec
+	initialGraphs                     []*GraphNode
+	rootGraphs                        []*GraphNode
+	resources                         map[string]interface{}
+	standardAuditSink                 RawAuditEventSink
+	appAuditSink                      AppAuditEventSink
+	runtimeTelemetrySink              RuntimeTelemetrySink
+	diagnosticSQLLogSink              DiagnosticSQLLogSink
+	querySQLLogEnabled                bool
+	mutationSQLLogEnabled             bool
+	runtimeTelemetry                  RuntimeTelemetry
+	continuousPageCursorStore         ContinuousPageCursorStore
+	idSetStore                        IDSetStore
+	idSetMu                           sync.Mutex
+	idSetPlan                         string
+	idSetCount                        uint64
+	idSetCountAccuracy                string
+	continuousPageMu                  sync.Mutex
+	continuousPagePlan                string
+	continuousPageCursorID            string
+	userIdentifier                    string
+	requestPolicy                     RequestPolicy
+	checkerRegistry                   CheckerRegistry
+	mutationPolicyRegistry            MutationPolicyRegistry
+	mutationPolicyApprovalProvider    MutationPolicyApprovalProvider
+	mutationGovernanceSink            MutationGovernanceSink
+	mutationGovernanceMu              sync.Mutex
+	emittedMutationGovernanceWarnings map[string]struct{}
+	activeMutationGovernance          *MutationGovernanceSnapshot
+	graphSaveGate                     sync.Mutex
+	graphSaveMu                       sync.Mutex
+	graphSaveActive                   bool
+	graphCommitActions                []func()
+	graphRollbackActions              []func()
+	graphFixTime                      time.Time
+	currentFixEvidence                []FixEvidence
+	lastFixEvidence                   []FixEvidence
+	entityReferenceCodec              EntityReferenceCodec
 }
 
 type FixEvidenceSource string
@@ -584,18 +589,19 @@ func (c *UserContext) RuntimeTelemetry() RuntimeTelemetry {
 
 func NewUserContext() *UserContext {
 	context := &UserContext{
-		Context:                   stdcontext.Background(),
-		resources:                 make(map[string]interface{}),
-		continuousPageCursorStore: NewInMemoryContinuousPageCursorStore(),
-		idSetStore:                defaultIDSetStore,
-		idSetPlan:                 "ID_SET_DISABLED",
-		idSetCountAccuracy:        "UNKNOWN",
-		continuousPagePlan:        "DISABLED",
-		userIdentifier:            "main",
-		runtimeTelemetry:          NoopRuntimeTelemetry{},
-		diagnosticSQLLogSink:      NewTextDiagnosticSQLLogSink(os.Stderr),
-		querySQLLogEnabled:        true,
-		mutationSQLLogEnabled:     true,
+		Context:                           stdcontext.Background(),
+		resources:                         make(map[string]interface{}),
+		continuousPageCursorStore:         NewInMemoryContinuousPageCursorStore(),
+		idSetStore:                        defaultIDSetStore,
+		idSetPlan:                         "ID_SET_DISABLED",
+		idSetCountAccuracy:                "UNKNOWN",
+		continuousPagePlan:                "DISABLED",
+		userIdentifier:                    "main",
+		runtimeTelemetry:                  NoopRuntimeTelemetry{},
+		diagnosticSQLLogSink:              NewTextDiagnosticSQLLogSink(os.Stderr),
+		querySQLLogEnabled:                true,
+		mutationSQLLogEnabled:             true,
+		emittedMutationGovernanceWarnings: make(map[string]struct{}),
 	}
 	context.Context = stdcontext.WithValue(context.Context, userContextKey{}, context)
 	return context
@@ -703,6 +709,31 @@ func (c *UserContext) ExecuteGraphSave(work func() error) error {
 	// from joining whichever transaction happens to be active on this context.
 	c.graphSaveGate.Lock()
 	defer c.graphSaveGate.Unlock()
+	return c.executeGraphSave(work)
+}
+
+// ExecutePlannedGraphSave reviews the immutable, complete graph mutation plan
+// before starting a provider transaction. Generated root Save methods should
+// use this entry point once they can provide the full aggregate plan.
+func (c *UserContext) ExecutePlannedGraphSave(plan *MutationPlan, work func() error) error {
+	c.graphSaveGate.Lock()
+	defer c.graphSaveGate.Unlock()
+	snapshot, err := c.ReviewMutationPlan(plan)
+	if err != nil {
+		return err
+	}
+	c.graphSaveMu.Lock()
+	c.activeMutationGovernance = snapshot
+	c.graphSaveMu.Unlock()
+	defer func() {
+		c.graphSaveMu.Lock()
+		c.activeMutationGovernance = nil
+		c.graphSaveMu.Unlock()
+	}()
+	return c.executeGraphSave(work)
+}
+
+func (c *UserContext) executeGraphSave(work func() error) error {
 	c.graphSaveMu.Lock()
 	provider := c.resources["dataService"]
 	originalIDGenerator, hadIDGenerator := c.resources["idGenerator"]
@@ -815,6 +846,7 @@ func (c *UserContext) SendEvent(event *RawAuditEvent) error {
 }
 
 func (c *UserContext) sendEvent(context stdcontext.Context, event *RawAuditEvent) (err error) {
+	event.MutationGovernance = c.CurrentMutationGovernance()
 	context, scope := StartRuntimeOperation(context, c.RuntimeTelemetry(), NewRuntimeOperation("audit", event.Entity+".event", map[string]RuntimeAttributeValue{
 		"teaql.entity.type": event.Entity,
 	}))
