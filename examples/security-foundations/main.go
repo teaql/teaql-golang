@@ -53,10 +53,13 @@ func verifyLogBoundary() {
 	context.RecordExecutionMetadata(data_service.ExecutionMetadata{
 		Operation: data_service.OpQuery, ParameterizedSQL: "SELECT * FROM customer_order_data WHERE card_number = ?",
 		Parameters: []core.Value{core.ValText("4111111111111111")}, DebugQuery: &debug,
-		StartedAt: time.Unix(1, 0), EndedAt: time.Unix(1, 10_000), ResultCount: &count,
+		ParameterLogPolicies: []string{"masked"},
+		StartedAt:            time.Unix(1, 0), EndedAt: time.Unix(1, 10_000), ResultCount: &count,
 	})
-	require(!strings.Contains(ordinary.String(), "4111111111111111") && !strings.Contains(ordinary.String(), "Debug SQL:"), "ordinary SQL log leaked a value")
-	require(strings.Contains(ordinary.String(), "parameterCount=1"), "ordinary SQL log lost parameter count")
+	// Preserve the SQL's diagnostic shape while using the common numeric mask.
+	require(!strings.Contains(ordinary.String(), "4111111111111111"), "ordinary SQL log leaked a value")
+	require(strings.Contains(ordinary.String(), "card_number = '****************' /* masked */"), "ordinary SQL log lost expanded field mask")
+	require(!strings.Contains(ordinary.String(), "card_number = ?"), "operator must not assemble SQL parameters by hand")
 	require(!strings.Contains(sensitive.String(), "4111111111111111"), "sensitive sink bypassed plaintext acknowledgement gate")
 }
 
@@ -121,6 +124,7 @@ func verifyOpaqueReference() {
 }
 
 func main() {
+	verifyMaskingLifecycle()
 	verifyLogBoundary()
 	verifyTrustedTFP()
 	verifyOpaqueReference()

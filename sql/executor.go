@@ -2,6 +2,7 @@ package sql
 
 import (
 	stdcontext "context"
+	"errors"
 	"fmt"
 	"strings"
 	"time"
@@ -120,13 +121,10 @@ func (e *SqlDataServiceExecutor) Query(context stdcontext.Context, request *ds.Q
 
 	start := time.Now()
 	rows, err := e.Transport.FetchAllSql(context, compiled)
-	if err != nil {
-		return nil, &SqlExecutorError{TransportError: err}
-	}
 	end := time.Now()
 
 	count := len(rows)
-	debugQuery := compiled.DebugSql(e.Dialect.Kind())
+	debugQuery := "" // Safety projection renders before any log sink sees values.
 
 	tracePath := []*core.TraceNode{
 		core.NewTypedTraceNode("operation", "query", "query"),
@@ -138,22 +136,33 @@ func (e *SqlDataServiceExecutor) Query(context stdcontext.Context, request *ds.Q
 		core.NewTypedTraceNode("provider", provider, provider),
 		core.NewTypedTraceNode("sql", "select", "select"))
 	metadata := ds.ExecutionMetadata{
-		Backend:          provider,
-		Operation:        ds.OpQuery,
-		ParameterizedSQL: compiled.Sql,
-		Parameters:       append([]core.Value(nil), compiled.Params...),
-		StartedAt:        start,
-		EndedAt:          end,
-		AffectedRows:     nil,
-		ResultCount:      &count,
-		TraceChain:       tracePath,
-		Comment:          request.Comment,
-		Purpose:          request.Purpose,
-		BackendRequestId: nil,
-		DebugQuery:       &debugQuery,
+		Backend:              provider,
+		Operation:            ds.OpQuery,
+		ParameterizedSQL:     compiled.Sql,
+		Parameters:           append([]core.Value(nil), compiled.Params...),
+		ParameterLogPolicies: append([]string(nil), compiled.ParameterLogPolicies...),
+		GeneratedSQL:         compiled.GeneratedSQL,
+		StartedAt:            start,
+		EndedAt:              end,
+		AffectedRows:         nil,
+		ResultCount:          &count,
+		TraceChain:           tracePath,
+		Comment:              request.Comment,
+		Purpose:              request.Purpose,
+		InheritedIntent:      request.InheritedIntent,
+		BackendRequestId:     nil,
+		DebugQuery:           &debugQuery,
+	}
+	metadata.ExecutionOutcome = "success"
+	if err != nil {
+		metadata.ExecutionOutcome = "failure"
+		metadata.ResultCount = nil
 	}
 	if recorder, ok := context.(interface{ RecordExecutionMetadata(ds.ExecutionMetadata) }); ok {
 		recorder.RecordExecutionMetadata(metadata)
+	}
+	if err != nil {
+		return nil, &SqlExecutorError{TransportError: err}
 	}
 
 	return &ds.QueryResult{
@@ -321,12 +330,9 @@ func (e *SqlDataServiceExecutor) Mutate(context stdcontext.Context, request ds.M
 
 	start := time.Now()
 	affectedRows, err := e.Transport.ExecuteSql(context, compiled)
-	if err != nil {
-		return nil, &SqlExecutorError{TransportError: err}
-	}
 	end := time.Now()
 
-	debugQuery := compiled.DebugSql(e.Dialect.Kind())
+	debugQuery := "" // Safety projection renders before any log sink sees values.
 
 	var traceChain []*core.TraceNode
 	if len(request.TraceChain()) > 0 {
@@ -354,22 +360,32 @@ func (e *SqlDataServiceExecutor) Mutate(context stdcontext.Context, request ds.M
 		core.NewTypedTraceNode("provider", provider, provider),
 		core.NewTypedTraceNode("sql", strings.ToLower(string(operation)), strings.ToLower(string(operation))))
 	metadata := ds.ExecutionMetadata{
-		Backend:          provider,
-		Operation:        operation,
-		ParameterizedSQL: compiled.Sql,
-		Parameters:       append([]core.Value(nil), compiled.Params...),
-		StartedAt:        start,
-		EndedAt:          end,
-		AffectedRows:     &affectedRows,
-		ResultCount:      nil,
-		TraceChain:       tracePath,
-		Comment:          comment,
-		AuditReason:      comment,
-		BackendRequestId: nil,
-		DebugQuery:       &debugQuery,
+		Backend:              provider,
+		Operation:            operation,
+		ParameterizedSQL:     compiled.Sql,
+		Parameters:           append([]core.Value(nil), compiled.Params...),
+		ParameterLogPolicies: append([]string(nil), compiled.ParameterLogPolicies...),
+		GeneratedSQL:         compiled.GeneratedSQL,
+		StartedAt:            start,
+		EndedAt:              end,
+		AffectedRows:         &affectedRows,
+		ResultCount:          nil,
+		TraceChain:           tracePath,
+		Comment:              comment,
+		AuditReason:          comment,
+		BackendRequestId:     nil,
+		DebugQuery:           &debugQuery,
+	}
+	metadata.ExecutionOutcome = "success"
+	if err != nil {
+		metadata.ExecutionOutcome = "failure"
+		metadata.AffectedRows = nil
 	}
 	if recorder, ok := context.(interface{ RecordExecutionMetadata(ds.ExecutionMetadata) }); ok {
 		recorder.RecordExecutionMetadata(metadata)
+	}
+	if err != nil {
+		return nil, &SqlExecutorError{TransportError: err}
 	}
 
 	result := &ds.MutationResult{
@@ -396,7 +412,11 @@ func (e *SqlDataServiceExecutor) Mutate(context stdcontext.Context, request ds.M
 		if compileErr != nil {
 			return nil, &SqlExecutorError{CompileError: compileErr}
 		}
+		readStart := time.Now()
 		rows, fetchErr := e.Transport.FetchAllSql(context, readback)
+		if fetchErr != nil || len(rows) != 1 {
+			recordMutationReadback(context, readback, metadata, readStart, len(rows), fetchErr)
+		}
 		if fetchErr != nil {
 			return nil, &SqlExecutorError{TransportError: fetchErr}
 		}
@@ -415,7 +435,7 @@ func (e *SqlDataServiceExecutor) Mutate(context stdcontext.Context, request ds.M
 	return result, nil
 }
 
-func (e *SqlDataServiceExecutor) QueryStream(context stdcontext.Context, request *ds.QueryRequest, chunkSize int, yield func(*ds.StreamChunk) error) error {
+func (e *SqlDataServiceExecutor) QueryStream(context stdcontext.Context, request *ds.QueryRequest, chunkSize int, yield func(*ds.StreamChunk) error) (streamErr error) {
 	if chunkSize <= 0 {
 		return fmt.Errorf("chunk size must be positive")
 	}
@@ -430,15 +450,51 @@ func (e *SqlDataServiceExecutor) QueryStream(context stdcontext.Context, request
 	if entityDesc == nil {
 		return fmt.Errorf("unknown entity %s", request.Query.Entity)
 	}
+	if err := e.resolveSubqueryDescriptors(request.Query); err != nil {
+		return err
+	}
 	compiled, err := (&DefaultSqlDialect{Dialect: e.Dialect}).CompileSelect(entityDesc, request.Query)
 	if err != nil {
+		return err
+	}
+	startedAt := time.Now()
+	delivered := 0
+	consumerStopped := false
+	terminated := false
+	defer func() {
+		outcome := "success"
+		if streamErr != nil || !terminated {
+			outcome = "failure"
+		}
+		if consumerStopped || errors.Is(streamErr, stdcontext.Canceled) || errors.Is(streamErr, stdcontext.DeadlineExceeded) {
+			outcome = "cancelled"
+		}
+		provider := e.Dialect.Kind().String()
+		trace := []*core.TraceNode{core.NewTypedTraceNode("operation", "query", "query"), core.NewTypedTraceNode("request", request.Query.Entity, request.Query.Entity)}
+		trace = append(trace, canonicalSQLTraceFrames(request.TraceChain)...)
+		trace = append(trace, core.NewTypedTraceNode("provider", provider, provider), core.NewTypedTraceNode("sql", "select", "select"))
+		metadata := ds.ExecutionMetadata{
+			ExecutionOutcome: outcome, Backend: provider, Operation: ds.OpQuery,
+			ParameterizedSQL: compiled.Sql, Parameters: append([]core.Value(nil), compiled.Params...),
+			ParameterLogPolicies: append([]string(nil), compiled.ParameterLogPolicies...), GeneratedSQL: compiled.GeneratedSQL,
+			StartedAt: startedAt, EndedAt: time.Now(), ResultCount: &delivered,
+			TraceChain: trace, Comment: request.Comment, Purpose: request.Purpose,
+		}
+		if recorder, ok := context.(interface{ RecordExecutionMetadata(ds.ExecutionMetadata) }); ok {
+			recorder.RecordExecutionMetadata(metadata)
+		}
+	}()
+	deliver := func(chunk *ds.StreamChunk) error {
+		delivered += len(chunk.Rows)
+		err := yield(chunk)
+		consumerStopped = err != nil
 		return err
 	}
 	chunkIndex := 0
 	var pending []core.Record
 	err = transport.StreamSql(context, compiled, chunkSize, func(rows []core.Record) error {
 		if pending != nil {
-			if err := yield(&ds.StreamChunk{Rows: pending, ChunkIndex: chunkIndex, IsLast: false}); err != nil {
+			if err := deliver(&ds.StreamChunk{Rows: pending, ChunkIndex: chunkIndex, IsLast: false}); err != nil {
 				return err
 			}
 			chunkIndex++
@@ -447,12 +503,14 @@ func (e *SqlDataServiceExecutor) QueryStream(context stdcontext.Context, request
 		return nil
 	})
 	if err != nil {
+		terminated = true
 		return err
 	}
 	if pending != nil {
-		return yield(&ds.StreamChunk{Rows: pending, ChunkIndex: chunkIndex, IsLast: true})
+		err = deliver(&ds.StreamChunk{Rows: pending, ChunkIndex: chunkIndex, IsLast: true})
 	}
-	return nil
+	terminated = true
+	return err
 }
 
 func (e *SqlDataServiceExecutor) Begin(context stdcontext.Context) (ds.Transaction, error) {

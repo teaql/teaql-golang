@@ -4,10 +4,13 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"regexp"
 	"sort"
 	"strings"
 	"sync"
-	"unicode"
+
+	"github.com/teaql/teaql-golang/internal/logprivacy"
+	"github.com/teaql/teaql-golang/sql"
 
 	"github.com/teaql/teaql-golang/core"
 	"github.com/teaql/teaql-golang/data_service"
@@ -28,26 +31,15 @@ func plaintextLogsEnabled() bool {
 	return enabled
 }
 
-func credentialLogName(name string) bool {
-	name = strings.Map(func(r rune) rune {
-		if unicode.IsLetter(r) || unicode.IsDigit(r) {
-			return unicode.ToLower(r)
-		}
-		return -1
-	}, name)
-	for _, word := range []string{"password", "passwd", "passphrase", "privatekey", "secret", "accesstoken", "refreshtoken", "idtoken", "apikey", "authorization", "credential", "sessiontoken", "magiclinktoken"} {
-		if strings.Contains(name, word) {
-			return true
-		}
-	}
-	return false
-}
+func credentialLogName(name string) bool { return logprivacy.CredentialName(name) }
 
 func logValueStrings(value any) []string {
 	switch v := value.(type) {
 	case core.Value:
 		return logValueStrings(v.V)
 	case nil:
+		return nil
+	case core.DataType: // typed SQL NULL carries a type tag, not a business value
 		return nil
 	case map[string]any:
 		var result []string
@@ -114,21 +106,157 @@ func logHasCredentials(value any) bool {
 	return false
 }
 
-func projectedSQLMetadata(metadata data_service.ExecutionMetadata, allow bool) data_service.ExecutionMetadata {
-	// No parameter-to-field provenance: credential-bearing statements are
-	// entirely redacted, even when ordinary plaintext debugging is enabled.
-	credentials := credentialLogName(metadata.ParameterizedSQL) || credentialLogName(sqlLogText(metadata.DebugQuery)) || credentialLogName(fmt.Sprint(metadata.Parameters))
-	if allow && !credentials {
-		return metadata
+func cloneLogValue(value core.Value) core.Value {
+	switch v := value.V.(type) {
+	case []core.Value:
+		values := make([]core.Value, len(v))
+		for i, child := range v {
+			values[i] = cloneLogValue(child)
+		}
+		value.V = values
+	case core.Record:
+		values := make(core.Record, len(v))
+		for key, child := range v {
+			values[key] = cloneLogValue(child)
+		}
+		value.V = values
+	case []byte:
+		value.V = append([]byte(nil), v...)
+	case map[string]any:
+		values := make(map[string]any, len(v))
+		for key, child := range v {
+			values[key] = cloneLogValue(core.Value{V: child}).V
+		}
+		value.V = values
+	case []any:
+		values := make([]any, len(v))
+		for i, child := range v {
+			values[i] = cloneLogValue(core.Value{V: child}).V
+		}
+		value.V = values
 	}
-	secrets := logValueStrings(metadata.Parameters)
+	return value
+}
+
+func businessMaskValue(value core.Value) core.Value {
+	if value.V == nil {
+		return core.ValNull()
+	}
+	if _, typedNull := value.V.(core.DataType); typedNull {
+		return value
+	}
+	switch v := value.V.(type) {
+	case []core.Value:
+		values := make([]core.Value, len(v))
+		for i, child := range v {
+			values[i] = businessMaskValue(child)
+		}
+		value.V = values
+		return value
+	case core.Record, map[string]any, []any:
+		return core.ValText("[REDACTED]")
+	}
+	return core.ValText(MaskAuditValue(fmt.Sprint(value.V)))
+}
+
+var numberedLogBind = regexp.MustCompile(`\$[0-9]+`)
+var unsafeLogLiteral = regexp.MustCompile("['\"`$]|--|/\\*|\\b[0-9]+\\b|:[A-Za-z_]")
+
+func bindingLogPolicy(metadata data_service.ExecutionMetadata, index int) string {
+	if len(metadata.MaskedParameters) != 0 && len(metadata.MaskedParameters) != len(metadata.Parameters) {
+		return "unknown"
+	}
+	valid := metadata.ParameterLogPolicies != nil && len(metadata.ParameterLogPolicies) == len(metadata.Parameters)
+	policy := "unknown"
+	if valid {
+		policy = metadata.ParameterLogPolicies[index]
+	}
+	if credentialLogName(metadata.ParameterizedSQL) && (!metadata.GeneratedSQL || !valid) || logHasCredentials(metadata.Parameters[index]) {
+		return "credential"
+	}
+	switch policy {
+	case "plain", "masked", "credential":
+		return policy
+	default:
+		return "unknown"
+	}
+}
+
+func bindingIsMasked(policy string, allow bool) bool {
+	return policy == "credential" || policy == "unknown" || (!allow && policy != "plain")
+}
+
+func projectedSQLMetadata(metadata data_service.ExecutionMetadata, allow bool) data_service.ExecutionMetadata {
+	original := metadata
+	// Safe projections never become raw values again on a later opt-in.
+	allow = allow && metadata.LogMode != "masked"
+	debugSource := metadata.LogMode == "debug-plaintext" || (metadata.DebugQuery != nil && strings.HasPrefix(*metadata.DebugQuery, "-- TeaQL DEBUG PLAINTEXT; EXPLICIT OPT-IN"))
+	var remembered data_service.ExecutionMetadata
+	var hasRemembered bool
+	if debugSource {
+		remembered, hasRemembered = rememberedSQLProjection(metadata)
+	}
+	if !allow && hasRemembered {
+		return remembered
+	}
+	orphanedDebug := debugSource && !allow && !hasRemembered
+	flagsValid := len(metadata.MaskedParameters) == 0 || len(metadata.MaskedParameters) == len(metadata.Parameters)
+	policiesValid := metadata.ParameterLogPolicies == nil || len(metadata.ParameterLogPolicies) == len(metadata.Parameters)
+	// Generated bindings classify credentials individually. A credential column in
+	// the SELECT list must not override unrelated ordinary/masked field policies.
+	credentials := credentialLogName(metadata.ParameterizedSQL) &&
+		(!metadata.GeneratedSQL || metadata.ParameterLogPolicies == nil || !policiesValid)
+	policies := make([]string, len(metadata.Parameters))
+	masked := make([]bool, len(policies))
+	values := make([]core.Value, len(policies))
+	var secrets []string
+	for i, value := range metadata.Parameters {
+		policy := bindingLogPolicy(metadata, i)
+		policies[i] = policy
+		masked[i] = bindingIsMasked(policy, allow)
+		if masked[i] {
+			secrets = append(secrets, logValueStrings(value)...)
+			_, typedNull := value.V.(core.DataType)
+			if value.V == nil || typedNull {
+				values[i] = value
+			} else if policy == "masked" {
+				values[i] = businessMaskValue(value)
+			} else {
+				values[i] = core.ValText("[REDACTED]")
+			}
+		} else {
+			values[i] = cloneLogValue(value)
+		}
+	}
+	// Readback binds only an ID, but its inherited intent can mention sensitive
+	// write values. Reuse precisely the same policy resolution for those values.
+	if source, ok := logprivacy.ReadIntentSource(metadata.InheritedIntent).(data_service.ExecutionMetadata); ok {
+		for i, value := range source.Parameters {
+			if bindingIsMasked(bindingLogPolicy(source, i), allow && source.LogMode != "masked") {
+				secrets = append(secrets, logValueStrings(value)...)
+			}
+		}
+	}
+	intentSecrets := append([]string(nil), secrets...)
+	if targetID, ok := logprivacy.ReadIntentSource(metadata.IntentTargetID).(core.Value); ok {
+		intentSecrets = append(intentSecrets, logValueStrings(targetID)...)
+	}
+	metadata.InheritedIntent = logprivacy.IntentSource{}
+	metadata.IntentTargetID = logprivacy.IntentSource{}
+	metadata.LogProjection = logprivacy.ProjectionState{}
 	sort.Slice(secrets, func(i, j int) bool { return len(secrets[i]) > len(secrets[j]) })
-	scrub := func(s string) string {
-		for _, v := range secrets {
+	sort.Slice(intentSecrets, func(i, j int) bool { return len(intentSecrets[i]) > len(intentSecrets[j]) })
+	scrubWith := func(s string, values []string) string {
+		if orphanedDebug && s != "" {
+			return "[REDACTED]"
+		}
+		for _, v := range values {
 			s = strings.ReplaceAll(s, v, "[REDACTED]")
 		}
 		return s
 	}
+	scrub := func(s string) string { return scrubWith(s, secrets) }
+	scrubIntent := func(s string) string { return scrubWith(s, intentSecrets) }
 	copyText := func(s *string) *string {
 		if s == nil {
 			return nil
@@ -136,24 +264,89 @@ func projectedSQLMetadata(metadata data_service.ExecutionMetadata, allow bool) d
 		value := scrub(*s)
 		return &value
 	}
-	sql := metadata.ParameterizedSQL
-	if strings.ContainsAny(sql, "'\"`$") || strings.Contains(sql, "--") || strings.Contains(sql, "/*") || strings.IndexFunc(sql, unicode.IsDigit) >= 0 {
-		sql = "[REDACTED SQL; NOT REPLAYABLE]"
+	copyIntent := func(s *string) *string {
+		if s == nil {
+			return nil
+		}
+		value := scrubIntent(*s)
+		return &value
 	}
-	metadata.ParameterizedSQL = scrub(sql)
-	metadata.Comment, metadata.Purpose, metadata.AuditReason = copyText(metadata.Comment), copyText(metadata.Purpose), copyText(metadata.AuditReason)
+	unsafe := (!allow || credentials) && !metadata.GeneratedSQL && unsafeLogLiteral.MatchString(numberedLogBind.ReplaceAllString(metadata.ParameterizedSQL, "?"))
+	omitted := "[REDACTED SQL; NOT REPLAYABLE]"
+	rendered := omitted
+	previousOmission := metadata.OmissionReason
+	metadata.OmissionReason = ""
+	if previousOmission != "" {
+		switch previousOmission {
+		case "untrusted-literal-sql", "policy-count-mismatch", "mask-count-mismatch", "unsupported-or-mismatched-bindings", "unavailable-sql":
+			metadata.OmissionReason = previousOmission
+		default:
+			metadata.OmissionReason = "unavailable-sql"
+		}
+	} else if unsafe {
+		metadata.OmissionReason = "untrusted-literal-sql"
+	} else if !policiesValid {
+		metadata.OmissionReason = "policy-count-mismatch"
+	} else if !flagsValid {
+		metadata.OmissionReason = "mask-count-mismatch"
+	} else {
+		kind := sql.DatabaseKindSQLite
+		if metadata.Backend == "postgresql" || (metadata.Backend == "" && numberedLogBind.MatchString(metadata.ParameterizedSQL)) {
+			kind = sql.DatabaseKindPostgreSQL
+		}
+		if metadata.Backend == "mysql" {
+			kind = sql.DatabaseKindMySQL
+		}
+		value, err := sql.RenderSQLLog(metadata.ParameterizedSQL, values, masked, kind)
+		if err != nil {
+			metadata.OmissionReason = "unsupported-or-mismatched-bindings"
+		} else {
+			prefix := "-- TeaQL MASKED; NOT REPLAYABLE\n"
+			if allow {
+				prefix = "-- TeaQL DEBUG PLAINTEXT; EXPLICIT OPT-IN\n"
+				for _, flag := range masked {
+					if flag {
+						prefix = "-- TeaQL DEBUG PLAINTEXT; EXPLICIT OPT-IN; PARTIALLY MASKED; NOT REPLAYABLE\n"
+						break
+					}
+				}
+			}
+			rendered = prefix + value
+		}
+	}
+	if unsafe {
+		metadata.ParameterizedSQL = omitted
+	} else if !metadata.GeneratedSQL {
+		// Trusted compiled SQL contains bindings, not their values. Substring
+		// scrubbing here could replace the digit 1 in LIMIT 10000 or a table name
+		// that happens to equal a sensitive value, corrupting repeat projection.
+		metadata.ParameterizedSQL = scrub(metadata.ParameterizedSQL)
+	}
+	metadata.Comment, metadata.Purpose, metadata.AuditReason = copyIntent(metadata.Comment), copyIntent(metadata.Purpose), copyIntent(metadata.AuditReason)
+	metadata.BackendRequestId = copyText(metadata.BackendRequestId)
 	trace := make([]*core.TraceNode, len(metadata.TraceChain))
 	for i, node := range metadata.TraceChain {
 		if node != nil {
 			cloned := *node
-			cloned.Comment = scrub(node.Comment)
+			cloned.Comment = scrubIntent(node.Comment)
+			cloned.Name = scrubIntent(node.Name)
+			cloned.EntityType = scrubIntent(node.EntityType)
+			cloned.Kind = scrubIntent(node.Kind)
 			trace[i] = &cloned
 		}
 	}
 	metadata.TraceChain = trace
-	if len(metadata.Parameters) > 0 {
-		metadata.ParameterCount = len(metadata.Parameters)
+	metadata.ParameterCount = len(metadata.Parameters)
+	metadata.Parameters = values
+	metadata.ParameterLogPolicies, metadata.MaskedParameters = policies, masked
+	metadata.DebugQuery = &rendered
+	metadata.LogMode = "masked"
+	if allow {
+		metadata.LogMode = "debug-plaintext"
+		if !hasRemembered {
+			remembered = projectedSQLMetadata(original, false)
+		}
+		metadata = rememberSQLProjection(metadata, remembered)
 	}
-	metadata.Parameters, metadata.DebugQuery = nil, nil
 	return metadata
 }

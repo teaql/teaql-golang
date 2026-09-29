@@ -8,6 +8,7 @@ import (
 
 	"github.com/teaql/teaql-golang/core"
 	"github.com/teaql/teaql-golang/data_service"
+	"github.com/teaql/teaql-golang/internal/logprivacy"
 	teaql_sql "github.com/teaql/teaql-golang/sql"
 )
 
@@ -67,12 +68,9 @@ func (e *SqlDataServiceExecutor) Query(context stdcontext.Context, request *data
 
 	startedAt := time.Now()
 	records, err := e.transport.FetchAllSql(context, compiled)
-	if err != nil {
-		return nil, err
-	}
 
 	resultCount := len(records)
-	debugQuery := compiled.DebugSql(e.dialect.Dialect.Kind())
+	debugQuery := "" // Safety projection, not the executor, renders log literals.
 	tracePath := []*core.TraceNode{
 		core.NewTypedTraceNode("operation", "query", "query"),
 		core.NewTypedTraceNode("request", request.Query.Entity, request.Query.Entity),
@@ -85,11 +83,21 @@ func (e *SqlDataServiceExecutor) Query(context stdcontext.Context, request *data
 	metadata := data_service.ExecutionMetadata{
 		Backend: provider, Operation: data_service.OpQuery,
 		ParameterizedSQL: compiled.Sql, Parameters: append([]core.Value(nil), compiled.Params...),
+		ParameterLogPolicies: append([]string(nil), compiled.ParameterLogPolicies...), GeneratedSQL: compiled.GeneratedSQL,
 		StartedAt: startedAt, EndedAt: time.Now(), ResultCount: &resultCount,
 		TraceChain: tracePath, Comment: request.Comment, Purpose: request.Purpose, DebugQuery: &debugQuery,
+		InheritedIntent: request.InheritedIntent,
+	}
+	metadata.ExecutionOutcome = "success"
+	if err != nil {
+		metadata.ExecutionOutcome = "failure"
+		metadata.ResultCount = nil
 	}
 	if userContext, ok := UserContextFrom(context); ok {
 		userContext.RecordExecutionMetadata(metadata)
+	}
+	if err != nil {
+		return nil, err
 	}
 	return &data_service.QueryResult{Rows: records, Metadata: metadata}, nil
 }
@@ -142,9 +150,9 @@ func (e *SqlDataServiceExecutor) Mutate(context stdcontext.Context, request data
 	affected, err := e.transport.ExecuteSql(context, compiled)
 	if err != nil {
 		providerScope.Failure(RuntimeErrorType(err))
-		return nil, err
+	} else {
+		providerScope.Success(map[string]RuntimeAttributeValue{"teaql.result.cardinality": affected})
 	}
-	providerScope.Success(map[string]RuntimeAttributeValue{"teaql.result.cardinality": affected})
 
 	operation := data_service.OpInsert
 	switch request.(type) {
@@ -153,7 +161,7 @@ func (e *SqlDataServiceExecutor) Mutate(context stdcontext.Context, request data
 	case *data_service.DeleteMutation:
 		operation = data_service.OpDelete
 	}
-	debugQuery := compiled.DebugSql(e.dialect.Dialect.Kind())
+	debugQuery := "" // Safety projection, not the executor, renders log literals.
 	entityName := "unknown"
 	switch req := request.(type) {
 	case *data_service.InsertMutation:
@@ -175,11 +183,38 @@ func (e *SqlDataServiceExecutor) Mutate(context stdcontext.Context, request data
 	metadata := data_service.ExecutionMetadata{
 		Backend: provider, Operation: operation,
 		ParameterizedSQL: compiled.Sql, Parameters: append([]core.Value(nil), compiled.Params...),
+		ParameterLogPolicies: append([]string(nil), compiled.ParameterLogPolicies...), GeneratedSQL: compiled.GeneratedSQL,
 		StartedAt: startedAt, EndedAt: time.Now(), AffectedRows: &affected,
 		TraceChain: tracePath, Comment: request.Comment(), AuditReason: request.Comment(), DebugQuery: &debugQuery,
 	}
+	switch req := request.(type) {
+	case *data_service.InsertMutation:
+		entity := e.metadata.Entity(req.Cmd.Entity)
+		if entity != nil {
+			for _, property := range entity.Properties {
+				if property.IsId {
+					if id, ok := req.Cmd.Values[property.Name]; ok {
+						metadata.IntentTargetID = logprivacy.NewIntentSource(id)
+					}
+					break
+				}
+			}
+		}
+	case *data_service.UpdateMutation:
+		metadata.IntentTargetID = logprivacy.NewIntentSource(req.Cmd.Id)
+	case *data_service.DeleteMutation:
+		metadata.IntentTargetID = logprivacy.NewIntentSource(req.Cmd.Id)
+	}
+	metadata.ExecutionOutcome = "success"
+	if err != nil {
+		metadata.ExecutionOutcome = "failure"
+		metadata.AffectedRows = nil
+	}
 	if userCtx != nil {
 		userCtx.RecordExecutionMetadata(metadata)
+	}
+	if err != nil {
+		return nil, err
 	}
 	result = &data_service.MutationResult{AffectedRows: affected, Metadata: metadata}
 	if userCtx != nil {

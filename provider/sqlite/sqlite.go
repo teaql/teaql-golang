@@ -4,7 +4,6 @@ import (
 	stdcontext "context"
 	"database/sql"
 	"fmt"
-	"log"
 	"strings"
 	"time"
 
@@ -182,7 +181,6 @@ func (e *SqliteMutationExecutor) FetchAllSql(context stdcontext.Context, query *
 	if err != nil {
 		return nil, err
 	}
-	log.Printf("TeaQL SQLite query: parameterCount=%d; SQL details available through governed runtime diagnostics", len(params))
 	rows, err := e.db.QueryContext(context, query.SqlWithComment(), params...)
 	if err != nil {
 		return nil, err
@@ -271,7 +269,6 @@ func (e *SqliteMutationExecutor) ExecuteSql(context stdcontext.Context, query *t
 	if err != nil {
 		return 0, err
 	}
-	log.Printf("TeaQL SQLite execute: parameterCount=%d; SQL details available through governed runtime diagnostics", len(params))
 	res, err := e.db.ExecContext(context, query.SqlWithComment(), params...)
 	if err != nil {
 		return 0, err
@@ -300,7 +297,6 @@ func (e *SqliteTransactionExecutor) FetchAllSql(context stdcontext.Context, quer
 	if err != nil {
 		return nil, err
 	}
-	log.Printf("TeaQL SQLite transaction query: parameterCount=%d; SQL details available through governed runtime diagnostics", len(params))
 	rows, err := e.tx.QueryContext(context, query.SqlWithComment(), params...)
 	if err != nil {
 		return nil, err
@@ -340,7 +336,6 @@ func (e *SqliteTransactionExecutor) ExecuteSql(context stdcontext.Context, query
 	if err != nil {
 		return 0, err
 	}
-	log.Printf("TeaQL SQLite transaction execute: parameterCount=%d; SQL details available through governed runtime diagnostics", len(params))
 	res, err := e.tx.ExecContext(context, query.SqlWithComment(), params...)
 	if err != nil {
 		return 0, err

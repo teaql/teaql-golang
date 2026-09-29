@@ -1,3 +1,5 @@
+
+
 package product
 
 import (
@@ -19,8 +21,10 @@ var (
 
 type ProductRequest struct {
 	Query       *core.SelectQuery
+	queryOptions *core.QueryOptions
 	purposeText string
 	commentText string
+	relationFactories map[string]func() core.Entity
 }
 
 type ExecutableProductRequest struct {
@@ -28,13 +32,31 @@ type ExecutableProductRequest struct {
 }
 
 func NewProductRequest() *ProductRequest {
-	return &ProductRequest{
-		Query: core.NewSelectQuery("Product"),
+	r := &ProductRequest{
+		Query: core.NewSelectQuery("product"),
+		queryOptions: core.NewQueryOptions(),
+		relationFactories: make(map[string]func() core.Entity),
 	}
+	r.Query.AndFilter(core.ExprGte("version", core.ValI64(1)))
+	return r
+}
+
+func NewProductMinimalRequest() *ProductRequest {
+	r := NewProductRequest()
+	r.Query.Projects("id", "version")
+	return r
 }
 
 func (r *ProductRequest) GetQuery() *core.SelectQuery {
 	return r.Query
+}
+
+func (r *ProductRequest) GetEntityDescriptor() *core.EntityDescriptor {
+	return NewProduct().EntityDescriptor()
+}
+
+func (r *ProductRequest) NewRelationEntity() core.Entity {
+	return NewProduct()
 }
 
 func (r *ProductRequest) Comment(comment string) *ProductRequest {
@@ -43,11 +65,13 @@ func (r *ProductRequest) Comment(comment string) *ProductRequest {
 }
 
 func (r *ProductRequest) Purpose(purpose string) *ExecutableProductRequest {
-	if strings.TrimSpace(r.commentText) == "" {
-		panic("Purpose() requires a non-empty Comment() set earlier on the request")
-	}
 	r.purposeText = purpose
 	return &ExecutableProductRequest{request: r}
+}
+
+func (r *ExecutableProductRequest) Comment(comment string) *ExecutableProductRequest {
+	r.request.commentText = comment
+	return r
 }
 
 func (r *ProductRequest) Limit(limit uint64) *ProductRequest {
@@ -57,6 +81,65 @@ func (r *ProductRequest) Limit(limit uint64) *ProductRequest {
 
 func (r *ProductRequest) Offset(offset uint64) *ProductRequest {
 	r.Query.Offset(offset)
+	return r
+}
+
+func (r *ProductRequest) OptimizeForContinuousPageFetch() *ProductRequest {
+	r.Query.OptimizeForContinuousPageFetch()
+	return r
+}
+
+func (r *ProductRequest) OptimizeForContinuousPageFetchWith(namespace string, ttlSeconds uint64) *ProductRequest {
+	r.Query.OptimizeForContinuousPageFetchWith(namespace, ttlSeconds)
+	return r
+}
+
+func (r *ProductRequest) OptimizePaginationWithIDSet() *ProductRequest {
+	r.Query.OptimizePaginationWithIDSet()
+	return r
+}
+
+func (r *ProductRequest) OptimizePaginationWithIDSetConfig(namespace string, ttlSeconds, maxIDs uint64) *ProductRequest {
+	r.Query.OptimizePaginationWithIDSetConfig(namespace, ttlSeconds, maxIDs)
+	return r
+}
+
+func (r *ProductRequest) TopNProbeParentThreshold(threshold uint64) *ProductRequest {
+	r.Query.TopNProbeParentThreshold(threshold)
+	return r
+}
+
+func removeProductVersionFilter(expr *core.Expr) *core.Expr {
+	if expr == nil { return nil }
+	if expr.Type == core.ExprTypeBinary && expr.Left != nil &&
+		expr.Left.Type == core.ExprTypeColumn && expr.Left.Column == "version" {
+		return nil
+	}
+	if expr.Type != core.ExprTypeAnd { return expr }
+	parts := make([]*core.Expr, 0, len(expr.Parts))
+	for _, part := range expr.Parts {
+		if kept := removeProductVersionFilter(part); kept != nil {
+			parts = append(parts, kept)
+		}
+	}
+	if len(parts) == 0 { return nil }
+	if len(parts) == 1 { return parts[0] }
+	return core.ExprAndNode(parts...)
+}
+
+func (r *ProductRequest) WithDeletedRows() *ProductRequest {
+	r.Query.Filter = removeProductVersionFilter(r.Query.Filter)
+	return r
+}
+
+func (r *ProductRequest) DeletedRowsOnly() *ProductRequest {
+	r.WithDeletedRows()
+	r.Query.AndFilter(core.ExprLte("version", core.ValI64(-1)))
+	return r
+}
+
+func (r *ProductRequest) SelectId() *ProductRequest {
+	r.Query.Project("id")
 	return r
 }
 
@@ -100,12 +183,32 @@ func (r *ProductRequest) WithIdLessThanOrEqualTo(value uint64) *ProductRequest {
 	r.Query.AndFilter(core.ExprLte("id", core.ValU64(value)))
 	return r
 }
+func (r *ProductRequest) WithIdBetween(lower uint64, upper uint64) *ProductRequest {
+	value := lower
+	from := core.ValU64(value)
+	value = upper
+	to := core.ValU64(value)
+	r.Query.AndFilter(core.ExprBetweenNode("id", from, to))
+	return r
+}
+func (r *ProductRequest) WithIdIsKnown() *ProductRequest {
+	r.Query.AndFilter(core.ExprIsNotNullNode("id"))
+	return r
+}
+func (r *ProductRequest) WithIdIsUnknown() *ProductRequest {
+	r.Query.AndFilter(core.ExprIsNullNode("id"))
+	return r
+}
 func (r *ProductRequest) OrderByIdAsc() *ProductRequest {
 	r.Query.OrderAsc("id")
 	return r
 }
 func (r *ProductRequest) OrderByIdDesc() *ProductRequest {
 	r.Query.OrderDesc("id")
+	return r
+}
+func (r *ProductRequest) SelectName() *ProductRequest {
+	r.Query.Project("name")
 	return r
 }
 
@@ -149,6 +252,22 @@ func (r *ProductRequest) WithNameLessThanOrEqualTo(value string) *ProductRequest
 	r.Query.AndFilter(core.ExprLte("name", core.ValText(value)))
 	return r
 }
+func (r *ProductRequest) WithNameBetween(lower string, upper string) *ProductRequest {
+	value := lower
+	from := core.ValText(value)
+	value = upper
+	to := core.ValText(value)
+	r.Query.AndFilter(core.ExprBetweenNode("name", from, to))
+	return r
+}
+func (r *ProductRequest) WithNameIsKnown() *ProductRequest {
+	r.Query.AndFilter(core.ExprIsNotNullNode("name"))
+	return r
+}
+func (r *ProductRequest) WithNameIsUnknown() *ProductRequest {
+	r.Query.AndFilter(core.ExprIsNullNode("name"))
+	return r
+}
 func (r *ProductRequest) WithNameContaining(term string) *ProductRequest {
 	r.Query.AndFilter(core.ExprContain("name", term))
 	return r
@@ -161,8 +280,20 @@ func (r *ProductRequest) WithNameStartingWith(term string) *ProductRequest {
 	r.Query.AndFilter(core.ExprBeginWith("name", term))
 	return r
 }
+func (r *ProductRequest) WithNameNotStartingWith(term string) *ProductRequest {
+	r.Query.AndFilter(core.ExprNotBeginWith("name", term))
+	return r
+}
 func (r *ProductRequest) WithNameEndingWith(term string) *ProductRequest {
 	r.Query.AndFilter(core.ExprEndWith("name", term))
+	return r
+}
+func (r *ProductRequest) WithNameNotEndingWith(term string) *ProductRequest {
+	r.Query.AndFilter(core.ExprNotEndWith("name", term))
+	return r
+}
+func (r *ProductRequest) WithNameSoundingLike(term string) *ProductRequest {
+	r.Query.AndFilter(core.ExprSoundLike("name", core.ValText(term)))
 	return r
 }
 func (r *ProductRequest) OrderByNameAsc() *ProductRequest {
@@ -171,6 +302,10 @@ func (r *ProductRequest) OrderByNameAsc() *ProductRequest {
 }
 func (r *ProductRequest) OrderByNameDesc() *ProductRequest {
 	r.Query.OrderDesc("name")
+	return r
+}
+func (r *ProductRequest) SelectSku() *ProductRequest {
+	r.Query.Project("sku")
 	return r
 }
 
@@ -214,6 +349,22 @@ func (r *ProductRequest) WithSkuLessThanOrEqualTo(value string) *ProductRequest 
 	r.Query.AndFilter(core.ExprLte("sku", core.ValText(value)))
 	return r
 }
+func (r *ProductRequest) WithSkuBetween(lower string, upper string) *ProductRequest {
+	value := lower
+	from := core.ValText(value)
+	value = upper
+	to := core.ValText(value)
+	r.Query.AndFilter(core.ExprBetweenNode("sku", from, to))
+	return r
+}
+func (r *ProductRequest) WithSkuIsKnown() *ProductRequest {
+	r.Query.AndFilter(core.ExprIsNotNullNode("sku"))
+	return r
+}
+func (r *ProductRequest) WithSkuIsUnknown() *ProductRequest {
+	r.Query.AndFilter(core.ExprIsNullNode("sku"))
+	return r
+}
 func (r *ProductRequest) WithSkuContaining(term string) *ProductRequest {
 	r.Query.AndFilter(core.ExprContain("sku", term))
 	return r
@@ -226,8 +377,20 @@ func (r *ProductRequest) WithSkuStartingWith(term string) *ProductRequest {
 	r.Query.AndFilter(core.ExprBeginWith("sku", term))
 	return r
 }
+func (r *ProductRequest) WithSkuNotStartingWith(term string) *ProductRequest {
+	r.Query.AndFilter(core.ExprNotBeginWith("sku", term))
+	return r
+}
 func (r *ProductRequest) WithSkuEndingWith(term string) *ProductRequest {
 	r.Query.AndFilter(core.ExprEndWith("sku", term))
+	return r
+}
+func (r *ProductRequest) WithSkuNotEndingWith(term string) *ProductRequest {
+	r.Query.AndFilter(core.ExprNotEndWith("sku", term))
+	return r
+}
+func (r *ProductRequest) WithSkuSoundingLike(term string) *ProductRequest {
+	r.Query.AndFilter(core.ExprSoundLike("sku", core.ValText(term)))
 	return r
 }
 func (r *ProductRequest) OrderBySkuAsc() *ProductRequest {
@@ -238,45 +401,65 @@ func (r *ProductRequest) OrderBySkuDesc() *ProductRequest {
 	r.Query.OrderDesc("sku")
 	return r
 }
+func (r *ProductRequest) SelectImageUrl() *ProductRequest {
+	r.Query.Project("image_url")
+	return r
+}
 
-func (r *ProductRequest) WithImageUrlIs(value string) *ProductRequest {
-	r.Query.AndFilter(core.ExprEq("image_url", core.ValText(value)))
+func (r *ProductRequest) WithImageUrlIs(value *string) *ProductRequest {
+	r.Query.AndFilter(core.ExprEq("image_url", func() core.Value { if value == nil { return core.ValNull() }; return core.ValText((*value)) }()))
 	return r
 }
-func (r *ProductRequest) WithImageUrlIsNot(value string) *ProductRequest {
-	r.Query.AndFilter(core.ExprNe("image_url", core.ValText(value)))
+func (r *ProductRequest) WithImageUrlIsNot(value *string) *ProductRequest {
+	r.Query.AndFilter(core.ExprNe("image_url", func() core.Value { if value == nil { return core.ValNull() }; return core.ValText((*value)) }()))
 	return r
 }
-func (r *ProductRequest) WithImageUrlIn(values []string) *ProductRequest {
+func (r *ProductRequest) WithImageUrlIn(values []*string) *ProductRequest {
 	converted := make([]core.Value, 0, len(values))
 	for _, value := range values {
-		converted = append(converted, core.ValText(value))
+		converted = append(converted, func() core.Value { if value == nil { return core.ValNull() }; return core.ValText((*value)) }())
 	}
 	r.Query.AndFilter(core.ExprInList("image_url", converted))
 	return r
 }
-func (r *ProductRequest) WithImageUrlNotIn(values []string) *ProductRequest {
+func (r *ProductRequest) WithImageUrlNotIn(values []*string) *ProductRequest {
 	converted := make([]core.Value, 0, len(values))
 	for _, value := range values {
-		converted = append(converted, core.ValText(value))
+		converted = append(converted, func() core.Value { if value == nil { return core.ValNull() }; return core.ValText((*value)) }())
 	}
 	r.Query.AndFilter(core.ExprNotInList("image_url", converted))
 	return r
 }
-func (r *ProductRequest) WithImageUrlGreaterThan(value string) *ProductRequest {
-	r.Query.AndFilter(core.ExprGt("image_url", core.ValText(value)))
+func (r *ProductRequest) WithImageUrlGreaterThan(value *string) *ProductRequest {
+	r.Query.AndFilter(core.ExprGt("image_url", func() core.Value { if value == nil { return core.ValNull() }; return core.ValText((*value)) }()))
 	return r
 }
-func (r *ProductRequest) WithImageUrlGreaterThanOrEqualTo(value string) *ProductRequest {
-	r.Query.AndFilter(core.ExprGte("image_url", core.ValText(value)))
+func (r *ProductRequest) WithImageUrlGreaterThanOrEqualTo(value *string) *ProductRequest {
+	r.Query.AndFilter(core.ExprGte("image_url", func() core.Value { if value == nil { return core.ValNull() }; return core.ValText((*value)) }()))
 	return r
 }
-func (r *ProductRequest) WithImageUrlLessThan(value string) *ProductRequest {
-	r.Query.AndFilter(core.ExprLt("image_url", core.ValText(value)))
+func (r *ProductRequest) WithImageUrlLessThan(value *string) *ProductRequest {
+	r.Query.AndFilter(core.ExprLt("image_url", func() core.Value { if value == nil { return core.ValNull() }; return core.ValText((*value)) }()))
 	return r
 }
-func (r *ProductRequest) WithImageUrlLessThanOrEqualTo(value string) *ProductRequest {
-	r.Query.AndFilter(core.ExprLte("image_url", core.ValText(value)))
+func (r *ProductRequest) WithImageUrlLessThanOrEqualTo(value *string) *ProductRequest {
+	r.Query.AndFilter(core.ExprLte("image_url", func() core.Value { if value == nil { return core.ValNull() }; return core.ValText((*value)) }()))
+	return r
+}
+func (r *ProductRequest) WithImageUrlBetween(lower *string, upper *string) *ProductRequest {
+	value := lower
+	from := func() core.Value { if value == nil { return core.ValNull() }; return core.ValText((*value)) }()
+	value = upper
+	to := func() core.Value { if value == nil { return core.ValNull() }; return core.ValText((*value)) }()
+	r.Query.AndFilter(core.ExprBetweenNode("image_url", from, to))
+	return r
+}
+func (r *ProductRequest) WithImageUrlIsKnown() *ProductRequest {
+	r.Query.AndFilter(core.ExprIsNotNullNode("image_url"))
+	return r
+}
+func (r *ProductRequest) WithImageUrlIsUnknown() *ProductRequest {
+	r.Query.AndFilter(core.ExprIsNullNode("image_url"))
 	return r
 }
 func (r *ProductRequest) WithImageUrlContaining(term string) *ProductRequest {
@@ -291,8 +474,20 @@ func (r *ProductRequest) WithImageUrlStartingWith(term string) *ProductRequest {
 	r.Query.AndFilter(core.ExprBeginWith("image_url", term))
 	return r
 }
+func (r *ProductRequest) WithImageUrlNotStartingWith(term string) *ProductRequest {
+	r.Query.AndFilter(core.ExprNotBeginWith("image_url", term))
+	return r
+}
 func (r *ProductRequest) WithImageUrlEndingWith(term string) *ProductRequest {
 	r.Query.AndFilter(core.ExprEndWith("image_url", term))
+	return r
+}
+func (r *ProductRequest) WithImageUrlNotEndingWith(term string) *ProductRequest {
+	r.Query.AndFilter(core.ExprNotEndWith("image_url", term))
+	return r
+}
+func (r *ProductRequest) WithImageUrlSoundingLike(term string) *ProductRequest {
+	r.Query.AndFilter(core.ExprSoundLike("image_url", core.ValText(term)))
 	return r
 }
 func (r *ProductRequest) OrderByImageUrlAsc() *ProductRequest {
@@ -301,6 +496,10 @@ func (r *ProductRequest) OrderByImageUrlAsc() *ProductRequest {
 }
 func (r *ProductRequest) OrderByImageUrlDesc() *ProductRequest {
 	r.Query.OrderDesc("image_url")
+	return r
+}
+func (r *ProductRequest) SelectCommercePlatform() *ProductRequest {
+	r.Query.Project("commerce_platform_id")
 	return r
 }
 
@@ -344,10 +543,31 @@ func (r *ProductRequest) WithCommercePlatformLessThanOrEqualTo(value uint64) *Pr
 	r.Query.AndFilter(core.ExprLte("commerce_platform_id", core.ValU64(value)))
 	return r
 }
-func (r *ProductRequest) FacetByCommercePlatformAs(name string, nestedReq any) *ProductRequest {
-	if req, ok := nestedReq.(interface{ GetQuery() *core.SelectQuery }); ok {
-		r.Query.WithObjectGroupBy(name, "commerce_platform_id", req.GetQuery())
-	}
+func (r *ProductRequest) WithCommercePlatformBetween(lower uint64, upper uint64) *ProductRequest {
+	value := lower
+	from := core.ValU64(value)
+	value = upper
+	to := core.ValU64(value)
+	r.Query.AndFilter(core.ExprBetweenNode("commerce_platform_id", from, to))
+	return r
+}
+func (r *ProductRequest) WithCommercePlatformIsKnown() *ProductRequest {
+	r.Query.AndFilter(core.ExprIsNotNullNode("commerce_platform_id"))
+	return r
+}
+func (r *ProductRequest) WithCommercePlatformIsUnknown() *ProductRequest {
+	r.Query.AndFilter(core.ExprIsNullNode("commerce_platform_id"))
+	return r
+}
+func (r *ProductRequest) FacetByCommercePlatformAs(
+	name string,
+	nestedReq interface{ GetQuery() *core.SelectQuery },
+	includeAllFacets ...bool,
+) *ProductRequest {
+	includeAll := true
+	if len(includeAllFacets) > 0 { includeAll = includeAllFacets[0] }
+	r.queryOptions.Facets = append(r.queryOptions.Facets, core.NewFacetRequest(
+		name, "commerce_platform_id", core.NewQuerySelection(nestedReq.GetQuery()), includeAll))
 	return r
 }
 func (r *ProductRequest) OrderByCommercePlatformAsc() *ProductRequest {
@@ -356,6 +576,10 @@ func (r *ProductRequest) OrderByCommercePlatformAsc() *ProductRequest {
 }
 func (r *ProductRequest) OrderByCommercePlatformDesc() *ProductRequest {
 	r.Query.OrderDesc("commerce_platform_id")
+	return r
+}
+func (r *ProductRequest) SelectCreateTime() *ProductRequest {
+	r.Query.Project("create_time")
 	return r
 }
 
@@ -399,12 +623,32 @@ func (r *ProductRequest) WithCreateTimeLessThanOrEqualTo(value time.Time) *Produ
 	r.Query.AndFilter(core.ExprLte("create_time", core.ValTimestamp(value.UnixMilli())))
 	return r
 }
+func (r *ProductRequest) WithCreateTimeBetween(lower time.Time, upper time.Time) *ProductRequest {
+	value := lower
+	from := core.ValTimestamp(value.UnixMilli())
+	value = upper
+	to := core.ValTimestamp(value.UnixMilli())
+	r.Query.AndFilter(core.ExprBetweenNode("create_time", from, to))
+	return r
+}
+func (r *ProductRequest) WithCreateTimeIsKnown() *ProductRequest {
+	r.Query.AndFilter(core.ExprIsNotNullNode("create_time"))
+	return r
+}
+func (r *ProductRequest) WithCreateTimeIsUnknown() *ProductRequest {
+	r.Query.AndFilter(core.ExprIsNullNode("create_time"))
+	return r
+}
 func (r *ProductRequest) OrderByCreateTimeAsc() *ProductRequest {
 	r.Query.OrderAsc("create_time")
 	return r
 }
 func (r *ProductRequest) OrderByCreateTimeDesc() *ProductRequest {
 	r.Query.OrderDesc("create_time")
+	return r
+}
+func (r *ProductRequest) SelectUpdateTime() *ProductRequest {
+	r.Query.Project("update_time")
 	return r
 }
 
@@ -448,12 +692,32 @@ func (r *ProductRequest) WithUpdateTimeLessThanOrEqualTo(value time.Time) *Produ
 	r.Query.AndFilter(core.ExprLte("update_time", core.ValTimestamp(value.UnixMilli())))
 	return r
 }
+func (r *ProductRequest) WithUpdateTimeBetween(lower time.Time, upper time.Time) *ProductRequest {
+	value := lower
+	from := core.ValTimestamp(value.UnixMilli())
+	value = upper
+	to := core.ValTimestamp(value.UnixMilli())
+	r.Query.AndFilter(core.ExprBetweenNode("update_time", from, to))
+	return r
+}
+func (r *ProductRequest) WithUpdateTimeIsKnown() *ProductRequest {
+	r.Query.AndFilter(core.ExprIsNotNullNode("update_time"))
+	return r
+}
+func (r *ProductRequest) WithUpdateTimeIsUnknown() *ProductRequest {
+	r.Query.AndFilter(core.ExprIsNullNode("update_time"))
+	return r
+}
 func (r *ProductRequest) OrderByUpdateTimeAsc() *ProductRequest {
 	r.Query.OrderAsc("update_time")
 	return r
 }
 func (r *ProductRequest) OrderByUpdateTimeDesc() *ProductRequest {
 	r.Query.OrderDesc("update_time")
+	return r
+}
+func (r *ProductRequest) SelectVersion() *ProductRequest {
+	r.Query.Project("version")
 	return r
 }
 
@@ -497,6 +761,22 @@ func (r *ProductRequest) WithVersionLessThanOrEqualTo(value int64) *ProductReque
 	r.Query.AndFilter(core.ExprLte("version", core.ValI64(value)))
 	return r
 }
+func (r *ProductRequest) WithVersionBetween(lower int64, upper int64) *ProductRequest {
+	value := lower
+	from := core.ValI64(value)
+	value = upper
+	to := core.ValI64(value)
+	r.Query.AndFilter(core.ExprBetweenNode("version", from, to))
+	return r
+}
+func (r *ProductRequest) WithVersionIsKnown() *ProductRequest {
+	r.Query.AndFilter(core.ExprIsNotNullNode("version"))
+	return r
+}
+func (r *ProductRequest) WithVersionIsUnknown() *ProductRequest {
+	r.Query.AndFilter(core.ExprIsNullNode("version"))
+	return r
+}
 func (r *ProductRequest) OrderByVersionAsc() *ProductRequest {
 	r.Query.OrderAsc("version")
 	return r
@@ -506,8 +786,123 @@ func (r *ProductRequest) OrderByVersionDesc() *ProductRequest {
 	return r
 }
 
+func (r *ProductRequest) SelectCommercePlatformWith(child interface {
+	GetQuery() *core.SelectQuery
+	NewRelationEntity() core.Entity
+}) *ProductRequest {
+	r.Query.Project("commerce_platform_id")
+	r.Query.RelationQuery("commercePlatformEntity", child.GetQuery())
+	r.relationFactories["commercePlatformEntity"] = child.NewRelationEntity
+	return r
+}
+
+func (r *ProductRequest) WithCommercePlatformMatching(child interface {
+	GetQuery() *core.SelectQuery
+	GetEntityDescriptor() *core.EntityDescriptor
+}) *ProductRequest {
+	r.Query.AndFilter(core.ExprInSubQuery("commerce_platform_id", child.GetEntityDescriptor(), child.GetQuery(), "id"))
+	return r
+}
+
+func (r *ProductRequest) WithoutCommercePlatformMatching(child interface {
+	GetQuery() *core.SelectQuery
+	GetEntityDescriptor() *core.EntityDescriptor
+}) *ProductRequest {
+	r.Query.AndFilter(core.ExprNotInSubQuery("commerce_platform_id", child.GetEntityDescriptor(), child.GetQuery(), "id"))
+	return r
+}
+
 func (r *ProductRequest) CountOrderLines() *ProductRequest {
-	r.Query.Count("count_order_lines")
+	return r.CountOrderLinesAs("countOrderLines")
+
+}
+func (r *ProductRequest) CountOrderLinesAs(alias string) *ProductRequest {
+	return r.CountOrderLinesWith(alias, order_line.NewOrderLineRequest())
+}
+func (r *ProductRequest) CountOrderLinesWith(alias string, child *order_line.OrderLineRequest) *ProductRequest {
+	child.Query.Count(alias)
+	r.Query.RelationAggregates = append(r.Query.RelationAggregates, core.NewRelationAggregate("orderLineList", alias, child.Query, true))
+	return r
+}
+
+func (r *ProductRequest) SumQuantityOfOrderLines() *ProductRequest {
+	return r.SumQuantityOfOrderLinesAs("sumQuantityOfOrderLines", order_line.NewOrderLineRequest())
+}
+func (r *ProductRequest) SumQuantityOfOrderLinesAs(alias string, child *order_line.OrderLineRequest) *ProductRequest {
+	child.Query.Sum("quantity", "sum_quantity")
+	r.Query.RelationAggregates = append(r.Query.RelationAggregates, core.NewRelationAggregate("orderLineList", alias, child.Query, true))
+	return r
+}
+func (r *ProductRequest) MinQuantityOfOrderLines() *ProductRequest {
+	return r.MinQuantityOfOrderLinesAs("minQuantityOfOrderLines", order_line.NewOrderLineRequest())
+}
+func (r *ProductRequest) MinQuantityOfOrderLinesAs(alias string, child *order_line.OrderLineRequest) *ProductRequest {
+	child.Query.Min("quantity", "min_quantity")
+	r.Query.RelationAggregates = append(r.Query.RelationAggregates, core.NewRelationAggregate("orderLineList", alias, child.Query, true))
+	return r
+}
+func (r *ProductRequest) MaxQuantityOfOrderLines() *ProductRequest {
+	return r.MaxQuantityOfOrderLinesAs("maxQuantityOfOrderLines", order_line.NewOrderLineRequest())
+}
+func (r *ProductRequest) MaxQuantityOfOrderLinesAs(alias string, child *order_line.OrderLineRequest) *ProductRequest {
+	child.Query.Max("quantity", "max_quantity")
+	r.Query.RelationAggregates = append(r.Query.RelationAggregates, core.NewRelationAggregate("orderLineList", alias, child.Query, true))
+	return r
+}
+func (r *ProductRequest) AvgQuantityOfOrderLines() *ProductRequest {
+	return r.AvgQuantityOfOrderLinesAs("avgQuantityOfOrderLines", order_line.NewOrderLineRequest())
+}
+func (r *ProductRequest) AvgQuantityOfOrderLinesAs(alias string, child *order_line.OrderLineRequest) *ProductRequest {
+	child.Query.Avg("quantity", "avg_quantity")
+	r.Query.RelationAggregates = append(r.Query.RelationAggregates, core.NewRelationAggregate("orderLineList", alias, child.Query, true))
+	return r
+}
+func (r *ProductRequest) StandardDeviationQuantityOfOrderLines() *ProductRequest {
+	return r.StandardDeviationQuantityOfOrderLinesAs("standardDeviationQuantityOfOrderLines", order_line.NewOrderLineRequest())
+}
+func (r *ProductRequest) StandardDeviationQuantityOfOrderLinesAs(alias string, child *order_line.OrderLineRequest) *ProductRequest {
+	child.Query.Stddev("quantity", "stdDev_quantity")
+	r.Query.RelationAggregates = append(r.Query.RelationAggregates, core.NewRelationAggregate("orderLineList", alias, child.Query, true))
+	return r
+}
+func (r *ProductRequest) SquareRootOfPopulationStandardDeviationQuantityOfOrderLines() *ProductRequest {
+	return r.SquareRootOfPopulationStandardDeviationQuantityOfOrderLinesAs("squareRootOfPopulationStandardDeviationQuantityOfOrderLines", order_line.NewOrderLineRequest())
+}
+func (r *ProductRequest) SquareRootOfPopulationStandardDeviationQuantityOfOrderLinesAs(alias string, child *order_line.OrderLineRequest) *ProductRequest {
+	child.Query.StddevPop("quantity", "stdDevPop_quantity")
+	r.Query.RelationAggregates = append(r.Query.RelationAggregates, core.NewRelationAggregate("orderLineList", alias, child.Query, true))
+	return r
+}
+func (r *ProductRequest) SampleVarianceQuantityOfOrderLines() *ProductRequest {
+	return r.SampleVarianceQuantityOfOrderLinesAs("sampleVarianceQuantityOfOrderLines", order_line.NewOrderLineRequest())
+}
+func (r *ProductRequest) SampleVarianceQuantityOfOrderLinesAs(alias string, child *order_line.OrderLineRequest) *ProductRequest {
+	child.Query.VarSamp("quantity", "varSamp_quantity")
+	r.Query.RelationAggregates = append(r.Query.RelationAggregates, core.NewRelationAggregate("orderLineList", alias, child.Query, true))
+	return r
+}
+func (r *ProductRequest) SamplePopulationVarianceQuantityOfOrderLines() *ProductRequest {
+	return r.SamplePopulationVarianceQuantityOfOrderLinesAs("samplePopulationVarianceQuantityOfOrderLines", order_line.NewOrderLineRequest())
+}
+func (r *ProductRequest) SamplePopulationVarianceQuantityOfOrderLinesAs(alias string, child *order_line.OrderLineRequest) *ProductRequest {
+	child.Query.VarPop("quantity", "varPop_quantity")
+	r.Query.RelationAggregates = append(r.Query.RelationAggregates, core.NewRelationAggregate("orderLineList", alias, child.Query, true))
+	return r
+}
+func (r *ProductRequest) MinCreateTimeOfOrderLines() *ProductRequest {
+	return r.MinCreateTimeOfOrderLinesAs("minCreateTimeOfOrderLines", order_line.NewOrderLineRequest())
+}
+func (r *ProductRequest) MinCreateTimeOfOrderLinesAs(alias string, child *order_line.OrderLineRequest) *ProductRequest {
+	child.Query.Min("create_time", "min_createTime")
+	r.Query.RelationAggregates = append(r.Query.RelationAggregates, core.NewRelationAggregate("orderLineList", alias, child.Query, true))
+	return r
+}
+func (r *ProductRequest) MaxCreateTimeOfOrderLines() *ProductRequest {
+	return r.MaxCreateTimeOfOrderLinesAs("maxCreateTimeOfOrderLines", order_line.NewOrderLineRequest())
+}
+func (r *ProductRequest) MaxCreateTimeOfOrderLinesAs(alias string, child *order_line.OrderLineRequest) *ProductRequest {
+	child.Query.Max("create_time", "max_createTime")
+	r.Query.RelationAggregates = append(r.Query.RelationAggregates, core.NewRelationAggregate("orderLineList", alias, child.Query, true))
 	return r
 }
 
@@ -520,9 +915,36 @@ func (r *ProductRequest) SelectOrderLineListWith(child *order_line.OrderLineRequ
 	return r
 }
 
+func (r *ProductRequest) HaveOrderLines() *ProductRequest {
+	return r.WithOrderLineListMatching(order_line.NewOrderLineRequest())
+}
+
+func (r *ProductRequest) HaveNoOrderLines() *ProductRequest {
+	return r.WithoutOrderLineListMatching(order_line.NewOrderLineRequest())
+}
+
+func (r *ProductRequest) WithOrderLineListMatching(child *order_line.OrderLineRequest) *ProductRequest {
+	r.Query.AndFilter(core.ExprInSubQuery("id", child.GetEntityDescriptor(), child.GetQuery(), "product_id"))
+	return r
+}
+
+func (r *ProductRequest) WithoutOrderLineListMatching(child *order_line.OrderLineRequest) *ProductRequest {
+	r.Query.AndFilter(core.ExprNotInSubQuery("id", child.GetEntityDescriptor(), child.GetQuery(), "product_id"))
+	return r
+}
+
 func (e *ExecutableProductRequest) NewEntity(context *runtime.UserContext) *Product {
+	r := e.request
+	if strings.TrimSpace(r.purposeText) == "" || strings.TrimSpace(r.commentText) == "" {
+		panic("security audit failure: non-empty Comment() and Purpose() are required before NewEntity()")
+	}
 	entity := NewProduct()
-	return entity
+	initialized := context.InitializeEntity("Product", entity)
+	typed, ok := initialized.(*Product)
+	if !ok {
+		panic("entity initializer changed Product to an incompatible type")
+	}
+	return typed
 }
 
 func (e *ExecutableProductRequest) ExecuteForOne(context *runtime.UserContext) (*Product, error) {
@@ -543,27 +965,157 @@ func (e *ExecutableProductRequest) ExecuteForList(context *runtime.UserContext) 
 	}
 
 	var results []*Product
+	queryRoot := core.NewEntityRoot()
 	for _, rec := range rows {
 		entity := NewProduct()
+		entity.AttachEntityRoot(queryRoot)
 		if err := entity.FromRecord(rec); err != nil {
 			return nil, err
 		}
-		if relationValue, selected := rec["orderLineList"]; selected {
-			childRecords, ok := relationValue.V.([]core.Record)
-			if !ok {
-				return nil, fmt.Errorf("relation orderLineList has unexpected runtime type %T", relationValue.V)
-			}
-			for _, childRecord := range childRecords {
-				childEntity := order_line.NewOrderLine()
-				if err := childEntity.FromRecord(childRecord); err != nil {
-					return nil, err
+		if relationValue, selected := rec["commercePlatformEntity"]; selected {
+			entity.markRelationLoaded("commercePlatformEntity")
+			if childRecord, ok := relationValue.V.(core.Record); ok {
+				if factory := e.request.relationFactories["commercePlatformEntity"]; factory != nil {
+					childEntity := factory()
+					if attachable, ok := childEntity.(interface { AttachEntityRoot(*core.EntityRoot) }); ok { attachable.AttachEntityRoot(entity.EntityRoot()) }
+					if err := childEntity.FromRecord(childRecord); err != nil { return nil, err }
+					entity.setRelationEntity("commercePlatformEntity", childEntity)
 				}
-				entity.OrderLineList().Add(childEntity)
 			}
 		}
+		if relationValue, selected := rec["orderLineList"]; selected {
+			childRecords, ok := relationValue.V.([]core.Record)
+				if !ok { return nil, fmt.Errorf("relation orderLineList has unexpected runtime type %T", relationValue.V) }
+				for _, childRecord := range childRecords {
+					childEntity := order_line.NewOrderLine()
+					childEntity.AttachEntityRoot(entity.EntityRoot())
+					if err := childEntity.FromRecord(childRecord); err != nil { return nil, err }
+					entity.OrderLineList().Add(childEntity)
+				}}
 		results = append(results, entity)
 	}
-	return core.NewSmartList(results), nil
+	list := core.NewSmartList(results)
+	if len(e.request.queryOptions.Facets) > 0 {
+		dsRaw := context.GetResource("dataService")
+		ds, ok := dsRaw.(data_service.QueryExecutor)
+		if !ok { return nil, fmt.Errorf("dataService does not implement data_service.QueryExecutor") }
+		facets, err := runtime.ExecuteFacets(
+			context, runtime.NewRuntimeDataService(context.Metadata, ds),
+			e.request.Query, e.request.queryOptions)
+		if err != nil { return nil, err }
+		core.AttachFacets(list, facets)
+	}
+	return list, nil
+}
+
+// ExecuteForPage applies trusted policy once, then derives exact-count and row
+// queries from that same authorized snapshot.
+func (e *ExecutableProductRequest) ExecuteForPage(context *runtime.UserContext, offset uint64, size uint64) (*core.SmartList[*Product], error) {
+	r := e.request
+	if strings.TrimSpace(r.purposeText) == "" || strings.TrimSpace(r.commentText) == "" {
+		return nil, fmt.Errorf("security audit failure: Comment() and Purpose() must be called before ExecuteForPage()")
+	}
+	if size == 0 {
+		return nil, fmt.Errorf("QUERY_INVALID_LIMIT: size must be positive")
+	}
+	r.Query.Page(offset, size).Comment(r.commentText).Purpose(r.purposeText)
+	authorized, err := context.PrepareQuery(r.Query)
+	if err != nil { return nil, err }
+	dsRaw := context.GetResource("dataService")
+	ds, ok := dsRaw.(data_service.QueryExecutor)
+	if !ok { return nil, fmt.Errorf("dataService does not implement data_service.QueryExecutor") }
+	service := runtime.NewRuntimeDataService(context.Metadata, ds)
+	const countAlias = "__teaql_total"
+	var rows []core.Record
+	var total uint64
+	if authorized.IDSetPagination != nil {
+		rows, err = service.FetchAll(context, authorized)
+		if err != nil { return nil, err }
+		if retainedCount, accuracy := context.IDSetCount(); accuracy == "EXACT" {
+			total = retainedCount
+		} else {
+			countRows, countErr := service.FetchAll(context, authorized.ForExactCount(countAlias))
+			if countErr != nil { return nil, countErr }
+			if len(countRows) != 1 { return nil, fmt.Errorf("exact count returned %d rows", len(countRows)) }
+			var ok bool
+			total, ok = countRows[0][countAlias].TryU64()
+			if !ok { return nil, fmt.Errorf("exact count did not return an unsigned integer") }
+		}
+	} else {
+		countRows, countErr := service.FetchAll(context, authorized.ForExactCount(countAlias))
+		if countErr != nil { return nil, countErr }
+		if len(countRows) != 1 { return nil, fmt.Errorf("exact count returned %d rows", len(countRows)) }
+		var ok bool
+		total, ok = countRows[0][countAlias].TryU64()
+		if !ok { return nil, fmt.Errorf("exact count did not return an unsigned integer") }
+		rows, err = service.FetchAll(context, authorized)
+		if err != nil { return nil, err }
+	}
+	results := make([]*Product, 0, len(rows))
+	queryRoot := core.NewEntityRoot()
+	for _, rec := range rows {
+		entity := NewProduct()
+		entity.AttachEntityRoot(queryRoot)
+		if err := entity.FromRecord(rec); err != nil { return nil, err }
+		if relationValue, selected := rec["commercePlatformEntity"]; selected {
+			entity.markRelationLoaded("commercePlatformEntity")
+			if childRecord, ok := relationValue.V.(core.Record); ok {
+				if factory := e.request.relationFactories["commercePlatformEntity"]; factory != nil {
+					childEntity := factory()
+					if attachable, ok := childEntity.(interface { AttachEntityRoot(*core.EntityRoot) }); ok { attachable.AttachEntityRoot(entity.EntityRoot()) }
+					if err := childEntity.FromRecord(childRecord); err != nil { return nil, err }
+					entity.setRelationEntity("commercePlatformEntity", childEntity)
+				}
+			}
+		}
+		if relationValue, selected := rec["orderLineList"]; selected {
+			childRecords, ok := relationValue.V.([]core.Record)
+				if !ok { return nil, fmt.Errorf("relation orderLineList has unexpected runtime type %T", relationValue.V) }
+				for _, childRecord := range childRecords {
+					childEntity := order_line.NewOrderLine()
+					childEntity.AttachEntityRoot(entity.EntityRoot())
+					if err := childEntity.FromRecord(childRecord); err != nil { return nil, err }
+					entity.OrderLineList().Add(childEntity)
+				}}
+		results = append(results, entity)
+	}
+	return core.NewSmartList(results).WithTotalCount(total), nil
+}
+
+// ExecuteForStream consumes a provider cursor one chunk at a time. Returning
+// an error from yield cancels iteration and releases the database resources.
+func (e *ExecutableProductRequest) ExecuteForStream(context *runtime.UserContext, chunkSize int, yield func(*Product) error) error {
+	r := e.request
+	if strings.TrimSpace(r.purposeText) == "" || strings.TrimSpace(r.commentText) == "" {
+		return fmt.Errorf("security audit failure: Comment() and Purpose() must be called before ExecuteForStream()")
+	}
+	if yield == nil {
+		return fmt.Errorf("stream consumer must not be nil")
+	}
+	r.Query.Comment(r.commentText).Purpose(r.purposeText)
+	dsRaw := context.GetResource("dataService")
+	ds, ok := dsRaw.(data_service.StreamQueryExecutor)
+	if !ok {
+		return fmt.Errorf("dataService does not implement data_service.StreamQueryExecutor")
+	}
+	req := &data_service.QueryRequest{
+		Query: r.Query, TraceChain: r.Query.TraceChain,
+		Comment: r.Query.CommentText, Purpose: r.Query.PurposeText,
+	}
+	queryRoot := core.NewEntityRoot()
+	return ds.QueryStream(context, req, chunkSize, func(chunk *data_service.StreamChunk) error {
+		for _, rec := range chunk.Rows {
+			entity := NewProduct()
+			entity.AttachEntityRoot(queryRoot)
+			if err := entity.FromRecord(rec); err != nil {
+				return err
+			}
+			if err := yield(entity); err != nil {
+				return err
+			}
+		}
+		return nil
+	})
 }
 
 func (e *ExecutableProductRequest) ExecuteRecords(context *runtime.UserContext) ([]core.Record, error) {
@@ -571,7 +1123,7 @@ func (e *ExecutableProductRequest) ExecuteRecords(context *runtime.UserContext) 
 	if strings.TrimSpace(r.purposeText) == "" || strings.TrimSpace(r.commentText) == "" {
 		return nil, fmt.Errorf("security audit failure: Comment() and Purpose() must be called before ExecuteForList()")
 	}
-	r.Query.Comment(fmt.Sprintf("comment=%s; purpose=%s", r.commentText, r.purposeText))
+	r.Query.Comment(r.commentText).Purpose(r.purposeText)
 
 	dsRaw := context.GetResource("dataService")
 	if dsRaw == nil {
@@ -590,6 +1142,14 @@ func (e *ExecutableProductRequest) ExecuteRecords(context *runtime.UserContext) 
 	return rows, nil
 }
 
+// ExecuteForRows preserves aggregate/group projections as records while keeping
+// the cross-language SmartList result boundary.
+func (e *ExecutableProductRequest) ExecuteForRows(context *runtime.UserContext) (*core.SmartList[core.Record], error) {
+	rows, err := e.ExecuteRecords(context)
+	if err != nil { return nil, err }
+	return core.NewSmartList(rows), nil
+}
+
 func (r *ProductRequest) Count() *ProductRequest {
 	return r.CountAs("count")
 }
@@ -598,6 +1158,7 @@ func (r *ProductRequest) CountAs(alias string) *ProductRequest {
 	r.Query.CountField("id", alias)
 	return r
 }
+
 
 func (r *ProductRequest) GroupById() *ProductRequest {
 	r.Query.WithGroupBy("id")

@@ -14,14 +14,11 @@ type CustomerCheckerLogic interface {
 
 type NoopCustomerChecker struct{}
 
-func (c *NoopCustomerChecker) CheckAndFix(context *runtime.UserContext, entity *Customer, status any, location any, results any) {
-}
-func (c *NoopCustomerChecker) Required(value bool, field string, location any, results any)       {}
+func (c *NoopCustomerChecker) CheckAndFix(context *runtime.UserContext, entity *Customer, status any, location any, results any) {}
+func (c *NoopCustomerChecker) Required(value bool, field string, location any, results any) {}
 func (c *NoopCustomerChecker) RequiredText(value string, field string, location any, results any) {}
-func (c *NoopCustomerChecker) MinStringLength(value string, field string, minLen int, location any, results any) {
-}
-func (c *NoopCustomerChecker) MaxStringLength(value string, field string, maxLen int, location any, results any) {
-}
+func (c *NoopCustomerChecker) MinStringLength(value string, field string, minLen int, location any, results any) {}
+func (c *NoopCustomerChecker) MaxStringLength(value string, field string, maxLen int, location any, results any) {}
 
 type CustomerChecker struct {
 	logic CustomerCheckerLogic

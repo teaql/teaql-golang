@@ -14,16 +14,11 @@ type OrderSearchPresetCheckerLogic interface {
 
 type NoopOrderSearchPresetChecker struct{}
 
-func (c *NoopOrderSearchPresetChecker) CheckAndFix(context *runtime.UserContext, entity *OrderSearchPreset, status any, location any, results any) {
-}
-func (c *NoopOrderSearchPresetChecker) Required(value bool, field string, location any, results any) {
-}
-func (c *NoopOrderSearchPresetChecker) RequiredText(value string, field string, location any, results any) {
-}
-func (c *NoopOrderSearchPresetChecker) MinStringLength(value string, field string, minLen int, location any, results any) {
-}
-func (c *NoopOrderSearchPresetChecker) MaxStringLength(value string, field string, maxLen int, location any, results any) {
-}
+func (c *NoopOrderSearchPresetChecker) CheckAndFix(context *runtime.UserContext, entity *OrderSearchPreset, status any, location any, results any) {}
+func (c *NoopOrderSearchPresetChecker) Required(value bool, field string, location any, results any) {}
+func (c *NoopOrderSearchPresetChecker) RequiredText(value string, field string, location any, results any) {}
+func (c *NoopOrderSearchPresetChecker) MinStringLength(value string, field string, minLen int, location any, results any) {}
+func (c *NoopOrderSearchPresetChecker) MaxStringLength(value string, field string, maxLen int, location any, results any) {}
 
 type OrderSearchPresetChecker struct {
 	logic OrderSearchPresetCheckerLogic

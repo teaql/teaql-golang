@@ -78,6 +78,8 @@ func (e *CommercePlatformExpression) Name() *ValueExpression[string] {
 	if e.err != nil { return notLoadedExpression[string](e.err) }
 	if e.value == nil { return missingExpression[string]() }
 	if !e.value.IsLoaded("name") { return notLoadedExpression[string](e.fieldError("name")) }
+	raw, ok := e.value.Base().GetDynamic("name")
+		if !ok || raw.IsNull() { return missingExpression[string]() }
 	return valueExpression(e.value.Name())
 }
 
@@ -85,6 +87,8 @@ func (e *CommercePlatformExpression) CreateTime() *ValueExpression[time.Time] {
 	if e.err != nil { return notLoadedExpression[time.Time](e.err) }
 	if e.value == nil { return missingExpression[time.Time]() }
 	if !e.value.IsLoaded("create_time") { return notLoadedExpression[time.Time](e.fieldError("create_time")) }
+	raw, ok := e.value.Base().GetDynamic("create_time")
+		if !ok || raw.IsNull() { return missingExpression[time.Time]() }
 	return valueExpression(e.value.CreateTime())
 }
 
@@ -92,6 +96,8 @@ func (e *CommercePlatformExpression) UpdateTime() *ValueExpression[time.Time] {
 	if e.err != nil { return notLoadedExpression[time.Time](e.err) }
 	if e.value == nil { return missingExpression[time.Time]() }
 	if !e.value.IsLoaded("update_time") { return notLoadedExpression[time.Time](e.fieldError("update_time")) }
+	raw, ok := e.value.Base().GetDynamic("update_time")
+		if !ok || raw.IsNull() { return missingExpression[time.Time]() }
 	return valueExpression(e.value.UpdateTime())
 }
 
@@ -115,10 +121,16 @@ func (e *CustomerListExpression) Size() *ValueExpression[int] {
 }
 
 func (e *CustomerListExpression) First() *customer.CustomerExpression {
-	if e.err != nil { return customer.NewCustomerExpression(nil) }
+	if e.err != nil { panic(e.err) }
 	if e.value == nil || len(e.value.Items()) == 0 { return customer.NewCustomerExpression(nil) }
-	value, _ := e.value.Items()[0].(*customer.Customer)
+	value := e.value.Items()[0]
 	return customer.NewCustomerExpression(value)
+}
+
+func (e *CustomerListExpression) Get(index int) *customer.CustomerExpression {
+	if e.err != nil { panic(e.err) }
+	if e.value == nil || index < 0 || index >= len(e.value.Items()) { return customer.NewCustomerExpression(nil) }
+	return customer.NewCustomerExpression(e.value.Items()[index])
 }
 
 func (e *CommercePlatformExpression) CustomerList() *CustomerListExpression {
@@ -142,10 +154,16 @@ func (e *OrderStatusListExpression) Size() *ValueExpression[int] {
 }
 
 func (e *OrderStatusListExpression) First() *order_status.OrderStatusExpression {
-	if e.err != nil { return order_status.NewOrderStatusExpression(nil) }
+	if e.err != nil { panic(e.err) }
 	if e.value == nil || len(e.value.Items()) == 0 { return order_status.NewOrderStatusExpression(nil) }
-	value, _ := e.value.Items()[0].(*order_status.OrderStatus)
+	value := e.value.Items()[0]
 	return order_status.NewOrderStatusExpression(value)
+}
+
+func (e *OrderStatusListExpression) Get(index int) *order_status.OrderStatusExpression {
+	if e.err != nil { panic(e.err) }
+	if e.value == nil || index < 0 || index >= len(e.value.Items()) { return order_status.NewOrderStatusExpression(nil) }
+	return order_status.NewOrderStatusExpression(e.value.Items()[index])
 }
 
 func (e *CommercePlatformExpression) OrderStatusList() *OrderStatusListExpression {
@@ -169,10 +187,16 @@ func (e *CustomerOrderListExpression) Size() *ValueExpression[int] {
 }
 
 func (e *CustomerOrderListExpression) First() *customer_order.CustomerOrderExpression {
-	if e.err != nil { return customer_order.NewCustomerOrderExpression(nil) }
+	if e.err != nil { panic(e.err) }
 	if e.value == nil || len(e.value.Items()) == 0 { return customer_order.NewCustomerOrderExpression(nil) }
-	value, _ := e.value.Items()[0].(*customer_order.CustomerOrder)
+	value := e.value.Items()[0]
 	return customer_order.NewCustomerOrderExpression(value)
+}
+
+func (e *CustomerOrderListExpression) Get(index int) *customer_order.CustomerOrderExpression {
+	if e.err != nil { panic(e.err) }
+	if e.value == nil || index < 0 || index >= len(e.value.Items()) { return customer_order.NewCustomerOrderExpression(nil) }
+	return customer_order.NewCustomerOrderExpression(e.value.Items()[index])
 }
 
 func (e *CommercePlatformExpression) CustomerOrderList() *CustomerOrderListExpression {
@@ -196,10 +220,16 @@ func (e *ProductListExpression) Size() *ValueExpression[int] {
 }
 
 func (e *ProductListExpression) First() *product.ProductExpression {
-	if e.err != nil { return product.NewProductExpression(nil) }
+	if e.err != nil { panic(e.err) }
 	if e.value == nil || len(e.value.Items()) == 0 { return product.NewProductExpression(nil) }
-	value, _ := e.value.Items()[0].(*product.Product)
+	value := e.value.Items()[0]
 	return product.NewProductExpression(value)
+}
+
+func (e *ProductListExpression) Get(index int) *product.ProductExpression {
+	if e.err != nil { panic(e.err) }
+	if e.value == nil || index < 0 || index >= len(e.value.Items()) { return product.NewProductExpression(nil) }
+	return product.NewProductExpression(e.value.Items()[index])
 }
 
 func (e *CommercePlatformExpression) ProductList() *ProductListExpression {
@@ -223,10 +253,16 @@ func (e *OrderLineListExpression) Size() *ValueExpression[int] {
 }
 
 func (e *OrderLineListExpression) First() *order_line.OrderLineExpression {
-	if e.err != nil { return order_line.NewOrderLineExpression(nil) }
+	if e.err != nil { panic(e.err) }
 	if e.value == nil || len(e.value.Items()) == 0 { return order_line.NewOrderLineExpression(nil) }
-	value, _ := e.value.Items()[0].(*order_line.OrderLine)
+	value := e.value.Items()[0]
 	return order_line.NewOrderLineExpression(value)
+}
+
+func (e *OrderLineListExpression) Get(index int) *order_line.OrderLineExpression {
+	if e.err != nil { panic(e.err) }
+	if e.value == nil || index < 0 || index >= len(e.value.Items()) { return order_line.NewOrderLineExpression(nil) }
+	return order_line.NewOrderLineExpression(e.value.Items()[index])
 }
 
 func (e *CommercePlatformExpression) OrderLineList() *OrderLineListExpression {
@@ -250,10 +286,16 @@ func (e *OrderSearchPresetListExpression) Size() *ValueExpression[int] {
 }
 
 func (e *OrderSearchPresetListExpression) First() *order_search_preset.OrderSearchPresetExpression {
-	if e.err != nil { return order_search_preset.NewOrderSearchPresetExpression(nil) }
+	if e.err != nil { panic(e.err) }
 	if e.value == nil || len(e.value.Items()) == 0 { return order_search_preset.NewOrderSearchPresetExpression(nil) }
-	value, _ := e.value.Items()[0].(*order_search_preset.OrderSearchPreset)
+	value := e.value.Items()[0]
 	return order_search_preset.NewOrderSearchPresetExpression(value)
+}
+
+func (e *OrderSearchPresetListExpression) Get(index int) *order_search_preset.OrderSearchPresetExpression {
+	if e.err != nil { panic(e.err) }
+	if e.value == nil || index < 0 || index >= len(e.value.Items()) { return order_search_preset.NewOrderSearchPresetExpression(nil) }
+	return order_search_preset.NewOrderSearchPresetExpression(e.value.Items()[index])
 }
 
 func (e *CommercePlatformExpression) OrderSearchPresetList() *OrderSearchPresetListExpression {

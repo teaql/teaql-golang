@@ -4,6 +4,7 @@ import (
 	"bytes"
 	stdcontext "context"
 	"errors"
+	"fmt"
 	"strings"
 	"testing"
 	"time"
@@ -23,7 +24,7 @@ func (d *mockDialect) QuoteIdent(ident string) string {
 	return `"` + ident + `"`
 }
 func (d *mockDialect) Placeholder(index int) string {
-	return "?"
+	return fmt.Sprintf("$%d", index)
 }
 func (d *mockDialect) SchemaSetupSqls() []string {
 	return nil
@@ -309,6 +310,65 @@ func TestSqlDataServiceExecutor_Mutate(t *testing.T) {
 	})
 }
 
+func TestMutationSQLIntentScrubsTargetIDWithoutChangingBindings(t *testing.T) {
+	for _, failed := range []bool{false, true} {
+		for _, action := range []string{"create", "update", "delete"} {
+			t.Run(fmt.Sprintf("%s/failure=%t", action, failed), func(t *testing.T) {
+				meta := runtime.NewInMemoryMetadataStore()
+				meta.Register(&core.EntityDescriptor{Name: "User", TabName: "users", AuditMaskFieldsDeclared: true,
+					AuditMaskFlds: []string{}, Properties: []*core.PropertyDescriptor{
+						{Name: "id", ColName: "id", DataType: core.TypeText, IsId: true, LogPolicy: "plain"},
+						{Name: "name", ColName: "name", DataType: core.TypeText},
+					}})
+				transport := &mockTransport{affected: 1}
+				if failed {
+					transport.err = errors.New("DRIVER-CANARY")
+				}
+				store := runtime.NewSQLExecutionEvidenceStore()
+				context := runtime.NewUserContext().WithDiagnosticSQLLogSink(store)
+				exec := runtime.NewSqlDataServiceExecutor(transport, &mockDialect{}, meta)
+				trace := []*core.TraceNode{core.NewTypedTraceNode("audit", "mutation", "what: mutate target 1001")}
+				var request data_service.MutationRequest
+				switch action {
+				case "create":
+					request = &data_service.InsertMutation{Cmd: &core.InsertCommand{Entity: "User", Values: core.Record{
+						"id": core.ValText("1001"), "name": core.ValText("Alice"),
+					}, TraceChain: trace}}
+				case "update":
+					request = &data_service.UpdateMutation{Cmd: &core.UpdateCommand{Entity: "User", Id: core.ValText("1001"),
+						Values: core.Record{"name": core.ValText("Alice")}, TraceChain: trace}}
+				case "delete":
+					request = &data_service.DeleteMutation{Cmd: &core.DeleteCommand{Entity: "User", Id: core.ValText("1001"),
+						TraceChain: trace}}
+				}
+				_, err := exec.Mutate(context, request)
+				if failed != (err != nil) {
+					t.Fatalf("unexpected mutation result: %v", err)
+				}
+				entries := store.Snapshot()
+				if len(entries) != 1 || entries[0].AuditReason == nil || *entries[0].AuditReason != "what: mutate target [REDACTED]" {
+					t.Fatalf("unsafe SQL intent: %+v", entries)
+				}
+				hasPlainID := false
+				for _, value := range entries[0].Parameters {
+					if value.V == "1001" {
+						hasPlainID = true
+					}
+				}
+				if !hasPlainID {
+					t.Fatalf("test did not exercise an ordinary ID binding: %+v", entries[0].Parameters)
+				}
+				if entries[0].AffectedRows != nil && *entries[0].AffectedRows != 1 {
+					t.Fatalf("changed row count: %+v", entries[0])
+				}
+				if request.Comment() == nil || *request.Comment() != "what: mutate target 1001" {
+					t.Fatal("mutation intent was modified")
+				}
+			})
+		}
+	}
+}
+
 func TestSqlExecutionEvidenceIsParameterizedAndFilterable(t *testing.T) {
 	t.Setenv("TEAQL_ALLOW_SENSITIVE_PLAINTEXT_LOGS", "I_UNDERSTAND_SENSITIVE_DATA_MAY_BE_WRITTEN_TO_DISK")
 	meta := runtime.NewInMemoryMetadataStore()
@@ -402,9 +462,10 @@ func TestDiagnosticSQLLogDefaultsOnHasStructuredFieldsAndIndependentSwitches(t *
 	count := 1
 	metadata := data_service.ExecutionMetadata{
 		Operation: data_service.OpQuery, DebugQuery: &debug,
-		ParameterizedSQL: "SELECT * FROM users WHERE name = ?",
-		Parameters:       []core.Value{core.ValText("O'Brien 学校")},
-		StartedAt:        time.Unix(1, 0), EndedAt: time.Unix(1, 25_000), ResultCount: &count,
+		ParameterizedSQL:     "SELECT * FROM users WHERE name = ?",
+		Parameters:           []core.Value{core.ValText("O'Brien 学校")},
+		ParameterLogPolicies: []string{"masked"},
+		StartedAt:            time.Unix(1, 0), EndedAt: time.Unix(1, 25_000), ResultCount: &count,
 	}
 	context := runtime.NewUserContext()
 	if !context.QuerySqlLogEnabled() || !context.MutationSqlLogEnabled() {
@@ -412,8 +473,9 @@ func TestDiagnosticSQLLogDefaultsOnHasStructuredFieldsAndIndependentSwitches(t *
 	}
 	context.WithDiagnosticSQLLogSink(runtime.NewTextDiagnosticSQLLogSink(&output))
 	context.RecordExecutionMetadata(metadata)
-	if !strings.Contains(output.String(), "Parameterized SQL:") ||
-		strings.Contains(output.String(), "Debug SQL:") ||
+	// #26/#58: retain expanded, masked SQL, not placeholders plus a parameter list.
+	if strings.Contains(output.String(), "Parameterized SQL:") ||
+		!strings.Contains(output.String(), "Debug SQL:") || !strings.Contains(output.String(), "/* masked */") ||
 		strings.Contains(output.String(), "O'Brien") || !strings.Contains(output.String(), "1 rows returned") {
 		t.Fatalf("ordinary operator log was not safely redacted: %s", output.String())
 	}

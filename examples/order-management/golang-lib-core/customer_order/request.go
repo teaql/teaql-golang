@@ -1,3 +1,5 @@
+
+
 package customer_order
 
 import (
@@ -19,8 +21,10 @@ var (
 
 type CustomerOrderRequest struct {
 	Query       *core.SelectQuery
+	queryOptions *core.QueryOptions
 	purposeText string
 	commentText string
+	relationFactories map[string]func() core.Entity
 }
 
 type ExecutableCustomerOrderRequest struct {
@@ -28,13 +32,31 @@ type ExecutableCustomerOrderRequest struct {
 }
 
 func NewCustomerOrderRequest() *CustomerOrderRequest {
-	return &CustomerOrderRequest{
-		Query: core.NewSelectQuery("Customer Order"),
+	r := &CustomerOrderRequest{
+		Query: core.NewSelectQuery("customer_order"),
+		queryOptions: core.NewQueryOptions(),
+		relationFactories: make(map[string]func() core.Entity),
 	}
+	r.Query.AndFilter(core.ExprGte("version", core.ValI64(1)))
+	return r
+}
+
+func NewCustomerOrderMinimalRequest() *CustomerOrderRequest {
+	r := NewCustomerOrderRequest()
+	r.Query.Projects("id", "version")
+	return r
 }
 
 func (r *CustomerOrderRequest) GetQuery() *core.SelectQuery {
 	return r.Query
+}
+
+func (r *CustomerOrderRequest) GetEntityDescriptor() *core.EntityDescriptor {
+	return NewCustomerOrder().EntityDescriptor()
+}
+
+func (r *CustomerOrderRequest) NewRelationEntity() core.Entity {
+	return NewCustomerOrder()
 }
 
 func (r *CustomerOrderRequest) Comment(comment string) *CustomerOrderRequest {
@@ -43,11 +65,13 @@ func (r *CustomerOrderRequest) Comment(comment string) *CustomerOrderRequest {
 }
 
 func (r *CustomerOrderRequest) Purpose(purpose string) *ExecutableCustomerOrderRequest {
-	if strings.TrimSpace(r.commentText) == "" {
-		panic("Purpose() requires a non-empty Comment() set earlier on the request")
-	}
 	r.purposeText = purpose
 	return &ExecutableCustomerOrderRequest{request: r}
+}
+
+func (r *ExecutableCustomerOrderRequest) Comment(comment string) *ExecutableCustomerOrderRequest {
+	r.request.commentText = comment
+	return r
 }
 
 func (r *CustomerOrderRequest) Limit(limit uint64) *CustomerOrderRequest {
@@ -57,6 +81,65 @@ func (r *CustomerOrderRequest) Limit(limit uint64) *CustomerOrderRequest {
 
 func (r *CustomerOrderRequest) Offset(offset uint64) *CustomerOrderRequest {
 	r.Query.Offset(offset)
+	return r
+}
+
+func (r *CustomerOrderRequest) OptimizeForContinuousPageFetch() *CustomerOrderRequest {
+	r.Query.OptimizeForContinuousPageFetch()
+	return r
+}
+
+func (r *CustomerOrderRequest) OptimizeForContinuousPageFetchWith(namespace string, ttlSeconds uint64) *CustomerOrderRequest {
+	r.Query.OptimizeForContinuousPageFetchWith(namespace, ttlSeconds)
+	return r
+}
+
+func (r *CustomerOrderRequest) OptimizePaginationWithIDSet() *CustomerOrderRequest {
+	r.Query.OptimizePaginationWithIDSet()
+	return r
+}
+
+func (r *CustomerOrderRequest) OptimizePaginationWithIDSetConfig(namespace string, ttlSeconds, maxIDs uint64) *CustomerOrderRequest {
+	r.Query.OptimizePaginationWithIDSetConfig(namespace, ttlSeconds, maxIDs)
+	return r
+}
+
+func (r *CustomerOrderRequest) TopNProbeParentThreshold(threshold uint64) *CustomerOrderRequest {
+	r.Query.TopNProbeParentThreshold(threshold)
+	return r
+}
+
+func removeCustomerOrderVersionFilter(expr *core.Expr) *core.Expr {
+	if expr == nil { return nil }
+	if expr.Type == core.ExprTypeBinary && expr.Left != nil &&
+		expr.Left.Type == core.ExprTypeColumn && expr.Left.Column == "version" {
+		return nil
+	}
+	if expr.Type != core.ExprTypeAnd { return expr }
+	parts := make([]*core.Expr, 0, len(expr.Parts))
+	for _, part := range expr.Parts {
+		if kept := removeCustomerOrderVersionFilter(part); kept != nil {
+			parts = append(parts, kept)
+		}
+	}
+	if len(parts) == 0 { return nil }
+	if len(parts) == 1 { return parts[0] }
+	return core.ExprAndNode(parts...)
+}
+
+func (r *CustomerOrderRequest) WithDeletedRows() *CustomerOrderRequest {
+	r.Query.Filter = removeCustomerOrderVersionFilter(r.Query.Filter)
+	return r
+}
+
+func (r *CustomerOrderRequest) DeletedRowsOnly() *CustomerOrderRequest {
+	r.WithDeletedRows()
+	r.Query.AndFilter(core.ExprLte("version", core.ValI64(-1)))
+	return r
+}
+
+func (r *CustomerOrderRequest) SelectId() *CustomerOrderRequest {
+	r.Query.Project("id")
 	return r
 }
 
@@ -100,12 +183,32 @@ func (r *CustomerOrderRequest) WithIdLessThanOrEqualTo(value uint64) *CustomerOr
 	r.Query.AndFilter(core.ExprLte("id", core.ValU64(value)))
 	return r
 }
+func (r *CustomerOrderRequest) WithIdBetween(lower uint64, upper uint64) *CustomerOrderRequest {
+	value := lower
+	from := core.ValU64(value)
+	value = upper
+	to := core.ValU64(value)
+	r.Query.AndFilter(core.ExprBetweenNode("id", from, to))
+	return r
+}
+func (r *CustomerOrderRequest) WithIdIsKnown() *CustomerOrderRequest {
+	r.Query.AndFilter(core.ExprIsNotNullNode("id"))
+	return r
+}
+func (r *CustomerOrderRequest) WithIdIsUnknown() *CustomerOrderRequest {
+	r.Query.AndFilter(core.ExprIsNullNode("id"))
+	return r
+}
 func (r *CustomerOrderRequest) OrderByIdAsc() *CustomerOrderRequest {
 	r.Query.OrderAsc("id")
 	return r
 }
 func (r *CustomerOrderRequest) OrderByIdDesc() *CustomerOrderRequest {
 	r.Query.OrderDesc("id")
+	return r
+}
+func (r *CustomerOrderRequest) SelectOrderNumber() *CustomerOrderRequest {
+	r.Query.Project("order_number")
 	return r
 }
 
@@ -149,6 +252,22 @@ func (r *CustomerOrderRequest) WithOrderNumberLessThanOrEqualTo(value string) *C
 	r.Query.AndFilter(core.ExprLte("order_number", core.ValText(value)))
 	return r
 }
+func (r *CustomerOrderRequest) WithOrderNumberBetween(lower string, upper string) *CustomerOrderRequest {
+	value := lower
+	from := core.ValText(value)
+	value = upper
+	to := core.ValText(value)
+	r.Query.AndFilter(core.ExprBetweenNode("order_number", from, to))
+	return r
+}
+func (r *CustomerOrderRequest) WithOrderNumberIsKnown() *CustomerOrderRequest {
+	r.Query.AndFilter(core.ExprIsNotNullNode("order_number"))
+	return r
+}
+func (r *CustomerOrderRequest) WithOrderNumberIsUnknown() *CustomerOrderRequest {
+	r.Query.AndFilter(core.ExprIsNullNode("order_number"))
+	return r
+}
 func (r *CustomerOrderRequest) WithOrderNumberContaining(term string) *CustomerOrderRequest {
 	r.Query.AndFilter(core.ExprContain("order_number", term))
 	return r
@@ -161,8 +280,20 @@ func (r *CustomerOrderRequest) WithOrderNumberStartingWith(term string) *Custome
 	r.Query.AndFilter(core.ExprBeginWith("order_number", term))
 	return r
 }
+func (r *CustomerOrderRequest) WithOrderNumberNotStartingWith(term string) *CustomerOrderRequest {
+	r.Query.AndFilter(core.ExprNotBeginWith("order_number", term))
+	return r
+}
 func (r *CustomerOrderRequest) WithOrderNumberEndingWith(term string) *CustomerOrderRequest {
 	r.Query.AndFilter(core.ExprEndWith("order_number", term))
+	return r
+}
+func (r *CustomerOrderRequest) WithOrderNumberNotEndingWith(term string) *CustomerOrderRequest {
+	r.Query.AndFilter(core.ExprNotEndWith("order_number", term))
+	return r
+}
+func (r *CustomerOrderRequest) WithOrderNumberSoundingLike(term string) *CustomerOrderRequest {
+	r.Query.AndFilter(core.ExprSoundLike("order_number", core.ValText(term)))
 	return r
 }
 func (r *CustomerOrderRequest) OrderByOrderNumberAsc() *CustomerOrderRequest {
@@ -171,6 +302,10 @@ func (r *CustomerOrderRequest) OrderByOrderNumberAsc() *CustomerOrderRequest {
 }
 func (r *CustomerOrderRequest) OrderByOrderNumberDesc() *CustomerOrderRequest {
 	r.Query.OrderDesc("order_number")
+	return r
+}
+func (r *CustomerOrderRequest) SelectOrderDate() *CustomerOrderRequest {
+	r.Query.Project("order_date")
 	return r
 }
 
@@ -214,12 +349,32 @@ func (r *CustomerOrderRequest) WithOrderDateLessThanOrEqualTo(value time.Time) *
 	r.Query.AndFilter(core.ExprLte("order_date", core.ValDate(value)))
 	return r
 }
+func (r *CustomerOrderRequest) WithOrderDateBetween(lower time.Time, upper time.Time) *CustomerOrderRequest {
+	value := lower
+	from := core.ValDate(value)
+	value = upper
+	to := core.ValDate(value)
+	r.Query.AndFilter(core.ExprBetweenNode("order_date", from, to))
+	return r
+}
+func (r *CustomerOrderRequest) WithOrderDateIsKnown() *CustomerOrderRequest {
+	r.Query.AndFilter(core.ExprIsNotNullNode("order_date"))
+	return r
+}
+func (r *CustomerOrderRequest) WithOrderDateIsUnknown() *CustomerOrderRequest {
+	r.Query.AndFilter(core.ExprIsNullNode("order_date"))
+	return r
+}
 func (r *CustomerOrderRequest) OrderByOrderDateAsc() *CustomerOrderRequest {
 	r.Query.OrderAsc("order_date")
 	return r
 }
 func (r *CustomerOrderRequest) OrderByOrderDateDesc() *CustomerOrderRequest {
 	r.Query.OrderDesc("order_date")
+	return r
+}
+func (r *CustomerOrderRequest) SelectTotalAmount() *CustomerOrderRequest {
+	r.Query.Project("total_amount")
 	return r
 }
 
@@ -263,12 +418,32 @@ func (r *CustomerOrderRequest) WithTotalAmountLessThanOrEqualTo(value decimal.De
 	r.Query.AndFilter(core.ExprLte("total_amount", core.ValDecimal(value)))
 	return r
 }
+func (r *CustomerOrderRequest) WithTotalAmountBetween(lower decimal.Decimal, upper decimal.Decimal) *CustomerOrderRequest {
+	value := lower
+	from := core.ValDecimal(value)
+	value = upper
+	to := core.ValDecimal(value)
+	r.Query.AndFilter(core.ExprBetweenNode("total_amount", from, to))
+	return r
+}
+func (r *CustomerOrderRequest) WithTotalAmountIsKnown() *CustomerOrderRequest {
+	r.Query.AndFilter(core.ExprIsNotNullNode("total_amount"))
+	return r
+}
+func (r *CustomerOrderRequest) WithTotalAmountIsUnknown() *CustomerOrderRequest {
+	r.Query.AndFilter(core.ExprIsNullNode("total_amount"))
+	return r
+}
 func (r *CustomerOrderRequest) OrderByTotalAmountAsc() *CustomerOrderRequest {
 	r.Query.OrderAsc("total_amount")
 	return r
 }
 func (r *CustomerOrderRequest) OrderByTotalAmountDesc() *CustomerOrderRequest {
 	r.Query.OrderDesc("total_amount")
+	return r
+}
+func (r *CustomerOrderRequest) SelectStatus() *CustomerOrderRequest {
+	r.Query.Project("status_id")
 	return r
 }
 
@@ -312,10 +487,39 @@ func (r *CustomerOrderRequest) WithStatusLessThanOrEqualTo(value uint64) *Custom
 	r.Query.AndFilter(core.ExprLte("status_id", core.ValU64(value)))
 	return r
 }
-func (r *CustomerOrderRequest) FacetByStatusAs(name string, nestedReq any) *CustomerOrderRequest {
-	if req, ok := nestedReq.(interface{ GetQuery() *core.SelectQuery }); ok {
-		r.Query.WithObjectGroupBy(name, "status_id", req.GetQuery())
-	}
+func (r *CustomerOrderRequest) WithStatusBetween(lower uint64, upper uint64) *CustomerOrderRequest {
+	value := lower
+	from := core.ValU64(value)
+	value = upper
+	to := core.ValU64(value)
+	r.Query.AndFilter(core.ExprBetweenNode("status_id", from, to))
+	return r
+}
+func (r *CustomerOrderRequest) WithStatusIsKnown() *CustomerOrderRequest {
+	r.Query.AndFilter(core.ExprIsNotNullNode("status_id"))
+	return r
+}
+func (r *CustomerOrderRequest) WithStatusIsUnknown() *CustomerOrderRequest {
+	r.Query.AndFilter(core.ExprIsNullNode("status_id"))
+	return r
+}
+func (r *CustomerOrderRequest) FacetByStatusAs(
+	name string,
+	nestedReq interface{ GetQuery() *core.SelectQuery },
+	includeAllFacets ...bool,
+) *CustomerOrderRequest {
+	includeAll := true
+	if len(includeAllFacets) > 0 { includeAll = includeAllFacets[0] }
+	r.queryOptions.Facets = append(r.queryOptions.Facets, core.NewFacetRequest(
+		name, "status_id", core.NewQuerySelection(nestedReq.GetQuery()), includeAll))
+	return r
+}
+func (r *CustomerOrderRequest) WithStatusIsPending() *CustomerOrderRequest {
+	r.Query.AndFilter(core.ExprEq("status_id", core.ValU64(1001)))
+	return r
+}
+func (r *CustomerOrderRequest) WithStatusIsConfirmed() *CustomerOrderRequest {
+	r.Query.AndFilter(core.ExprEq("status_id", core.ValU64(1002)))
 	return r
 }
 func (r *CustomerOrderRequest) OrderByStatusAsc() *CustomerOrderRequest {
@@ -324,6 +528,10 @@ func (r *CustomerOrderRequest) OrderByStatusAsc() *CustomerOrderRequest {
 }
 func (r *CustomerOrderRequest) OrderByStatusDesc() *CustomerOrderRequest {
 	r.Query.OrderDesc("status_id")
+	return r
+}
+func (r *CustomerOrderRequest) SelectCustomer() *CustomerOrderRequest {
+	r.Query.Project("customer_id")
 	return r
 }
 
@@ -367,10 +575,31 @@ func (r *CustomerOrderRequest) WithCustomerLessThanOrEqualTo(value uint64) *Cust
 	r.Query.AndFilter(core.ExprLte("customer_id", core.ValU64(value)))
 	return r
 }
-func (r *CustomerOrderRequest) FacetByCustomerAs(name string, nestedReq any) *CustomerOrderRequest {
-	if req, ok := nestedReq.(interface{ GetQuery() *core.SelectQuery }); ok {
-		r.Query.WithObjectGroupBy(name, "customer_id", req.GetQuery())
-	}
+func (r *CustomerOrderRequest) WithCustomerBetween(lower uint64, upper uint64) *CustomerOrderRequest {
+	value := lower
+	from := core.ValU64(value)
+	value = upper
+	to := core.ValU64(value)
+	r.Query.AndFilter(core.ExprBetweenNode("customer_id", from, to))
+	return r
+}
+func (r *CustomerOrderRequest) WithCustomerIsKnown() *CustomerOrderRequest {
+	r.Query.AndFilter(core.ExprIsNotNullNode("customer_id"))
+	return r
+}
+func (r *CustomerOrderRequest) WithCustomerIsUnknown() *CustomerOrderRequest {
+	r.Query.AndFilter(core.ExprIsNullNode("customer_id"))
+	return r
+}
+func (r *CustomerOrderRequest) FacetByCustomerAs(
+	name string,
+	nestedReq interface{ GetQuery() *core.SelectQuery },
+	includeAllFacets ...bool,
+) *CustomerOrderRequest {
+	includeAll := true
+	if len(includeAllFacets) > 0 { includeAll = includeAllFacets[0] }
+	r.queryOptions.Facets = append(r.queryOptions.Facets, core.NewFacetRequest(
+		name, "customer_id", core.NewQuerySelection(nestedReq.GetQuery()), includeAll))
 	return r
 }
 func (r *CustomerOrderRequest) OrderByCustomerAsc() *CustomerOrderRequest {
@@ -379,6 +608,10 @@ func (r *CustomerOrderRequest) OrderByCustomerAsc() *CustomerOrderRequest {
 }
 func (r *CustomerOrderRequest) OrderByCustomerDesc() *CustomerOrderRequest {
 	r.Query.OrderDesc("customer_id")
+	return r
+}
+func (r *CustomerOrderRequest) SelectCommercePlatform() *CustomerOrderRequest {
+	r.Query.Project("commerce_platform_id")
 	return r
 }
 
@@ -422,10 +655,31 @@ func (r *CustomerOrderRequest) WithCommercePlatformLessThanOrEqualTo(value uint6
 	r.Query.AndFilter(core.ExprLte("commerce_platform_id", core.ValU64(value)))
 	return r
 }
-func (r *CustomerOrderRequest) FacetByCommercePlatformAs(name string, nestedReq any) *CustomerOrderRequest {
-	if req, ok := nestedReq.(interface{ GetQuery() *core.SelectQuery }); ok {
-		r.Query.WithObjectGroupBy(name, "commerce_platform_id", req.GetQuery())
-	}
+func (r *CustomerOrderRequest) WithCommercePlatformBetween(lower uint64, upper uint64) *CustomerOrderRequest {
+	value := lower
+	from := core.ValU64(value)
+	value = upper
+	to := core.ValU64(value)
+	r.Query.AndFilter(core.ExprBetweenNode("commerce_platform_id", from, to))
+	return r
+}
+func (r *CustomerOrderRequest) WithCommercePlatformIsKnown() *CustomerOrderRequest {
+	r.Query.AndFilter(core.ExprIsNotNullNode("commerce_platform_id"))
+	return r
+}
+func (r *CustomerOrderRequest) WithCommercePlatformIsUnknown() *CustomerOrderRequest {
+	r.Query.AndFilter(core.ExprIsNullNode("commerce_platform_id"))
+	return r
+}
+func (r *CustomerOrderRequest) FacetByCommercePlatformAs(
+	name string,
+	nestedReq interface{ GetQuery() *core.SelectQuery },
+	includeAllFacets ...bool,
+) *CustomerOrderRequest {
+	includeAll := true
+	if len(includeAllFacets) > 0 { includeAll = includeAllFacets[0] }
+	r.queryOptions.Facets = append(r.queryOptions.Facets, core.NewFacetRequest(
+		name, "commerce_platform_id", core.NewQuerySelection(nestedReq.GetQuery()), includeAll))
 	return r
 }
 func (r *CustomerOrderRequest) OrderByCommercePlatformAsc() *CustomerOrderRequest {
@@ -434,6 +688,10 @@ func (r *CustomerOrderRequest) OrderByCommercePlatformAsc() *CustomerOrderReques
 }
 func (r *CustomerOrderRequest) OrderByCommercePlatformDesc() *CustomerOrderRequest {
 	r.Query.OrderDesc("commerce_platform_id")
+	return r
+}
+func (r *CustomerOrderRequest) SelectCreateTime() *CustomerOrderRequest {
+	r.Query.Project("create_time")
 	return r
 }
 
@@ -477,12 +735,32 @@ func (r *CustomerOrderRequest) WithCreateTimeLessThanOrEqualTo(value time.Time) 
 	r.Query.AndFilter(core.ExprLte("create_time", core.ValTimestamp(value.UnixMilli())))
 	return r
 }
+func (r *CustomerOrderRequest) WithCreateTimeBetween(lower time.Time, upper time.Time) *CustomerOrderRequest {
+	value := lower
+	from := core.ValTimestamp(value.UnixMilli())
+	value = upper
+	to := core.ValTimestamp(value.UnixMilli())
+	r.Query.AndFilter(core.ExprBetweenNode("create_time", from, to))
+	return r
+}
+func (r *CustomerOrderRequest) WithCreateTimeIsKnown() *CustomerOrderRequest {
+	r.Query.AndFilter(core.ExprIsNotNullNode("create_time"))
+	return r
+}
+func (r *CustomerOrderRequest) WithCreateTimeIsUnknown() *CustomerOrderRequest {
+	r.Query.AndFilter(core.ExprIsNullNode("create_time"))
+	return r
+}
 func (r *CustomerOrderRequest) OrderByCreateTimeAsc() *CustomerOrderRequest {
 	r.Query.OrderAsc("create_time")
 	return r
 }
 func (r *CustomerOrderRequest) OrderByCreateTimeDesc() *CustomerOrderRequest {
 	r.Query.OrderDesc("create_time")
+	return r
+}
+func (r *CustomerOrderRequest) SelectUpdateTime() *CustomerOrderRequest {
+	r.Query.Project("update_time")
 	return r
 }
 
@@ -526,12 +804,32 @@ func (r *CustomerOrderRequest) WithUpdateTimeLessThanOrEqualTo(value time.Time) 
 	r.Query.AndFilter(core.ExprLte("update_time", core.ValTimestamp(value.UnixMilli())))
 	return r
 }
+func (r *CustomerOrderRequest) WithUpdateTimeBetween(lower time.Time, upper time.Time) *CustomerOrderRequest {
+	value := lower
+	from := core.ValTimestamp(value.UnixMilli())
+	value = upper
+	to := core.ValTimestamp(value.UnixMilli())
+	r.Query.AndFilter(core.ExprBetweenNode("update_time", from, to))
+	return r
+}
+func (r *CustomerOrderRequest) WithUpdateTimeIsKnown() *CustomerOrderRequest {
+	r.Query.AndFilter(core.ExprIsNotNullNode("update_time"))
+	return r
+}
+func (r *CustomerOrderRequest) WithUpdateTimeIsUnknown() *CustomerOrderRequest {
+	r.Query.AndFilter(core.ExprIsNullNode("update_time"))
+	return r
+}
 func (r *CustomerOrderRequest) OrderByUpdateTimeAsc() *CustomerOrderRequest {
 	r.Query.OrderAsc("update_time")
 	return r
 }
 func (r *CustomerOrderRequest) OrderByUpdateTimeDesc() *CustomerOrderRequest {
 	r.Query.OrderDesc("update_time")
+	return r
+}
+func (r *CustomerOrderRequest) SelectVersion() *CustomerOrderRequest {
+	r.Query.Project("version")
 	return r
 }
 
@@ -575,6 +873,22 @@ func (r *CustomerOrderRequest) WithVersionLessThanOrEqualTo(value int64) *Custom
 	r.Query.AndFilter(core.ExprLte("version", core.ValI64(value)))
 	return r
 }
+func (r *CustomerOrderRequest) WithVersionBetween(lower int64, upper int64) *CustomerOrderRequest {
+	value := lower
+	from := core.ValI64(value)
+	value = upper
+	to := core.ValI64(value)
+	r.Query.AndFilter(core.ExprBetweenNode("version", from, to))
+	return r
+}
+func (r *CustomerOrderRequest) WithVersionIsKnown() *CustomerOrderRequest {
+	r.Query.AndFilter(core.ExprIsNotNullNode("version"))
+	return r
+}
+func (r *CustomerOrderRequest) WithVersionIsUnknown() *CustomerOrderRequest {
+	r.Query.AndFilter(core.ExprIsNullNode("version"))
+	return r
+}
 func (r *CustomerOrderRequest) OrderByVersionAsc() *CustomerOrderRequest {
 	r.Query.OrderAsc("version")
 	return r
@@ -584,8 +898,171 @@ func (r *CustomerOrderRequest) OrderByVersionDesc() *CustomerOrderRequest {
 	return r
 }
 
+func (r *CustomerOrderRequest) SelectStatusWith(child interface {
+	GetQuery() *core.SelectQuery
+	NewRelationEntity() core.Entity
+}) *CustomerOrderRequest {
+	r.Query.Project("status_id")
+	r.Query.RelationQuery("statusEntity", child.GetQuery())
+	r.relationFactories["statusEntity"] = child.NewRelationEntity
+	return r
+}
+func (r *CustomerOrderRequest) SelectCustomerWith(child interface {
+	GetQuery() *core.SelectQuery
+	NewRelationEntity() core.Entity
+}) *CustomerOrderRequest {
+	r.Query.Project("customer_id")
+	r.Query.RelationQuery("customerEntity", child.GetQuery())
+	r.relationFactories["customerEntity"] = child.NewRelationEntity
+	return r
+}
+func (r *CustomerOrderRequest) SelectCommercePlatformWith(child interface {
+	GetQuery() *core.SelectQuery
+	NewRelationEntity() core.Entity
+}) *CustomerOrderRequest {
+	r.Query.Project("commerce_platform_id")
+	r.Query.RelationQuery("commercePlatformEntity", child.GetQuery())
+	r.relationFactories["commercePlatformEntity"] = child.NewRelationEntity
+	return r
+}
+
+func (r *CustomerOrderRequest) WithStatusMatching(child interface {
+	GetQuery() *core.SelectQuery
+	GetEntityDescriptor() *core.EntityDescriptor
+}) *CustomerOrderRequest {
+	r.Query.AndFilter(core.ExprInSubQuery("status_id", child.GetEntityDescriptor(), child.GetQuery(), "id"))
+	return r
+}
+
+func (r *CustomerOrderRequest) WithoutStatusMatching(child interface {
+	GetQuery() *core.SelectQuery
+	GetEntityDescriptor() *core.EntityDescriptor
+}) *CustomerOrderRequest {
+	r.Query.AndFilter(core.ExprNotInSubQuery("status_id", child.GetEntityDescriptor(), child.GetQuery(), "id"))
+	return r
+}
+func (r *CustomerOrderRequest) WithCustomerMatching(child interface {
+	GetQuery() *core.SelectQuery
+	GetEntityDescriptor() *core.EntityDescriptor
+}) *CustomerOrderRequest {
+	r.Query.AndFilter(core.ExprInSubQuery("customer_id", child.GetEntityDescriptor(), child.GetQuery(), "id"))
+	return r
+}
+
+func (r *CustomerOrderRequest) WithoutCustomerMatching(child interface {
+	GetQuery() *core.SelectQuery
+	GetEntityDescriptor() *core.EntityDescriptor
+}) *CustomerOrderRequest {
+	r.Query.AndFilter(core.ExprNotInSubQuery("customer_id", child.GetEntityDescriptor(), child.GetQuery(), "id"))
+	return r
+}
+func (r *CustomerOrderRequest) WithCommercePlatformMatching(child interface {
+	GetQuery() *core.SelectQuery
+	GetEntityDescriptor() *core.EntityDescriptor
+}) *CustomerOrderRequest {
+	r.Query.AndFilter(core.ExprInSubQuery("commerce_platform_id", child.GetEntityDescriptor(), child.GetQuery(), "id"))
+	return r
+}
+
+func (r *CustomerOrderRequest) WithoutCommercePlatformMatching(child interface {
+	GetQuery() *core.SelectQuery
+	GetEntityDescriptor() *core.EntityDescriptor
+}) *CustomerOrderRequest {
+	r.Query.AndFilter(core.ExprNotInSubQuery("commerce_platform_id", child.GetEntityDescriptor(), child.GetQuery(), "id"))
+	return r
+}
+
 func (r *CustomerOrderRequest) CountOrderLines() *CustomerOrderRequest {
-	r.Query.Count("count_order_lines")
+	return r.CountOrderLinesAs("countOrderLines")
+
+}
+func (r *CustomerOrderRequest) CountOrderLinesAs(alias string) *CustomerOrderRequest {
+	return r.CountOrderLinesWith(alias, order_line.NewOrderLineRequest())
+}
+func (r *CustomerOrderRequest) CountOrderLinesWith(alias string, child *order_line.OrderLineRequest) *CustomerOrderRequest {
+	child.Query.Count(alias)
+	r.Query.RelationAggregates = append(r.Query.RelationAggregates, core.NewRelationAggregate("orderLineList", alias, child.Query, true))
+	return r
+}
+
+func (r *CustomerOrderRequest) SumQuantityOfOrderLines() *CustomerOrderRequest {
+	return r.SumQuantityOfOrderLinesAs("sumQuantityOfOrderLines", order_line.NewOrderLineRequest())
+}
+func (r *CustomerOrderRequest) SumQuantityOfOrderLinesAs(alias string, child *order_line.OrderLineRequest) *CustomerOrderRequest {
+	child.Query.Sum("quantity", "sum_quantity")
+	r.Query.RelationAggregates = append(r.Query.RelationAggregates, core.NewRelationAggregate("orderLineList", alias, child.Query, true))
+	return r
+}
+func (r *CustomerOrderRequest) MinQuantityOfOrderLines() *CustomerOrderRequest {
+	return r.MinQuantityOfOrderLinesAs("minQuantityOfOrderLines", order_line.NewOrderLineRequest())
+}
+func (r *CustomerOrderRequest) MinQuantityOfOrderLinesAs(alias string, child *order_line.OrderLineRequest) *CustomerOrderRequest {
+	child.Query.Min("quantity", "min_quantity")
+	r.Query.RelationAggregates = append(r.Query.RelationAggregates, core.NewRelationAggregate("orderLineList", alias, child.Query, true))
+	return r
+}
+func (r *CustomerOrderRequest) MaxQuantityOfOrderLines() *CustomerOrderRequest {
+	return r.MaxQuantityOfOrderLinesAs("maxQuantityOfOrderLines", order_line.NewOrderLineRequest())
+}
+func (r *CustomerOrderRequest) MaxQuantityOfOrderLinesAs(alias string, child *order_line.OrderLineRequest) *CustomerOrderRequest {
+	child.Query.Max("quantity", "max_quantity")
+	r.Query.RelationAggregates = append(r.Query.RelationAggregates, core.NewRelationAggregate("orderLineList", alias, child.Query, true))
+	return r
+}
+func (r *CustomerOrderRequest) AvgQuantityOfOrderLines() *CustomerOrderRequest {
+	return r.AvgQuantityOfOrderLinesAs("avgQuantityOfOrderLines", order_line.NewOrderLineRequest())
+}
+func (r *CustomerOrderRequest) AvgQuantityOfOrderLinesAs(alias string, child *order_line.OrderLineRequest) *CustomerOrderRequest {
+	child.Query.Avg("quantity", "avg_quantity")
+	r.Query.RelationAggregates = append(r.Query.RelationAggregates, core.NewRelationAggregate("orderLineList", alias, child.Query, true))
+	return r
+}
+func (r *CustomerOrderRequest) StandardDeviationQuantityOfOrderLines() *CustomerOrderRequest {
+	return r.StandardDeviationQuantityOfOrderLinesAs("standardDeviationQuantityOfOrderLines", order_line.NewOrderLineRequest())
+}
+func (r *CustomerOrderRequest) StandardDeviationQuantityOfOrderLinesAs(alias string, child *order_line.OrderLineRequest) *CustomerOrderRequest {
+	child.Query.Stddev("quantity", "stdDev_quantity")
+	r.Query.RelationAggregates = append(r.Query.RelationAggregates, core.NewRelationAggregate("orderLineList", alias, child.Query, true))
+	return r
+}
+func (r *CustomerOrderRequest) SquareRootOfPopulationStandardDeviationQuantityOfOrderLines() *CustomerOrderRequest {
+	return r.SquareRootOfPopulationStandardDeviationQuantityOfOrderLinesAs("squareRootOfPopulationStandardDeviationQuantityOfOrderLines", order_line.NewOrderLineRequest())
+}
+func (r *CustomerOrderRequest) SquareRootOfPopulationStandardDeviationQuantityOfOrderLinesAs(alias string, child *order_line.OrderLineRequest) *CustomerOrderRequest {
+	child.Query.StddevPop("quantity", "stdDevPop_quantity")
+	r.Query.RelationAggregates = append(r.Query.RelationAggregates, core.NewRelationAggregate("orderLineList", alias, child.Query, true))
+	return r
+}
+func (r *CustomerOrderRequest) SampleVarianceQuantityOfOrderLines() *CustomerOrderRequest {
+	return r.SampleVarianceQuantityOfOrderLinesAs("sampleVarianceQuantityOfOrderLines", order_line.NewOrderLineRequest())
+}
+func (r *CustomerOrderRequest) SampleVarianceQuantityOfOrderLinesAs(alias string, child *order_line.OrderLineRequest) *CustomerOrderRequest {
+	child.Query.VarSamp("quantity", "varSamp_quantity")
+	r.Query.RelationAggregates = append(r.Query.RelationAggregates, core.NewRelationAggregate("orderLineList", alias, child.Query, true))
+	return r
+}
+func (r *CustomerOrderRequest) SamplePopulationVarianceQuantityOfOrderLines() *CustomerOrderRequest {
+	return r.SamplePopulationVarianceQuantityOfOrderLinesAs("samplePopulationVarianceQuantityOfOrderLines", order_line.NewOrderLineRequest())
+}
+func (r *CustomerOrderRequest) SamplePopulationVarianceQuantityOfOrderLinesAs(alias string, child *order_line.OrderLineRequest) *CustomerOrderRequest {
+	child.Query.VarPop("quantity", "varPop_quantity")
+	r.Query.RelationAggregates = append(r.Query.RelationAggregates, core.NewRelationAggregate("orderLineList", alias, child.Query, true))
+	return r
+}
+func (r *CustomerOrderRequest) MinCreateTimeOfOrderLines() *CustomerOrderRequest {
+	return r.MinCreateTimeOfOrderLinesAs("minCreateTimeOfOrderLines", order_line.NewOrderLineRequest())
+}
+func (r *CustomerOrderRequest) MinCreateTimeOfOrderLinesAs(alias string, child *order_line.OrderLineRequest) *CustomerOrderRequest {
+	child.Query.Min("create_time", "min_createTime")
+	r.Query.RelationAggregates = append(r.Query.RelationAggregates, core.NewRelationAggregate("orderLineList", alias, child.Query, true))
+	return r
+}
+func (r *CustomerOrderRequest) MaxCreateTimeOfOrderLines() *CustomerOrderRequest {
+	return r.MaxCreateTimeOfOrderLinesAs("maxCreateTimeOfOrderLines", order_line.NewOrderLineRequest())
+}
+func (r *CustomerOrderRequest) MaxCreateTimeOfOrderLinesAs(alias string, child *order_line.OrderLineRequest) *CustomerOrderRequest {
+	child.Query.Max("create_time", "max_createTime")
+	r.Query.RelationAggregates = append(r.Query.RelationAggregates, core.NewRelationAggregate("orderLineList", alias, child.Query, true))
 	return r
 }
 
@@ -598,9 +1075,36 @@ func (r *CustomerOrderRequest) SelectOrderLineListWith(child *order_line.OrderLi
 	return r
 }
 
+func (r *CustomerOrderRequest) HaveOrderLines() *CustomerOrderRequest {
+	return r.WithOrderLineListMatching(order_line.NewOrderLineRequest())
+}
+
+func (r *CustomerOrderRequest) HaveNoOrderLines() *CustomerOrderRequest {
+	return r.WithoutOrderLineListMatching(order_line.NewOrderLineRequest())
+}
+
+func (r *CustomerOrderRequest) WithOrderLineListMatching(child *order_line.OrderLineRequest) *CustomerOrderRequest {
+	r.Query.AndFilter(core.ExprInSubQuery("id", child.GetEntityDescriptor(), child.GetQuery(), "customer_order_id"))
+	return r
+}
+
+func (r *CustomerOrderRequest) WithoutOrderLineListMatching(child *order_line.OrderLineRequest) *CustomerOrderRequest {
+	r.Query.AndFilter(core.ExprNotInSubQuery("id", child.GetEntityDescriptor(), child.GetQuery(), "customer_order_id"))
+	return r
+}
+
 func (e *ExecutableCustomerOrderRequest) NewEntity(context *runtime.UserContext) *CustomerOrder {
+	r := e.request
+	if strings.TrimSpace(r.purposeText) == "" || strings.TrimSpace(r.commentText) == "" {
+		panic("security audit failure: non-empty Comment() and Purpose() are required before NewEntity()")
+	}
 	entity := NewCustomerOrder()
-	return entity
+	initialized := context.InitializeEntity("CustomerOrder", entity)
+	typed, ok := initialized.(*CustomerOrder)
+	if !ok {
+		panic("entity initializer changed CustomerOrder to an incompatible type")
+	}
+	return typed
 }
 
 func (e *ExecutableCustomerOrderRequest) ExecuteForOne(context *runtime.UserContext) (*CustomerOrder, error) {
@@ -621,27 +1125,201 @@ func (e *ExecutableCustomerOrderRequest) ExecuteForList(context *runtime.UserCon
 	}
 
 	var results []*CustomerOrder
+	queryRoot := core.NewEntityRoot()
 	for _, rec := range rows {
 		entity := NewCustomerOrder()
+		entity.AttachEntityRoot(queryRoot)
 		if err := entity.FromRecord(rec); err != nil {
 			return nil, err
 		}
-		if relationValue, selected := rec["orderLineList"]; selected {
-			childRecords, ok := relationValue.V.([]core.Record)
-			if !ok {
-				return nil, fmt.Errorf("relation orderLineList has unexpected runtime type %T", relationValue.V)
-			}
-			for _, childRecord := range childRecords {
-				childEntity := order_line.NewOrderLine()
-				if err := childEntity.FromRecord(childRecord); err != nil {
-					return nil, err
+		if relationValue, selected := rec["statusEntity"]; selected {
+			entity.markRelationLoaded("statusEntity")
+			if childRecord, ok := relationValue.V.(core.Record); ok {
+				if factory := e.request.relationFactories["statusEntity"]; factory != nil {
+					childEntity := factory()
+					if attachable, ok := childEntity.(interface { AttachEntityRoot(*core.EntityRoot) }); ok { attachable.AttachEntityRoot(entity.EntityRoot()) }
+					if err := childEntity.FromRecord(childRecord); err != nil { return nil, err }
+					entity.setRelationEntity("statusEntity", childEntity)
 				}
-				entity.OrderLineList().Add(childEntity)
 			}
 		}
+		if relationValue, selected := rec["customerEntity"]; selected {
+			entity.markRelationLoaded("customerEntity")
+			if childRecord, ok := relationValue.V.(core.Record); ok {
+				if factory := e.request.relationFactories["customerEntity"]; factory != nil {
+					childEntity := factory()
+					if attachable, ok := childEntity.(interface { AttachEntityRoot(*core.EntityRoot) }); ok { attachable.AttachEntityRoot(entity.EntityRoot()) }
+					if err := childEntity.FromRecord(childRecord); err != nil { return nil, err }
+					entity.setRelationEntity("customerEntity", childEntity)
+				}
+			}
+		}
+		if relationValue, selected := rec["commercePlatformEntity"]; selected {
+			entity.markRelationLoaded("commercePlatformEntity")
+			if childRecord, ok := relationValue.V.(core.Record); ok {
+				if factory := e.request.relationFactories["commercePlatformEntity"]; factory != nil {
+					childEntity := factory()
+					if attachable, ok := childEntity.(interface { AttachEntityRoot(*core.EntityRoot) }); ok { attachable.AttachEntityRoot(entity.EntityRoot()) }
+					if err := childEntity.FromRecord(childRecord); err != nil { return nil, err }
+					entity.setRelationEntity("commercePlatformEntity", childEntity)
+				}
+			}
+		}
+		if relationValue, selected := rec["orderLineList"]; selected {
+			childRecords, ok := relationValue.V.([]core.Record)
+				if !ok { return nil, fmt.Errorf("relation orderLineList has unexpected runtime type %T", relationValue.V) }
+				for _, childRecord := range childRecords {
+					childEntity := order_line.NewOrderLine()
+					childEntity.AttachEntityRoot(entity.EntityRoot())
+					if err := childEntity.FromRecord(childRecord); err != nil { return nil, err }
+					entity.OrderLineList().Add(childEntity)
+				}}
 		results = append(results, entity)
 	}
-	return core.NewSmartList(results), nil
+	list := core.NewSmartList(results)
+	if len(e.request.queryOptions.Facets) > 0 {
+		dsRaw := context.GetResource("dataService")
+		ds, ok := dsRaw.(data_service.QueryExecutor)
+		if !ok { return nil, fmt.Errorf("dataService does not implement data_service.QueryExecutor") }
+		facets, err := runtime.ExecuteFacets(
+			context, runtime.NewRuntimeDataService(context.Metadata, ds),
+			e.request.Query, e.request.queryOptions)
+		if err != nil { return nil, err }
+		core.AttachFacets(list, facets)
+	}
+	return list, nil
+}
+
+// ExecuteForPage applies trusted policy once, then derives exact-count and row
+// queries from that same authorized snapshot.
+func (e *ExecutableCustomerOrderRequest) ExecuteForPage(context *runtime.UserContext, offset uint64, size uint64) (*core.SmartList[*CustomerOrder], error) {
+	r := e.request
+	if strings.TrimSpace(r.purposeText) == "" || strings.TrimSpace(r.commentText) == "" {
+		return nil, fmt.Errorf("security audit failure: Comment() and Purpose() must be called before ExecuteForPage()")
+	}
+	if size == 0 {
+		return nil, fmt.Errorf("QUERY_INVALID_LIMIT: size must be positive")
+	}
+	r.Query.Page(offset, size).Comment(r.commentText).Purpose(r.purposeText)
+	authorized, err := context.PrepareQuery(r.Query)
+	if err != nil { return nil, err }
+	dsRaw := context.GetResource("dataService")
+	ds, ok := dsRaw.(data_service.QueryExecutor)
+	if !ok { return nil, fmt.Errorf("dataService does not implement data_service.QueryExecutor") }
+	service := runtime.NewRuntimeDataService(context.Metadata, ds)
+	const countAlias = "__teaql_total"
+	var rows []core.Record
+	var total uint64
+	if authorized.IDSetPagination != nil {
+		rows, err = service.FetchAll(context, authorized)
+		if err != nil { return nil, err }
+		if retainedCount, accuracy := context.IDSetCount(); accuracy == "EXACT" {
+			total = retainedCount
+		} else {
+			countRows, countErr := service.FetchAll(context, authorized.ForExactCount(countAlias))
+			if countErr != nil { return nil, countErr }
+			if len(countRows) != 1 { return nil, fmt.Errorf("exact count returned %d rows", len(countRows)) }
+			var ok bool
+			total, ok = countRows[0][countAlias].TryU64()
+			if !ok { return nil, fmt.Errorf("exact count did not return an unsigned integer") }
+		}
+	} else {
+		countRows, countErr := service.FetchAll(context, authorized.ForExactCount(countAlias))
+		if countErr != nil { return nil, countErr }
+		if len(countRows) != 1 { return nil, fmt.Errorf("exact count returned %d rows", len(countRows)) }
+		var ok bool
+		total, ok = countRows[0][countAlias].TryU64()
+		if !ok { return nil, fmt.Errorf("exact count did not return an unsigned integer") }
+		rows, err = service.FetchAll(context, authorized)
+		if err != nil { return nil, err }
+	}
+	results := make([]*CustomerOrder, 0, len(rows))
+	queryRoot := core.NewEntityRoot()
+	for _, rec := range rows {
+		entity := NewCustomerOrder()
+		entity.AttachEntityRoot(queryRoot)
+		if err := entity.FromRecord(rec); err != nil { return nil, err }
+		if relationValue, selected := rec["statusEntity"]; selected {
+			entity.markRelationLoaded("statusEntity")
+			if childRecord, ok := relationValue.V.(core.Record); ok {
+				if factory := e.request.relationFactories["statusEntity"]; factory != nil {
+					childEntity := factory()
+					if attachable, ok := childEntity.(interface { AttachEntityRoot(*core.EntityRoot) }); ok { attachable.AttachEntityRoot(entity.EntityRoot()) }
+					if err := childEntity.FromRecord(childRecord); err != nil { return nil, err }
+					entity.setRelationEntity("statusEntity", childEntity)
+				}
+			}
+		}
+		if relationValue, selected := rec["customerEntity"]; selected {
+			entity.markRelationLoaded("customerEntity")
+			if childRecord, ok := relationValue.V.(core.Record); ok {
+				if factory := e.request.relationFactories["customerEntity"]; factory != nil {
+					childEntity := factory()
+					if attachable, ok := childEntity.(interface { AttachEntityRoot(*core.EntityRoot) }); ok { attachable.AttachEntityRoot(entity.EntityRoot()) }
+					if err := childEntity.FromRecord(childRecord); err != nil { return nil, err }
+					entity.setRelationEntity("customerEntity", childEntity)
+				}
+			}
+		}
+		if relationValue, selected := rec["commercePlatformEntity"]; selected {
+			entity.markRelationLoaded("commercePlatformEntity")
+			if childRecord, ok := relationValue.V.(core.Record); ok {
+				if factory := e.request.relationFactories["commercePlatformEntity"]; factory != nil {
+					childEntity := factory()
+					if attachable, ok := childEntity.(interface { AttachEntityRoot(*core.EntityRoot) }); ok { attachable.AttachEntityRoot(entity.EntityRoot()) }
+					if err := childEntity.FromRecord(childRecord); err != nil { return nil, err }
+					entity.setRelationEntity("commercePlatformEntity", childEntity)
+				}
+			}
+		}
+		if relationValue, selected := rec["orderLineList"]; selected {
+			childRecords, ok := relationValue.V.([]core.Record)
+				if !ok { return nil, fmt.Errorf("relation orderLineList has unexpected runtime type %T", relationValue.V) }
+				for _, childRecord := range childRecords {
+					childEntity := order_line.NewOrderLine()
+					childEntity.AttachEntityRoot(entity.EntityRoot())
+					if err := childEntity.FromRecord(childRecord); err != nil { return nil, err }
+					entity.OrderLineList().Add(childEntity)
+				}}
+		results = append(results, entity)
+	}
+	return core.NewSmartList(results).WithTotalCount(total), nil
+}
+
+// ExecuteForStream consumes a provider cursor one chunk at a time. Returning
+// an error from yield cancels iteration and releases the database resources.
+func (e *ExecutableCustomerOrderRequest) ExecuteForStream(context *runtime.UserContext, chunkSize int, yield func(*CustomerOrder) error) error {
+	r := e.request
+	if strings.TrimSpace(r.purposeText) == "" || strings.TrimSpace(r.commentText) == "" {
+		return fmt.Errorf("security audit failure: Comment() and Purpose() must be called before ExecuteForStream()")
+	}
+	if yield == nil {
+		return fmt.Errorf("stream consumer must not be nil")
+	}
+	r.Query.Comment(r.commentText).Purpose(r.purposeText)
+	dsRaw := context.GetResource("dataService")
+	ds, ok := dsRaw.(data_service.StreamQueryExecutor)
+	if !ok {
+		return fmt.Errorf("dataService does not implement data_service.StreamQueryExecutor")
+	}
+	req := &data_service.QueryRequest{
+		Query: r.Query, TraceChain: r.Query.TraceChain,
+		Comment: r.Query.CommentText, Purpose: r.Query.PurposeText,
+	}
+	queryRoot := core.NewEntityRoot()
+	return ds.QueryStream(context, req, chunkSize, func(chunk *data_service.StreamChunk) error {
+		for _, rec := range chunk.Rows {
+			entity := NewCustomerOrder()
+			entity.AttachEntityRoot(queryRoot)
+			if err := entity.FromRecord(rec); err != nil {
+				return err
+			}
+			if err := yield(entity); err != nil {
+				return err
+			}
+		}
+		return nil
+	})
 }
 
 func (e *ExecutableCustomerOrderRequest) ExecuteRecords(context *runtime.UserContext) ([]core.Record, error) {
@@ -649,7 +1327,7 @@ func (e *ExecutableCustomerOrderRequest) ExecuteRecords(context *runtime.UserCon
 	if strings.TrimSpace(r.purposeText) == "" || strings.TrimSpace(r.commentText) == "" {
 		return nil, fmt.Errorf("security audit failure: Comment() and Purpose() must be called before ExecuteForList()")
 	}
-	r.Query.Comment(fmt.Sprintf("comment=%s; purpose=%s", r.commentText, r.purposeText))
+	r.Query.Comment(r.commentText).Purpose(r.purposeText)
 
 	dsRaw := context.GetResource("dataService")
 	if dsRaw == nil {
@@ -666,6 +1344,14 @@ func (e *ExecutableCustomerOrderRequest) ExecuteRecords(context *runtime.UserCon
 		return nil, err
 	}
 	return rows, nil
+}
+
+// ExecuteForRows preserves aggregate/group projections as records while keeping
+// the cross-language SmartList result boundary.
+func (e *ExecutableCustomerOrderRequest) ExecuteForRows(context *runtime.UserContext) (*core.SmartList[core.Record], error) {
+	rows, err := e.ExecuteRecords(context)
+	if err != nil { return nil, err }
+	return core.NewSmartList(rows), nil
 }
 
 func (r *CustomerOrderRequest) Count() *CustomerOrderRequest {

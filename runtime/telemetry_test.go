@@ -3,6 +3,7 @@ package runtime
 import (
 	stdcontext "context"
 	"errors"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -58,4 +59,19 @@ func TestRuntimeErrorCategoryUsesTypeNotMessage(t *testing.T) {
 	if got := RuntimeErrorCategory("UnknownTeaQLError"); got != "internal" {
 		t.Fatalf("got %s", got)
 	}
+}
+
+type driverCanaryError struct{ errorCalled *bool }
+
+func (e driverCanaryError) Error() string {
+	*e.errorCalled = true
+	return "SQL failed for password=OTEL-FAILURE-CANARY"
+}
+
+func TestRuntimeErrorTypeDoesNotReadDriverMessage(t *testing.T) {
+	errorCalled := false
+	errorType := RuntimeErrorType(driverCanaryError{errorCalled: &errorCalled})
+	assert.False(t, errorCalled)
+	assert.Contains(t, errorType, "driverCanaryError")
+	assert.False(t, strings.Contains(errorType, "OTEL-FAILURE-CANARY"))
 }

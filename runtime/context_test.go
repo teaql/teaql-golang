@@ -8,7 +8,50 @@ import (
 	"time"
 
 	"github.com/teaql/teaql-golang/core"
+	"github.com/teaql/teaql-golang/data_service"
 )
+
+type panicSQLTelemetrySink struct{ attempts *int }
+
+func (s panicSQLTelemetrySink) RecordExecutionMetadata(data_service.ExecutionMetadata) {
+	*s.attempts++
+	panic("telemetry sink failed")
+}
+
+type panicSQLDiagnosticSink struct{ attempts *int }
+
+func (s panicSQLDiagnosticSink) WriteSQLLog(data_service.ExecutionMetadata) {
+	*s.attempts++
+	panic("diagnostic sink failed")
+}
+
+type countingSQLDiagnosticSink struct{ attempts *int }
+
+func (s countingSQLDiagnosticSink) WriteSQLLog(data_service.ExecutionMetadata) {
+	*s.attempts++
+}
+
+func TestSQLDiagnosticSinkPanicDoesNotInterruptOtherSinks(t *testing.T) {
+	t.Setenv("TEAQL_ALLOW_SENSITIVE_PLAINTEXT_LOGS", "")
+	telemetryCalls, diagnosticCalls, finalCalls := 0, 0, 0
+	context := NewUserContext().
+		WithRuntimeTelemetrySink(panicSQLTelemetrySink{&telemetryCalls}).
+		WithDiagnosticSQLLogSink(panicSQLDiagnosticSink{&diagnosticCalls}).
+		WithSensitiveDiagnosticSQLLogSink(countingSQLDiagnosticSink{&finalCalls})
+	metadata := data_service.ExecutionMetadata{
+		Operation:            data_service.OpQuery,
+		ParameterizedSQL:     "SELECT id FROM customer WHERE password = ?",
+		Parameters:           []core.Value{core.ValText("PASSWORD-CANARY")},
+		ParameterLogPolicies: []string{"credential"},
+	}
+
+	context.RecordExecutionMetadata(metadata)
+
+	if telemetryCalls != 1 || diagnosticCalls != 1 || finalCalls != 1 {
+		t.Fatalf("diagnostic sinks must run independently: telemetry=%d diagnostic=%d final=%d",
+			telemetryCalls, diagnosticCalls, finalCalls)
+	}
+}
 
 func TestUserContextDoesNotExposeSchemaProviderAPI(t *testing.T) {
 	if _, visible := reflect.TypeOf(&UserContext{}).MethodByName("EnsureSchema"); visible {
