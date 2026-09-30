@@ -2,6 +2,7 @@ package runtime
 
 import (
 	stdcontext "context"
+	"errors"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -30,12 +31,31 @@ func TestExecuteFacetsCountsAndIncludeAll(t *testing.T) {
 	assert.Len(t, result["types"].Data, 1)
 }
 
-type facetExecutor struct{ sawOuterFilter bool }
+func TestExecuteFacetsAppliesPolicyToNestedEntityBeforeProvider(t *testing.T) {
+	executor := &facetExecutor{}
+	service := NewRuntimeDataService(nil, executor)
+	outer := core.NewSelectQuery("School")
+	options := core.NewQueryOptions()
+	options.Facets = append(options.Facets, core.NewFacetRequest(
+		"types", "schoolType", core.NewQuerySelection(core.NewSelectQuery("SchoolType")), true))
+	policy := &tenantQueryPolicy{rejected: "SchoolType"}
+	context := NewUserContext().WithRequestPolicy(policy)
+
+	_, err := ExecuteFacets(context, service, outer, options)
+	assert.True(t, errors.Is(err, errQueryDenied))
+	assert.Equal(t, 1, executor.calls, "nested facet denial must happen before its provider query")
+}
+
+type facetExecutor struct {
+	sawOuterFilter bool
+	calls          int
+}
 
 func (f *facetExecutor) Capabilities() data_service.DataServiceCapabilities {
 	return data_service.DataServiceCapabilities{}
 }
 func (f *facetExecutor) Query(context stdcontext.Context, request *data_service.QueryRequest) (*data_service.QueryResult, error) {
+	f.calls++
 	if request.Query.Entity == "School" {
 		if len(request.Query.Aggregates) > 0 {
 			f.sawOuterFilter = request.Query.Filter != nil

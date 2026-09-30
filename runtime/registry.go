@@ -21,6 +21,17 @@ type RequestPolicy interface {
 	EnforceRecover(context *UserContext, command *core.RecoverCommand) error
 }
 
+// DefaultRequestPolicy is an allow-by-default adapter. Applications can embed
+// it and override only the operations they govern while retaining the complete
+// typed policy contract.
+type DefaultRequestPolicy struct{}
+
+func (DefaultRequestPolicy) EnforceSelect(*UserContext, *core.SelectQuery) error     { return nil }
+func (DefaultRequestPolicy) EnforceInsert(*UserContext, *core.InsertCommand) error   { return nil }
+func (DefaultRequestPolicy) EnforceUpdate(*UserContext, *core.UpdateCommand) error   { return nil }
+func (DefaultRequestPolicy) EnforceDelete(*UserContext, *core.DeleteCommand) error   { return nil }
+func (DefaultRequestPolicy) EnforceRecover(*UserContext, *core.RecoverCommand) error { return nil }
+
 type EntityDataServiceBehavior interface {
 	BeforeSelect(context *UserContext, query *core.SelectQuery) error
 	BeforeInsert(context *UserContext, command *core.InsertCommand) error

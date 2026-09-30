@@ -1471,6 +1471,9 @@ func (c *UserContext) RuntimeReadiness() error {
 // PrepareQuery snapshots a request and applies trusted authorization exactly
 // once before callers derive row and aggregate executions from it.
 func (c *UserContext) PrepareQuery(query *core.SelectQuery) (*core.SelectQuery, error) {
+	if query == nil {
+		return nil, fmt.Errorf("query is required")
+	}
 	prepared := query.Clone()
 	if c.requestPolicy != nil {
 		if err := c.requestPolicy.EnforceSelect(c, prepared); err != nil {
