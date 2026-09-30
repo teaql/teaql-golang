@@ -48,6 +48,13 @@ func ExecuteFacets(
 		}
 		nested.Aggregates = nil
 		nested.GroupBy = nil
+		if userContext, ok := UserContextFrom(context); ok {
+			var err error
+			nested, err = userContext.PrepareQuery(nested)
+			if err != nil {
+				return nil, err
+			}
+		}
 		facetRows, err := service.FetchAll(context, nested)
 		if err != nil {
 			return nil, err

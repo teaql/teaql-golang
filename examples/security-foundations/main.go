@@ -29,6 +29,20 @@ func (*queryExecutor) Query(stdcontext.Context, *data_service.QueryRequest) (*da
 
 type mutationExecutor struct{ request data_service.MutationRequest }
 
+type exampleQueryPolicy struct {
+	runtime.DefaultRequestPolicy
+	calls []string
+}
+
+func (p *exampleQueryPolicy) EnforceSelect(_ *runtime.UserContext, query *core.SelectQuery) error {
+	p.calls = append(p.calls, query.Entity)
+	if query.Entity == "ForbiddenReport" {
+		return errors.New("query policy denied ForbiddenReport")
+	}
+	query.AndFilter(core.ExprEq("tenant_id", core.ValU64(7)))
+	return nil
+}
+
 func (*mutationExecutor) Capabilities() data_service.DataServiceCapabilities {
 	return data_service.DataServiceCapabilities{Mutation: true}
 }
@@ -133,11 +147,28 @@ func verifyBusinessClock() {
 	)
 }
 
+func verifyQueryPolicy() {
+	policy := &exampleQueryPolicy{}
+	context := runtime.NewUserContext().WithRequestPolicy(policy)
+	original := core.NewSelectQuery("Order")
+	authorized, err := context.PrepareQuery(original)
+	if err != nil {
+		panic(err)
+	}
+	require(authorized != original, "query policy did not receive an execution snapshot")
+	require(original.Filter == nil, "query policy mutated the caller-owned query")
+	require(authorized.Filter != nil, "query policy did not add the trusted scope")
+	_, err = context.PrepareQuery(core.NewSelectQuery("ForbiddenReport"))
+	require(err != nil && err.Error() == "query policy denied ForbiddenReport", "query denial did not fail closed")
+	require(strings.Join(policy.calls, ",") == "Order,ForbiddenReport", "query policy was not applied exactly once")
+}
+
 func main() {
 	verifyMaskingLifecycle()
 	verifyLogBoundary()
 	verifyTrustedTFP()
 	verifyOpaqueReference()
 	verifyBusinessClock()
+	verifyQueryPolicy()
 	fmt.Println("PASS Go security foundations example")
 }

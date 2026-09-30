@@ -78,6 +78,47 @@ func (e *dummyExecutor) Capabilities() data_service.DataServiceCapabilities {
 	return data_service.DataServiceCapabilities{}
 }
 
+type rejectingChildPolicy struct {
+	runtime.DefaultRequestPolicy
+	calls int
+}
+
+func (p *rejectingChildPolicy) EnforceSelect(_ *runtime.UserContext, query *core.SelectQuery) error {
+	p.calls++
+	if query.Entity == "SchoolType" {
+		return errors.New("QUERY_POLICY_DENIED")
+	}
+	return nil
+}
+
+func TestRelationQueryAppliesTargetPolicyBeforeProvider(t *testing.T) {
+	metadata := runtime.NewInMemoryMetadataStore()
+	metadata.Register(core.NewEntityDescriptor("School").
+		Property(core.NewPropertyDescriptor("id", core.TypeU64).Id()).
+		Property(core.NewPropertyDescriptor("schoolType", core.TypeU64)).
+		Relation(core.NewRelationDescriptor("schoolType", "SchoolType").
+			LocalKey("schoolType").ForeignKey("id")))
+	executor := &capturingExecutor{rows: [][]core.Record{{
+		{"id": core.ValU64(1), "schoolType": core.ValU64(1001)},
+	}}}
+	policy := &rejectingChildPolicy{}
+	context := runtime.NewUserContext().WithRequestPolicy(policy)
+	service := runtime.NewRuntimeDataService(metadata, executor)
+	query := core.NewSelectQuery("School").RelationQuery(
+		"schoolType", core.NewSelectQuery("SchoolType"))
+
+	_, err := service.FetchAll(context, query)
+	if err == nil || err.Error() != "QUERY_POLICY_DENIED" {
+		t.Fatalf("expected child policy denial, got %v", err)
+	}
+	if len(executor.queries) != 1 {
+		t.Fatalf("child provider was reached after policy denial: calls=%d", len(executor.queries))
+	}
+	if policy.calls != 1 {
+		t.Fatalf("child policy must run exactly once, got %d", policy.calls)
+	}
+}
+
 func (e *dummyExecutor) Query(context stdcontext.Context, request *data_service.QueryRequest) (*data_service.QueryResult, error) {
 	return &data_service.QueryResult{
 		Rows: []core.Record{

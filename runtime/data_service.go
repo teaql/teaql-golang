@@ -463,6 +463,16 @@ func (s *RuntimeDataService) enhanceRelations(context stdcontext.Context, parent
 			}
 			ensureStableIDOrder(childQuery)
 		}
+		// A relation is a query of its target entity, not an authorization
+		// extension of the parent. Apply that entity's policy once, then derive
+		// bounded probes or the shared IN predicate from the authorized snapshot.
+		if userCtx != nil {
+			authorizedChild, policyErr := userCtx.PrepareQuery(childQuery)
+			if policyErr != nil {
+				return policyErr
+			}
+			childQuery = authorizedChild
+		}
 		limit := uint64(0)
 		if bounded {
 			limit = *childQuery.Slice.Limit
@@ -595,6 +605,13 @@ func (s *RuntimeDataService) enhanceRelationAggregates(context stdcontext.Contex
 			childQuery.GroupBy = append(childQuery.GroupBy, relation.ForKey)
 		}
 		childQuery.AndFilter(core.ExprInList(relation.ForKey, ids))
+		if userCtx, ok := UserContextFrom(context); ok {
+			var err error
+			childQuery, err = userCtx.PrepareQuery(childQuery)
+			if err != nil {
+				return err
+			}
+		}
 		var childIntent logprivacy.IntentSource
 		if len(intent) > 0 {
 			childIntent = intent[0]
