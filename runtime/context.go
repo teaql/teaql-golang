@@ -319,6 +319,8 @@ type UserContext struct {
 	graphCommitActions                []func()
 	graphRollbackActions              []func()
 	graphFixTime                      time.Time
+	businessClockMu                   sync.RWMutex
+	businessClock                     BusinessClock
 	currentFixEvidence                []FixEvidence
 	lastFixEvidence                   []FixEvidence
 	entityReferenceCodec              EntityReferenceCodec
@@ -603,6 +605,7 @@ func NewUserContext() *UserContext {
 		querySQLLogEnabled:                true,
 		mutationSQLLogEnabled:             true,
 		emittedMutationGovernanceWarnings: make(map[string]struct{}),
+		businessClock:                     SystemBusinessClock{},
 	}
 	context.Context = stdcontext.WithValue(context.Context, userContextKey{}, context)
 	return context
@@ -772,7 +775,7 @@ func (c *UserContext) ExecutePreparedGraphSave(
 
 func (c *UserContext) startGraphPreparation() {
 	c.graphSaveMu.Lock()
-	c.graphFixTime = time.Now()
+	c.graphFixTime = c.BusinessTime()
 	c.currentFixEvidence = nil
 	c.graphSaveMu.Unlock()
 }
@@ -809,7 +812,7 @@ func (c *UserContext) executeGraphSave(work func() error, preparationStarted boo
 	c.graphCommitActions = nil
 	c.graphRollbackActions = nil
 	if !preparationStarted {
-		c.graphFixTime = time.Now()
+		c.graphFixTime = c.BusinessTime()
 		c.currentFixEvidence = nil
 	}
 	c.resources["dataService"] = transaction
@@ -880,7 +883,44 @@ func (c *UserContext) FixTime() time.Time {
 	if !c.graphFixTime.IsZero() {
 		return c.graphFixTime
 	}
-	return time.Now()
+	return c.BusinessTime()
+}
+
+// SetBusinessClock replaces the context-owned clock. The provider is scoped to
+// this UserContext; TeaQL deliberately has no process-global mutable clock.
+func (c *UserContext) SetBusinessClock(clock BusinessClock) {
+	if clock == nil {
+		panic("business clock must not be nil")
+	}
+	c.businessClockMu.Lock()
+	c.businessClock = clock
+	c.businessClockMu.Unlock()
+}
+
+// WithBusinessClock installs a context-owned clock and returns the context for
+// fluent assembly.
+func (c *UserContext) WithBusinessClock(clock BusinessClock) *UserContext {
+	c.SetBusinessClock(clock)
+	return c
+}
+
+// BusinessTime returns the instant used by business logic.
+func (c *UserContext) BusinessTime() time.Time {
+	c.businessClockMu.RLock()
+	clock := c.businessClock
+	c.businessClockMu.RUnlock()
+	if clock == nil {
+		panic("business clock is not configured")
+	}
+	return clock.Now()
+}
+
+// BusinessDate derives a date from the same context-owned clock. The returned
+// value is midnight in the business clock value's location.
+func (c *UserContext) BusinessDate() time.Time {
+	now := c.BusinessTime()
+	year, month, day := now.Date()
+	return time.Date(year, month, day, 0, 0, 0, 0, now.Location())
 }
 
 func (c *UserContext) AfterGraphCommit(action func()) {

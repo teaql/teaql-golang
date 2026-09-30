@@ -8,7 +8,9 @@ any of these backend security contracts regress:
 2. the trusted TFP endpoint rejects tenant/raw-SQL injection and carries the
    trusted tenant, ID, and optimistic version into one mutation statement; and
 3. a `UserContext` opaque entity reference matches the shared Go/.NET
-   AES-256-GCM golden vector and rejects a wrong purpose.
+   AES-256-GCM golden vector and rejects a wrong purpose; and
+4. a fixed, context-owned Business Clock drives both business time and business
+   date without changing any process-global clock.
 
 Run it from the repository root:
 
