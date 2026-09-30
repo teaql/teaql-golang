@@ -2,7 +2,7 @@
 set -euo pipefail
 
 repo="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-expected=(basic conformance order-management school-management security-foundations task_board)
+expected=(basic conformance mutation-policy order-management school-management security-foundations task_board)
 mapfile -t actual < <(find "$repo/examples" -mindepth 1 -maxdepth 1 -type d -printf '%f\n' | sort)
 if [[ "${actual[*]}" != "${expected[*]}" ]]; then
   echo "example inventory changed; update scripts/verify-examples.sh: ${actual[*]}" >&2
@@ -21,6 +21,7 @@ while IFS= read -r module_file; do
   fi
 done < <(find "$repo/examples" -name go.mod -type f | sort)
 go run ./examples/basic
+go run ./examples/mutation-policy
 (cd examples/conformance && go test ./... && go run ./src)
 # The test runs the actual console twice against an isolated SQLite path. Do not
 # reuse .local/order.db: older example schemas may predate teaql_id_space.

@@ -238,10 +238,16 @@ func (e *SchoolType) IntoJson() any {
 
 func (e *SchoolType) Save(context *runtime.UserContext) (*SchoolType, error) {
 	var saved *SchoolType
-	err := context.ExecuteGraphSave(func() error {
+	err := context.ExecutePreparedGraphSave(func() (*runtime.MutationPlan, error) {
 		if preflightErr := e.TeaqlPreflightGraph(context); preflightErr != nil {
-			return preflightErr
+			return nil, preflightErr
 		}
+		auditReason := ""
+		if e.comment != nil {
+			auditReason = *e.comment
+		}
+		return runtime.MutationPlanFromEntityRoot(e.root, e.EntityName(), auditReason), nil
+	}, func() error {
 		var innerErr error
 		saved, innerErr = e.TeaqlSaveWithinGraph(context)
 		return innerErr

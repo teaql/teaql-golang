@@ -64,6 +64,7 @@ To maintain isomorphism with `teaql-rs`, this project strictly separates the fol
 *   **Core Architecture**: Comprehensive entity modeling (`EntityDescriptor`, `PropertyDescriptor`) and a robust internal strong typing system (`Value`).
 *   **SQL Dialect Generator**: Allows developers to construct strongly-typed CRUD AST commands with built-in automatic translation for cross-database dialects.
 *   **Unified Runtime**: A one-stop lifecycle interception mechanism encompassing event interception, context propagation, and data security (Security Registry).
+*   **Customer-owned Mutation Policy**: Generated root `Save` uses `ExecutePreparedGraphSave` to run complete graph Checker/Fix, snapshot one immutable plan, review it, and only then begin the provider transaction. Missing policies and approvals remain backward-compatible warnings; an explicit denial fails closed, and allowed audit events carry the governance snapshot.
 *   **Rich Database Providers**: Plug-and-play connections for various data sources, supporting both relational and search-based databases.
 *   **Cache and Web Integration**: Gin routing wrappers that perfectly match legacy API structures, along with a transparent distributed caching layer backed by Redis.
 *   **Cloud-Native Ready**: Provides microservice standard abstractions for service registration (`ServiceRegistry`), service discovery (`ServiceDiscovery`), and health monitoring (`HealthIndicator`), with out-of-the-box `Actuator` endpoint support.
@@ -104,4 +105,14 @@ checks.
 A ready-to-use SQLite application example is provided in `examples/basic/main.go`. Run it using:
 ```bash
 go run ./examples/basic
+go run ./examples/mutation-policy
 ```
+
+The mutation-policy example installs a policy and matching
+`id`/`version`/`fingerprint` approval on `UserContext`. It proves that an
+allowed graph commits and a denied graph never starts a transaction. Generated
+root `Save` methods use `ExecutePreparedGraphSave` with
+`MutationPlanFromEntityRoot`, so the generated path has the same guarantee.
+`ExecutePlannedGraphSave` remains available when trusted application code has
+already prepared a complete plan. The legacy `ExecuteGraphSave` entry point is
+compatibility-only and does not claim this governance guarantee.

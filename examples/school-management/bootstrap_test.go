@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"os"
 	"path/filepath"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -11,6 +12,19 @@ import (
 	"github.com/teaql/teaql-golang/runtime"
 	"school-management-service-core-workspace/lib/school"
 )
+
+type denySchoolMutationPolicy struct{}
+
+func (denySchoolMutationPolicy) Identity() runtime.MutationPolicyIdentity {
+	return runtime.NewMutationPolicyIdentity("school-deny-policy", "1", "sha256:school-deny")
+}
+
+func (denySchoolMutationPolicy) Review(_ *runtime.UserContext, plan *runtime.MutationPlan) runtime.MutationDecision {
+	if plan.RequestKey != "School.saveGraph" || len(plan.Operations) != 1 {
+		panic("generated Save did not supply the complete School graph plan")
+	}
+	return runtime.DenyMutation("SCHOOL_DENIED", "school writes disabled", "School.name")
+}
 
 func TestSchoolBootstrapWithLocalRuntime(t *testing.T) {
 	database := filepath.Join(t.TempDir(), "school.sqlite")
@@ -207,5 +221,40 @@ func TestGeneratedBootstrapConvergesAcrossContexts(t *testing.T) {
 	}
 	if reconciled.Name() != "Primary" || reconciled.Version() != 2 {
 		t.Fatalf("name=%q version=%d", reconciled.Name(), reconciled.Version())
+	}
+}
+
+func TestGeneratedSchoolSaveUsesMutationPolicyPlan(t *testing.T) {
+	database := filepath.Join(t.TempDir(), "school-policy.sqlite")
+	t.Setenv("SCHOOL_MANAGEMENT_SERVICE_CORE_DATABASE_URL", database)
+	context, err := ServiceRuntimeFromEnv()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := EnsureSchema(context); err != nil {
+		t.Fatal(err)
+	}
+	context.SetMutationPolicyRegistry(runtime.MutationPolicyRegistryFunc(func(requestKey string) runtime.MutationPolicy {
+		if requestKey == "School.saveGraph" {
+			return denySchoolMutationPolicy{}
+		}
+		return nil
+	}))
+
+	fixture := Q.Schools().Comment("construct denied School").Purpose("verify generated mutation policy").NewEntity(context)
+	fixture.UpdatePlatformId(1).UpdateSchoolTypeToPrimary().UpdateName("Denied School")
+	fixture.UpdateAddress("No persistence").UpdateEstablishedDate(time.Date(2000, 1, 1, 0, 0, 0, 0, time.UTC))
+	fixture.UpdateStudentCapacity(1).UpdateActive(true)
+	_, err = fixture.AuditAs("prove generated Save policy denial").Save(context)
+	if err == nil || !strings.Contains(err.Error(), "SCHOOL_DENIED") {
+		t.Fatalf("expected generated mutation policy denial, got %v", err)
+	}
+
+	rows, err := Q.Schools().WithNameIs("Denied School").Comment("verify denied row absence").Purpose("verify generated mutation policy").ExecuteForList(context)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(rows.Data) != 0 {
+		t.Fatalf("denied generated Save persisted %d rows", len(rows.Data))
 	}
 }
