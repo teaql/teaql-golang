@@ -61,8 +61,8 @@ func TestSqliteDialect(t *testing.T) {
 		t.Errorf("Expected error for GBK function")
 	}
 
-	if d.SchemaSetupSqls() != nil {
-		t.Errorf("Expected nil SchemaSetupSqls")
+	if len(d.SchemaSetupSqls()) != 1 || !strings.Contains(d.SchemaSetupSqls()[0], "teaql_business_id_space") {
+		t.Errorf("Expected Business ID schema setup, got %#v", d.SchemaSetupSqls())
 	}
 
 	// SchemaTypeSql

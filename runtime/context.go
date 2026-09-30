@@ -324,6 +324,9 @@ type UserContext struct {
 	currentFixEvidence                []FixEvidence
 	lastFixEvidence                   []FixEvidence
 	entityReferenceCodec              EntityReferenceCodec
+	businessIDProfileFactory          BusinessIDProfileFactory
+	businessIDKeyProvider             BusinessIDKeyProvider
+	businessIDService                 BusinessIDService
 }
 
 type FixEvidenceSource string
@@ -921,6 +924,57 @@ func (c *UserContext) BusinessDate() time.Time {
 	now := c.BusinessTime()
 	year, month, day := now.Date()
 	return time.Date(year, month, day, 0, 0, 0, 0, now.Location())
+}
+
+func (c *UserContext) SetBusinessIDProfileFactory(factory BusinessIDProfileFactory) {
+	if factory == nil {
+		panic("business ID profile factory must not be nil")
+	}
+	c.businessIDProfileFactory = factory
+}
+
+func (c *UserContext) WithBusinessIDProfileFactory(factory BusinessIDProfileFactory) *UserContext {
+	c.SetBusinessIDProfileFactory(factory)
+	return c
+}
+
+func (c *UserContext) BusinessIDProfileFactory() BusinessIDProfileFactory {
+	return c.businessIDProfileFactory
+}
+
+func (c *UserContext) SetBusinessIDKeyProvider(provider BusinessIDKeyProvider) {
+	if provider == nil {
+		panic("business ID key provider must not be nil")
+	}
+	c.businessIDKeyProvider = provider
+}
+
+func (c *UserContext) WithBusinessIDKeyProvider(provider BusinessIDKeyProvider) *UserContext {
+	c.SetBusinessIDKeyProvider(provider)
+	return c
+}
+
+func (c *UserContext) BusinessIDKeyProvider() BusinessIDKeyProvider {
+	return c.businessIDKeyProvider
+}
+
+func (c *UserContext) SetBusinessIDService(service BusinessIDService) {
+	if service == nil {
+		panic("business ID service must not be nil")
+	}
+	c.businessIDService = service
+}
+
+func (c *UserContext) WithBusinessIDService(service BusinessIDService) *UserContext {
+	c.SetBusinessIDService(service)
+	return c
+}
+
+func (c *UserContext) EnsureBusinessID(definition core.BusinessIDDefinition, domainRootKey, aggregateType string, slot core.BusinessIDSlot) (core.BusinessIDValue, error) {
+	if c.businessIDService == nil {
+		return core.BusinessIDValue{}, fmt.Errorf("business ID service is not configured")
+	}
+	return c.businessIDService.EnsureBusinessID(c, definition, domainRootKey, aggregateType, slot)
 }
 
 func (c *UserContext) AfterGraphCommit(action func()) {
