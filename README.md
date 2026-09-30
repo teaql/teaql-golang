@@ -65,6 +65,7 @@ To maintain isomorphism with `teaql-rs`, this project strictly separates the fol
 *   **SQL Dialect Generator**: Allows developers to construct strongly-typed CRUD AST commands with built-in automatic translation for cross-database dialects.
 *   **Unified Runtime**: A one-stop lifecycle interception mechanism encompassing event interception, context propagation, and data security (Security Registry).
 *   **Customer-owned Mutation Policy**: Generated root `Save` uses `ExecutePreparedGraphSave` to run complete graph Checker/Fix, snapshot one immutable plan, review it, and only then begin the provider transaction. Missing policies and approvals remain backward-compatible warnings; an explicit denial fails closed, and allowed audit events carry the governance snapshot.
+*   **Portable Business ID Encoding**: Core scope/key types and the runtime `daily-permuted-v1` encoder execute the canonical cross-language golden vectors without exposing the internal sequence.
 *   **Rich Database Providers**: Plug-and-play connections for various data sources, supporting both relational and search-based databases.
 *   **Cache and Web Integration**: Gin routing wrappers that perfectly match legacy API structures, along with a transparent distributed caching layer backed by Redis.
 *   **Cloud-Native Ready**: Provides microservice standard abstractions for service registration (`ServiceRegistry`), service discovery (`ServiceDiscovery`), and health monitoring (`HealthIndicator`), with out-of-the-box `Actuator` endpoint support.
@@ -99,6 +100,24 @@ exact development-only raw-reference acknowledgement live in the canonical
 [opaque entity reference contract](https://github.com/teaql/teaql-conformance/blob/main/design/opaque-entity-references.md).
 Opaque references remain subject to normal authorization and optimistic-lock
 checks.
+
+## Business ID V1 Foundation
+
+The runtime exposes the deterministic six-character permutation used by the
+default volume-obscuring Business ID profile:
+
+```go
+scope, _ := core.NewBusinessIDScope(
+    "tenant-a", "commerce_order", "order_number", "20260925")
+key, _ := core.NewBusinessIDEncodingKey(1, keyFromSecretManager)
+code, err := runtime.EncodeBusinessIDPermutationV1(0, scope, key)
+// code is stable for the same sequence, scope, key, and key version.
+```
+
+The encoder is a pure algorithm. Durable concurrent sequence allocation,
+aggregate retry reuse, and typed external lookup are separate lifecycle
+capabilities. Key material belongs to the application secret provider and is
+never embedded in generated code or KSML.
 
 ## Quick Start
 
