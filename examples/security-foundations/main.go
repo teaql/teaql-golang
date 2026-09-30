@@ -123,10 +123,21 @@ func verifyOpaqueReference() {
 	require(err != nil && errors.As(err, new(*runtime.EntityReferenceTokenError)), "wrong-purpose token did not fail closed")
 }
 
+func verifyBusinessClock() {
+	expected := time.Date(2026, time.October, 1, 14, 20, 0, 0, time.FixedZone("CST", 8*60*60))
+	context := runtime.NewUserContext().WithBusinessClock(runtime.NewFixedBusinessClock(expected))
+	require(context.BusinessTime().Equal(expected), "context ignored the fixed business clock")
+	require(
+		context.BusinessDate().Equal(time.Date(2026, time.October, 1, 0, 0, 0, 0, expected.Location())),
+		"business date did not derive from the context-owned clock",
+	)
+}
+
 func main() {
 	verifyMaskingLifecycle()
 	verifyLogBoundary()
 	verifyTrustedTFP()
 	verifyOpaqueReference()
+	verifyBusinessClock()
 	fmt.Println("PASS Go security foundations example")
 }

@@ -97,7 +97,8 @@ func TestIndependentGraphSavesAreSerialized(t *testing.T) {
 
 func TestGraphSaveCapturesOneFixTime(t *testing.T) {
 	probe := &graphTransactionProbe{}
-	userContext := NewUserContext()
+	expected := time.Date(2026, time.October, 1, 9, 30, 15, 0, time.FixedZone("CST", 8*60*60))
+	userContext := NewUserContext().WithBusinessClock(NewFixedBusinessClock(expected))
 	userContext.InsertResource("dataService", probe)
 	var first, second time.Time
 	if err := userContext.ExecuteGraphSave(func() error {
@@ -108,8 +109,30 @@ func TestGraphSaveCapturesOneFixTime(t *testing.T) {
 	}); err != nil {
 		t.Fatal(err)
 	}
-	if first.IsZero() || !first.Equal(second) {
+	if !first.Equal(expected) || !first.Equal(second) {
 		t.Fatalf("one graph must share one fix time: first=%v second=%v", first, second)
+	}
+}
+
+func TestBusinessClockProvidesTimeAndDate(t *testing.T) {
+	expected := time.Date(2026, time.October, 1, 23, 45, 30, 0, time.FixedZone("CST", 8*60*60))
+	userContext := NewUserContext().WithBusinessClock(NewFixedBusinessClock(expected))
+
+	if actual := userContext.BusinessTime(); !actual.Equal(expected) {
+		t.Fatalf("business time mismatch: got %v want %v", actual, expected)
+	}
+	expectedDate := time.Date(2026, time.October, 1, 0, 0, 0, 0, expected.Location())
+	if actual := userContext.BusinessDate(); !actual.Equal(expectedDate) {
+		t.Fatalf("business date mismatch: got %v want %v", actual, expectedDate)
+	}
+}
+
+func TestSystemBusinessClockIsDefault(t *testing.T) {
+	before := time.Now()
+	actual := NewUserContext().BusinessTime()
+	after := time.Now()
+	if actual.Before(before) || actual.After(after) {
+		t.Fatalf("default business time %v is outside [%v, %v]", actual, before, after)
 	}
 }
 
