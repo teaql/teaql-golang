@@ -118,7 +118,7 @@ func (d *SqliteDialect) CompileGbkFunction(entity *core.EntityDescriptor, args [
 }
 
 func (d *SqliteDialect) SchemaSetupSqls() []string {
-	return nil
+	return []string{teaql_sql.BusinessIDSchemaSQL}
 }
 
 func (d *SqliteDialect) SchemaTypeSql(dataType core.DataType, property *core.PropertyDescriptor) (string, error) {

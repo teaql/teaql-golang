@@ -65,7 +65,7 @@ To maintain isomorphism with `teaql-rs`, this project strictly separates the fol
 *   **SQL Dialect Generator**: Allows developers to construct strongly-typed CRUD AST commands with built-in automatic translation for cross-database dialects.
 *   **Unified Runtime**: A one-stop lifecycle interception mechanism encompassing event interception, context propagation, and data security (Security Registry).
 *   **Customer-owned Mutation Policy**: Generated root `Save` uses `ExecutePreparedGraphSave` to run complete graph Checker/Fix, snapshot one immutable plan, review it, and only then begin the provider transaction. Missing policies and approvals remain backward-compatible warnings; an explicit denial fails closed, and allowed audit events carry the governance snapshot.
-*   **Portable Business ID Encoding**: Core scope/key types and the runtime `daily-permuted-v1` encoder execute the canonical cross-language golden vectors without exposing the internal sequence.
+*   **Governed Business ID Lifecycle**: Core model contracts, a context-owned profile/key/service boundary, retry-safe assignment, an in-memory allocator, and explicit-schema durable SQLite allocation extend the portable `daily-permuted-v1` encoder without exposing its internal sequence.
 *   **Rich Database Providers**: Plug-and-play connections for various data sources, supporting both relational and search-based databases.
 *   **Cache and Web Integration**: Gin routing wrappers that perfectly match legacy API structures, along with a transparent distributed caching layer backed by Redis.
 *   **Cloud-Native Ready**: Provides microservice standard abstractions for service registration (`ServiceRegistry`), service discovery (`ServiceDiscovery`), and health monitoring (`HealthIndicator`), with out-of-the-box `Actuator` endpoint support.
@@ -114,16 +114,18 @@ code, err := runtime.EncodeBusinessIDPermutationV1(0, scope, key)
 // code is stable for the same sequence, scope, key, and key version.
 ```
 
-The encoder is a pure algorithm. Durable concurrent sequence allocation,
-aggregate retry reuse, and typed external lookup are separate lifecycle
-capabilities. Key material belongs to the application secret provider and is
-never embedded in generated code or KSML.
+The retained [`examples/business-id`](examples/business-id) flow proves
+explicit schema installation, durable concurrent sequence allocation and
+aggregate retry reuse. Generated strongly typed fields and external lookup
+remain a separate generator capability. Key material belongs to the
+application secret provider and is never embedded in generated code or KSML.
 
 ## Quick Start
 
 A ready-to-use SQLite application example is provided in `examples/basic/main.go`. Run it using:
 ```bash
 go run ./examples/basic
+go run ./examples/business-id
 go run ./examples/mutation-policy
 ```
 
