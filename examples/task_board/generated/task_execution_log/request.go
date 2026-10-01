@@ -4,7 +4,6 @@ package task_execution_log
 
 import (
 	"fmt"
-	"strings"
 	"time"
 
 	"github.com/shopspring/decimal"
@@ -581,9 +580,7 @@ func (r *TaskExecutionLogRequest) WithoutTaskMatching(child interface {
 
 func (e *ExecutableTaskExecutionLogRequest) NewEntity(context *runtime.UserContext) *TaskExecutionLog {
 	r := e.request
-	if strings.TrimSpace(r.purposeText) == "" || strings.TrimSpace(r.commentText) == "" {
-		panic("security audit failure: non-empty Comment() and Purpose() are required before NewEntity()")
-	}
+	if _, err := core.NewQueryIntent(&r.commentText, &r.purposeText); err != nil { panic(err) }
 	entity := NewTaskExecutionLog()
 	initialized := context.InitializeEntity("TaskExecutionLog", entity)
 	typed, ok := initialized.(*TaskExecutionLog)
@@ -594,7 +591,12 @@ func (e *ExecutableTaskExecutionLogRequest) NewEntity(context *runtime.UserConte
 }
 
 func (e *ExecutableTaskExecutionLogRequest) ExecuteForOne(context *runtime.UserContext) (*TaskExecutionLog, error) {
-	list, err := e.ExecuteForList(context)
+	request := *e.request
+	request.Query = e.request.Query.Clone()
+	request.Query.Limit(1)
+	executable := *e
+	executable.request = &request
+	list, err := executable.ExecuteForList(context)
 	if err != nil {
 		return nil, err
 	}
@@ -605,7 +607,7 @@ func (e *ExecutableTaskExecutionLogRequest) ExecuteForOne(context *runtime.UserC
 }
 
 func (e *ExecutableTaskExecutionLogRequest) ExecuteForList(context *runtime.UserContext) (*core.SmartList[*TaskExecutionLog], error) {
-	rows, err := e.ExecuteRecords(context)
+	rows, authorized, err := e.executeRecords(context)
 	if err != nil {
 		return nil, err
 	}
@@ -638,7 +640,7 @@ func (e *ExecutableTaskExecutionLogRequest) ExecuteForList(context *runtime.User
 		if !ok { return nil, fmt.Errorf("dataService does not implement data_service.QueryExecutor") }
 		facets, err := runtime.ExecuteFacets(
 			context, runtime.NewRuntimeDataService(context.Metadata, ds),
-			e.request.Query, e.request.queryOptions)
+			authorized, e.request.queryOptions)
 		if err != nil { return nil, err }
 		core.AttachFacets(list, facets)
 	}
@@ -649,14 +651,13 @@ func (e *ExecutableTaskExecutionLogRequest) ExecuteForList(context *runtime.User
 // queries from that same authorized snapshot.
 func (e *ExecutableTaskExecutionLogRequest) ExecuteForPage(context *runtime.UserContext, offset uint64, size uint64) (*core.SmartList[*TaskExecutionLog], error) {
 	r := e.request
-	if strings.TrimSpace(r.purposeText) == "" || strings.TrimSpace(r.commentText) == "" {
-		return nil, fmt.Errorf("security audit failure: Comment() and Purpose() must be called before ExecuteForPage()")
-	}
+	if _, err := core.NewQueryIntent(&r.commentText, &r.purposeText); err != nil { return nil, err }
 	if size == 0 {
 		return nil, fmt.Errorf("QUERY_INVALID_LIMIT: size must be positive")
 	}
-	r.Query.Page(offset, size).Comment(r.commentText).Purpose(r.purposeText)
-	authorized, err := context.PrepareQuery(r.Query)
+	query := r.Query.Clone()
+	query.Page(offset, size).Comment(r.commentText).Purpose(r.purposeText)
+	authorized, err := context.PrepareQuery(query)
 	if err != nil { return nil, err }
 	dsRaw := context.GetResource("dataService")
 	ds, ok := dsRaw.(data_service.QueryExecutor)
@@ -714,22 +715,21 @@ func (e *ExecutableTaskExecutionLogRequest) ExecuteForPage(context *runtime.User
 // an error from yield cancels iteration and releases the database resources.
 func (e *ExecutableTaskExecutionLogRequest) ExecuteForStream(context *runtime.UserContext, chunkSize int, yield func(*TaskExecutionLog) error) error {
 	r := e.request
-	if strings.TrimSpace(r.purposeText) == "" || strings.TrimSpace(r.commentText) == "" {
-		return fmt.Errorf("security audit failure: Comment() and Purpose() must be called before ExecuteForStream()")
-	}
+	if _, err := core.NewQueryIntent(&r.commentText, &r.purposeText); err != nil { return err }
 	if yield == nil {
 		return fmt.Errorf("stream consumer must not be nil")
 	}
-	r.Query.Comment(r.commentText).Purpose(r.purposeText)
+	query := r.Query.Clone()
+	query.Comment(r.commentText).Purpose(r.purposeText)
+	authorized, err := context.PrepareQuery(query)
+	if err != nil { return err }
 	dsRaw := context.GetResource("dataService")
 	ds, ok := dsRaw.(data_service.StreamQueryExecutor)
 	if !ok {
 		return fmt.Errorf("dataService does not implement data_service.StreamQueryExecutor")
 	}
-	req := &data_service.QueryRequest{
-		Query: r.Query, TraceChain: r.Query.TraceChain,
-		Comment: r.Query.CommentText, Purpose: r.Query.PurposeText,
-	}
+	req, err := data_service.NewQueryRequest(authorized)
+	if err != nil { return err }
 	queryRoot := core.NewEntityRoot()
 	return ds.QueryStream(context, req, chunkSize, func(chunk *data_service.StreamChunk) error {
 		for _, rec := range chunk.Rows {
@@ -747,27 +747,35 @@ func (e *ExecutableTaskExecutionLogRequest) ExecuteForStream(context *runtime.Us
 }
 
 func (e *ExecutableTaskExecutionLogRequest) ExecuteRecords(context *runtime.UserContext) ([]core.Record, error) {
+	rows, _, err := e.executeRecords(context)
+	return rows, err
+}
+
+// executeRecords returns the same authorized snapshot used for row execution
+// so facets can derive their membership query without reapplying root policy.
+func (e *ExecutableTaskExecutionLogRequest) executeRecords(context *runtime.UserContext) ([]core.Record, *core.SelectQuery, error) {
 	r := e.request
-	if strings.TrimSpace(r.purposeText) == "" || strings.TrimSpace(r.commentText) == "" {
-		return nil, fmt.Errorf("security audit failure: Comment() and Purpose() must be called before ExecuteForList()")
-	}
-	r.Query.Comment(r.commentText).Purpose(r.purposeText)
+	if _, err := core.NewQueryIntent(&r.commentText, &r.purposeText); err != nil { return nil, nil, err }
+	query := r.Query.Clone()
+	query.Comment(r.commentText).Purpose(r.purposeText)
+	authorized, err := context.PrepareQuery(query)
+	if err != nil { return nil, nil, err }
 
 	dsRaw := context.GetResource("dataService")
 	if dsRaw == nil {
-		return nil, fmt.Errorf("dataService not found in UserContext")
+		return nil, nil, fmt.Errorf("dataService not found in UserContext")
 	}
 
 	ds, ok := dsRaw.(data_service.QueryExecutor)
 	if !ok {
-		return nil, fmt.Errorf("dataService does not implement data_service.QueryExecutor")
+		return nil, nil, fmt.Errorf("dataService does not implement data_service.QueryExecutor")
 	}
 
-	rows, err := runtime.NewRuntimeDataService(context.Metadata, ds).FetchAll(context, r.Query)
+	rows, err := runtime.NewRuntimeDataService(context.Metadata, ds).FetchAll(context, authorized)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
-	return rows, nil
+	return rows, authorized, nil
 }
 
 // ExecuteForRows preserves aggregate/group projections as records while keeping

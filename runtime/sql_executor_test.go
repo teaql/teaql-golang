@@ -92,8 +92,10 @@ func TestSqlDataServiceExecutor_Query(t *testing.T) {
 
 		req := &data_service.QueryRequest{
 			Query: &core.SelectQuery{
-				Entity: "User",
+				Entity: "User", CommentText: fixtureIntentText("verify query fixture"), PurposeText: fixtureIntentText("preserve the query regression contract"),
 			},
+			Comment: fixtureIntentText("verify query fixture"),
+			Purpose: fixtureIntentText("preserve the query regression contract"),
 		}
 
 		res, err := exec.Query(context, req)
@@ -109,8 +111,10 @@ func TestSqlDataServiceExecutor_Query(t *testing.T) {
 		exec := runtime.NewSqlDataServiceExecutor(nil, dialect, meta)
 		req := &data_service.QueryRequest{
 			Query: &core.SelectQuery{
-				Entity: "Unknown",
+				Entity: "Unknown", CommentText: fixtureIntentText("verify query fixture"), PurposeText: fixtureIntentText("preserve the query regression contract"),
 			},
+			Comment: fixtureIntentText("verify query fixture"),
+			Purpose: fixtureIntentText("preserve the query regression contract"),
 		}
 
 		_, err := exec.Query(context, req)
@@ -127,8 +131,10 @@ func TestSqlDataServiceExecutor_Query(t *testing.T) {
 				Filter: &core.Expr{
 					Type:   core.ExprTypeColumn,
 					Column: "unknown_field",
-				},
+				}, CommentText: fixtureIntentText("verify query fixture"), PurposeText: fixtureIntentText("preserve the query regression contract"),
 			},
+			Comment: fixtureIntentText("verify query fixture"),
+			Purpose: fixtureIntentText("preserve the query regression contract"),
 		}
 
 		_, err := exec.Query(context, req)
@@ -145,8 +151,10 @@ func TestSqlDataServiceExecutor_Query(t *testing.T) {
 
 		req := &data_service.QueryRequest{
 			Query: &core.SelectQuery{
-				Entity: "User",
+				Entity: "User", CommentText: fixtureIntentText("verify query fixture"), PurposeText: fixtureIntentText("preserve the query regression contract"),
 			},
+			Comment: fixtureIntentText("verify query fixture"),
+			Purpose: fixtureIntentText("preserve the query regression contract"),
 		}
 
 		_, err := exec.Query(context, req)
@@ -178,7 +186,9 @@ func TestSqlDataServiceExecutor_Mutate(t *testing.T) {
 		exec := runtime.NewSqlDataServiceExecutor(transport, dialect, meta)
 		req := &data_service.InsertMutation{Cmd: &core.InsertCommand{
 			Entity: "User", Values: core.Record{"id": core.ValText("1")},
-		}}
+		},
+			RootComment: fixtureIntentText("verify mutation fixture"),
+		}
 
 		for attempt := 0; attempt < 2; attempt++ {
 			_, err := exec.Mutate(context, req)
@@ -206,6 +216,7 @@ func TestSqlDataServiceExecutor_Mutate(t *testing.T) {
 				Entity: "User",
 				Values: core.Record{"id": core.ValText("1"), "name": core.ValText("Alice")},
 			},
+			RootComment: fixtureIntentText("verify mutation fixture"),
 		}
 
 		res, err := exec.Mutate(context, req)
@@ -228,6 +239,7 @@ func TestSqlDataServiceExecutor_Mutate(t *testing.T) {
 				Entity: "User",
 				Values: core.Record{"name": core.ValText("Bob")},
 			},
+			RootComment: fixtureIntentText("verify mutation fixture"),
 		}
 
 		res, err := exec.Mutate(context, req)
@@ -249,6 +261,7 @@ func TestSqlDataServiceExecutor_Mutate(t *testing.T) {
 			Cmd: &core.DeleteCommand{
 				Entity: "User",
 			},
+			RootComment: fixtureIntentText("verify mutation fixture"),
 		}
 
 		res, err := exec.Mutate(context, req)
@@ -282,6 +295,7 @@ func TestSqlDataServiceExecutor_Mutate(t *testing.T) {
 				Entity: "User",
 				Values: core.Record{},
 			},
+			RootComment: fixtureIntentText("verify mutation fixture"),
 		}
 
 		_, err := exec.Mutate(context, req)
@@ -301,6 +315,7 @@ func TestSqlDataServiceExecutor_Mutate(t *testing.T) {
 				Entity: "User",
 				Values: core.Record{"id": core.ValText("1"), "name": core.ValText("Alice")},
 			},
+			RootComment: fixtureIntentText("verify mutation fixture"),
 		}
 
 		_, err := exec.Mutate(context, req)
@@ -308,6 +323,28 @@ func TestSqlDataServiceExecutor_Mutate(t *testing.T) {
 			t.Fatal("expected transport error, got nil")
 		}
 	})
+}
+
+func TestRuntimeSQLRejectsUnannotatedRequestsBeforeCheckerWithLogsOff(t *testing.T) {
+	transport := &mockTransport{affected: 1}
+	registry := &requiredNameRegistry{}
+	context := runtime.NewUserContext().WithCheckerRegistry(registry)
+	context.DisableSqlLog()
+	exec := runtime.NewSqlDataServiceExecutor(transport, &mockDialect{}, runtime.NewInMemoryMetadataStore())
+	command := core.NewInsertCommand("User").Value("name", core.ValText("SECRET-CANARY"))
+	command.TraceChain = []*core.TraceNode{core.NewTypedTraceNode("auditReason", "User", "trace-only")}
+	_, err := exec.Mutate(context, &data_service.InsertMutation{Cmd: command})
+	var required *core.RequestIntentError
+	if !errors.As(err, &required) || required.Code != "REQUEST_COMMENT_REQUIRED" || required.RequestKind != "mutation" {
+		t.Fatalf("missing mutation comment was not rejected: %v", err)
+	}
+	_, err = exec.Query(context, &data_service.QueryRequest{Query: core.NewSelectQuery("User")})
+	if !errors.As(err, &required) || required.Code != "REQUEST_COMMENT_REQUIRED" || required.RequestKind != "query" {
+		t.Fatalf("missing query comment was not rejected: %v", err)
+	}
+	if registry.calls != 0 || transport.executions != 0 {
+		t.Fatal("invalid request reached checker/provider")
+	}
 }
 
 func TestMutationSQLIntentScrubsTargetIDWithoutChangingBindings(t *testing.T) {
@@ -333,13 +370,19 @@ func TestMutationSQLIntentScrubsTargetIDWithoutChangingBindings(t *testing.T) {
 				case "create":
 					request = &data_service.InsertMutation{Cmd: &core.InsertCommand{Entity: "User", Values: core.Record{
 						"id": core.ValText("1001"), "name": core.ValText("Alice"),
-					}, TraceChain: trace}}
+					}, TraceChain: trace},
+						RootComment: fixtureIntentText("what: mutate target 1001"),
+					}
 				case "update":
 					request = &data_service.UpdateMutation{Cmd: &core.UpdateCommand{Entity: "User", Id: core.ValText("1001"),
-						Values: core.Record{"name": core.ValText("Alice")}, TraceChain: trace}}
+						Values: core.Record{"name": core.ValText("Alice")}, TraceChain: trace},
+						RootComment: fixtureIntentText("what: mutate target 1001"),
+					}
 				case "delete":
 					request = &data_service.DeleteMutation{Cmd: &core.DeleteCommand{Entity: "User", Id: core.ValText("1001"),
-						TraceChain: trace}}
+						TraceChain: trace},
+						RootComment: fixtureIntentText("what: mutate target 1001"),
+					}
 				}
 				_, err := exec.Mutate(context, request)
 				if failed != (err != nil) {
@@ -387,18 +430,22 @@ func TestSqlExecutionEvidenceIsParameterizedAndFilterable(t *testing.T) {
 
 	_, err := exec.Mutate(context, &data_service.InsertMutation{Cmd: &core.InsertCommand{
 		Entity: "User", Values: core.Record{"id": core.ValText("1"), "name": core.ValText("private-customer")},
-	}})
+	},
+		RootComment: fixtureIntentText("verify mutation fixture"),
+	})
 	if err != nil {
 		t.Fatal(err)
 	}
 	comment, purpose := "what: load governed users", "why: verify trace inheritance"
 	_, err = exec.Query(context, &data_service.QueryRequest{Query: &core.SelectQuery{
-		Entity: "User", Filter: core.ExprEq("name", core.ValText("private-customer")),
-	}, Comment: &comment, Purpose: &purpose, TraceChain: []*core.TraceNode{
-		core.NewTypedTraceNode("relation", "User.organization", "organization"),
-		core.NewTypedTraceNode("relation", "Organization.region", "region"),
-		core.NewTypedTraceNode("relation", "Region.country", "country"),
-	}})
+		Entity: "User", Filter: core.ExprEq("name", core.ValText("private-customer")), CommentText: fixtureIntentText("verify query fixture"), PurposeText: fixtureIntentText("preserve the query regression contract"),
+	},
+		Comment: &comment,
+		Purpose: &purpose, TraceChain: []*core.TraceNode{
+			core.NewTypedTraceNode("relation", "User.organization", "organization"),
+			core.NewTypedTraceNode("relation", "Organization.region", "region"),
+			core.NewTypedTraceNode("relation", "Region.country", "country"),
+		}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -441,7 +488,9 @@ func TestSqlExecutionEvidenceIsParameterizedAndFilterable(t *testing.T) {
 	}
 	_, err = exec.Mutate(context, &data_service.InsertMutation{Cmd: &core.InsertCommand{
 		Entity: "User", Values: core.Record{"id": core.ValText("2"), "name": core.ValText("ignored")},
-	}})
+	},
+		RootComment: fixtureIntentText("verify mutation fixture"),
+	})
 	if err != nil {
 		t.Fatal(err)
 	}

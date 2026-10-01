@@ -1041,6 +1041,11 @@ func (c *UserContext) emitMutationAudit(context stdcontext.Context, request data
 	if result == nil || result.AffectedRows == 0 {
 		return nil
 	}
+	captured, captureErr := data_service.CaptureMutationRequest(request)
+	if captureErr != nil {
+		return captureErr
+	}
+	request = captured
 	var event *RawAuditEvent
 	switch req := request.(type) {
 	case *data_service.InsertMutation:
@@ -1069,6 +1074,7 @@ func (c *UserContext) emitMutationAudit(context stdcontext.Context, request data
 		return nil
 	}
 	event.TraceChain = append([]*core.TraceNode(nil), request.TraceChain()...)
+	event.AuditReason = request.Comment()
 	event.Actor = c.userIdentifier
 	if category, ok := c.GetResource("bootstrapCategory").(string); ok {
 		event.Category = category
@@ -1525,15 +1531,20 @@ func (c *UserContext) RuntimeReadiness() error {
 // PrepareQuery snapshots a request and applies trusted authorization exactly
 // once before callers derive row and aggregate executions from it.
 func (c *UserContext) PrepareQuery(query *core.SelectQuery) (*core.SelectQuery, error) {
-	if query == nil {
-		return nil, fmt.Errorf("query is required")
+	request, err := data_service.NewQueryRequest(query)
+	if err != nil {
+		return nil, err
 	}
-	prepared := query.Clone()
+	prepared := request.Query
 	if c.requestPolicy != nil {
 		if err := c.requestPolicy.EnforceSelect(c, prepared); err != nil {
 			return nil, err
 		}
 	}
+	// Policies constrain data access, not the caller's captured business intent.
+	intent, _ := request.Intent()
+	comment, purpose := intent.Comment(), intent.Purpose()
+	prepared.CommentText, prepared.PurposeText = &comment, &purpose
 	return prepared, nil
 }
 

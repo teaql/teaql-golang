@@ -42,6 +42,7 @@ func (q *QType) TaskExecutionLogsMinimal() *task_execution_log.TaskExecutionLogR
 	return task_execution_log.NewTaskExecutionLogMinimalRequest()
 }
 
+
 func (q *QType) TaskStatusPlatform(entity *task_status.TaskStatus) (*platform.Platform, bool) {
 	value, ok := entity.RelationEntity("platformEntity")
 	if !ok { return nil, false }

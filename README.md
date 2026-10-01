@@ -1,5 +1,48 @@
 # TeaQL Golang SDK
 
+## Required request intent
+
+This contract is implemented on the local `feature/request-trace-chain` branch;
+it is not a claim about the published `v0.2.9` module.
+
+Every Query Request owns a non-blank `comment` and `purpose`. Every Mutation
+Request owns one non-blank root `comment`, also used as its audit reason.
+Generated callers continue to use `.Comment(...).Purpose(...)` and
+`.AuditAs(...)`; regenerate older libraries against the paired generator before
+using the changed runtime. Application-owned low-level adapters capture intent
+explicitly:
+
+```go
+query := core.NewSelectQuery("School").Limit(20).
+    Comment("what: load the school list").Purpose("why: render the school page")
+request, err := data_service.NewQueryRequest(query)
+if err != nil { return err }
+
+mutation, err := data_service.NewMutationRequest(
+    &data_service.UpdateMutation{Cmd: command}, "rename the reviewed school")
+if err != nil { return err }
+```
+
+The request captures intent independently of `UserContext`, optional trace
+frames and later builder changes. Missing or Unicode-whitespace-only intent
+fails with `REQUEST_COMMENT_REQUIRED` or `QUERY_PURPOSE_REQUIRED` before
+policy, Checker or provider access, including when SQL logging is disabled.
+Trace text or an annotated batch child cannot fill a missing root comment.
+Mutation command payloads remain available to Checker/Fix; this does not make
+the entire payload immutable. Comments must not contain secrets.
+
+Run `go test ./... -count=1` and `bash scripts/verify-examples.sh` against local
+source. The retained [School example](examples/school-management) tests generated
+list/page/stream rejection and missing-audit Save with logging disabled, beside
+bootstrap and mutation-policy regressions. The current checkpoint passed the
+runtime suite and all eight example groups twice; live database and telemetry
+tests requiring external configuration are explicitly skipped.
+
+This is the request-intent foundation, not full Trace Chain completion.
+Canonical typed SQL paths, per-entity hierarchical lineage, commit-only audit
+delivery, late-ID graph binding and internal-artifact replay remain separate
+gates in the [conformance design](https://github.com/teaql/teaql-conformance/blob/main/design/runtime-trace-chain-conformance.md).
+
 ## Sensitive log data
 
 Runtime diagnostic logs redact payload values by default, before delivery to

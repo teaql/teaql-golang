@@ -26,6 +26,8 @@ var _ = decimal.Decimal{}
 var _ = reflect.DeepEqual
 var _ = strings.Join
 
+func generatedPtr[T any](value T) *T { return &value }
+
 func ensureGeneratedBootstrapOnce(context *runtime.UserContext) error {
 	previousActor := context.UserIdentifier()
 	previousCategory := context.GetResource("bootstrapCategory")
@@ -192,6 +194,10 @@ func Module() *runtime.RuntimeModule {
 		descriptor.Property(core.NewPropertyDescriptor("version", core.TypeI64).ColumnName("version").NotNull().Version())
 		descriptor.Relation(core.NewRelationDescriptor("schoolTypeList", "School Type").LocalKey("id").ForeignKey("platform_id").Many())
 		descriptor.Relation(core.NewRelationDescriptor("schoolList", "School").LocalKey("id").ForeignKey("platform_id").Many())
+		descriptor.AuditMaskFields([]string{})
+		for _, property := range descriptor.Properties {
+			property.LogPolicy = "plain"
+		}
 		module.Entity(descriptor)
 	}
 	{
@@ -205,6 +211,10 @@ func Module() *runtime.RuntimeModule {
 		descriptor.Property(core.NewPropertyDescriptor("platform_id", core.TypeU64).ColumnName("platform").NotNull())
 		descriptor.Relation(core.NewRelationDescriptor("platformEntity", "Platform").LocalKey("platform_id").ForeignKey("id"))
 		descriptor.Relation(core.NewRelationDescriptor("schoolList", "School").LocalKey("id").ForeignKey("school_type_id").Many())
+		descriptor.AuditMaskFields([]string{})
+		for _, property := range descriptor.Properties {
+			property.LogPolicy = "plain"
+		}
 		module.Entity(descriptor)
 	}
 	{
@@ -223,8 +233,15 @@ func Module() *runtime.RuntimeModule {
 		descriptor.Property(core.NewPropertyDescriptor("school_type_id", core.TypeU64).ColumnName("school_type").NotNull())
 		descriptor.Relation(core.NewRelationDescriptor("platformEntity", "Platform").LocalKey("platform_id").ForeignKey("id"))
 		descriptor.Relation(core.NewRelationDescriptor("schoolTypeEntity", "School Type").LocalKey("school_type_id").ForeignKey("id"))
+		descriptor.AuditMaskFields([]string{})
+		for _, property := range descriptor.Properties {
+			property.LogPolicy = "plain"
+		}
 		module.Entity(descriptor)
 	}
+	module.WireEntity(runtime.MustCreateWireEntityMetadataWithCanonicalAliases("Platform", []string{"id", "name", "base_url", "create_time", "update_time", "version"}, runtime.JsonFieldCamelCase))
+	module.WireEntity(runtime.MustCreateWireEntityMetadataWithCanonicalAliases("SchoolType", []string{"platform", "id", "name", "code", "display_order", "version"}, runtime.JsonFieldCamelCase))
+	module.WireEntity(runtime.MustCreateWireEntityMetadataWithCanonicalAliases("School", []string{"id", "platform", "school_type", "name", "address", "established_date", "student_capacity", "active", "create_time", "update_time", "version"}, runtime.JsonFieldCamelCase))
 	return module
 }
 
@@ -440,6 +457,10 @@ func ModuleWithBehaviors() *runtime.RuntimeModule {
 		descriptor.Property(core.NewPropertyDescriptor("version", core.TypeI64).ColumnName("version").NotNull().Version())
 		descriptor.Relation(core.NewRelationDescriptor("schoolTypeList", "School Type").LocalKey("id").ForeignKey("platform_id").Many())
 		descriptor.Relation(core.NewRelationDescriptor("schoolList", "School").LocalKey("id").ForeignKey("platform_id").Many())
+		descriptor.AuditMaskFields([]string{})
+		for _, property := range descriptor.Properties {
+			property.LogPolicy = "plain"
+		}
 		module.EntityWithBehavior(
 			descriptor,
 			&platform.PlatformBehavior{},
@@ -456,6 +477,10 @@ func ModuleWithBehaviors() *runtime.RuntimeModule {
 		descriptor.Property(core.NewPropertyDescriptor("platform_id", core.TypeU64).ColumnName("platform").NotNull())
 		descriptor.Relation(core.NewRelationDescriptor("platformEntity", "Platform").LocalKey("platform_id").ForeignKey("id"))
 		descriptor.Relation(core.NewRelationDescriptor("schoolList", "School").LocalKey("id").ForeignKey("school_type_id").Many())
+		descriptor.AuditMaskFields([]string{})
+		for _, property := range descriptor.Properties {
+			property.LogPolicy = "plain"
+		}
 		module.EntityWithBehavior(
 			descriptor,
 			&school_type.SchoolTypeBehavior{},
@@ -477,6 +502,10 @@ func ModuleWithBehaviors() *runtime.RuntimeModule {
 		descriptor.Property(core.NewPropertyDescriptor("school_type_id", core.TypeU64).ColumnName("school_type").NotNull())
 		descriptor.Relation(core.NewRelationDescriptor("platformEntity", "Platform").LocalKey("platform_id").ForeignKey("id"))
 		descriptor.Relation(core.NewRelationDescriptor("schoolTypeEntity", "School Type").LocalKey("school_type_id").ForeignKey("id"))
+		descriptor.AuditMaskFields([]string{})
+		for _, property := range descriptor.Properties {
+			property.LogPolicy = "plain"
+		}
 		module.EntityWithBehavior(
 			descriptor,
 			&school.SchoolBehavior{},
@@ -518,7 +547,6 @@ func ServiceRuntimeFromEnv() (*runtime.UserContext, error) {
 	context.InsertResource("dataService", executor)
 	context.InsertResource("db", db)
 	context.InsertResource("idGenerator", transport)
-
 	return context, nil
 }
 

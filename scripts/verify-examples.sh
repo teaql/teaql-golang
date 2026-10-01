@@ -23,11 +23,11 @@ done < <(find "$repo/examples" -name go.mod -type f | sort)
 go run ./examples/basic
 go run ./examples/business-id
 go run ./examples/mutation-policy
-(cd examples/conformance && go test ./... && go run ./src)
+(cd examples/conformance && go test ./... -count=1 && go run ./src)
 # The test runs the actual console twice against an isolated SQLite path. Do not
 # reuse .local/order.db: older example schemas may predate teaql_id_space.
-(cd examples/order-management/golang-app-console && go test ./...)
-(cd examples/school-management && go test ./...)
+(cd examples/order-management/golang-app-console && go test ./... -count=1)
+(cd examples/school-management && go test ./... -count=1)
 go run ./examples/security-foundations
-(cd examples/task_board && go test ./... && go run .)
+(cd examples/task_board && go test ./... -count=1 && go run .)
 echo "PASS: all Go examples"

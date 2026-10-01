@@ -41,7 +41,11 @@ func verifyMaskingLifecycle() {
 	insert := func(id int64) error {
 		cmd := core.NewInsertCommand("MaskCustomer").Value("id", core.ValI64(id)).Value("version", core.ValI64(1)).Value("display_name", core.ValText("Riverside"))
 		cmd.TraceChain = []*core.TraceNode{core.NewTraceNode("MaskCustomer", nil, "seed lifecycle fixture")}
-		_, err := executor.Mutate(ctx, &ds.InsertMutation{Cmd: cmd})
+		request, err := ds.NewMutationRequest(&ds.InsertMutation{Cmd: cmd}, "seed lifecycle fixture")
+		if err != nil {
+			return err
+		}
+		_, err = executor.Mutate(ctx, request)
 		return err
 	}
 	for _, id := range []int64{1, 2, 3} {
@@ -83,7 +87,8 @@ func verifyMaskingLifecycle() {
 	makeInsert := func(id int64) *ds.InsertMutation {
 		cmd := core.NewInsertCommand("MaskCustomer").Value("id", core.ValI64(id)).Value("version", core.ValI64(1)).Value("display_name", core.ValText("Riverside"))
 		cmd.TraceChain = []*core.TraceNode{core.NewTraceNode("MaskCustomer", nil, "what: insert Riverside for readback verification")}
-		return &ds.InsertMutation{Cmd: cmd}
+		comment := "what: insert Riverside for readback verification"
+		return &ds.InsertMutation{Cmd: cmd, RootComment: &comment}
 	}
 	_, err = executor.Mutate(ctx, makeInsert(777))
 	require(err != nil, "expected missing authoritative snapshot")
@@ -98,7 +103,11 @@ func verifyMaskingLifecycle() {
 	// following child to execute. Neither success implies transaction commit.
 	evidence = runtime.NewSQLExecutionEvidenceStore()
 	ctx.WithRuntimeTelemetrySink(evidence)
-	_, err = executor.Mutate(ctx, &ds.BatchMutation{Mutations: []ds.MutationRequest{makeInsert(30), makeInsert(1), makeInsert(31)}})
+	batch, err := ds.NewMutationRequest(&ds.BatchMutation{Mutations: []ds.MutationRequest{makeInsert(30), makeInsert(1), makeInsert(31)}}, "verify partial batch rollback")
+	if err != nil {
+		panic(err)
+	}
+	_, err = executor.Mutate(ctx, batch)
 	require(err != nil, "expected partial batch duplicate failure")
 	entries = evidence.Snapshot()
 	require(len(entries) == 2 && entries[0].ExecutionOutcome == "success" && entries[1].ExecutionOutcome == "failure", "partial batch diagnostic order changed")
@@ -164,7 +173,11 @@ func verifyMaskingLifecycle() {
 	}
 	childCommand := core.NewInsertCommand("MaskChild").Value("id", core.ValI64(1)).Value("version", core.ValI64(1)).Value("parent_id", core.ValI64(1))
 	childCommand.TraceChain = []*core.TraceNode{core.NewTraceNode("MaskChild", nil, "what: seed child for relation masking")}
-	if _, err = executor.Mutate(ctx, &ds.InsertMutation{Cmd: childCommand}); err != nil {
+	childRequest, err := ds.NewMutationRequest(&ds.InsertMutation{Cmd: childCommand}, "what: seed child for relation masking")
+	if err != nil {
+		panic(err)
+	}
+	if _, err = executor.Mutate(ctx, childRequest); err != nil {
 		panic(err)
 	}
 	relationFile, err := os.CreateTemp("", "teaql-go-relation-log-*.log")

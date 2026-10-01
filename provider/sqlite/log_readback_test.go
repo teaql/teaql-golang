@@ -40,13 +40,19 @@ func TestMaskedReadbackPartialBatch(t *testing.T) {
 				executor := tsql.NewSqlDataServiceExecutor(&SqliteDialect{}, &readbackTransport{tx}, lifecycleMetadata())
 				capture := &maskingCapture{sink: runtime.NewTextDiagnosticSQLLogSink(&bytes.Buffer{})}
 				ctx := runtime.NewUserContext().WithDiagnosticSQLLogSink(capture)
-				first := &ds.DeleteMutation{Cmd: core.NewDeleteCommand("Customer", core.ValI64(2)).WithExpectedVersion(1)}
+				first := &ds.DeleteMutation{Cmd: core.NewDeleteCommand("Customer", core.ValI64(2)).WithExpectedVersion(1),
+					RootComment: fixtureIntentText("verify mutation fixture"),
+				}
 				first.Cmd.SoftDelete = false
 				var failed ds.MutationRequest = readbackMutation()
 				if nested {
-					failed = &ds.BatchMutation{Mutations: []ds.MutationRequest{failed}}
+					failed = &ds.BatchMutation{Mutations: []ds.MutationRequest{failed},
+						RootComment: fixtureIntentText("verify mutation fixture"),
+					}
 				}
-				batch := &ds.BatchMutation{Mutations: []ds.MutationRequest{first, failed, readbackMutation()}}
+				batch := &ds.BatchMutation{Mutations: []ds.MutationRequest{first, failed, readbackMutation()},
+					RootComment: fixtureIntentText("verify mutation fixture"),
+				}
 				var err error
 				if explicit {
 					transaction, beginErr := executor.Begin(ctx)
@@ -112,7 +118,9 @@ func readbackMutation() *ds.UpdateMutation {
 	cmd := core.NewUpdateCommand("Customer", core.ValI64(1)).WithExpectedVersion(1).
 		Value("display_name", core.ValText("Riverside")).Value("password_hash", core.ValText("PASSWORD-CANARY"))
 	cmd.TraceChain = []*core.TraceNode{core.NewTraceNode("Customer", nil, "what: update Riverside PASSWORD-CANARY")}
-	return &ds.UpdateMutation{Cmd: cmd}
+	return &ds.UpdateMutation{Cmd: cmd,
+		RootComment: fixtureIntentText("what: update Riverside PASSWORD-CANARY"),
+	}
 }
 
 func TestMaskedReadbackDiagnostics(t *testing.T) {

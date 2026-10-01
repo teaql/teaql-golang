@@ -53,6 +53,11 @@ func (e *SqlDataServiceExecutor) Capabilities() data_service.DataServiceCapabili
 }
 
 func (e *SqlDataServiceExecutor) Query(context stdcontext.Context, request *data_service.QueryRequest) (*data_service.QueryResult, error) {
+	captured, err := data_service.CaptureQueryRequest(request)
+	if err != nil {
+		return nil, err
+	}
+	request = captured
 	if err := request.Query.PrepareForList(); err != nil {
 		return nil, err
 	}
@@ -103,6 +108,10 @@ func (e *SqlDataServiceExecutor) Query(context stdcontext.Context, request *data
 }
 
 func (e *SqlDataServiceExecutor) Mutate(context stdcontext.Context, request data_service.MutationRequest) (result *data_service.MutationResult, err error) {
+	request, err = data_service.CaptureMutationRequest(request)
+	if err != nil {
+		return nil, err
+	}
 	userCtx, _ := UserContextFrom(context)
 	telemetry := RuntimeTelemetry(NoopRuntimeTelemetry{})
 	if userCtx != nil {

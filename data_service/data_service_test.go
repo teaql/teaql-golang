@@ -19,36 +19,37 @@ func TestMutationRequestTraceAndCommentAccessors(t *testing.T) {
 		Comment:    "Create Profile",
 	}
 	traceChain := []*core.TraceNode{trace1, trace2}
+	rootComment := "Create User"
 
 	// Test Insert
 	insertCmd := core.NewInsertCommand("User")
 	insertCmd.TraceChain = traceChain
-	reqInsert := &InsertMutation{Cmd: insertCmd}
+	reqInsert := &InsertMutation{Cmd: insertCmd, RootComment: &rootComment}
 	assert.Equal(t, 2, len(reqInsert.TraceChain()))
 	assert.Equal(t, trace2, reqInsert.TraceChain()[1])
-	assert.Equal(t, "Create Profile", *reqInsert.Comment())
+	assert.Equal(t, "Create User", *reqInsert.Comment())
 
 	// Test Update
 	updateCmd := core.NewUpdateCommand("User", core.ValI64(1))
 	updateCmd.TraceChain = traceChain
-	reqUpdate := &UpdateMutation{Cmd: updateCmd}
+	reqUpdate := &UpdateMutation{Cmd: updateCmd, RootComment: &rootComment}
 	assert.Equal(t, 2, len(reqUpdate.TraceChain()))
-	assert.Equal(t, "Create Profile", *reqUpdate.Comment())
+	assert.Equal(t, "Create User", *reqUpdate.Comment())
 
 	// Test Delete
 	deleteCmd := core.NewDeleteCommand("User", core.ValI64(1))
 	deleteCmd.TraceChain = traceChain
 	deleteCmd.SoftDelete = true
-	reqDelete := &DeleteMutation{Cmd: deleteCmd}
+	reqDelete := &DeleteMutation{Cmd: deleteCmd, RootComment: &rootComment}
 	assert.Equal(t, 2, len(reqDelete.TraceChain()))
-	assert.Equal(t, "Create Profile", *reqDelete.Comment())
+	assert.Equal(t, "Create User", *reqDelete.Comment())
 
 	// Test Recover
 	recoverCmd := core.NewRecoverCommand("User", core.ValI64(1), 1)
 	recoverCmd.TraceChain = traceChain
-	reqRecover := &RecoverMutation{Cmd: recoverCmd}
+	reqRecover := &RecoverMutation{Cmd: recoverCmd, RootComment: &rootComment}
 	assert.Equal(t, 2, len(reqRecover.TraceChain()))
-	assert.Equal(t, "Create Profile", *reqRecover.Comment())
+	assert.Equal(t, "Create User", *reqRecover.Comment())
 
 	// Test Batch
 	reqBatch := &BatchMutation{Mutations: []MutationRequest{reqInsert, reqUpdate}}

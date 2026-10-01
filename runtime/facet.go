@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/teaql/teaql-golang/core"
+	"github.com/teaql/teaql-golang/data_service"
 )
 
 // ExecuteFacets evaluates relation membership from the filtered outer query,
@@ -15,6 +16,11 @@ func ExecuteFacets(
 	outer *core.SelectQuery,
 	options *core.QueryOptions,
 ) (map[string]*core.SmartList[core.Record], error) {
+	request, err := data_service.NewQueryRequest(outer)
+	if err != nil {
+		return nil, err
+	}
+	outer = request.Query
 	results := make(map[string]*core.SmartList[core.Record])
 	for _, facet := range options.Facets {
 		membership := cloneSelectQuery(outer, outer.Entity)
@@ -40,6 +46,8 @@ func ExecuteFacets(
 		}
 
 		nested := facet.Query.IntoQuery()
+		nested = nested.Clone()
+		nested.CommentText, nested.PurposeText = request.Comment, request.Purpose
 		countAliases := make([]string, 0)
 		for _, aggregate := range nested.Aggregates {
 			if aggregate.Function == core.AggCount {

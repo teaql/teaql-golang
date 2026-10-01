@@ -62,6 +62,11 @@ func (p *MeilisearchProvider) doRequest(req *http.Request) ([]byte, error) {
 }
 
 func (p *MeilisearchProvider) Query(context stdcontext.Context, request *data_service.QueryRequest) (*data_service.QueryResult, error) {
+	captured, err := data_service.CaptureQueryRequest(request)
+	if err != nil {
+		return nil, err
+	}
+	request = captured
 	startedAt := time.Now()
 	search := ""
 	if request.Query.SearchWithText != nil {
@@ -115,11 +120,17 @@ func (p *MeilisearchProvider) Query(context stdcontext.Context, request *data_se
 			DebugQuery:  &debugQuery,
 			TraceChain:  request.TraceChain,
 			Comment:     request.Comment,
+			Purpose:     request.Purpose,
 		},
 	}, nil
 }
 
 func (p *MeilisearchProvider) Mutate(context stdcontext.Context, request data_service.MutationRequest) (*data_service.MutationResult, error) {
+	captured, err := data_service.CaptureMutationRequest(request)
+	if err != nil {
+		return nil, err
+	}
+	request = captured
 	startedAt := time.Now()
 
 	switch req := request.(type) {

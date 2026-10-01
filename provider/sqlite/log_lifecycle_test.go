@@ -58,7 +58,9 @@ func lifecycleQuery() *ds.QueryRequest {
 	q := core.NewSelectQuery("Customer").AndFilter(core.ExprEq("display_name", core.ValText("Riverside"))).
 		AndFilter(core.ExprEq("public_address", core.ValText("1 Runtime Road"))).
 		AndFilter(core.ExprEq("password_hash", core.ValText("PASSWORD-CANARY"))).Limit(5).Comment(comment).Purpose(purpose)
-	return &ds.QueryRequest{Query: q, Comment: &comment, Purpose: &purpose}
+	return &ds.QueryRequest{Query: q,
+		Comment: &comment,
+		Purpose: &purpose}
 }
 func assertLifecycleLog(t *testing.T, c *maskingCapture, out *bytes.Buffer, outcome string) {
 	t.Helper()
@@ -101,11 +103,17 @@ func TestMaskedSQLFailureLifecycleBothExecutors(t *testing.T) {
 				case "query":
 					_, err = executor.Query(ctx, lifecycleQuery())
 				case "insert":
-					_, err = executor.Mutate(ctx, &ds.InsertMutation{Cmd: core.NewInsertCommand("Customer").Value("id", core.ValI64(1)).Value("display_name", core.ValText("Riverside"))})
+					_, err = executor.Mutate(ctx, &ds.InsertMutation{Cmd: core.NewInsertCommand("Customer").Value("id", core.ValI64(1)).Value("display_name", core.ValText("Riverside")),
+						RootComment: fixtureIntentText("verify mutation fixture"),
+					})
 				case "update":
-					_, err = executor.Mutate(ctx, &ds.UpdateMutation{Cmd: core.NewUpdateCommand("Customer", core.ValI64(1)).WithExpectedVersion(1).Value("display_name", core.ValText("Riverside"))})
+					_, err = executor.Mutate(ctx, &ds.UpdateMutation{Cmd: core.NewUpdateCommand("Customer", core.ValI64(1)).WithExpectedVersion(1).Value("display_name", core.ValText("Riverside")),
+						RootComment: fixtureIntentText("verify mutation fixture"),
+					})
 				case "delete":
-					_, err = executor.Mutate(ctx, &ds.DeleteMutation{Cmd: core.NewDeleteCommand("Customer", core.ValI64(1)).WithExpectedVersion(1)})
+					_, err = executor.Mutate(ctx, &ds.DeleteMutation{Cmd: core.NewDeleteCommand("Customer", core.ValI64(1)).WithExpectedVersion(1),
+						RootComment: fixtureIntentText("verify mutation fixture"),
+					})
 				}
 				if !errors.Is(err, failure) {
 					t.Fatalf("lost original failure: %v", err)

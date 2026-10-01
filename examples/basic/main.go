@@ -49,14 +49,20 @@ func main() {
 
 	// 4. Insert data
 	insertCmd := core.NewInsertCommand("Order").Value("id", core.ValU64(1)).Value("name", core.ValText("Tea"))
-	mutateReq := &data_service.InsertMutation{Cmd: insertCmd}
+	mutateReq, err := data_service.NewMutationRequest(&data_service.InsertMutation{Cmd: insertCmd}, "seed the basic example")
+	if err != nil {
+		log.Fatal(err)
+	}
 	if _, err := executor.Mutate(stdcontext.Background(), mutateReq); err != nil {
 		log.Fatal(err)
 	}
 
 	// 5. Query data
-	query := core.NewSelectQuery("Order")
-	queryReq := &data_service.QueryRequest{Query: query}
+	query := core.NewSelectQuery("Order").Comment("load basic example orders").Purpose("demonstrate local query execution")
+	queryReq, err := data_service.NewQueryRequest(query)
+	if err != nil {
+		log.Fatal(err)
+	}
 	result, err := executor.Query(stdcontext.Background(), queryReq)
 	if err != nil {
 		log.Fatal(err)

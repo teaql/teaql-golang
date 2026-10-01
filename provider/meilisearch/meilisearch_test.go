@@ -53,8 +53,10 @@ func TestMeilisearchProvider(t *testing.T) {
 	queryReq := &data_service.QueryRequest{
 		Query: &core.SelectQuery{
 			Entity:         "movies",
-			SearchWithText: &searchStr,
+			SearchWithText: &searchStr, CommentText: fixtureIntentText("verify query fixture"), PurposeText: fixtureIntentText("preserve the query regression contract"),
 		},
+		Comment: fixtureIntentText("verify query fixture"),
+		Purpose: fixtureIntentText("preserve the query regression contract"),
 	}
 	res, err := provider.Query(context, queryReq)
 	if err != nil {
@@ -73,6 +75,7 @@ func TestMeilisearchProvider(t *testing.T) {
 			Entity: "movies",
 			Values: core.Record{"id": core.ValI64(1)},
 		},
+		RootComment: fixtureIntentText("verify mutation fixture"),
 	}
 	mutRes, err := provider.Mutate(context, insertMut)
 	if err != nil {
@@ -83,7 +86,7 @@ func TestMeilisearchProvider(t *testing.T) {
 	}
 
 	// Test Unsupported Mutation
-	unsupportedMut := &data_service.UpdateMutation{}
+	unsupportedMut := &data_service.UpdateMutation{RootComment: fixtureIntentText("verify mutation fixture")}
 	_, err = provider.Mutate(context, unsupportedMut)
 	if err == nil {
 		t.Errorf("Expected error for unsupported mutation")
@@ -104,8 +107,10 @@ func TestMeilisearchProviderErrors(t *testing.T) {
 	// Query error
 	queryReq := &data_service.QueryRequest{
 		Query: &core.SelectQuery{
-			Entity: "movies",
+			Entity: "movies", CommentText: fixtureIntentText("verify query fixture"), PurposeText: fixtureIntentText("preserve the query regression contract"),
 		},
+		Comment: fixtureIntentText("verify query fixture"),
+		Purpose: fixtureIntentText("preserve the query regression contract"),
 	}
 	_, err := provider.Query(context, queryReq)
 	if err == nil {
@@ -118,6 +123,7 @@ func TestMeilisearchProviderErrors(t *testing.T) {
 			Entity: "movies",
 			Values: core.Record{"id": core.ValI64(1)},
 		},
+		RootComment: fixtureIntentText("verify mutation fixture"),
 	}
 	_, err = provider.Mutate(context, insertMut)
 	if err == nil {
@@ -147,7 +153,9 @@ func TestMeilisearchProviderEdgeCases(t *testing.T) {
 	// 1. NewRequestWithContext error (invalid method/url, but method is hardcoded, so use canceled context and invalid url)
 	provider.host = "http:// \x00 invalid url"
 	queryReq := &data_service.QueryRequest{
-		Query: &core.SelectQuery{Entity: "movies"},
+		Query:   &core.SelectQuery{Entity: "movies", CommentText: fixtureIntentText("verify query fixture"), PurposeText: fixtureIntentText("preserve the query regression contract")},
+		Comment: fixtureIntentText("verify query fixture"),
+		Purpose: fixtureIntentText("preserve the query regression contract"),
 	}
 	_, err := provider.Query(context, queryReq)
 	if err == nil {
@@ -155,7 +163,8 @@ func TestMeilisearchProviderEdgeCases(t *testing.T) {
 	}
 
 	insertMut := &data_service.InsertMutation{
-		Cmd: &core.InsertCommand{Entity: "movies"},
+		Cmd:         &core.InsertCommand{Entity: "movies"},
+		RootComment: fixtureIntentText("verify mutation fixture"),
 	}
 	_, err = provider.Mutate(context, insertMut)
 	if err == nil {

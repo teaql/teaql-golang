@@ -105,6 +105,11 @@ func (e *SqlDataServiceExecutor) Capabilities() ds.DataServiceCapabilities {
 }
 
 func (e *SqlDataServiceExecutor) Query(context stdcontext.Context, request *ds.QueryRequest) (*ds.QueryResult, error) {
+	captured, err := ds.CaptureQueryRequest(request)
+	if err != nil {
+		return nil, err
+	}
+	request = captured
 	entityDesc := e.SchemaProvider.GetEntity(request.Query.Entity)
 	if entityDesc == nil {
 		return nil, &SqlExecutorError{CompileError: fmt.Errorf("unknown entity %s", request.Query.Entity)}
@@ -238,6 +243,11 @@ func (e *SqlDataServiceExecutor) resolveSubqueryDescriptors(query *core.SelectQu
 }
 
 func (e *SqlDataServiceExecutor) Mutate(context stdcontext.Context, request ds.MutationRequest) (*ds.MutationResult, error) {
+	captured, captureErr := ds.CaptureMutationRequest(request)
+	if captureErr != nil {
+		return nil, captureErr
+	}
+	request = captured
 	if transport, ok := e.Transport.(SqlTransactionTransport); ok {
 		tx, err := transport.BeginSql(context)
 		if err != nil {
@@ -280,7 +290,8 @@ func (e *SqlDataServiceExecutor) Mutate(context stdcontext.Context, request ds.M
 				AffectedRows:     &totalAffected,
 				ResultCount:      nil,
 				TraceChain:       []*core.TraceNode{},
-				Comment:          nil,
+				Comment:          request.Comment(),
+				AuditReason:      request.Comment(),
 				BackendRequestId: nil,
 				DebugQuery:       nil,
 			},
@@ -436,6 +447,11 @@ func (e *SqlDataServiceExecutor) Mutate(context stdcontext.Context, request ds.M
 }
 
 func (e *SqlDataServiceExecutor) QueryStream(context stdcontext.Context, request *ds.QueryRequest, chunkSize int, yield func(*ds.StreamChunk) error) (streamErr error) {
+	captured, err := ds.CaptureQueryRequest(request)
+	if err != nil {
+		return err
+	}
+	request = captured
 	if chunkSize <= 0 {
 		return fmt.Errorf("chunk size must be positive")
 	}

@@ -27,6 +27,7 @@ var (
 
 var teaqlTemporaryEntityID int64
 
+
 type Platform struct {
 	base        *core.BaseEntityData
 	dirtyFields map[string]bool
@@ -218,9 +219,7 @@ func (e *Platform) SetComment(comment string) {
 }
 
 func (e *Platform) AuditAs(comment string) *Platform {
-	if strings.TrimSpace(comment) == "" {
-		panic("Security audit failure: AuditAs() requires a non-empty reason")
-	}
+	if _, err := core.NewMutationIntent(&comment); err != nil { panic(err) }
 	e.comment = &comment
 	return e
 }
@@ -247,9 +246,14 @@ func (e *Platform) IntoJson() any {
 }
 
 func (e *Platform) Save(context *runtime.UserContext) (*Platform, error) {
+	intent, intentErr := core.NewMutationIntent(e.comment)
+	if intentErr != nil { return nil, intentErr }
 	var saved *Platform
-	err := context.ExecuteGraphSave(func() error {
-		if preflightErr := e.TeaqlPreflightGraph(context); preflightErr != nil { return preflightErr }
+	err := context.ExecutePreparedGraphSave(func() (*runtime.MutationPlan, error) {
+		if preflightErr := e.TeaqlPreflightGraph(context); preflightErr != nil { return nil, preflightErr }
+		auditReason := intent.AuditReason()
+		return runtime.MutationPlanFromEntityRoot(e.root, e.EntityName(), auditReason), nil
+	}, func() error {
 		var innerErr error
 		saved, innerErr = e.TeaqlSaveWithinGraph(context)
 		return innerErr
@@ -260,10 +264,10 @@ func (e *Platform) Save(context *runtime.UserContext) (*Platform, error) {
 // TeaqlPreflightGraph runs Checker/Fix for the complete aggregate before the
 // first provider mutation. It is generated infrastructure, not application API.
 func (e *Platform) TeaqlPreflightGraph(context *runtime.UserContext) error {
-	if e.comment == nil || strings.TrimSpace(*e.comment) == "" {
-		return fmt.Errorf("Security audit failure: AuditAs() must be called before Save()")
-	}
+	if _, err := core.NewMutationIntent(e.comment); err != nil { return err }
 	if !e.markedAsDelete {
+		if e.isNew {
+		}
 		operation := core.MutationUpdate
 		if e.isNew { operation = core.MutationInsert }
 		if operation == core.MutationUpdate {
@@ -388,9 +392,7 @@ func (e *Platform) TeaqlSaveWithinGraph(context *runtime.UserContext) (*Platform
 	if !ok {
 		return nil, fmt.Errorf("dataService does not implement Mutator")
 	}
-	if e.comment == nil || strings.TrimSpace(*e.comment) == "" {
-		return nil, fmt.Errorf("Security audit failure: AuditAs() must be called before Save()")
-	}
+	if _, err := core.NewMutationIntent(e.comment); err != nil { return nil, err }
 
 	if e.isNew {
 		checkedValues := e.IntoRecord()
@@ -434,7 +436,9 @@ func (e *Platform) TeaqlSaveWithinGraph(context *runtime.UserContext) (*Platform
 		if e.comment != nil {
 			cmd.TraceChain = append(cmd.TraceChain, &core.TraceNode{Comment: *e.comment})
 		}
-		res, err := ds.Mutate(context, &data_service.InsertMutation{Cmd: cmd})
+		request, err := data_service.NewMutationRequest(&data_service.InsertMutation{Cmd: cmd}, *e.comment)
+		if err != nil { return nil, err }
+		res, err := ds.Mutate(context, request)
 		if err == nil {
 			e.isNew = false
 			e.dirtyFields = make(map[string]bool)
@@ -466,7 +470,9 @@ func (e *Platform) TeaqlSaveWithinGraph(context *runtime.UserContext) (*Platform
 		if e.comment != nil {
 			cmd.TraceChain = append(cmd.TraceChain, &core.TraceNode{Comment: *e.comment})
 		}
-		res, err := ds.Mutate(context, &data_service.DeleteMutation{Cmd: cmd})
+		request, err := data_service.NewMutationRequest(&data_service.DeleteMutation{Cmd: cmd}, *e.comment)
+		if err != nil { return nil, err }
+		res, err := ds.Mutate(context, request)
 		if err != nil { return nil, err }
 		if res.AffectedRows == 0 {
 			return nil, fmt.Errorf("optimistic lock failed for %s(%d) at version %d", e.EntityName(), e.base.Id, expectedVersion)
@@ -497,7 +503,9 @@ func (e *Platform) TeaqlSaveWithinGraph(context *runtime.UserContext) (*Platform
 		if e.comment != nil {
 			cmd.TraceChain = append(cmd.TraceChain, &core.TraceNode{Comment: *e.comment})
 		}
-		res, err := ds.Mutate(context, &data_service.UpdateMutation{Cmd: cmd})
+		request, err := data_service.NewMutationRequest(&data_service.UpdateMutation{Cmd: cmd}, *e.comment)
+		if err != nil { return nil, err }
+		res, err := ds.Mutate(context, request)
 		if err == nil {
 			if res.AffectedRows == 0 {
 				return nil, fmt.Errorf("optimistic lock failed for %s(%d) at version %d", e.EntityName(), e.base.Id, expectedVersion)

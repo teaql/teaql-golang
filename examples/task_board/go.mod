@@ -11,5 +11,5 @@ require robot-kanban-service-core-workspace/lib v0.0.0-00010101000000-0000000000
 require (
 	github.com/mattn/go-sqlite3 v1.14.22 // indirect
 	github.com/shopspring/decimal v1.4.0 // indirect
-	github.com/teaql/teaql-golang v0.2.7 // indirect
+	github.com/teaql/teaql-golang v0.2.9 // indirect
 )

@@ -59,8 +59,10 @@ func TestLinuxDataServiceExecutor(t *testing.T) {
 	// Test Query - Success
 	req := &data_service.QueryRequest{
 		Query: &core.SelectQuery{
-			Entity: "processes",
+			Entity: "processes", CommentText: fixtureIntentText("verify query fixture"), PurposeText: fixtureIntentText("preserve the query regression contract"),
 		},
+		Comment: fixtureIntentText("verify query fixture"),
+		Purpose: fixtureIntentText("preserve the query regression contract"),
 	}
 	context := stdcontext.Background()
 	result, err := executor.Query(context, req)
@@ -86,8 +88,10 @@ func TestLinuxDataServiceExecutor(t *testing.T) {
 	// Test Query - Unknown Entity
 	reqUnknown := &data_service.QueryRequest{
 		Query: &core.SelectQuery{
-			Entity: "unknown",
+			Entity: "unknown", CommentText: fixtureIntentText("verify query fixture"), PurposeText: fixtureIntentText("preserve the query regression contract"),
 		},
+		Comment: fixtureIntentText("verify query fixture"),
+		Purpose: fixtureIntentText("preserve the query regression contract"),
 	}
 	_, err = executor.Query(context, reqUnknown)
 	if err == nil {
@@ -102,8 +106,10 @@ func TestLinuxDataServiceExecutor(t *testing.T) {
 	executor.WithCollector(errCollector)
 	reqErr := &data_service.QueryRequest{
 		Query: &core.SelectQuery{
-			Entity: "error_entity",
+			Entity: "error_entity", CommentText: fixtureIntentText("verify query fixture"), PurposeText: fixtureIntentText("preserve the query regression contract"),
 		},
+		Comment: fixtureIntentText("verify query fixture"),
+		Purpose: fixtureIntentText("preserve the query regression contract"),
 	}
 	_, err = executor.Query(context, reqErr)
 	if err == nil {
@@ -111,7 +117,7 @@ func TestLinuxDataServiceExecutor(t *testing.T) {
 	}
 
 	// Test Mutate
-	_, err = executor.Mutate(context, &data_service.InsertMutation{})
+	_, err = executor.Mutate(context, &data_service.InsertMutation{RootComment: fixtureIntentText("verify mutation fixture")})
 	if err == nil {
 		t.Errorf("Expected error for mutate, got nil")
 	}

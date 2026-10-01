@@ -64,6 +64,30 @@ func TestFederalPayloadCannotEnableContinuousPageFetch(t *testing.T) {
 	}
 }
 
+func TestTFPRequestIntentCannotBeOmittedOrNonText(t *testing.T) {
+	for _, value := range []string{"null", `""`, `"\u0085\u00a0"`, "42", "true", `{}`, `[]`} {
+		t.Run(value, func(t *testing.T) {
+			query := &capturingQueryExecutor{}
+			mutation := &capturingMutationExecutor{}
+			endpoint := NewTfpEndpoint(query, mutation).WithTrustedContext(trusted())
+			payload := []byte(`{"entity":"Order","limitValue":10,"commentText":` + value + `,"purposeText":"render orders"}`)
+			_, err := endpoint.HandleQuery(stdcontext.Background(), payload)
+			var required *core.RequestIntentError
+			if !errors.As(err, &required) || required.Code != "REQUEST_COMMENT_REQUIRED" || required.RequestKind != "query" {
+				t.Fatalf("wrong query rejection: %v", err)
+			}
+			payload = []byte(`{"entity":"Order","action":"Create","payload":{},"comment":` + value + `}`)
+			_, err = endpoint.HandleMutation(stdcontext.Background(), payload)
+			if !errors.As(err, &required) || required.Code != "REQUEST_COMMENT_REQUIRED" || required.RequestKind != "mutation" {
+				t.Fatalf("wrong mutation rejection: %v", err)
+			}
+			if query.query != nil || mutation.request != nil {
+				t.Fatal("invalid wire intent reached an executor")
+			}
+		})
+	}
+}
+
 func TestFederalPayloadCannotEnableIDSetPagination(t *testing.T) {
 	executor := &capturingQueryExecutor{}
 	endpoint := NewTfpEndpoint(executor, nil).WithTrustedContext(trusted())

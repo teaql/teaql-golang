@@ -279,10 +279,19 @@ func (c *UserContext) WithMutationGovernanceSink(sink MutationGovernanceSink) *U
 }
 
 func (c *UserContext) ReviewMutationPlan(input *MutationPlan) (*MutationGovernanceSnapshot, error) {
+	var comment *string
+	if input != nil {
+		comment = &input.AuditReason
+	}
+	intent, err := core.NewMutationIntent(comment)
+	if err != nil {
+		return nil, err
+	}
 	if input == nil || strings.TrimSpace(input.RequestKey) == "" || strings.TrimSpace(input.RootEntity) == "" {
 		return nil, &RuntimeError{Type: "MutationPolicy", Message: "mutation plan requires request key and root entity"}
 	}
 	plan := cloneMutationPlan(input)
+	plan.AuditReason = intent.AuditReason()
 	if plan.ExecutionID == "" {
 		plan.ExecutionID = fmt.Sprintf("%s-mutation-%d", c.userIdentifier, atomic.AddUint64(&mutationExecutionSequence, 1))
 	}

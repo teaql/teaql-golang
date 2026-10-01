@@ -115,6 +115,7 @@ func TestSqlDataServiceExecutor_Query(t *testing.T) {
 		Query:      q,
 		Comment:    &cmt,
 		TraceChain: []*core.TraceNode{{Comment: "t1"}},
+		Purpose:    fixtureIntentText("preserve the query regression contract"),
 	}
 	res, err := exec.Query(context, req)
 
@@ -127,7 +128,10 @@ func TestSqlDataServiceExecutor_Query(t *testing.T) {
 
 	// Unknown entity
 	qUnknown := core.NewSelectQuery("Unknown")
-	reqUnknown := &ds.QueryRequest{Query: qUnknown}
+	reqUnknown := &ds.QueryRequest{Query: qUnknown,
+		Comment: fixtureIntentText("verify query fixture"),
+		Purpose: fixtureIntentText("preserve the query regression contract"),
+	}
 	_, err = exec.Query(context, reqUnknown)
 	assert.Error(t, err)
 }
@@ -149,7 +153,10 @@ func TestSqlDataServiceExecutor_QueryError(t *testing.T) {
 	context := stdcontext.Background()
 
 	q := core.NewSelectQuery("Order").Project("id")
-	req := &ds.QueryRequest{Query: q}
+	req := &ds.QueryRequest{Query: q,
+		Comment: fixtureIntentText("verify query fixture"),
+		Purpose: fixtureIntentText("preserve the query regression contract"),
+	}
 	_, err := exec.Query(context, req)
 	assert.Error(t, err)
 }
@@ -175,7 +182,9 @@ func TestSqlDataServiceExecutor_Mutate(t *testing.T) {
 
 	// Insert
 	cmd := core.NewInsertCommand("Order").Value("id", core.ValU64(1))
-	req := &ds.InsertMutation{Cmd: cmd}
+	req := &ds.InsertMutation{Cmd: cmd,
+		RootComment: fixtureIntentText("verify mutation fixture"),
+	}
 	res, err := exec.Mutate(context, req)
 	assert.NoError(t, err)
 	assert.Equal(t, uint64(1), res.AffectedRows)
@@ -183,27 +192,35 @@ func TestSqlDataServiceExecutor_Mutate(t *testing.T) {
 
 	// Update
 	cmdUpdate := core.NewUpdateCommand("Order", core.ValU64(1)).Value("name", core.ValText("B")).WithExpectedVersion(1)
-	reqUpdate := &ds.UpdateMutation{Cmd: cmdUpdate}
+	reqUpdate := &ds.UpdateMutation{Cmd: cmdUpdate,
+		RootComment: fixtureIntentText("verify mutation fixture"),
+	}
 	res, err = exec.Mutate(context, reqUpdate)
 	assert.NoError(t, err)
 	assert.Equal(t, ds.OpUpdate, res.Metadata.Operation)
 
 	// Delete
 	cmdDelete := core.NewDeleteCommand("Order", core.ValU64(1)).WithExpectedVersion(1)
-	reqDelete := &ds.DeleteMutation{Cmd: cmdDelete}
+	reqDelete := &ds.DeleteMutation{Cmd: cmdDelete,
+		RootComment: fixtureIntentText("verify mutation fixture"),
+	}
 	res, err = exec.Mutate(context, reqDelete)
 	assert.NoError(t, err)
 	assert.Equal(t, ds.OpDelete, res.Metadata.Operation)
 
 	// Recover
 	cmdRecover := core.NewRecoverCommand("Order", core.ValU64(1), -1)
-	reqRecover := &ds.RecoverMutation{Cmd: cmdRecover}
+	reqRecover := &ds.RecoverMutation{Cmd: cmdRecover,
+		RootComment: fixtureIntentText("verify mutation fixture"),
+	}
 	res, err = exec.Mutate(context, reqRecover)
 	assert.NoError(t, err)
 	assert.Equal(t, ds.OpRecover, res.Metadata.Operation)
 
 	// Batch
-	batchReq := &ds.BatchMutation{Mutations: []ds.MutationRequest{req, reqUpdate}}
+	batchReq := &ds.BatchMutation{Mutations: []ds.MutationRequest{req, reqUpdate},
+		RootComment: fixtureIntentText("verify mutation fixture"),
+	}
 	res, err = exec.Mutate(context, batchReq)
 	assert.NoError(t, err)
 	assert.Equal(t, uint64(2), res.AffectedRows)
@@ -216,7 +233,9 @@ func TestSqlDataServiceExecutor_Mutate(t *testing.T) {
 
 	// Unknown entity
 	cmdUnknown := core.NewInsertCommand("Unknown").Value("id", core.ValU64(1))
-	reqUnknown := &ds.InsertMutation{Cmd: cmdUnknown}
+	reqUnknown := &ds.InsertMutation{Cmd: cmdUnknown,
+		RootComment: fixtureIntentText("verify mutation fixture"),
+	}
 	_, err = exec.Mutate(context, reqUnknown)
 	assert.Error(t, err)
 }
@@ -238,12 +257,16 @@ func TestSqlDataServiceExecutor_MutateError(t *testing.T) {
 	context := stdcontext.Background()
 
 	cmd := core.NewInsertCommand("Order").Value("id", core.ValU64(1))
-	req := &ds.InsertMutation{Cmd: cmd}
+	req := &ds.InsertMutation{Cmd: cmd,
+		RootComment: fixtureIntentText("verify mutation fixture"),
+	}
 	_, err := exec.Mutate(context, req)
 	assert.Error(t, err)
 
 	// Batch error
-	batchReq := &ds.BatchMutation{Mutations: []ds.MutationRequest{req}}
+	batchReq := &ds.BatchMutation{Mutations: []ds.MutationRequest{req},
+		RootComment: fixtureIntentText("verify mutation fixture"),
+	}
 	_, err = exec.Mutate(context, batchReq)
 	assert.Error(t, err)
 }
@@ -270,7 +293,10 @@ func TestSqlDataServiceExecutor_QueryStream(t *testing.T) {
 	exec := NewSqlDataServiceExecutor(dialect, transport, sp)
 	context := stdcontext.Background()
 	q := core.NewSelectQuery("Order").Project("id")
-	req := &ds.QueryRequest{Query: q}
+	req := &ds.QueryRequest{Query: q,
+		Comment: fixtureIntentText("verify query fixture"),
+		Purpose: fixtureIntentText("preserve the query regression contract"),
+	}
 
 	var chunks []*ds.StreamChunk
 	err := exec.QueryStream(context, req, 2, func(chunk *ds.StreamChunk) error { chunks = append(chunks, chunk); return nil })
@@ -335,12 +361,17 @@ func TestSqlDataServiceExecutor_Transaction(t *testing.T) {
 	assert.False(t, caps.Transaction)
 
 	q := core.NewSelectQuery("Order").Project("id")
-	req := &ds.QueryRequest{Query: q}
+	req := &ds.QueryRequest{Query: q,
+		Comment: fixtureIntentText("verify query fixture"),
+		Purpose: fixtureIntentText("preserve the query regression contract"),
+	}
 	_, err = dsTx.Query(context, req)
 	assert.NoError(t, err)
 
 	cmd := core.NewInsertCommand("Order").Value("id", core.ValU64(1))
-	reqMut := &ds.InsertMutation{Cmd: cmd}
+	reqMut := &ds.InsertMutation{Cmd: cmd,
+		RootComment: fixtureIntentText("verify mutation fixture"),
+	}
 	_, err = dsTx.Mutate(context, reqMut)
 	assert.NoError(t, err)
 

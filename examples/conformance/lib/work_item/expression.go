@@ -158,4 +158,3 @@ func (e *WorkItemExpression) Platform() *PlatformRelationExpression {
 	if !ok || related == nil { return &PlatformRelationExpression{root:e.root,path:path} }
 	return &PlatformRelationExpression{value:related.IntoRecord(),root:e.root,path:path}
 }
-

@@ -67,6 +67,11 @@ func NewRuntimeDataService(metadata MetadataStore, executor data_service.DataSer
 }
 
 func (s *RuntimeDataService) FetchAll(context stdcontext.Context, query *core.SelectQuery) (rows []core.Record, err error) {
+	request, err := data_service.NewQueryRequest(query)
+	if err != nil {
+		return nil, err
+	}
+	query = request.Query
 	userCtx, _ := UserContextFrom(context)
 	telemetry := RuntimeTelemetry(NoopRuntimeTelemetry{})
 	if userCtx != nil {
@@ -383,11 +388,9 @@ func (s *RuntimeDataService) fetchRows(context stdcontext.Context, query *core.S
 		return nil, fmt.Errorf("executor does not support Query")
 	}
 
-	req := &data_service.QueryRequest{
-		Query:      query,
-		TraceChain: query.TraceChain,
-		Comment:    query.CommentText,
-		Purpose:    query.PurposeText,
+	req, err := data_service.NewQueryRequest(query)
+	if err != nil {
+		return nil, err
 	}
 	if len(intent) > 0 {
 		req.InheritedIntent = *intent[0]

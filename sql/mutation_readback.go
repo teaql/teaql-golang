@@ -18,6 +18,12 @@ func recordMutationReadback(ctx context.Context, query *CompiledQuery, source ds
 		return
 	}
 	metadata := source
+	intent, intentErr := core.NewMutationIntent(source.AuditReason)
+	if intentErr == nil {
+		readIntent, _ := intent.ReadbackIntent()
+		purpose := readIntent.Purpose()
+		metadata.Purpose = &purpose
+	}
 	metadata.InheritedIntent = logprivacy.NewIntentSource(source)
 	metadata.Operation = ds.OpQuery
 	metadata.ParameterizedSQL = query.Sql

@@ -38,6 +38,7 @@ type RawAuditEvent struct {
 	NewValues          *core.Record
 	Changes            []*EntityPropertyChange
 	TraceChain         []*core.TraceNode
+	AuditReason        *string
 	Actor              string
 	Category           string
 	MutationGovernance *MutationGovernanceSnapshot
@@ -476,11 +477,17 @@ func (e *RawAuditEvent) BuildSafeEvent(auditMaskFields []string, auditValueMaxLe
 		}
 	}
 
+	var auditReason *string
+	if e.AuditReason != nil {
+		text := scrubWith(*e.AuditReason, intentValues)
+		auditReason = &text
+	}
 	return &SafeAuditEvent{
 		Kind:               e.Kind,
 		Entity:             e.Entity,
 		Fields:             safeFields,
 		TraceChain:         trace,
+		AuditReason:        auditReason,
 		Actor:              scrubWith(e.Actor, intentValues),
 		Category:           e.Category,
 		MutationGovernance: cloneMutationGovernance(e.MutationGovernance),
@@ -503,6 +510,7 @@ type SafeAuditEvent struct {
 	Entity             string
 	Fields             []*SafeAuditField
 	TraceChain         []*core.TraceNode
+	AuditReason        *string
 	Actor              string
 	Category           string
 	MutationGovernance *MutationGovernanceSnapshot

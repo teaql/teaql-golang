@@ -66,12 +66,16 @@ func TestMaskedSQLRealCRUDThroughBothExecutors(t *testing.T) {
 			context := runtime.NewUserContext().WithDiagnosticSQLLogSink(capture)
 			insert := core.NewInsertCommand("Customer").Value("id", core.ValI64(1)).Value("version", core.ValI64(1)).Value("display_name", core.ValText("Riverside")).Value("active", core.ValBool(true))
 			insert.TraceChain = []*core.TraceNode{core.NewTraceNode("Customer", nil, "seed a customer")}
-			if _, err = executor.Mutate(context, &ds.InsertMutation{Cmd: insert}); err != nil {
+			if _, err = executor.Mutate(context, &ds.InsertMutation{Cmd: insert,
+				RootComment: fixtureIntentText("verify mutation fixture"),
+			}); err != nil {
 				t.Fatal(err)
 			}
 			comment, purpose := "what: read customer", "why: verify log policy"
 			query := core.NewSelectQuery("Customer").AndFilter(core.ExprEq("display_name", core.ValText("Riverside"))).AndFilter(core.ExprEq("active", core.ValBool(true))).Limit(1).Comment(comment).Purpose(purpose)
-			result, err := executor.Query(context, &ds.QueryRequest{Query: query, Comment: &comment, Purpose: &purpose})
+			result, err := executor.Query(context, &ds.QueryRequest{Query: query,
+				Comment: &comment,
+				Purpose: &purpose})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -80,12 +84,16 @@ func TestMaskedSQLRealCRUDThroughBothExecutors(t *testing.T) {
 			}
 			update := core.NewUpdateCommand("Customer", core.ValI64(1)).WithExpectedVersion(1).Value("display_name", core.ValText("O'Reilly"))
 			update.TraceChain = insert.TraceChain
-			if _, err = executor.Mutate(context, &ds.UpdateMutation{Cmd: update}); err != nil {
+			if _, err = executor.Mutate(context, &ds.UpdateMutation{Cmd: update,
+				RootComment: fixtureIntentText("verify mutation fixture"),
+			}); err != nil {
 				t.Fatal(err)
 			}
 			remove := core.NewDeleteCommand("Customer", core.ValI64(1)).WithExpectedVersion(2)
 			remove.TraceChain = insert.TraceChain
-			if _, err = executor.Mutate(context, &ds.DeleteMutation{Cmd: remove}); err != nil {
+			if _, err = executor.Mutate(context, &ds.DeleteMutation{Cmd: remove,
+				RootComment: fixtureIntentText("verify mutation fixture"),
+			}); err != nil {
 				t.Fatal(err)
 			}
 			text := output.String()

@@ -23,6 +23,9 @@ type QueryRequest struct {
 	TraceChain []*core.TraceNode
 	Comment    *string
 	Purpose    *string
+	// Compatibility inputs are captured before execution. Intent is the
+	// authoritative immutable owner once constructed, never a Context default.
+	intent *core.QueryIntent
 	// Internal invocation provenance, never serialized into a request or log.
 	InheritedIntent logprivacy.IntentSource `json:"-"`
 }
@@ -38,59 +41,57 @@ type MutationRequest interface {
 }
 
 type InsertMutation struct {
-	Cmd *core.InsertCommand
+	Cmd         *core.InsertCommand
+	RootComment *string
+	intent      *core.MutationIntent
 }
 
 func (m *InsertMutation) TraceChain() []*core.TraceNode { return m.Cmd.TraceChain }
 func (m *InsertMutation) Comment() *string {
-	if len(m.Cmd.TraceChain) > 0 {
-		return &m.Cmd.TraceChain[len(m.Cmd.TraceChain)-1].Comment
-	}
-	return nil
+	return mutationComment(m.intent, m.RootComment)
 }
 
 type UpdateMutation struct {
-	Cmd *core.UpdateCommand
+	Cmd         *core.UpdateCommand
+	RootComment *string
+	intent      *core.MutationIntent
 }
 
 func (m *UpdateMutation) TraceChain() []*core.TraceNode { return m.Cmd.TraceChain }
 func (m *UpdateMutation) Comment() *string {
-	if len(m.Cmd.TraceChain) > 0 {
-		return &m.Cmd.TraceChain[len(m.Cmd.TraceChain)-1].Comment
-	}
-	return nil
+	return mutationComment(m.intent, m.RootComment)
 }
 
 type DeleteMutation struct {
-	Cmd *core.DeleteCommand
+	Cmd         *core.DeleteCommand
+	RootComment *string
+	intent      *core.MutationIntent
 }
 
 func (m *DeleteMutation) TraceChain() []*core.TraceNode { return m.Cmd.TraceChain }
 func (m *DeleteMutation) Comment() *string {
-	if len(m.Cmd.TraceChain) > 0 {
-		return &m.Cmd.TraceChain[len(m.Cmd.TraceChain)-1].Comment
-	}
-	return nil
+	return mutationComment(m.intent, m.RootComment)
 }
 
 type RecoverMutation struct {
-	Cmd *core.RecoverCommand
+	Cmd         *core.RecoverCommand
+	RootComment *string
+	intent      *core.MutationIntent
 }
 
 func (m *RecoverMutation) TraceChain() []*core.TraceNode { return m.Cmd.TraceChain }
 func (m *RecoverMutation) Comment() *string {
-	if len(m.Cmd.TraceChain) > 0 {
-		return &m.Cmd.TraceChain[len(m.Cmd.TraceChain)-1].Comment
-	}
-	return nil
+	return mutationComment(m.intent, m.RootComment)
 }
 
 type BatchMutation struct {
-	Mutations []MutationRequest
+	Mutations   []MutationRequest
+	RootComment *string
+	intent      *core.MutationIntent
 }
 
 func (m *BatchMutation) TraceChain() []*core.TraceNode { return nil }
-func (m *BatchMutation) Comment() *string              { return nil }
+func (m *BatchMutation) Comment() *string              { return mutationComment(m.intent, m.RootComment) }
 
 type MutationResult struct {
 	AffectedRows    uint64

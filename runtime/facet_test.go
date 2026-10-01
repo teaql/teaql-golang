@@ -13,9 +13,9 @@ import (
 func TestExecuteFacetsCountsAndIncludeAll(t *testing.T) {
 	executor := &facetExecutor{}
 	service := NewRuntimeDataService(nil, executor)
-	outer := core.NewSelectQuery("School")
+	outer := core.NewSelectQuery("School").Comment("verify query fixture").Purpose("preserve the query regression contract")
 	outer.AndFilter(core.ExprContain("name", "Riverside"))
-	nested := core.NewQuerySelection(core.NewSelectQuery("SchoolType").Count("schoolCount"))
+	nested := core.NewQuerySelection(core.NewSelectQuery("SchoolType").Comment("verify query fixture").Purpose("preserve the query regression contract").Count("schoolCount"))
 	options := core.NewQueryOptions()
 	options.Facets = append(options.Facets, core.NewFacetRequest("types", "schoolType", nested, true))
 	result, err := ExecuteFacets(stdcontext.Background(), service, outer, options)
@@ -34,10 +34,10 @@ func TestExecuteFacetsCountsAndIncludeAll(t *testing.T) {
 func TestExecuteFacetsAppliesPolicyToNestedEntityBeforeProvider(t *testing.T) {
 	executor := &facetExecutor{}
 	service := NewRuntimeDataService(nil, executor)
-	outer := core.NewSelectQuery("School")
+	outer := core.NewSelectQuery("School").Comment("verify query fixture").Purpose("preserve the query regression contract")
 	options := core.NewQueryOptions()
 	options.Facets = append(options.Facets, core.NewFacetRequest(
-		"types", "schoolType", core.NewQuerySelection(core.NewSelectQuery("SchoolType")), true))
+		"types", "schoolType", core.NewQuerySelection(core.NewSelectQuery("SchoolType").Comment("verify query fixture").Purpose("preserve the query regression contract")), true))
 	policy := &tenantQueryPolicy{rejected: "SchoolType"}
 	context := NewUserContext().WithRequestPolicy(policy)
 
