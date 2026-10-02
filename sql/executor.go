@@ -2,12 +2,15 @@ package sql
 
 import (
 	stdcontext "context"
+	stdsql "database/sql"
 	"errors"
 	"fmt"
+	"sync"
 	"time"
 
 	"github.com/teaql/teaql-golang/core"
 	ds "github.com/teaql/teaql-golang/data_service"
+	"github.com/teaql/teaql-golang/internal/mutationaudit"
 )
 
 type SqlExecutorError struct {
@@ -144,7 +147,7 @@ func (e *SqlDataServiceExecutor) Query(context stdcontext.Context, request *ds.Q
 		metadata.ExecutionOutcome = "failure"
 		metadata.ResultCount = nil
 	}
-	if recorder, ok := context.(interface{ RecordExecutionMetadata(ds.ExecutionMetadata) }); ok {
+	if recorder, ok := mutationaudit.Owner(context).(interface{ RecordExecutionMetadata(ds.ExecutionMetadata) }); ok {
 		recorder.RecordExecutionMetadata(metadata)
 	}
 	if err != nil {
@@ -233,27 +236,38 @@ func (e *SqlDataServiceExecutor) Mutate(context stdcontext.Context, request ds.M
 	if err != nil {
 		return nil, err
 	}
-	return e.mutatePrepared(context, request, plan)
+	if _, unmanaged := e.Transport.(SqlTransactionTransportTx); unmanaged && !e.transactional {
+		if _, ownsBegin := e.Transport.(SqlTransactionTransport); !ownsBegin {
+			return nil, fmt.Errorf("transaction-bound SQL transport requires the data-service Begin/Commit boundary")
+		}
+	}
+	return e.mutatePrepared(context, request, plan, nil)
 }
 
-func (e *SqlDataServiceExecutor) mutatePrepared(context stdcontext.Context, request ds.MutationRequest, plan *sqlMutationPlan) (*ds.MutationResult, error) {
-	if transport, ok := e.Transport.(SqlTransactionTransport); ok {
+func (e *SqlDataServiceExecutor) mutatePrepared(context stdcontext.Context, request ds.MutationRequest, plan *sqlMutationPlan, audits *transactionAudits) (*ds.MutationResult, error) {
+	if transport, ok := e.Transport.(SqlTransactionTransport); ok && !e.transactional {
 		tx, err := transport.BeginSql(context)
 		if err != nil {
 			return nil, &SqlExecutorError{TransportError: err}
 		}
 		if tx != nil {
+			owner := &SqlDataServiceTransaction{Dialect: e.Dialect, Transport: tx, SchemaProvider: e.SchemaProvider}
+			committed := false
+			defer func() {
+				if !committed {
+					_ = owner.Rollback(context)
+				}
+			}()
 			transactional := NewSqlDataServiceExecutor(e.Dialect, tx, e.SchemaProvider)
 			transactional.transactional = true
-			result, err := transactional.mutatePrepared(context, request, plan)
+			result, err := transactional.mutatePrepared(context, request, plan, &owner.audits)
 			if err != nil {
-				_ = tx.RollbackSql(context)
 				return nil, err
 			}
-			if err := tx.CommitSql(context); err != nil {
-				return nil, &SqlExecutorError{TransportError: err}
-			}
-			return result, nil
+			err = owner.Commit(context)
+			var afterCommit *ds.MutationCommittedError
+			committed = err == nil || errors.As(err, &afterCommit)
+			return result, err
 		}
 	}
 	switch req := request.(type) {
@@ -261,7 +275,7 @@ func (e *SqlDataServiceExecutor) mutatePrepared(context stdcontext.Context, requ
 		var totalAffected uint64 = 0
 		start := time.Now()
 		for _, m := range req.Mutations {
-			res, err := e.mutatePrepared(context, m, plan)
+			res, err := e.mutatePrepared(context, m, plan, audits)
 			if err != nil {
 				return nil, err
 			}
@@ -330,7 +344,7 @@ func (e *SqlDataServiceExecutor) mutatePrepared(context stdcontext.Context, requ
 		metadata.ExecutionOutcome = "failure"
 		metadata.AffectedRows = nil
 	}
-	if recorder, ok := context.(interface{ RecordExecutionMetadata(ds.ExecutionMetadata) }); ok {
+	if recorder, ok := mutationaudit.Owner(context).(interface{ RecordExecutionMetadata(ds.ExecutionMetadata) }); ok {
 		recorder.RecordExecutionMetadata(metadata)
 	}
 	if err != nil {
@@ -363,9 +377,7 @@ func (e *SqlDataServiceExecutor) mutatePrepared(context stdcontext.Context, requ
 		}
 		readStart := time.Now()
 		rows, fetchErr := e.Transport.FetchAllSql(context, readback)
-		if fetchErr != nil || len(rows) != 1 {
-			recordMutationReadback(context, readback, metadata, readStart, len(rows), fetchErr)
-		}
+		recordMutationReadback(context, readback, metadata, readStart, len(rows), fetchErr)
 		if fetchErr != nil {
 			return nil, &SqlExecutorError{TransportError: fetchErr}
 		}
@@ -374,11 +386,19 @@ func (e *SqlDataServiceExecutor) mutatePrepared(context stdcontext.Context, requ
 		}
 		result.PersistedRecord = rows[0]
 	}
-	if emitter, ok := context.(interface {
-		EmitMutationAudit(ds.MutationRequest, *ds.MutationResult) error
-	}); ok {
-		if err := emitter.EmitMutationAudit(request, result); err != nil {
+	if audits != nil {
+		if err := audits.capture(context, request, result); err != nil {
 			return nil, err
+		}
+	} else {
+		delivery, err := mutationaudit.Prepare(context, request, result)
+		if err != nil {
+			return nil, err
+		}
+		if delivery != nil {
+			if err := deliverCommittedAudit(delivery); err != nil {
+				return result, &ds.MutationCommittedError{Cause: err}
+			}
 		}
 	}
 	return result, nil
@@ -432,7 +452,7 @@ func (e *SqlDataServiceExecutor) QueryStream(context stdcontext.Context, request
 			Comment: request.Comment, Purpose: request.Purpose,
 		}
 		ds.ApplyQuerySQLTrace(&metadata, request)
-		if recorder, ok := context.(interface{ RecordExecutionMetadata(ds.ExecutionMetadata) }); ok {
+		if recorder, ok := mutationaudit.Owner(context).(interface{ RecordExecutionMetadata(ds.ExecutionMetadata) }); ok {
 			recorder.RecordExecutionMetadata(metadata)
 		}
 	}()
@@ -487,6 +507,10 @@ type SqlDataServiceTransaction struct {
 	Dialect        SqlDialect
 	Transport      SqlTransactionTransportTx
 	SchemaProvider ds.SchemaProvider
+	mu             sync.Mutex
+	closed         bool
+	rollbackOnly   error
+	audits         transactionAudits
 }
 
 func (t *SqlDataServiceTransaction) Capabilities() ds.DataServiceCapabilities {
@@ -502,6 +526,11 @@ func (t *SqlDataServiceTransaction) Capabilities() ds.DataServiceCapabilities {
 }
 
 func (t *SqlDataServiceTransaction) Query(context stdcontext.Context, request *ds.QueryRequest) (*ds.QueryResult, error) {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	if t.closed {
+		return nil, stdsql.ErrTxDone
+	}
 	executor := &SqlDataServiceExecutor{
 		Dialect:        t.Dialect,
 		Transport:      t.Transport,
@@ -511,31 +540,106 @@ func (t *SqlDataServiceTransaction) Query(context stdcontext.Context, request *d
 }
 
 func (t *SqlDataServiceTransaction) Mutate(context stdcontext.Context, request ds.MutationRequest) (*ds.MutationResult, error) {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	if t.closed {
+		return nil, stdsql.ErrTxDone
+	}
+	if t.rollbackOnly != nil {
+		return nil, fmt.Errorf("transaction requires rollback after a failed mutation: %w", t.rollbackOnly)
+	}
+	defer func() {
+		if failure := recover(); failure != nil {
+			t.rollbackOnly = errors.New("transaction mutation panicked")
+			t.audits.deliveries = nil
+			panic(failure)
+		}
+	}()
 	executor := &SqlDataServiceExecutor{
 		Dialect:        t.Dialect,
 		Transport:      t.Transport,
 		SchemaProvider: t.SchemaProvider,
 		transactional:  true,
 	}
-	return executor.Mutate(context, request)
+	captured, err := ds.CaptureMutationRequest(request)
+	if err != nil {
+		return nil, err
+	}
+	plan, err := executor.prepareMutation(captured)
+	if err != nil {
+		return nil, err
+	}
+	result, err := executor.mutatePrepared(context, captured, plan, &t.audits)
+	if err != nil {
+		t.rollbackOnly = err
+		t.audits.deliveries = nil
+	}
+	return result, err
 }
 
 func (t *SqlDataServiceTransaction) GenerateId(entity string) (uint64, error) {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	if t.closed {
+		return 0, stdsql.ErrTxDone
+	}
 	return NextOptimisticId(stdcontext.Background(), t.Transport, t.Dialect, entity)
 }
 
 func (t *SqlDataServiceTransaction) EnsureIdFloor(context stdcontext.Context, entity string, floor uint64) error {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	if t.closed {
+		return stdsql.ErrTxDone
+	}
 	return EnsureOptimisticIdFloor(context, t.Transport, t.Dialect, entity, floor)
 }
 
 func (t *SqlDataServiceTransaction) Commit(context stdcontext.Context) error {
-	if err := t.Transport.CommitSql(context); err != nil {
-		return &SqlExecutorError{TransportError: err}
+	audits, err := t.commitSQL(context)
+	if err != nil {
+		return err
 	}
-	return nil
+	// Consumers may reenter the transaction; never call them while holding mu.
+	return audits.flush()
+}
+
+func (t *SqlDataServiceTransaction) commitSQL(context stdcontext.Context) (transactionAudits, error) {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	defer func() {
+		if failure := recover(); failure != nil {
+			t.rollbackOnly = errors.New("transaction commit panicked")
+			t.audits.deliveries = nil
+			panic(failure)
+		}
+	}()
+	if t.closed {
+		return transactionAudits{}, stdsql.ErrTxDone
+	}
+	if t.rollbackOnly != nil {
+		err := fmt.Errorf("transaction requires rollback after a failed mutation: %w", t.rollbackOnly)
+		return transactionAudits{}, err
+	}
+	if err := t.Transport.CommitSql(context); err != nil {
+		t.rollbackOnly = err
+		t.audits.deliveries = nil
+		return transactionAudits{}, &SqlExecutorError{TransportError: err}
+	}
+	t.closed = true
+	audits := t.audits
+	t.audits.deliveries = nil
+	return audits, nil
 }
 
 func (t *SqlDataServiceTransaction) Rollback(context stdcontext.Context) error {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	if t.closed {
+		return stdsql.ErrTxDone
+	}
+	t.closed = true
+	t.audits.deliveries = nil
 	if err := t.Transport.RollbackSql(context); err != nil {
 		return &SqlExecutorError{TransportError: err}
 	}

@@ -2,6 +2,7 @@ package runtime
 
 import (
 	stdcontext "context"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -11,6 +12,7 @@ import (
 
 	"github.com/teaql/teaql-golang/core"
 	"github.com/teaql/teaql-golang/data_service"
+	"github.com/teaql/teaql-golang/internal/mutationaudit"
 )
 
 type ContinuousPageCursor struct {
@@ -613,6 +615,7 @@ func NewUserContext() *UserContext {
 		businessClock:                     SystemBusinessClock{},
 	}
 	context.Context = stdcontext.WithValue(context.Context, userContextKey{}, context)
+	context.Context = stdcontext.WithValue(context.Context, mutationaudit.ContextKey{}, context)
 	return context
 }
 
@@ -838,10 +841,13 @@ func (c *UserContext) executeGraphSave(work func() error, preparationStarted boo
 	c.graphSaveMu.Unlock()
 
 	err = work()
+	committed := false
 	if err == nil {
 		err = transaction.Commit(c)
+		var afterCommit *data_service.MutationCommittedError
+		committed = err == nil || errors.As(err, &afterCommit)
 	}
-	if err != nil {
+	if !committed {
 		rollbackErr := transaction.Rollback(c)
 		for index := len(c.graphRollbackActions) - 1; index >= 0; index-- {
 			c.graphRollbackActions[index]()
@@ -1015,7 +1021,9 @@ func (c *UserContext) SendEvent(event *RawAuditEvent) error {
 }
 
 func (c *UserContext) sendEvent(context stdcontext.Context, event *RawAuditEvent) (err error) {
-	event.MutationGovernance = c.CurrentMutationGovernance()
+	if !event.governanceCaptured {
+		event.MutationGovernance = c.CurrentMutationGovernance()
+	}
 	context, scope := StartRuntimeOperation(context, c.RuntimeTelemetry(), NewRuntimeOperation("audit", event.Entity+".event", map[string]RuntimeAttributeValue{
 		"teaql.entity.type": event.Entity,
 	}))
@@ -1053,12 +1061,43 @@ func (c *UserContext) EmitMutationAudit(request data_service.MutationRequest, re
 }
 
 func (c *UserContext) emitMutationAudit(context stdcontext.Context, request data_service.MutationRequest, result *data_service.MutationResult) error {
-	if result == nil || result.AffectedRows == 0 {
+	event, err := c.captureMutationAudit(request, result)
+	if err != nil || event == nil {
+		return err
+	}
+	c.graphSaveMu.Lock()
+	if c.graphSaveActive {
+		c.graphCommitActions = append(c.graphCommitActions, func() error { return c.sendEvent(context, event) })
+		c.graphSaveMu.Unlock()
 		return nil
+	}
+	c.graphSaveMu.Unlock()
+	return c.sendEvent(context, event)
+}
+
+// CaptureRuntimeMutationAudit is an internal provider SPI: its ticket type
+// cannot be imported by a workspace. Capture actor and evidence now; the owning
+// transaction, not shared Context state, schedules delivery after commit.
+func (c *UserContext) CaptureRuntimeMutationAudit(capture *mutationaudit.Capture) error {
+	if capture == nil {
+		return fmt.Errorf("runtime mutation audit capture is required")
+	}
+	request, result := capture.Input()
+	event, err := c.captureMutationAudit(request, result)
+	if err != nil || event == nil {
+		return err
+	}
+	capture.SetDelivery(func() error { return c.sendEvent(capture.Context(), event) })
+	return nil
+}
+
+func (c *UserContext) captureMutationAudit(request data_service.MutationRequest, result *data_service.MutationResult) (*RawAuditEvent, error) {
+	if result == nil || result.AffectedRows == 0 {
+		return nil, nil
 	}
 	captured, captureErr := data_service.CaptureMutationRequest(request)
 	if captureErr != nil {
-		return captureErr
+		return nil, captureErr
 	}
 	request = captured
 	var event *RawAuditEvent
@@ -1087,35 +1126,23 @@ func (c *UserContext) emitMutationAudit(context stdcontext.Context, request data
 	case *data_service.RecoverMutation:
 		event = Recovered(req.Cmd.Entity, req.Cmd.Id, req.Cmd.ExpectedVersion)
 	default:
-		return nil
+		return nil, nil
 	}
 	event.TraceChain = core.CloneTraceNodes(request.TraceChain())
 	event.AuditReason = request.Comment()
 	event.inheritedIntent = result.Metadata.InheritedIntent
 	event.Actor = c.userIdentifier
+	event.MutationGovernance = c.CurrentMutationGovernance()
+	event.governanceCaptured = true
 	if category, ok := c.GetResource("bootstrapCategory").(string); ok {
 		event.Category = category
 	}
-	c.graphSaveMu.Lock()
-	if c.graphSaveActive {
-		// The event owns captured values and trace. A later failure discards it;
-		// only a successful provider commit runs this operation's callbacks.
-		c.graphCommitActions = append(c.graphCommitActions, func() error { return c.sendEvent(context, event) })
-		c.graphSaveMu.Unlock()
-		return nil
-	}
-	c.graphSaveMu.Unlock()
-	return c.sendEvent(context, event)
+	return event, nil
 }
 
 // GraphCommittedError means the database committed but an audit consumer failed.
 // It must not be retried as an uncommitted mutation or cause a false rollback.
-type GraphCommittedError struct{ Cause error }
-
-func (e *GraphCommittedError) Error() string {
-	return fmt.Sprintf("graph transaction already committed; after-commit consumer failed: %v", e.Cause)
-}
-func (e *GraphCommittedError) Unwrap() error { return e.Cause }
+type GraphCommittedError = data_service.MutationCommittedError
 
 func (c *UserContext) SetAppAuditEventSink(sink AppAuditEventSink) { c.appAuditSink = sink }
 func (c *UserContext) WithAppAuditEventSink(sink AppAuditEventSink) *UserContext {

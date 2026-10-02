@@ -2,6 +2,7 @@ package sql
 
 import (
 	stdcontext "context"
+	stdsql "database/sql"
 	"errors"
 	"testing"
 
@@ -378,7 +379,7 @@ func TestSqlDataServiceExecutor_Transaction(t *testing.T) {
 	err = dsTx.Commit(context)
 	assert.NoError(t, err)
 	err = dsTx.Rollback(context)
-	assert.NoError(t, err)
+	assert.ErrorIs(t, err, stdsql.ErrTxDone)
 }
 
 func TestSqlDataServiceExecutor_TransactionErrors(t *testing.T) {

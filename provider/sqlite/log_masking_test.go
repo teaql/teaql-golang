@@ -107,7 +107,11 @@ func TestMaskedSQLRealCRUDThroughBothExecutors(t *testing.T) {
 					t.Fatalf("unexpected %s: %s", forbidden, text)
 				}
 			}
-			if len(capture.entries) != 4 {
+			wantStatements := 7 // Three writes, their readbacks, and the business query.
+			if wrapper {
+				wantStatements = 4 // This autocommit wrapper has no readback API.
+			}
+			if len(capture.entries) != wantStatements {
 				t.Fatal(len(capture.entries))
 			}
 			if result.Metadata.DebugQuery != nil && *result.Metadata.DebugQuery != "" {

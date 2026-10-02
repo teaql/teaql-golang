@@ -146,26 +146,27 @@ func TestMaskedReadbackDiagnostics(t *testing.T) {
 			ctx := runtime.NewUserContext().WithDiagnosticSQLLogSink(capture)
 			result, err := executor.Mutate(ctx, readbackMutation())
 			if tc.name == "success" {
-				if err != nil || result.PersistedRecord["display_name"].V != "Riverside" || tx.commits != 1 || len(capture.entries) != 1 {
+				if err != nil || result.PersistedRecord["display_name"].V != "Riverside" || tx.commits != 1 || len(capture.entries) != 2 {
 					t.Fatalf("success changed: result=%v err=%v entries=%d", result, err, len(capture.entries))
 				}
 			} else {
 				if err == nil || tc.err != nil && !errors.Is(err, tc.err) || tx.rollbacks != 1 || tx.commits != 0 {
 					t.Fatalf("lost failure/rollback: %v, tx=%+v", err, tx)
 				}
-				if len(capture.entries) != 2 {
-					t.Fatalf("want write + read diagnostics, got %d", len(capture.entries))
-				}
-				read := capture.entries[1]
-				if read.Operation != ds.OpQuery || read.ExecutionOutcome != tc.outcome || read.AffectedRows != nil {
-					t.Fatalf("incorrect read outcome: %+v", read)
-				}
-				if tc.err != nil && read.ResultCount != nil || tc.err == nil && (read.ResultCount == nil || *read.ResultCount != len(tc.rows)) {
-					t.Fatal("incorrect read count")
-				}
-				if read.AuditReason == nil || !strings.Contains(*read.AuditReason, "what: update") || read.DebugQuery == nil || !strings.Contains(*read.DebugQuery, "SELECT") {
-					t.Fatal("missing SQL or inherited intent")
-				}
+			}
+			// Successful and failed authoritative reads are equally real SQL.
+			if len(capture.entries) != 2 {
+				t.Fatalf("want write + read diagnostics, got %d", len(capture.entries))
+			}
+			read := capture.entries[1]
+			if read.Operation != ds.OpQuery || read.ExecutionOutcome != tc.outcome || read.AffectedRows != nil {
+				t.Fatalf("incorrect read outcome: %+v", read)
+			}
+			if tc.err != nil && read.ResultCount != nil || tc.err == nil && (read.ResultCount == nil || *read.ResultCount != len(tc.rows)) {
+				t.Fatal("incorrect read count")
+			}
+			if read.AuditReason == nil || !strings.Contains(*read.AuditReason, "what: update") || read.DebugQuery == nil || !strings.Contains(*read.DebugQuery, "SELECT") {
+				t.Fatal("missing SQL or inherited intent")
 			}
 			write := capture.entries[0]
 			if write.ExecutionOutcome != "success" || write.AffectedRows == nil || *write.AffectedRows != 1 || tx.writes != 1 || tx.reads != 1 {

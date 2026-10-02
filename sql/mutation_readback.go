@@ -8,12 +8,13 @@ import (
 	"github.com/teaql/teaql-golang/core"
 	ds "github.com/teaql/teaql-golang/data_service"
 	"github.com/teaql/teaql-golang/internal/logprivacy"
+	"github.com/teaql/teaql-golang/internal/mutationaudit"
 )
 
 // The write has already been observed. Report only the readback, preserving
 // the write's outcome even when the business operation will roll back.
 func recordMutationReadback(ctx context.Context, query *CompiledQuery, source ds.ExecutionMetadata, started time.Time, count int, readErr error) {
-	recorder, ok := ctx.(interface{ RecordExecutionMetadata(ds.ExecutionMetadata) })
+	recorder, ok := mutationaudit.Owner(ctx).(interface{ RecordExecutionMetadata(ds.ExecutionMetadata) })
 	if !ok {
 		return
 	}

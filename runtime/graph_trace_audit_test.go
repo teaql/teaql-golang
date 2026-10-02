@@ -115,6 +115,21 @@ func TestGraphSaveRejectsMissingRootIntentBeforeCallbacksAndProvider(t *testing.
 	}
 }
 
+func TestGraphWorkErrorCannotClaimAnotherTransactionCommitted(t *testing.T) {
+	probe := &graphTransactionProbe{}
+	ctx := NewUserContext()
+	ctx.InsertResource("dataService", probe)
+	rolledBack, cleanedCommit := false, false
+	err := ctx.ExecuteGraphSave(graphTestIntent(), func() error {
+		ctx.AfterGraphRollback(func() { rolledBack = true })
+		ctx.AfterGraphCommit(func() { cleanedCommit = true })
+		return &data_service.MutationCommittedError{Cause: errors.New("another unit's consumer failed")}
+	})
+	if err == nil || !rolledBack || cleanedCommit || probe.commits != 0 || probe.active != 0 {
+		t.Fatalf("work error claimed this uncommitted graph: err=%v rollback=%v commitCleanup=%v active=%d commits=%d", err, rolledBack, cleanedCommit, probe.active, probe.commits)
+	}
+}
+
 type rawGraphSnapshotSink struct{ event *RawAuditEvent }
 
 func (s *rawGraphSnapshotSink) OnEvent(_ *UserContext, event *RawAuditEvent) error {

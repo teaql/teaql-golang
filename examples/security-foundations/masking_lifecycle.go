@@ -110,7 +110,9 @@ func verifyMaskingLifecycle() {
 	_, err = executor.Mutate(ctx, batch)
 	require(err != nil, "expected partial batch duplicate failure")
 	entries = evidence.Snapshot()
-	require(len(entries) == 2 && entries[0].ExecutionOutcome == "success" && entries[1].ExecutionOutcome == "failure", "partial batch diagnostic order changed")
+	require(len(entries) == 3 && entries[0].ExecutionOutcome == "success" && entries[0].Operation == ds.OpInsert &&
+		entries[1].ExecutionOutcome == "success" && entries[1].Operation == ds.OpQuery &&
+		entries[2].ExecutionOutcome == "failure" && entries[2].Operation == ds.OpInsert, "partial batch must retain successful write/readback before failed write")
 	var remaining int
 	if err = db.QueryRow("SELECT count(*) FROM mask_customer_data WHERE id IN (30,31,777)").Scan(&remaining); err != nil {
 		panic(err)

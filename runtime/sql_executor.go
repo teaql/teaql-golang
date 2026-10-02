@@ -89,6 +89,9 @@ func (e *SqlDataServiceExecutor) Mutate(context stdcontext.Context, request data
 	if err != nil {
 		return nil, err
 	}
+	if _, unmanaged := e.transport.(teaql_sql.SqlTransactionTransportTx); unmanaged {
+		return nil, fmt.Errorf("transaction-bound SQL transport requires the data-service Begin/Commit boundary")
+	}
 	userCtx, _ := UserContextFrom(context)
 	telemetry := RuntimeTelemetry(NoopRuntimeTelemetry{})
 	if userCtx != nil {

@@ -84,13 +84,79 @@ func (tx *observedTransaction) Commit(ctx stdcontext.Context) error {
 	if tx.observer.beforeCommit != nil {
 		tx.observer.beforeCommit()
 	}
-	if err := tx.Transaction.Commit(ctx); err != nil {
+	err := tx.Transaction.Commit(ctx)
+	var committed *data_service.MutationCommittedError
+	if err != nil && !errors.As(err, &committed) {
 		return err
 	}
 	tx.observer.mu.Lock()
 	tx.observer.commits++
 	tx.observer.mu.Unlock()
-	return nil
+	return err
+}
+
+type failingSafeEvents struct {
+	calls int
+	err   error
+}
+
+func (s *failingSafeEvents) OnSafeEvent(*runtime.UserContext, *runtime.SafeAuditEvent) error {
+	s.calls++
+	return s.err
+}
+
+func TestGeneratedCommittedAuditFailureKeepsLedgerAndContextUsable(t *testing.T) {
+	e := openEnvironment(t)
+	order := newOrder(t, e, "committed before consumer failure")
+	order.OrderItemList().Add(newItem(e, "committed child"))
+	failure := &failingSafeEvents{err: errors.New("safe audit consumer unavailable")}
+	e.context.WithAppAuditEventSink(failure)
+	_, err := order.AuditAs("commit graph despite consumer failure").Save(e.context)
+	var committed *data_service.MutationCommittedError
+	if !errors.As(err, &committed) || !errors.Is(err, failure.err) || failure.calls != 2 || e.observer.commits != 1 || e.observer.rollbacks != 0 {
+		t.Fatalf("committed graph was treated as retryable failure: error=%v calls=%d commits=%d rollbacks=%d", err, failure.calls, e.observer.commits, e.observer.rollbacks)
+	}
+	if e.context.GetResource("dataService") != e.observer {
+		t.Fatal("after-commit failure retained transaction-scoped resources")
+	}
+	id, present := customer_order.NewCustomerOrderExpression(order).Id().Eval()
+	if !present || id == 0 {
+		t.Fatal("committed graph did not retain the allocated identity")
+	}
+	rows, err := lib.Q.CustomerOrders().WithIdIs(id).Limit(1).
+		Comment("inspect committed graph").Purpose("verify post-commit consumer failure").ExecuteForList(e.context)
+	if err != nil || len(rows.Data) != 1 {
+		t.Fatalf("committed root unavailable through generated Q: %v", err)
+	}
+	description, present := customer_order.NewCustomerOrderExpression(rows.Data[0]).Description().Eval()
+	if !present || description != "committed before consumer failure" {
+		t.Fatal("generated E did not observe the committed values")
+	}
+	e.context.WithAppAuditEventSink(e.sink)
+	e.reset()
+	if _, err := order.AuditAs("save unchanged committed graph").Save(e.context); err != nil {
+		t.Fatal(err)
+	}
+	if len(e.observer.snapshot()) != 0 || len(e.sink.snapshot()) != 0 {
+		t.Fatal("post-commit failure left mutations queued for duplicate persistence")
+	}
+	order.UpdateDescription("updated after committed consumer failure")
+	if _, err := order.AuditAs("update committed graph").Save(e.context); err != nil {
+		t.Fatal(err)
+	}
+	rows, err = lib.Q.CustomerOrders().WithIdIs(id).Limit(1).
+		Comment("inspect later update").Purpose("verify cleaned optimistic version").ExecuteForList(e.context)
+	if err != nil || len(rows.Data) != 1 {
+		t.Fatalf("post-commit update could not reload: %v", err)
+	}
+	description, present = customer_order.NewCustomerOrderExpression(rows.Data[0]).Description().Eval()
+	version, versionPresent := customer_order.NewCustomerOrderExpression(rows.Data[0]).Version().Eval()
+	if !present || description != "updated after committed consumer failure" || !versionPresent || version != 2 {
+		t.Fatalf("post-commit ledger/version cleanup failed: version=%d description=%q", version, description)
+	}
+	if len(e.observer.snapshot()) != 1 || len(e.sink.snapshot()) != 1 {
+		t.Fatal("subsequent generated save replayed previously committed children")
+	}
 }
 
 func (tx *observedTransaction) Rollback(ctx stdcontext.Context) error {
@@ -194,6 +260,66 @@ func assertLineage(t *testing.T, got []*core.TraceNode, want []*core.TraceNode) 
 
 func reasonNode(entity string, id uint64, reason string) *core.TraceNode {
 	return &core.TraceNode{Kind: "auditReason", Name: entity, EntityType: entity, EntityId: &id, Comment: reason}
+}
+
+func TestGeneratedCleanParentRetainsChangedChildLineage(t *testing.T) {
+	e := openEnvironment(t)
+	order := newOrder(t, e, "unchanged parent")
+	item := newItem(e, "initial child")
+	order.OrderItemList().Add(item)
+	if _, err := order.AuditAs("initialize clean-parent graph").Save(e.context); err != nil {
+		t.Fatal(err)
+	}
+	orderID, _ := customer_order.NewCustomerOrderExpression(order).Id().Eval()
+	itemID, _ := order_item.NewOrderItemExpression(item).Id().Eval()
+	e.reset()
+	item.UpdateName("changed child").Comment("correct child details")
+	if _, err := order.AuditAs("review clean-parent graph").Save(e.context); err != nil {
+		t.Fatal(err)
+	}
+	requests := e.observer.snapshot()
+	if len(requests) != 1 {
+		t.Fatalf("clean parent or other child emitted redundant SQL: commands=%d", len(requests))
+	}
+	update, ok := requests[0].(*data_service.UpdateMutation)
+	if !ok || update.Cmd.Entity != "Order Item" {
+		t.Fatal("changed child did not use its own update request")
+	}
+	want := []*core.TraceNode{
+		reasonNode("Customer Order", orderID, "review clean-parent graph"),
+		reasonNode("Order Item", itemID, "correct child details"),
+	}
+	assertLineage(t, requests[0].TraceChain(), want)
+	events := e.sink.snapshot()
+	if len(events) != 1 {
+		t.Fatal("clean parent produced a committed mutation audit")
+	}
+	assertLineage(t, events[0].TraceChain, want)
+	for _, metadata := range e.sqlEvidence.Snapshot() {
+		assertLineage(t, metadata.MutationLineage, want)
+		if metadata.TraceChain[0].Name != "Customer Order" {
+			t.Fatal("skipping clean-parent SQL reset the graph's trace root")
+		}
+	}
+	parents, err := lib.Q.CustomerOrders().WithIdIs(orderID).Limit(1).
+		Comment("inspect clean parent").Purpose("verify its version was not bumped").ExecuteForList(e.context)
+	if err != nil || len(parents.Data) != 1 {
+		t.Fatalf("parent query failed: %v", err)
+	}
+	version, present := customer_order.NewCustomerOrderExpression(parents.Data[0]).Version().Eval()
+	if !present || version != 1 {
+		t.Fatal("clean parent version changed")
+	}
+	children, err := lib.Q.OrderItems().WithIdIs(itemID).Limit(1).
+		Comment("inspect changed child").Purpose("verify isolated child persistence").ExecuteForList(e.context)
+	if err != nil || len(children.Data) != 1 {
+		t.Fatalf("child query failed: %v", err)
+	}
+	name, present := order_item.NewOrderItemExpression(children.Data[0]).Name().Eval()
+	version, versionPresent := order_item.NewOrderItemExpression(children.Data[0]).Version().Eval()
+	if !present || name != "changed child" || !versionPresent || version != 2 {
+		t.Fatal("changed child persistence was skipped with the clean parent")
+	}
 }
 
 func TestGeneratedGraphMutationLineage(t *testing.T) {

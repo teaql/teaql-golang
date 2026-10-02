@@ -145,8 +145,9 @@ func TestNativeBatchSiblingPrivacyAndIndependentRequest(t *testing.T) {
 			if err := e.save(t, request); err != nil {
 				t.Fatal(err)
 			}
-			if len(e.logs.entries) != 2 {
-				t.Fatalf("physical writes=%d", len(e.logs.entries))
+			if len(e.logs.entries) != 4 || e.logs.entries[0].Operation != ds.OpInsert || e.logs.entries[1].Operation != ds.OpQuery ||
+				e.logs.entries[2].Operation != ds.OpInsert || e.logs.entries[3].Operation != ds.OpQuery {
+				t.Fatalf("expected alternating writes and authoritative readbacks, got %d statements", len(e.logs.entries))
 			}
 			e.assertSafe(t, 2)
 			query := core.NewSelectQuery("Customer").WithFilter(core.ExprEq("id", core.ValI64(2))).Limit(1).
@@ -189,11 +190,11 @@ func TestNativeBatchFailedWriteAndReadbackRetainSiblingPrivacy(t *testing.T) {
 			e.assertSafe(t, 0)
 			last := e.logs.entries[len(e.logs.entries)-1]
 			if readback {
-				if len(e.logs.entries) != 3 || last.Operation != ds.OpQuery || last.ResultCount == nil || *last.ResultCount != 0 ||
+				if len(e.logs.entries) != 4 || last.Operation != ds.OpQuery || last.ResultCount == nil || *last.ResultCount != 0 ||
 					last.TraceChain[len(last.TraceChain)-1].Name != "select" {
 					t.Fatal("missing actual empty readback evidence")
 				}
-			} else if len(e.logs.entries) != 2 || last.ExecutionOutcome != "failure" || last.Operation != ds.OpInsert {
+			} else if len(e.logs.entries) != 3 || last.ExecutionOutcome != "failure" || last.Operation != ds.OpInsert {
 				t.Fatal("missing actual failed write evidence")
 			}
 			if got := e.logs.entries[0].ExecutionOutcome; got != "success" {
@@ -239,7 +240,7 @@ func TestNativeBatchOldValuePrivacy(t *testing.T) {
 		t.Fatal(err)
 	}
 	e.assertSafe(t, 2)
-	if len(e.logs.entries) != 2 || e.logs.entries[1].Operation != ds.OpUpdate {
+	if len(e.logs.entries) != 4 || e.logs.entries[2].Operation != ds.OpUpdate || e.logs.entries[3].Operation != ds.OpQuery {
 		t.Fatal("mixed insert/update not executed")
 	}
 	current, err := e.executor.Query(e.ctx, &ds.QueryRequest{Query: query, Comment: query.CommentText, Purpose: query.PurposeText})

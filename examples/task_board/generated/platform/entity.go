@@ -498,6 +498,12 @@ func (e *Platform) TeaqlSaveWithinGraph(context *runtime.UserContext, intent cor
 		if err != nil { return nil, err }
 		cmd := core.NewUpdateCommand("Platform", core.ValU64(e.base.Id))
 		cmd.Values = e.root.Change(e.EntityKey())
+		// A clean parent still carries the scope for changed descendants, but
+		// must not emit an empty UPDATE or bump its optimistic version.
+		if len(cmd.Values) == 0 {
+			if err := e.saveCascade(context, intent, scope); err != nil { return nil, err }
+			return e, nil
+		}
 		expectedVersion := e.base.Version
 		cmd.ExpectedVersion = &expectedVersion
 		cmd.TraceChain = core.MutationTraceForEntity(e.root, e.EntityKey(), scope)

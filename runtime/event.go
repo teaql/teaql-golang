@@ -44,6 +44,7 @@ type RawAuditEvent struct {
 	Category           string
 	MutationGovernance *MutationGovernanceSnapshot
 	inheritedIntent    logprivacy.IntentSource
+	governanceCaptured bool
 }
 
 func Created(entity string, values core.Record) *RawAuditEvent {

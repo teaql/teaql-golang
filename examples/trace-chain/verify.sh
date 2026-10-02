@@ -18,10 +18,10 @@ find lib -type f -print0 | sort -z | xargs -0 sha256sum > "$verification/library
 for iteration in 1 2; do
   # Separate real-provider regressions; these use fresh SQLite test fixtures,
   # not the generated graph databases or a prepared-batch transport.
-  (cd "$repo" && go test ./provider/sqlite -run '^TestNativeBatch' -count=1 -v) |
+  (cd "$repo" && go test ./provider/sqlite -run '^TestNative(Batch|Transaction)' -count=1 -v -timeout 60s) |
     tee "$verification/native-batch-$iteration.log"
-  if [[ "$(rg -c '^--- PASS: TestNativeBatch' "$verification/native-batch-$iteration.log")" != 4 ]]; then
-    echo "FAIL: all four native batch regression tests must execute" >&2
+  if [[ "$(rg -c '^--- PASS: TestNative(Batch|Transaction)' "$verification/native-batch-$iteration.log")" != 14 ]]; then
+    echo "FAIL: all fourteen native batch/transaction regression tests must execute" >&2
     exit 1
   fi
 done
@@ -29,13 +29,13 @@ go test ./... -count=1 -v | tee "$verification/generated-1.log"
 # Same paths and databases; no deletion or schema reset between executions.
 go test ./... -count=1 -v | tee "$verification/generated-2.log"
 for iteration in 1 2; do
-  if [[ "$(rg -c '^--- PASS: TestGenerated' "$verification/generated-$iteration.log")" != 8 ]]; then
-    echo "FAIL: all eight generated graph scenarios must execute" >&2
+  if [[ "$(rg -c '^--- PASS: TestGenerated' "$verification/generated-$iteration.log")" != 10 ]]; then
+    echo "FAIL: all ten generated graph scenarios must execute" >&2
     exit 1
   fi
 done
 find lib -type f -print0 | sort -z | xargs -0 sha256sum > "$verification/library-after.sha256"
 diff -u "$verification/library-before.sha256" "$verification/library-after.sha256"
 echo "PASS: generated Go graph/Q/E acceptance twice without cleanup; library unchanged"
-echo "PASS: four native SQLite batch privacy regressions twice; not prepared/generated batching"
+echo "PASS: fourteen native SQLite batch/transaction regressions twice; not prepared/generated batching"
 echo "Evidence directory: $verification"
