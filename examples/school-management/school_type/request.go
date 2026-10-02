@@ -55,7 +55,7 @@ func (r *SchoolTypeRequest) GetEntityDescriptor() *core.EntityDescriptor {
 }
 
 func (r *SchoolTypeRequest) NewRelationEntity() core.Entity {
-	return NewSchoolType()
+	return newLoadedSchoolType()
 }
 
 func (r *SchoolTypeRequest) Comment(comment string) *SchoolTypeRequest {
@@ -833,10 +833,8 @@ func (e *ExecutableSchoolTypeRequest) ExecuteForList(context *runtime.UserContex
 	}
 
 	var results []*SchoolType
-	queryRoot := core.NewEntityRoot()
 	for _, rec := range rows {
-		entity := NewSchoolType()
-		entity.AttachEntityRoot(queryRoot)
+		entity := newLoadedSchoolType()
 		if err := entity.FromRecord(rec); err != nil {
 			return nil, err
 		}
@@ -845,7 +843,6 @@ func (e *ExecutableSchoolTypeRequest) ExecuteForList(context *runtime.UserContex
 			if childRecord, ok := relationValue.V.(core.Record); ok {
 				if factory := e.request.relationFactories["platformEntity"]; factory != nil {
 					childEntity := factory()
-					if attachable, ok := childEntity.(interface { AttachEntityRoot(*core.EntityRoot) }); ok { attachable.AttachEntityRoot(entity.EntityRoot()) }
 					if err := childEntity.FromRecord(childRecord); err != nil { return nil, err }
 					entity.setRelationEntity("platformEntity", childEntity)
 				}
@@ -856,6 +853,7 @@ func (e *ExecutableSchoolTypeRequest) ExecuteForList(context *runtime.UserContex
 				if !ok { return nil, fmt.Errorf("relation schoolList has unexpected runtime type %T", relationValue.V) }
 				for _, childRecord := range childRecords {
 					childEntity := school.NewSchool()
+					childEntity.EntityRoot().ClearEntity(childEntity.EntityKey())
 					childEntity.AttachEntityRoot(entity.EntityRoot())
 					if err := childEntity.FromRecord(childRecord); err != nil { return nil, err }
 					entity.SchoolList().Add(childEntity)
@@ -919,17 +917,14 @@ func (e *ExecutableSchoolTypeRequest) ExecuteForPage(context *runtime.UserContex
 		if err != nil { return nil, err }
 	}
 	results := make([]*SchoolType, 0, len(rows))
-	queryRoot := core.NewEntityRoot()
 	for _, rec := range rows {
-		entity := NewSchoolType()
-		entity.AttachEntityRoot(queryRoot)
+		entity := newLoadedSchoolType()
 		if err := entity.FromRecord(rec); err != nil { return nil, err }
 		if relationValue, selected := rec["platformEntity"]; selected {
 			entity.markRelationLoaded("platformEntity")
 			if childRecord, ok := relationValue.V.(core.Record); ok {
 				if factory := e.request.relationFactories["platformEntity"]; factory != nil {
 					childEntity := factory()
-					if attachable, ok := childEntity.(interface { AttachEntityRoot(*core.EntityRoot) }); ok { attachable.AttachEntityRoot(entity.EntityRoot()) }
 					if err := childEntity.FromRecord(childRecord); err != nil { return nil, err }
 					entity.setRelationEntity("platformEntity", childEntity)
 				}
@@ -940,6 +935,7 @@ func (e *ExecutableSchoolTypeRequest) ExecuteForPage(context *runtime.UserContex
 				if !ok { return nil, fmt.Errorf("relation schoolList has unexpected runtime type %T", relationValue.V) }
 				for _, childRecord := range childRecords {
 					childEntity := school.NewSchool()
+					childEntity.EntityRoot().ClearEntity(childEntity.EntityKey())
 					childEntity.AttachEntityRoot(entity.EntityRoot())
 					if err := childEntity.FromRecord(childRecord); err != nil { return nil, err }
 					entity.SchoolList().Add(childEntity)
@@ -968,11 +964,9 @@ func (e *ExecutableSchoolTypeRequest) ExecuteForStream(context *runtime.UserCont
 	}
 	req, err := data_service.NewQueryRequest(authorized)
 	if err != nil { return err }
-	queryRoot := core.NewEntityRoot()
 	return ds.QueryStream(context, req, chunkSize, func(chunk *data_service.StreamChunk) error {
 		for _, rec := range chunk.Rows {
-			entity := NewSchoolType()
-			entity.AttachEntityRoot(queryRoot)
+			entity := newLoadedSchoolType()
 			if err := entity.FromRecord(rec); err != nil {
 				return err
 			}

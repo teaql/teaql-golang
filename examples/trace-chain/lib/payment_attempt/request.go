@@ -54,7 +54,7 @@ func (r *PaymentAttemptRequest) GetEntityDescriptor() *core.EntityDescriptor {
 }
 
 func (r *PaymentAttemptRequest) NewRelationEntity() core.Entity {
-	return NewPaymentAttempt()
+	return newLoadedPaymentAttempt()
 }
 
 func (r *PaymentAttemptRequest) Comment(comment string) *PaymentAttemptRequest {
@@ -516,10 +516,8 @@ func (e *ExecutablePaymentAttemptRequest) ExecuteForList(context *runtime.UserCo
 	}
 
 	var results []*PaymentAttempt
-	queryRoot := core.NewEntityRoot()
 	for _, rec := range rows {
-		entity := NewPaymentAttempt()
-		entity.AttachEntityRoot(queryRoot)
+		entity := newLoadedPaymentAttempt()
 		if err := entity.FromRecord(rec); err != nil {
 			return nil, err
 		}
@@ -528,7 +526,6 @@ func (e *ExecutablePaymentAttemptRequest) ExecuteForList(context *runtime.UserCo
 			if childRecord, ok := relationValue.V.(core.Record); ok {
 				if factory := e.request.relationFactories["paymentEntity"]; factory != nil {
 					childEntity := factory()
-					if attachable, ok := childEntity.(interface { AttachEntityRoot(*core.EntityRoot) }); ok { attachable.AttachEntityRoot(entity.EntityRoot()) }
 					if err := childEntity.FromRecord(childRecord); err != nil { return nil, err }
 					entity.setRelationEntity("paymentEntity", childEntity)
 				}
@@ -593,17 +590,14 @@ func (e *ExecutablePaymentAttemptRequest) ExecuteForPage(context *runtime.UserCo
 		if err != nil { return nil, err }
 	}
 	results := make([]*PaymentAttempt, 0, len(rows))
-	queryRoot := core.NewEntityRoot()
 	for _, rec := range rows {
-		entity := NewPaymentAttempt()
-		entity.AttachEntityRoot(queryRoot)
+		entity := newLoadedPaymentAttempt()
 		if err := entity.FromRecord(rec); err != nil { return nil, err }
 		if relationValue, selected := rec["paymentEntity"]; selected {
 			entity.markRelationLoaded("paymentEntity")
 			if childRecord, ok := relationValue.V.(core.Record); ok {
 				if factory := e.request.relationFactories["paymentEntity"]; factory != nil {
 					childEntity := factory()
-					if attachable, ok := childEntity.(interface { AttachEntityRoot(*core.EntityRoot) }); ok { attachable.AttachEntityRoot(entity.EntityRoot()) }
 					if err := childEntity.FromRecord(childRecord); err != nil { return nil, err }
 					entity.setRelationEntity("paymentEntity", childEntity)
 				}
@@ -633,11 +627,9 @@ func (e *ExecutablePaymentAttemptRequest) ExecuteForStream(context *runtime.User
 	}
 	req, err := data_service.NewQueryRequest(authorized)
 	if err != nil { return err }
-	queryRoot := core.NewEntityRoot()
 	return ds.QueryStream(context, req, chunkSize, func(chunk *data_service.StreamChunk) error {
 		for _, rec := range chunk.Rows {
-			entity := NewPaymentAttempt()
-			entity.AttachEntityRoot(queryRoot)
+			entity := newLoadedPaymentAttempt()
 			if err := entity.FromRecord(rec); err != nil {
 				return err
 			}

@@ -54,7 +54,7 @@ func (r *TaskExecutionLogRequest) GetEntityDescriptor() *core.EntityDescriptor {
 }
 
 func (r *TaskExecutionLogRequest) NewRelationEntity() core.Entity {
-	return NewTaskExecutionLog()
+	return newLoadedTaskExecutionLog()
 }
 
 func (r *TaskExecutionLogRequest) Comment(comment string) *TaskExecutionLogRequest {
@@ -613,10 +613,8 @@ func (e *ExecutableTaskExecutionLogRequest) ExecuteForList(context *runtime.User
 	}
 
 	var results []*TaskExecutionLog
-	queryRoot := core.NewEntityRoot()
 	for _, rec := range rows {
-		entity := NewTaskExecutionLog()
-		entity.AttachEntityRoot(queryRoot)
+		entity := newLoadedTaskExecutionLog()
 		if err := entity.FromRecord(rec); err != nil {
 			return nil, err
 		}
@@ -625,7 +623,6 @@ func (e *ExecutableTaskExecutionLogRequest) ExecuteForList(context *runtime.User
 			if childRecord, ok := relationValue.V.(core.Record); ok {
 				if factory := e.request.relationFactories["taskEntity"]; factory != nil {
 					childEntity := factory()
-					if attachable, ok := childEntity.(interface { AttachEntityRoot(*core.EntityRoot) }); ok { attachable.AttachEntityRoot(entity.EntityRoot()) }
 					if err := childEntity.FromRecord(childRecord); err != nil { return nil, err }
 					entity.setRelationEntity("taskEntity", childEntity)
 				}
@@ -690,17 +687,14 @@ func (e *ExecutableTaskExecutionLogRequest) ExecuteForPage(context *runtime.User
 		if err != nil { return nil, err }
 	}
 	results := make([]*TaskExecutionLog, 0, len(rows))
-	queryRoot := core.NewEntityRoot()
 	for _, rec := range rows {
-		entity := NewTaskExecutionLog()
-		entity.AttachEntityRoot(queryRoot)
+		entity := newLoadedTaskExecutionLog()
 		if err := entity.FromRecord(rec); err != nil { return nil, err }
 		if relationValue, selected := rec["taskEntity"]; selected {
 			entity.markRelationLoaded("taskEntity")
 			if childRecord, ok := relationValue.V.(core.Record); ok {
 				if factory := e.request.relationFactories["taskEntity"]; factory != nil {
 					childEntity := factory()
-					if attachable, ok := childEntity.(interface { AttachEntityRoot(*core.EntityRoot) }); ok { attachable.AttachEntityRoot(entity.EntityRoot()) }
 					if err := childEntity.FromRecord(childRecord); err != nil { return nil, err }
 					entity.setRelationEntity("taskEntity", childEntity)
 				}
@@ -730,11 +724,9 @@ func (e *ExecutableTaskExecutionLogRequest) ExecuteForStream(context *runtime.Us
 	}
 	req, err := data_service.NewQueryRequest(authorized)
 	if err != nil { return err }
-	queryRoot := core.NewEntityRoot()
 	return ds.QueryStream(context, req, chunkSize, func(chunk *data_service.StreamChunk) error {
 		for _, rec := range chunk.Rows {
-			entity := NewTaskExecutionLog()
-			entity.AttachEntityRoot(queryRoot)
+			entity := newLoadedTaskExecutionLog()
 			if err := entity.FromRecord(rec); err != nil {
 				return err
 			}

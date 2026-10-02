@@ -55,7 +55,7 @@ func (r *TaskRequest) GetEntityDescriptor() *core.EntityDescriptor {
 }
 
 func (r *TaskRequest) NewRelationEntity() core.Entity {
-	return NewTask()
+	return newLoadedTask()
 }
 
 func (r *TaskRequest) Comment(comment string) *TaskRequest {
@@ -676,10 +676,8 @@ func (e *ExecutableTaskRequest) ExecuteForList(context *runtime.UserContext) (*c
 	}
 
 	var results []*Task
-	queryRoot := core.NewEntityRoot()
 	for _, rec := range rows {
-		entity := NewTask()
-		entity.AttachEntityRoot(queryRoot)
+		entity := newLoadedTask()
 		if err := entity.FromRecord(rec); err != nil {
 			return nil, err
 		}
@@ -688,7 +686,6 @@ func (e *ExecutableTaskRequest) ExecuteForList(context *runtime.UserContext) (*c
 			if childRecord, ok := relationValue.V.(core.Record); ok {
 				if factory := e.request.relationFactories["statusEntity"]; factory != nil {
 					childEntity := factory()
-					if attachable, ok := childEntity.(interface { AttachEntityRoot(*core.EntityRoot) }); ok { attachable.AttachEntityRoot(entity.EntityRoot()) }
 					if err := childEntity.FromRecord(childRecord); err != nil { return nil, err }
 					entity.setRelationEntity("statusEntity", childEntity)
 				}
@@ -699,7 +696,6 @@ func (e *ExecutableTaskRequest) ExecuteForList(context *runtime.UserContext) (*c
 			if childRecord, ok := relationValue.V.(core.Record); ok {
 				if factory := e.request.relationFactories["platformEntity"]; factory != nil {
 					childEntity := factory()
-					if attachable, ok := childEntity.(interface { AttachEntityRoot(*core.EntityRoot) }); ok { attachable.AttachEntityRoot(entity.EntityRoot()) }
 					if err := childEntity.FromRecord(childRecord); err != nil { return nil, err }
 					entity.setRelationEntity("platformEntity", childEntity)
 				}
@@ -710,6 +706,7 @@ func (e *ExecutableTaskRequest) ExecuteForList(context *runtime.UserContext) (*c
 				if !ok { return nil, fmt.Errorf("relation taskExecutionLogList has unexpected runtime type %T", relationValue.V) }
 				for _, childRecord := range childRecords {
 					childEntity := task_execution_log.NewTaskExecutionLog()
+					childEntity.EntityRoot().ClearEntity(childEntity.EntityKey())
 					childEntity.AttachEntityRoot(entity.EntityRoot())
 					if err := childEntity.FromRecord(childRecord); err != nil { return nil, err }
 					entity.TaskExecutionLogList().Add(childEntity)
@@ -773,17 +770,14 @@ func (e *ExecutableTaskRequest) ExecuteForPage(context *runtime.UserContext, off
 		if err != nil { return nil, err }
 	}
 	results := make([]*Task, 0, len(rows))
-	queryRoot := core.NewEntityRoot()
 	for _, rec := range rows {
-		entity := NewTask()
-		entity.AttachEntityRoot(queryRoot)
+		entity := newLoadedTask()
 		if err := entity.FromRecord(rec); err != nil { return nil, err }
 		if relationValue, selected := rec["statusEntity"]; selected {
 			entity.markRelationLoaded("statusEntity")
 			if childRecord, ok := relationValue.V.(core.Record); ok {
 				if factory := e.request.relationFactories["statusEntity"]; factory != nil {
 					childEntity := factory()
-					if attachable, ok := childEntity.(interface { AttachEntityRoot(*core.EntityRoot) }); ok { attachable.AttachEntityRoot(entity.EntityRoot()) }
 					if err := childEntity.FromRecord(childRecord); err != nil { return nil, err }
 					entity.setRelationEntity("statusEntity", childEntity)
 				}
@@ -794,7 +788,6 @@ func (e *ExecutableTaskRequest) ExecuteForPage(context *runtime.UserContext, off
 			if childRecord, ok := relationValue.V.(core.Record); ok {
 				if factory := e.request.relationFactories["platformEntity"]; factory != nil {
 					childEntity := factory()
-					if attachable, ok := childEntity.(interface { AttachEntityRoot(*core.EntityRoot) }); ok { attachable.AttachEntityRoot(entity.EntityRoot()) }
 					if err := childEntity.FromRecord(childRecord); err != nil { return nil, err }
 					entity.setRelationEntity("platformEntity", childEntity)
 				}
@@ -805,6 +798,7 @@ func (e *ExecutableTaskRequest) ExecuteForPage(context *runtime.UserContext, off
 				if !ok { return nil, fmt.Errorf("relation taskExecutionLogList has unexpected runtime type %T", relationValue.V) }
 				for _, childRecord := range childRecords {
 					childEntity := task_execution_log.NewTaskExecutionLog()
+					childEntity.EntityRoot().ClearEntity(childEntity.EntityKey())
 					childEntity.AttachEntityRoot(entity.EntityRoot())
 					if err := childEntity.FromRecord(childRecord); err != nil { return nil, err }
 					entity.TaskExecutionLogList().Add(childEntity)
@@ -833,11 +827,9 @@ func (e *ExecutableTaskRequest) ExecuteForStream(context *runtime.UserContext, c
 	}
 	req, err := data_service.NewQueryRequest(authorized)
 	if err != nil { return err }
-	queryRoot := core.NewEntityRoot()
 	return ds.QueryStream(context, req, chunkSize, func(chunk *data_service.StreamChunk) error {
 		for _, rec := range chunk.Rows {
-			entity := NewTask()
-			entity.AttachEntityRoot(queryRoot)
+			entity := newLoadedTask()
 			if err := entity.FromRecord(rec); err != nil {
 				return err
 			}

@@ -55,7 +55,7 @@ func (r *OrderStatusRequest) GetEntityDescriptor() *core.EntityDescriptor {
 }
 
 func (r *OrderStatusRequest) NewRelationEntity() core.Entity {
-	return NewOrderStatus()
+	return newLoadedOrderStatus()
 }
 
 func (r *OrderStatusRequest) Comment(comment string) *OrderStatusRequest {
@@ -930,10 +930,8 @@ func (e *ExecutableOrderStatusRequest) ExecuteForList(context *runtime.UserConte
 	}
 
 	var results []*OrderStatus
-	queryRoot := core.NewEntityRoot()
 	for _, rec := range rows {
-		entity := NewOrderStatus()
-		entity.AttachEntityRoot(queryRoot)
+		entity := newLoadedOrderStatus()
 		if err := entity.FromRecord(rec); err != nil {
 			return nil, err
 		}
@@ -942,7 +940,6 @@ func (e *ExecutableOrderStatusRequest) ExecuteForList(context *runtime.UserConte
 			if childRecord, ok := relationValue.V.(core.Record); ok {
 				if factory := e.request.relationFactories["commercePlatformEntity"]; factory != nil {
 					childEntity := factory()
-					if attachable, ok := childEntity.(interface { AttachEntityRoot(*core.EntityRoot) }); ok { attachable.AttachEntityRoot(entity.EntityRoot()) }
 					if err := childEntity.FromRecord(childRecord); err != nil { return nil, err }
 					entity.setRelationEntity("commercePlatformEntity", childEntity)
 				}
@@ -953,6 +950,7 @@ func (e *ExecutableOrderStatusRequest) ExecuteForList(context *runtime.UserConte
 				if !ok { return nil, fmt.Errorf("relation customerOrderList has unexpected runtime type %T", relationValue.V) }
 				for _, childRecord := range childRecords {
 					childEntity := customer_order.NewCustomerOrder()
+					childEntity.EntityRoot().ClearEntity(childEntity.EntityKey())
 					childEntity.AttachEntityRoot(entity.EntityRoot())
 					if err := childEntity.FromRecord(childRecord); err != nil { return nil, err }
 					entity.CustomerOrderList().Add(childEntity)
@@ -1016,17 +1014,14 @@ func (e *ExecutableOrderStatusRequest) ExecuteForPage(context *runtime.UserConte
 		if err != nil { return nil, err }
 	}
 	results := make([]*OrderStatus, 0, len(rows))
-	queryRoot := core.NewEntityRoot()
 	for _, rec := range rows {
-		entity := NewOrderStatus()
-		entity.AttachEntityRoot(queryRoot)
+		entity := newLoadedOrderStatus()
 		if err := entity.FromRecord(rec); err != nil { return nil, err }
 		if relationValue, selected := rec["commercePlatformEntity"]; selected {
 			entity.markRelationLoaded("commercePlatformEntity")
 			if childRecord, ok := relationValue.V.(core.Record); ok {
 				if factory := e.request.relationFactories["commercePlatformEntity"]; factory != nil {
 					childEntity := factory()
-					if attachable, ok := childEntity.(interface { AttachEntityRoot(*core.EntityRoot) }); ok { attachable.AttachEntityRoot(entity.EntityRoot()) }
 					if err := childEntity.FromRecord(childRecord); err != nil { return nil, err }
 					entity.setRelationEntity("commercePlatformEntity", childEntity)
 				}
@@ -1037,6 +1032,7 @@ func (e *ExecutableOrderStatusRequest) ExecuteForPage(context *runtime.UserConte
 				if !ok { return nil, fmt.Errorf("relation customerOrderList has unexpected runtime type %T", relationValue.V) }
 				for _, childRecord := range childRecords {
 					childEntity := customer_order.NewCustomerOrder()
+					childEntity.EntityRoot().ClearEntity(childEntity.EntityKey())
 					childEntity.AttachEntityRoot(entity.EntityRoot())
 					if err := childEntity.FromRecord(childRecord); err != nil { return nil, err }
 					entity.CustomerOrderList().Add(childEntity)
@@ -1065,11 +1061,9 @@ func (e *ExecutableOrderStatusRequest) ExecuteForStream(context *runtime.UserCon
 	}
 	req, err := data_service.NewQueryRequest(authorized)
 	if err != nil { return err }
-	queryRoot := core.NewEntityRoot()
 	return ds.QueryStream(context, req, chunkSize, func(chunk *data_service.StreamChunk) error {
 		for _, rec := range chunk.Rows {
-			entity := NewOrderStatus()
-			entity.AttachEntityRoot(queryRoot)
+			entity := newLoadedOrderStatus()
 			if err := entity.FromRecord(rec); err != nil {
 				return err
 			}

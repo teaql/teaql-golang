@@ -17,11 +17,14 @@ bash scripts/verify-examples.sh
 `go.work` resolves both the generated library and runtime to local source.
 The dedicated verifier runs the complete example twice against the same
 SQLite paths without deleting data and compares generated library hashes.
-It requires all eight generated tests to execute. It also runs four separate
-native SQLite batch regression tests twice, using fresh provider-test fixtures;
+It requires all eleven generated tests to execute, including the named shared
+readonly relation ownership test. It also runs fourteen separate native SQLite
+batch and transaction regression tests twice, using fresh provider-test fixtures;
 those checks are not generated-graph or prepared-batch acceptance.
 By default it creates a temporary directory; set
 `TEAQL_TRACE_CHAIN_DATABASE_DIRECTORY` to retain databases at a chosen path.
+Set `TEAQL_TRACE_CHAIN_EVIDENCE_DIRECTORY` to retain logs and the before/after
+library manifests at a chosen path. Generated test runs have a 120-second limit.
 Only application-owned test code is authored here. Do not patch `lib/` or use
 its source for API discovery; current object/field Assist is retained under
 `evidence/assist/`.
@@ -39,9 +42,12 @@ its source for API discovery; current object/field Assist is retained under
 | Required intent with logs off | Missing/Unicode-blank root comment is rejected even with an annotated child; no downstream policy, mutation or audit |
 | Complete ledger override | A stored full lineage replaces the inherited fallback and is removed after commit |
 | Concurrent graph operations | Two goroutines overlap on one context; separate serialized transactions and branch reasons survive |
+| Shared readonly references | One Q result shares the underlying Platform record; mutable wrappers and root ledgers stay independent, reviewed plans contain only the owning root and child, and SQL/audits never write Platform |
+| Clean parent with changed child | Only the changed child writes and increments version; its lineage still includes the root reason |
+| Audit consumer failure after commit | Both deliveries are attempted; an already-committed error does not roll back, retain transaction resources or replay the saved graph |
 
-Allocation is part of the six-mutation test; there are eight test functions,
-not nine independent scenario tests. An empty authoritative readback is a
+Allocation is part of the six-mutation test; there are eleven test functions.
+An empty authoritative readback is a
 successful SQL SELECT returning zero rows but a failed business save. It must
 not rewrite the preceding UPDATE's successful execution outcome.
 
@@ -89,4 +95,29 @@ masked even when the separate sensitive sink is enabled.
 This is the SQL executor's sequential native batch path. Generated graph saves
 currently emit individual requests; the tests do not establish whole-graph
 sibling masking across those requests, prepared batching, or commit-only audit
-when callers bypass the graph-save boundary.
+when callers bypass the graph-save boundary. Separate native transaction tests
+now prove commit-owned delivery and rollback suppression without that boundary;
+this does not establish prepared-batch or every legacy callback path.
+
+## Shared readonly relation ownership
+
+The generated relation loader reuses a single underlying Platform record for
+two roots in one bounded Q result. The test compares actual map identities;
+equal IDs alone do not establish sharing. Go currently creates distinct typed
+Platform wrappers from that record, unlike Rust's pointer-shared typed snapshot.
+Neither reference wrapper joins a root's mutation ledger or queues an insert.
+Each loaded root owns its ledger; only its explicitly attached item joins it.
+
+Two goroutines invoke audited root saves on the same Context. An observer holds
+the first real COMMIT until the second caller is ready to save; no committed
+audit exists before release. The Context serializes graph transactions and
+Checker/Fix preparation. This is overlapping caller coverage, not simultaneous
+SQLite writers or proof that the second Checker ran before the first commit.
+
+Exactly two root updates and two child inserts are observed in commands,
+physical SQL metadata and committed safe audits. The actual reviewed-plan
+snapshots contain only each owning root and its child, not the readonly Platform
+or the other graph. Generated Q/E reloads root descriptions and incremented
+versions, child names and owner IDs, and an unchanged Platform version. Repeated
+runs use the loaded version in the new descriptions so saves cannot pass by
+doing nothing. The library is regenerated upstream, never hand-patched here.

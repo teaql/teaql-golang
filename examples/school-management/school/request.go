@@ -54,7 +54,7 @@ func (r *SchoolRequest) GetEntityDescriptor() *core.EntityDescriptor {
 }
 
 func (r *SchoolRequest) NewRelationEntity() core.Entity {
-	return NewSchool()
+	return newLoadedSchool()
 }
 
 func (r *SchoolRequest) Comment(comment string) *SchoolRequest {
@@ -1018,10 +1018,8 @@ func (e *ExecutableSchoolRequest) ExecuteForList(context *runtime.UserContext) (
 	}
 
 	var results []*School
-	queryRoot := core.NewEntityRoot()
 	for _, rec := range rows {
-		entity := NewSchool()
-		entity.AttachEntityRoot(queryRoot)
+		entity := newLoadedSchool()
 		if err := entity.FromRecord(rec); err != nil {
 			return nil, err
 		}
@@ -1030,7 +1028,6 @@ func (e *ExecutableSchoolRequest) ExecuteForList(context *runtime.UserContext) (
 			if childRecord, ok := relationValue.V.(core.Record); ok {
 				if factory := e.request.relationFactories["platformEntity"]; factory != nil {
 					childEntity := factory()
-					if attachable, ok := childEntity.(interface { AttachEntityRoot(*core.EntityRoot) }); ok { attachable.AttachEntityRoot(entity.EntityRoot()) }
 					if err := childEntity.FromRecord(childRecord); err != nil { return nil, err }
 					entity.setRelationEntity("platformEntity", childEntity)
 				}
@@ -1041,7 +1038,6 @@ func (e *ExecutableSchoolRequest) ExecuteForList(context *runtime.UserContext) (
 			if childRecord, ok := relationValue.V.(core.Record); ok {
 				if factory := e.request.relationFactories["schoolTypeEntity"]; factory != nil {
 					childEntity := factory()
-					if attachable, ok := childEntity.(interface { AttachEntityRoot(*core.EntityRoot) }); ok { attachable.AttachEntityRoot(entity.EntityRoot()) }
 					if err := childEntity.FromRecord(childRecord); err != nil { return nil, err }
 					entity.setRelationEntity("schoolTypeEntity", childEntity)
 				}
@@ -1106,17 +1102,14 @@ func (e *ExecutableSchoolRequest) ExecuteForPage(context *runtime.UserContext, o
 		if err != nil { return nil, err }
 	}
 	results := make([]*School, 0, len(rows))
-	queryRoot := core.NewEntityRoot()
 	for _, rec := range rows {
-		entity := NewSchool()
-		entity.AttachEntityRoot(queryRoot)
+		entity := newLoadedSchool()
 		if err := entity.FromRecord(rec); err != nil { return nil, err }
 		if relationValue, selected := rec["platformEntity"]; selected {
 			entity.markRelationLoaded("platformEntity")
 			if childRecord, ok := relationValue.V.(core.Record); ok {
 				if factory := e.request.relationFactories["platformEntity"]; factory != nil {
 					childEntity := factory()
-					if attachable, ok := childEntity.(interface { AttachEntityRoot(*core.EntityRoot) }); ok { attachable.AttachEntityRoot(entity.EntityRoot()) }
 					if err := childEntity.FromRecord(childRecord); err != nil { return nil, err }
 					entity.setRelationEntity("platformEntity", childEntity)
 				}
@@ -1127,7 +1120,6 @@ func (e *ExecutableSchoolRequest) ExecuteForPage(context *runtime.UserContext, o
 			if childRecord, ok := relationValue.V.(core.Record); ok {
 				if factory := e.request.relationFactories["schoolTypeEntity"]; factory != nil {
 					childEntity := factory()
-					if attachable, ok := childEntity.(interface { AttachEntityRoot(*core.EntityRoot) }); ok { attachable.AttachEntityRoot(entity.EntityRoot()) }
 					if err := childEntity.FromRecord(childRecord); err != nil { return nil, err }
 					entity.setRelationEntity("schoolTypeEntity", childEntity)
 				}
@@ -1157,11 +1149,9 @@ func (e *ExecutableSchoolRequest) ExecuteForStream(context *runtime.UserContext,
 	}
 	req, err := data_service.NewQueryRequest(authorized)
 	if err != nil { return err }
-	queryRoot := core.NewEntityRoot()
 	return ds.QueryStream(context, req, chunkSize, func(chunk *data_service.StreamChunk) error {
 		for _, rec := range chunk.Rows {
-			entity := NewSchool()
-			entity.AttachEntityRoot(queryRoot)
+			entity := newLoadedSchool()
 			if err := entity.FromRecord(rec); err != nil {
 				return err
 			}

@@ -54,7 +54,7 @@ func (r *OrderSearchPresetRequest) GetEntityDescriptor() *core.EntityDescriptor 
 }
 
 func (r *OrderSearchPresetRequest) NewRelationEntity() core.Entity {
-	return NewOrderSearchPreset()
+	return newLoadedOrderSearchPreset()
 }
 
 func (r *OrderSearchPresetRequest) Comment(comment string) *OrderSearchPresetRequest {
@@ -945,10 +945,8 @@ func (e *ExecutableOrderSearchPresetRequest) ExecuteForList(context *runtime.Use
 	}
 
 	var results []*OrderSearchPreset
-	queryRoot := core.NewEntityRoot()
 	for _, rec := range rows {
-		entity := NewOrderSearchPreset()
-		entity.AttachEntityRoot(queryRoot)
+		entity := newLoadedOrderSearchPreset()
 		if err := entity.FromRecord(rec); err != nil {
 			return nil, err
 		}
@@ -957,7 +955,6 @@ func (e *ExecutableOrderSearchPresetRequest) ExecuteForList(context *runtime.Use
 			if childRecord, ok := relationValue.V.(core.Record); ok {
 				if factory := e.request.relationFactories["commercePlatformEntity"]; factory != nil {
 					childEntity := factory()
-					if attachable, ok := childEntity.(interface { AttachEntityRoot(*core.EntityRoot) }); ok { attachable.AttachEntityRoot(entity.EntityRoot()) }
 					if err := childEntity.FromRecord(childRecord); err != nil { return nil, err }
 					entity.setRelationEntity("commercePlatformEntity", childEntity)
 				}
@@ -1022,17 +1019,14 @@ func (e *ExecutableOrderSearchPresetRequest) ExecuteForPage(context *runtime.Use
 		if err != nil { return nil, err }
 	}
 	results := make([]*OrderSearchPreset, 0, len(rows))
-	queryRoot := core.NewEntityRoot()
 	for _, rec := range rows {
-		entity := NewOrderSearchPreset()
-		entity.AttachEntityRoot(queryRoot)
+		entity := newLoadedOrderSearchPreset()
 		if err := entity.FromRecord(rec); err != nil { return nil, err }
 		if relationValue, selected := rec["commercePlatformEntity"]; selected {
 			entity.markRelationLoaded("commercePlatformEntity")
 			if childRecord, ok := relationValue.V.(core.Record); ok {
 				if factory := e.request.relationFactories["commercePlatformEntity"]; factory != nil {
 					childEntity := factory()
-					if attachable, ok := childEntity.(interface { AttachEntityRoot(*core.EntityRoot) }); ok { attachable.AttachEntityRoot(entity.EntityRoot()) }
 					if err := childEntity.FromRecord(childRecord); err != nil { return nil, err }
 					entity.setRelationEntity("commercePlatformEntity", childEntity)
 				}
@@ -1062,11 +1056,9 @@ func (e *ExecutableOrderSearchPresetRequest) ExecuteForStream(context *runtime.U
 	}
 	req, err := data_service.NewQueryRequest(authorized)
 	if err != nil { return err }
-	queryRoot := core.NewEntityRoot()
 	return ds.QueryStream(context, req, chunkSize, func(chunk *data_service.StreamChunk) error {
 		for _, rec := range chunk.Rows {
-			entity := NewOrderSearchPreset()
-			entity.AttachEntityRoot(queryRoot)
+			entity := newLoadedOrderSearchPreset()
 			if err := entity.FromRecord(rec); err != nil {
 				return err
 			}

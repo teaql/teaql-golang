@@ -76,6 +76,15 @@ func NewSchoolType() *SchoolType {
 	return entity
 }
 
+// Hydration is not a create request. Keep this constructor private so public
+// NewEntity still records new-object intent, while a loaded snapshot starts
+// with independent mutation ownership and no pending insert.
+func newLoadedSchoolType() *SchoolType {
+	entity := NewSchoolType()
+	entity.root.ClearEntity(entity.EntityKey())
+	return entity
+}
+
 func (e *SchoolType) EntityKey() core.EntityKey {
 	if e.base.Id != 0 { return core.NewEntityKey(e.EntityName(), core.ValU64(e.base.Id)) }
 	return core.NewEntityKey(e.EntityName(), e.ledgerID)

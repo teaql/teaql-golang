@@ -54,7 +54,7 @@ func (r *OrderItemRequest) GetEntityDescriptor() *core.EntityDescriptor {
 }
 
 func (r *OrderItemRequest) NewRelationEntity() core.Entity {
-	return NewOrderItem()
+	return newLoadedOrderItem()
 }
 
 func (r *OrderItemRequest) Comment(comment string) *OrderItemRequest {
@@ -516,10 +516,8 @@ func (e *ExecutableOrderItemRequest) ExecuteForList(context *runtime.UserContext
 	}
 
 	var results []*OrderItem
-	queryRoot := core.NewEntityRoot()
 	for _, rec := range rows {
-		entity := NewOrderItem()
-		entity.AttachEntityRoot(queryRoot)
+		entity := newLoadedOrderItem()
 		if err := entity.FromRecord(rec); err != nil {
 			return nil, err
 		}
@@ -528,7 +526,6 @@ func (e *ExecutableOrderItemRequest) ExecuteForList(context *runtime.UserContext
 			if childRecord, ok := relationValue.V.(core.Record); ok {
 				if factory := e.request.relationFactories["customerOrderEntity"]; factory != nil {
 					childEntity := factory()
-					if attachable, ok := childEntity.(interface { AttachEntityRoot(*core.EntityRoot) }); ok { attachable.AttachEntityRoot(entity.EntityRoot()) }
 					if err := childEntity.FromRecord(childRecord); err != nil { return nil, err }
 					entity.setRelationEntity("customerOrderEntity", childEntity)
 				}
@@ -593,17 +590,14 @@ func (e *ExecutableOrderItemRequest) ExecuteForPage(context *runtime.UserContext
 		if err != nil { return nil, err }
 	}
 	results := make([]*OrderItem, 0, len(rows))
-	queryRoot := core.NewEntityRoot()
 	for _, rec := range rows {
-		entity := NewOrderItem()
-		entity.AttachEntityRoot(queryRoot)
+		entity := newLoadedOrderItem()
 		if err := entity.FromRecord(rec); err != nil { return nil, err }
 		if relationValue, selected := rec["customerOrderEntity"]; selected {
 			entity.markRelationLoaded("customerOrderEntity")
 			if childRecord, ok := relationValue.V.(core.Record); ok {
 				if factory := e.request.relationFactories["customerOrderEntity"]; factory != nil {
 					childEntity := factory()
-					if attachable, ok := childEntity.(interface { AttachEntityRoot(*core.EntityRoot) }); ok { attachable.AttachEntityRoot(entity.EntityRoot()) }
 					if err := childEntity.FromRecord(childRecord); err != nil { return nil, err }
 					entity.setRelationEntity("customerOrderEntity", childEntity)
 				}
@@ -633,11 +627,9 @@ func (e *ExecutableOrderItemRequest) ExecuteForStream(context *runtime.UserConte
 	}
 	req, err := data_service.NewQueryRequest(authorized)
 	if err != nil { return err }
-	queryRoot := core.NewEntityRoot()
 	return ds.QueryStream(context, req, chunkSize, func(chunk *data_service.StreamChunk) error {
 		for _, rec := range chunk.Rows {
-			entity := NewOrderItem()
-			entity.AttachEntityRoot(queryRoot)
+			entity := newLoadedOrderItem()
 			if err := entity.FromRecord(rec); err != nil {
 				return err
 			}

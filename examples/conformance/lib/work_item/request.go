@@ -54,7 +54,7 @@ func (r *WorkItemRequest) GetEntityDescriptor() *core.EntityDescriptor {
 }
 
 func (r *WorkItemRequest) NewRelationEntity() core.Entity {
-	return NewWorkItem()
+	return newLoadedWorkItem()
 }
 
 func (r *WorkItemRequest) Comment(comment string) *WorkItemRequest {
@@ -613,10 +613,8 @@ func (e *ExecutableWorkItemRequest) ExecuteForList(context *runtime.UserContext)
 	}
 
 	var results []*WorkItem
-	queryRoot := core.NewEntityRoot()
 	for _, rec := range rows {
-		entity := NewWorkItem()
-		entity.AttachEntityRoot(queryRoot)
+		entity := newLoadedWorkItem()
 		if err := entity.FromRecord(rec); err != nil {
 			return nil, err
 		}
@@ -625,7 +623,6 @@ func (e *ExecutableWorkItemRequest) ExecuteForList(context *runtime.UserContext)
 			if childRecord, ok := relationValue.V.(core.Record); ok {
 				if factory := e.request.relationFactories["platformEntity"]; factory != nil {
 					childEntity := factory()
-					if attachable, ok := childEntity.(interface { AttachEntityRoot(*core.EntityRoot) }); ok { attachable.AttachEntityRoot(entity.EntityRoot()) }
 					if err := childEntity.FromRecord(childRecord); err != nil { return nil, err }
 					entity.setRelationEntity("platformEntity", childEntity)
 				}
@@ -690,17 +687,14 @@ func (e *ExecutableWorkItemRequest) ExecuteForPage(context *runtime.UserContext,
 		if err != nil { return nil, err }
 	}
 	results := make([]*WorkItem, 0, len(rows))
-	queryRoot := core.NewEntityRoot()
 	for _, rec := range rows {
-		entity := NewWorkItem()
-		entity.AttachEntityRoot(queryRoot)
+		entity := newLoadedWorkItem()
 		if err := entity.FromRecord(rec); err != nil { return nil, err }
 		if relationValue, selected := rec["platformEntity"]; selected {
 			entity.markRelationLoaded("platformEntity")
 			if childRecord, ok := relationValue.V.(core.Record); ok {
 				if factory := e.request.relationFactories["platformEntity"]; factory != nil {
 					childEntity := factory()
-					if attachable, ok := childEntity.(interface { AttachEntityRoot(*core.EntityRoot) }); ok { attachable.AttachEntityRoot(entity.EntityRoot()) }
 					if err := childEntity.FromRecord(childRecord); err != nil { return nil, err }
 					entity.setRelationEntity("platformEntity", childEntity)
 				}
@@ -730,11 +724,9 @@ func (e *ExecutableWorkItemRequest) ExecuteForStream(context *runtime.UserContex
 	}
 	req, err := data_service.NewQueryRequest(authorized)
 	if err != nil { return err }
-	queryRoot := core.NewEntityRoot()
 	return ds.QueryStream(context, req, chunkSize, func(chunk *data_service.StreamChunk) error {
 		for _, rec := range chunk.Rows {
-			entity := NewWorkItem()
-			entity.AttachEntityRoot(queryRoot)
+			entity := newLoadedWorkItem()
 			if err := entity.FromRecord(rec); err != nil {
 				return err
 			}

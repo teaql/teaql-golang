@@ -55,7 +55,7 @@ func (r *CustomerOrderRequest) GetEntityDescriptor() *core.EntityDescriptor {
 }
 
 func (r *CustomerOrderRequest) NewRelationEntity() core.Entity {
-	return NewCustomerOrder()
+	return newLoadedCustomerOrder()
 }
 
 func (r *CustomerOrderRequest) Comment(comment string) *CustomerOrderRequest {
@@ -1127,10 +1127,8 @@ func (e *ExecutableCustomerOrderRequest) ExecuteForList(context *runtime.UserCon
 	}
 
 	var results []*CustomerOrder
-	queryRoot := core.NewEntityRoot()
 	for _, rec := range rows {
-		entity := NewCustomerOrder()
-		entity.AttachEntityRoot(queryRoot)
+		entity := newLoadedCustomerOrder()
 		if err := entity.FromRecord(rec); err != nil {
 			return nil, err
 		}
@@ -1139,7 +1137,6 @@ func (e *ExecutableCustomerOrderRequest) ExecuteForList(context *runtime.UserCon
 			if childRecord, ok := relationValue.V.(core.Record); ok {
 				if factory := e.request.relationFactories["statusEntity"]; factory != nil {
 					childEntity := factory()
-					if attachable, ok := childEntity.(interface { AttachEntityRoot(*core.EntityRoot) }); ok { attachable.AttachEntityRoot(entity.EntityRoot()) }
 					if err := childEntity.FromRecord(childRecord); err != nil { return nil, err }
 					entity.setRelationEntity("statusEntity", childEntity)
 				}
@@ -1150,7 +1147,6 @@ func (e *ExecutableCustomerOrderRequest) ExecuteForList(context *runtime.UserCon
 			if childRecord, ok := relationValue.V.(core.Record); ok {
 				if factory := e.request.relationFactories["customerEntity"]; factory != nil {
 					childEntity := factory()
-					if attachable, ok := childEntity.(interface { AttachEntityRoot(*core.EntityRoot) }); ok { attachable.AttachEntityRoot(entity.EntityRoot()) }
 					if err := childEntity.FromRecord(childRecord); err != nil { return nil, err }
 					entity.setRelationEntity("customerEntity", childEntity)
 				}
@@ -1161,7 +1157,6 @@ func (e *ExecutableCustomerOrderRequest) ExecuteForList(context *runtime.UserCon
 			if childRecord, ok := relationValue.V.(core.Record); ok {
 				if factory := e.request.relationFactories["commercePlatformEntity"]; factory != nil {
 					childEntity := factory()
-					if attachable, ok := childEntity.(interface { AttachEntityRoot(*core.EntityRoot) }); ok { attachable.AttachEntityRoot(entity.EntityRoot()) }
 					if err := childEntity.FromRecord(childRecord); err != nil { return nil, err }
 					entity.setRelationEntity("commercePlatformEntity", childEntity)
 				}
@@ -1172,6 +1167,7 @@ func (e *ExecutableCustomerOrderRequest) ExecuteForList(context *runtime.UserCon
 				if !ok { return nil, fmt.Errorf("relation orderLineList has unexpected runtime type %T", relationValue.V) }
 				for _, childRecord := range childRecords {
 					childEntity := order_line.NewOrderLine()
+					childEntity.EntityRoot().ClearEntity(childEntity.EntityKey())
 					childEntity.AttachEntityRoot(entity.EntityRoot())
 					if err := childEntity.FromRecord(childRecord); err != nil { return nil, err }
 					entity.OrderLineList().Add(childEntity)
@@ -1235,17 +1231,14 @@ func (e *ExecutableCustomerOrderRequest) ExecuteForPage(context *runtime.UserCon
 		if err != nil { return nil, err }
 	}
 	results := make([]*CustomerOrder, 0, len(rows))
-	queryRoot := core.NewEntityRoot()
 	for _, rec := range rows {
-		entity := NewCustomerOrder()
-		entity.AttachEntityRoot(queryRoot)
+		entity := newLoadedCustomerOrder()
 		if err := entity.FromRecord(rec); err != nil { return nil, err }
 		if relationValue, selected := rec["statusEntity"]; selected {
 			entity.markRelationLoaded("statusEntity")
 			if childRecord, ok := relationValue.V.(core.Record); ok {
 				if factory := e.request.relationFactories["statusEntity"]; factory != nil {
 					childEntity := factory()
-					if attachable, ok := childEntity.(interface { AttachEntityRoot(*core.EntityRoot) }); ok { attachable.AttachEntityRoot(entity.EntityRoot()) }
 					if err := childEntity.FromRecord(childRecord); err != nil { return nil, err }
 					entity.setRelationEntity("statusEntity", childEntity)
 				}
@@ -1256,7 +1249,6 @@ func (e *ExecutableCustomerOrderRequest) ExecuteForPage(context *runtime.UserCon
 			if childRecord, ok := relationValue.V.(core.Record); ok {
 				if factory := e.request.relationFactories["customerEntity"]; factory != nil {
 					childEntity := factory()
-					if attachable, ok := childEntity.(interface { AttachEntityRoot(*core.EntityRoot) }); ok { attachable.AttachEntityRoot(entity.EntityRoot()) }
 					if err := childEntity.FromRecord(childRecord); err != nil { return nil, err }
 					entity.setRelationEntity("customerEntity", childEntity)
 				}
@@ -1267,7 +1259,6 @@ func (e *ExecutableCustomerOrderRequest) ExecuteForPage(context *runtime.UserCon
 			if childRecord, ok := relationValue.V.(core.Record); ok {
 				if factory := e.request.relationFactories["commercePlatformEntity"]; factory != nil {
 					childEntity := factory()
-					if attachable, ok := childEntity.(interface { AttachEntityRoot(*core.EntityRoot) }); ok { attachable.AttachEntityRoot(entity.EntityRoot()) }
 					if err := childEntity.FromRecord(childRecord); err != nil { return nil, err }
 					entity.setRelationEntity("commercePlatformEntity", childEntity)
 				}
@@ -1278,6 +1269,7 @@ func (e *ExecutableCustomerOrderRequest) ExecuteForPage(context *runtime.UserCon
 				if !ok { return nil, fmt.Errorf("relation orderLineList has unexpected runtime type %T", relationValue.V) }
 				for _, childRecord := range childRecords {
 					childEntity := order_line.NewOrderLine()
+					childEntity.EntityRoot().ClearEntity(childEntity.EntityKey())
 					childEntity.AttachEntityRoot(entity.EntityRoot())
 					if err := childEntity.FromRecord(childRecord); err != nil { return nil, err }
 					entity.OrderLineList().Add(childEntity)
@@ -1306,11 +1298,9 @@ func (e *ExecutableCustomerOrderRequest) ExecuteForStream(context *runtime.UserC
 	}
 	req, err := data_service.NewQueryRequest(authorized)
 	if err != nil { return err }
-	queryRoot := core.NewEntityRoot()
 	return ds.QueryStream(context, req, chunkSize, func(chunk *data_service.StreamChunk) error {
 		for _, rec := range chunk.Rows {
-			entity := NewCustomerOrder()
-			entity.AttachEntityRoot(queryRoot)
+			entity := newLoadedCustomerOrder()
 			if err := entity.FromRecord(rec); err != nil {
 				return err
 			}

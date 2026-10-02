@@ -11,7 +11,8 @@ if [[ "$(realpath "$resolved")" != "$(realpath "$repo")" ]]; then
   exit 1
 fi
 
-verification="$(mktemp -d)"
+verification="${TEAQL_TRACE_CHAIN_EVIDENCE_DIRECTORY:-$(mktemp -d)}"
+mkdir -p "$verification"
 export TEAQL_TRACE_CHAIN_DATABASE_DIRECTORY="${TEAQL_TRACE_CHAIN_DATABASE_DIRECTORY:-$verification/databases}"
 mkdir -p "$TEAQL_TRACE_CHAIN_DATABASE_DIRECTORY"
 find lib -type f -print0 | sort -z | xargs -0 sha256sum > "$verification/library-before.sha256"
@@ -25,12 +26,16 @@ for iteration in 1 2; do
     exit 1
   fi
 done
-go test ./... -count=1 -v | tee "$verification/generated-1.log"
+go test ./... -count=1 -v -timeout 120s | tee "$verification/generated-1.log"
 # Same paths and databases; no deletion or schema reset between executions.
-go test ./... -count=1 -v | tee "$verification/generated-2.log"
+go test ./... -count=1 -v -timeout 120s | tee "$verification/generated-2.log"
 for iteration in 1 2; do
-  if [[ "$(rg -c '^--- PASS: TestGenerated' "$verification/generated-$iteration.log")" != 10 ]]; then
-    echo "FAIL: all ten generated graph scenarios must execute" >&2
+  if [[ "$(rg -c '^--- PASS: TestGenerated' "$verification/generated-$iteration.log")" != 11 ]]; then
+    echo "FAIL: all eleven generated graph scenarios must execute" >&2
+    exit 1
+  fi
+  if ! rg -q '^--- PASS: TestGeneratedSharedReadonlyReferencesKeepIndependentMutationOwnership ' "$verification/generated-$iteration.log"; then
+    echo "FAIL: shared readonly relation ownership must execute" >&2
     exit 1
   fi
 done
