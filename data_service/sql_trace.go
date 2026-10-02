@@ -58,5 +58,8 @@ func ApplyMutationSQLTrace(metadata *ExecutionMetadata, request MutationRequest,
 	}
 	path := core.CanonicalSQLTracePath(source, metadata.Backend, operation)
 	metadata.TraceChain, metadata.MutationLineage = path.TraceChain, core.CloneTraceNodes(lineage)
-	metadata.AuditReason = path.AuditReason
+	// The helper extracts the final typed reason for legacy source vectors, but
+	// an executing request explicitly owns the root reason. Descendant reasons
+	// remain in MutationLineage and must not replace this request-level field.
+	metadata.AuditReason = request.Comment()
 }

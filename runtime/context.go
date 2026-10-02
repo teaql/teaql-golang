@@ -316,7 +316,7 @@ type UserContext struct {
 	graphSaveGate                     sync.Mutex
 	graphSaveMu                       sync.Mutex
 	graphSaveActive                   bool
-	graphCommitActions                []func()
+	graphCommitActions                []func() error
 	graphRollbackActions              []func()
 	graphFixTime                      time.Time
 	businessClockMu                   sync.RWMutex
@@ -712,7 +712,10 @@ func (c *UserContext) GetResource(name string) interface{} {
 
 // ExecuteGraphSave coordinates one generated object graph through one provider
 // transaction. Nested entity saves join the active graph transaction.
-func (c *UserContext) ExecuteGraphSave(work func() error) error {
+func (c *UserContext) ExecuteGraphSave(intent core.MutationIntent, work func() error) error {
+	if err := intent.Validate(); err != nil {
+		return err
+	}
 	// Generated child entities use their within-graph save entry point directly.
 	// Every public/root save is serialized here, preventing an unrelated goroutine
 	// from joining whichever transaction happens to be active on this context.
@@ -747,9 +750,13 @@ func (c *UserContext) ExecutePlannedGraphSave(plan *MutationPlan, work func() er
 // plan preparation, review the immutable plan, then begin the provider
 // transaction. A denial therefore cannot begin a transaction or mutate a row.
 func (c *UserContext) ExecutePreparedGraphSave(
+	intent core.MutationIntent,
 	prepare func() (*MutationPlan, error),
 	work func() error,
 ) error {
+	if err := intent.Validate(); err != nil {
+		return err
+	}
 	if prepare == nil || work == nil {
 		return fmt.Errorf("prepared graph save requires prepare and work callbacks")
 	}
@@ -761,6 +768,10 @@ func (c *UserContext) ExecutePreparedGraphSave(
 	if err != nil {
 		c.finishGraphPreparation()
 		return err
+	}
+	if plan != nil {
+		plan = cloneMutationPlan(plan)
+		plan.AuditReason = intent.AuditReason()
 	}
 	snapshot, err := c.ReviewMutationPlan(plan)
 	if err != nil {
@@ -840,7 +851,9 @@ func (c *UserContext) executeGraphSave(work func() error, preparationStarted boo
 		}
 	} else {
 		for _, action := range c.graphCommitActions {
-			action()
+			if actionErr := action(); actionErr != nil && err == nil {
+				err = &GraphCommittedError{Cause: actionErr}
+			}
 		}
 	}
 
@@ -985,7 +998,7 @@ func (c *UserContext) AfterGraphCommit(action func()) {
 	if !c.graphSaveActive {
 		panic("no graph save is active")
 	}
-	c.graphCommitActions = append(c.graphCommitActions, action)
+	c.graphCommitActions = append(c.graphCommitActions, func() error { action(); return nil })
 }
 
 func (c *UserContext) AfterGraphRollback(action func()) {
@@ -1064,8 +1077,9 @@ func (c *UserContext) emitMutationAudit(context stdcontext.Context, request data
 		for k := range req.Cmd.Values {
 			fields = append(fields, k)
 		}
-		oldValues := req.Cmd.OldValues
-		event = UpdatedWithOldValues(req.Cmd.Entity, req.Cmd.Values, &oldValues, req.Cmd.Values, fields)
+		oldValues := cloneRecord(req.Cmd.OldValues)
+		values := cloneRecord(req.Cmd.Values)
+		event = UpdatedWithOldValues(req.Cmd.Entity, values, &oldValues, values, fields)
 		targetID := req.Cmd.Id
 		event.TargetID = &targetID
 	case *data_service.DeleteMutation:
@@ -1081,8 +1095,26 @@ func (c *UserContext) emitMutationAudit(context stdcontext.Context, request data
 	if category, ok := c.GetResource("bootstrapCategory").(string); ok {
 		event.Category = category
 	}
+	c.graphSaveMu.Lock()
+	if c.graphSaveActive {
+		// The event owns captured values and trace. A later failure discards it;
+		// only a successful provider commit runs this operation's callbacks.
+		c.graphCommitActions = append(c.graphCommitActions, func() error { return c.sendEvent(context, event) })
+		c.graphSaveMu.Unlock()
+		return nil
+	}
+	c.graphSaveMu.Unlock()
 	return c.sendEvent(context, event)
 }
+
+// GraphCommittedError means the database committed but an audit consumer failed.
+// It must not be retried as an uncommitted mutation or cause a false rollback.
+type GraphCommittedError struct{ Cause error }
+
+func (e *GraphCommittedError) Error() string {
+	return fmt.Sprintf("graph transaction already committed; after-commit consumer failed: %v", e.Cause)
+}
+func (e *GraphCommittedError) Unwrap() error { return e.Cause }
 
 func (c *UserContext) SetAppAuditEventSink(sink AppAuditEventSink) { c.appAuditSink = sink }
 func (c *UserContext) WithAppAuditEventSink(sink AppAuditEventSink) *UserContext {

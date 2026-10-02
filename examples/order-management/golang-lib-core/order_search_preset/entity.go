@@ -210,13 +210,13 @@ func (e *OrderSearchPreset) Save(context *runtime.UserContext) (*OrderSearchPres
 	intent, intentErr := core.NewMutationIntent(e.comment)
 	if intentErr != nil { return nil, intentErr }
 	var saved *OrderSearchPreset
-	err := context.ExecutePreparedGraphSave(func() (*runtime.MutationPlan, error) {
-		if preflightErr := e.TeaqlPreflightGraph(context); preflightErr != nil { return nil, preflightErr }
+	err := context.ExecutePreparedGraphSave(intent, func() (*runtime.MutationPlan, error) {
+		if preflightErr := e.TeaqlPreflightGraph(context, intent); preflightErr != nil { return nil, preflightErr }
 		auditReason := intent.AuditReason()
 		return runtime.MutationPlanFromEntityRoot(e.root, e.EntityName(), auditReason), nil
 	}, func() error {
 		var innerErr error
-		saved, innerErr = e.TeaqlSaveWithinGraph(context)
+		saved, innerErr = e.TeaqlSaveWithinGraph(context, intent, nil)
 		return innerErr
 	})
 	return saved, err
@@ -224,8 +224,8 @@ func (e *OrderSearchPreset) Save(context *runtime.UserContext) (*OrderSearchPres
 
 // TeaqlPreflightGraph runs Checker/Fix for the complete aggregate before the
 // first provider mutation. It is generated infrastructure, not application API.
-func (e *OrderSearchPreset) TeaqlPreflightGraph(context *runtime.UserContext) error {
-	if _, err := core.NewMutationIntent(e.comment); err != nil { return err }
+func (e *OrderSearchPreset) TeaqlPreflightGraph(context *runtime.UserContext, intent core.MutationIntent) error {
+	if err := intent.Validate(); err != nil { return err }
 	if !e.markedAsDelete {
 		if e.isNew {
 		}
@@ -320,7 +320,8 @@ func (e *OrderSearchPreset) teaqlRegisterGraphOutcome(context *runtime.UserConte
 
 // TeaqlSaveWithinGraph is generated infrastructure used by related entity
 // packages after the public root Save has opened the graph transaction.
-func (e *OrderSearchPreset) TeaqlSaveWithinGraph(context *runtime.UserContext) (*OrderSearchPreset, error) {
+func (e *OrderSearchPreset) TeaqlSaveWithinGraph(context *runtime.UserContext, intent core.MutationIntent, parentScope *core.MutationTraceScope) (*OrderSearchPreset, error) {
+	if err := intent.Validate(); err != nil { return nil, err }
 	snapshot := e.teaqlSaveSnapshot()
 	e.teaqlRegisterGraphOutcome(context, snapshot)
 	dsRaw := context.GetResource("dataService")
@@ -335,7 +336,6 @@ func (e *OrderSearchPreset) TeaqlSaveWithinGraph(context *runtime.UserContext) (
 	if !ok {
 		return nil, fmt.Errorf("dataService does not implement Mutator")
 	}
-	if _, err := core.NewMutationIntent(e.comment); err != nil { return nil, err }
 
 	if e.isNew {
 		checkedValues := e.IntoRecord()
@@ -374,12 +374,12 @@ func (e *OrderSearchPreset) TeaqlSaveWithinGraph(context *runtime.UserContext) (
 		if e.base.Version == 0 {
 			e.base.Version = 1
 		}
+		scope, err := core.MutationScopeForEntity(parentScope, e.EntityKey(), intent, e.comment)
+		if err != nil { return nil, err }
 		cmd := core.NewInsertCommand("order_search_preset")
 		cmd.Values = e.IntoRecord()
-		if e.comment != nil {
-			cmd.TraceChain = append(cmd.TraceChain, &core.TraceNode{Comment: *e.comment})
-		}
-		request, err := data_service.NewMutationRequest(&data_service.InsertMutation{Cmd: cmd}, *e.comment)
+		cmd.TraceChain = core.MutationTraceForEntity(e.root, e.EntityKey(), scope)
+		request, err := data_service.NewMutationRequest(&data_service.InsertMutation{Cmd: cmd}, intent.Comment())
 		if err != nil { return nil, err }
 		res, err := ds.Mutate(context, request)
 		if err == nil {
@@ -404,16 +404,16 @@ func (e *OrderSearchPreset) TeaqlSaveWithinGraph(context *runtime.UserContext) (
 		if err := e.FromRecord(res.PersistedRecord); err != nil {
 			return nil, err
 		}
-		if err := e.saveCascade(context); err != nil { return nil, err }
+		if err := e.saveCascade(context, intent, scope); err != nil { return nil, err }
 		return e, nil
 	} else if e.markedAsDelete {
+		scope, err := core.MutationScopeForEntity(parentScope, e.EntityKey(), intent, e.comment)
+		if err != nil { return nil, err }
 		expectedVersion := e.base.Version
 		cmd := core.NewDeleteCommand("order_search_preset", core.ValU64(e.base.Id)).
 			WithExpectedVersion(expectedVersion)
-		if e.comment != nil {
-			cmd.TraceChain = append(cmd.TraceChain, &core.TraceNode{Comment: *e.comment})
-		}
-		request, err := data_service.NewMutationRequest(&data_service.DeleteMutation{Cmd: cmd}, *e.comment)
+		cmd.TraceChain = core.MutationTraceForEntity(e.root, e.EntityKey(), scope)
+		request, err := data_service.NewMutationRequest(&data_service.DeleteMutation{Cmd: cmd}, intent.Comment())
 		if err != nil { return nil, err }
 		res, err := ds.Mutate(context, request)
 		if err != nil { return nil, err }
@@ -439,14 +439,14 @@ func (e *OrderSearchPreset) TeaqlSaveWithinGraph(context *runtime.UserContext) (
 		}
 		if checkErr != nil { return nil, checkErr }
 		if err := e.FromRecord(checkedValues); err != nil { return nil, err }
+		scope, err := core.MutationScopeForEntity(parentScope, e.EntityKey(), intent, e.comment)
+		if err != nil { return nil, err }
 		cmd := core.NewUpdateCommand("order_search_preset", core.ValU64(e.base.Id))
 		cmd.Values = e.root.Change(e.EntityKey())
 		expectedVersion := e.base.Version
 		cmd.ExpectedVersion = &expectedVersion
-		if e.comment != nil {
-			cmd.TraceChain = append(cmd.TraceChain, &core.TraceNode{Comment: *e.comment})
-		}
-		request, err := data_service.NewMutationRequest(&data_service.UpdateMutation{Cmd: cmd}, *e.comment)
+		cmd.TraceChain = core.MutationTraceForEntity(e.root, e.EntityKey(), scope)
+		request, err := data_service.NewMutationRequest(&data_service.UpdateMutation{Cmd: cmd}, intent.Comment())
 		if err != nil { return nil, err }
 		res, err := ds.Mutate(context, request)
 		if err == nil {
@@ -463,12 +463,12 @@ func (e *OrderSearchPreset) TeaqlSaveWithinGraph(context *runtime.UserContext) (
 			return nil, fmt.Errorf("mutation did not return the authoritative persisted record")
 		}
 		if err := e.FromRecord(res.PersistedRecord); err != nil { return nil, err }
-		if err := e.saveCascade(context); err != nil { return nil, err }
+		if err := e.saveCascade(context, intent, scope); err != nil { return nil, err }
 		return e, nil
 	}
 }
 
-func (e *OrderSearchPreset) saveCascade(context *runtime.UserContext) error {
+func (e *OrderSearchPreset) saveCascade(context *runtime.UserContext, intent core.MutationIntent, scope *core.MutationTraceScope) error {
 	return nil
 }
 

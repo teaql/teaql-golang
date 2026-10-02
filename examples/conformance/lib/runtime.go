@@ -12,9 +12,9 @@ import (
 	"github.com/shopspring/decimal"
 
 	"github.com/teaql/teaql-golang/core"
-	provider "github.com/teaql/teaql-golang/provider/sqlite"
 	"github.com/teaql/teaql-golang/runtime"
 	teaql_sql "github.com/teaql/teaql-golang/sql"
+	provider "github.com/teaql/teaql-golang/provider/sqlite"
 
 	"runtime-example-conformance-service-core-workspace/lib/platform"
 	"runtime-example-conformance-service-core-workspace/lib/work_item"
@@ -32,14 +32,9 @@ func ensureGeneratedBootstrapOnce(context *runtime.UserContext) error {
 	previousCategory := context.GetResource("bootstrapCategory")
 	context.SetUserIdentifier("teaql-generated-bootstrap")
 	context.InsertResource("bootstrapCategory", "runtime-bootstrap")
-	defer func() {
-		context.SetUserIdentifier(previousActor)
-		context.InsertResource("bootstrapCategory", previousCategory)
-	}()
+	defer func() { context.SetUserIdentifier(previousActor); context.InsertResource("bootstrapCategory", previousCategory) }()
 	platform1, err := Q.Platforms().WithIdIs(uint64(1)).Comment("what: locate generated bootstrap entity").Purpose("why: idempotent runtime bootstrap").ExecuteForOne(context)
-	if err != nil {
-		return fmt.Errorf("query bootstrap Platform(1): %w", err)
-	}
+	if err != nil { return fmt.Errorf("query bootstrap Platform(1): %w", err) }
 	if platform1 == nil {
 		platform1 = platform.NewPlatform().UpdateId(uint64(1))
 		platform1.UpdateName("Runtime Example")
@@ -48,16 +43,10 @@ func ensureGeneratedBootstrapOnce(context *runtime.UserContext) error {
 			// A concurrent bootstrap may have inserted the same fixed identity.
 			for attempt := 0; attempt < 5; attempt++ {
 				platform1, err = Q.Platforms().WithIdIs(uint64(1)).Comment("what: recover concurrent bootstrap").Purpose("why: make generated bootstrap idempotent").ExecuteForOne(context)
-				if err == nil && platform1 != nil {
-					break
-				}
-				if attempt < 4 {
-					time.Sleep(time.Duration(attempt+1) * 10 * time.Millisecond)
-				}
+				if err == nil && platform1 != nil { break }
+				if attempt < 4 { time.Sleep(time.Duration(attempt+1) * 10 * time.Millisecond) }
 			}
-			if platform1 == nil {
-				return fmt.Errorf("create bootstrap Platform(1): %w", createErr)
-			}
+			if platform1 == nil { return fmt.Errorf("create bootstrap Platform(1): %w", createErr) }
 		}
 	}
 	context.WithActiveRoot(runtime.EntityReference{Entity: "Platform", ID: 1})
@@ -67,15 +56,12 @@ func ensureGeneratedBootstrapOnce(context *runtime.UserContext) error {
 func ensureGeneratedBootstrap(context *runtime.UserContext) error {
 	var err error
 	for attempt := 0; attempt < 5; attempt++ {
-		if err = ensureGeneratedBootstrapOnce(context); err == nil {
-			return nil
-		}
-		if attempt < 4 {
-			time.Sleep(time.Duration(attempt+1) * 10 * time.Millisecond)
-		}
+		if err = ensureGeneratedBootstrapOnce(context); err == nil { return nil }
+		if attempt < 4 { time.Sleep(time.Duration(attempt+1) * 10 * time.Millisecond) }
 	}
 	return fmt.Errorf("generated bootstrap did not converge after bounded retry: %w", err)
 }
+
 
 func Module() *runtime.RuntimeModule {
 	module := runtime.NewRuntimeModule().Checkers(&generatedCheckerRegistry{})
@@ -87,9 +73,7 @@ func Module() *runtime.RuntimeModule {
 		descriptor.Property(core.NewPropertyDescriptor("version", core.TypeI64).ColumnName("version").NotNull().Version())
 		descriptor.Relation(core.NewRelationDescriptor("workItemList", "Work Item").LocalKey("id").ForeignKey("platform_id").Many())
 		descriptor.AuditMaskFields([]string{})
-		for _, property := range descriptor.Properties {
-			property.LogPolicy = "plain"
-		}
+		for _, property := range descriptor.Properties { property.LogPolicy = "plain" }
 		module.Entity(descriptor)
 	}
 	{
@@ -102,9 +86,7 @@ func Module() *runtime.RuntimeModule {
 		descriptor.Property(core.NewPropertyDescriptor("platform_id", core.TypeU64).ColumnName("platform").NotNull())
 		descriptor.Relation(core.NewRelationDescriptor("platformEntity", "Platform").LocalKey("platform_id").ForeignKey("id"))
 		descriptor.AuditMaskFields([]string{})
-		for _, property := range descriptor.Properties {
-			property.LogPolicy = "plain"
-		}
+		for _, property := range descriptor.Properties { property.LogPolicy = "plain" }
 		module.Entity(descriptor)
 	}
 	module.WireEntity(runtime.MustCreateWireEntityMetadataWithCanonicalAliases("Platform", []string{"id", "name", "version"}, runtime.JsonFieldCamelCase))
@@ -127,24 +109,15 @@ func (r *generatedCheckerRegistry) CheckAndFix(context *runtime.UserContext, inp
 
 func generatedNumber(value any) (float64, bool) {
 	switch number := value.(type) {
-	case int:
-		return float64(number), true
-	case int32:
-		return float64(number), true
-	case int64:
-		return float64(number), true
-	case uint:
-		return float64(number), true
-	case uint32:
-		return float64(number), true
-	case uint64:
-		return float64(number), true
-	case float32:
-		return float64(number), true
-	case float64:
-		return number, true
-	default:
-		return 0, false
+	case int: return float64(number), true
+	case int32: return float64(number), true
+	case int64: return float64(number), true
+	case uint: return float64(number), true
+	case uint32: return float64(number), true
+	case uint64: return float64(number), true
+	case float32: return float64(number), true
+	case float64: return number, true
+	default: return 0, false
 	}
 }
 
@@ -154,10 +127,9 @@ func checkPlatform(context *runtime.UserContext, input *runtime.CheckAndFixInput
 		results = append(results, runtime.CheckResult{RuleID: "required", CanonicalLocation: runtime.Location().Property("name")})
 	}
 	if value, exists := input.Values["name"]; exists {
-		if text, ok := value.V.(string); ok && len([]rune(text)) > 100 {
-			results = append(results, runtime.CheckResult{RuleID: "max_length", CanonicalLocation: runtime.Location().Property("name"), InputValue: text, SystemValue: 100})
-		}
+		if text, ok := value.V.(string); ok && len([]rune(text)) > 100 { results = append(results, runtime.CheckResult{RuleID: "max_length", CanonicalLocation: runtime.Location().Property("name"), InputValue: text, SystemValue: 100}) }
 	}
+
 
 	return results
 }
@@ -168,25 +140,20 @@ func checkWorkItem(context *runtime.UserContext, input *runtime.CheckAndFixInput
 		results = append(results, runtime.CheckResult{RuleID: "required", CanonicalLocation: runtime.Location().Property("title")})
 	}
 	if value, exists := input.Values["title"]; exists {
-		if text, ok := value.V.(string); ok && !(len([]rune(text)) >= 1) {
-			results = append(results, runtime.CheckResult{RuleID: "min_length", CanonicalLocation: runtime.Location().Property("title"), InputValue: text, SystemValue: 1})
-		}
+		if text, ok := value.V.(string); ok && !(len([]rune(text)) >= 1) { results = append(results, runtime.CheckResult{RuleID: "min_length", CanonicalLocation: runtime.Location().Property("title"), InputValue: text, SystemValue: 1}) }
 	}
 	if value, exists := input.Values["title"]; exists {
-		if text, ok := value.V.(string); ok && len([]rune(text)) > 80 {
-			results = append(results, runtime.CheckResult{RuleID: "max_length", CanonicalLocation: runtime.Location().Property("title"), InputValue: text, SystemValue: 80})
-		}
+		if text, ok := value.V.(string); ok && len([]rune(text)) > 80 { results = append(results, runtime.CheckResult{RuleID: "max_length", CanonicalLocation: runtime.Location().Property("title"), InputValue: text, SystemValue: 80}) }
 	}
 
 	if value, exists := input.Values["description"]; exists {
-		if text, ok := value.V.(string); ok && len([]rune(text)) > 100 {
-			results = append(results, runtime.CheckResult{RuleID: "max_length", CanonicalLocation: runtime.Location().Property("description"), InputValue: text, SystemValue: 100})
-		}
+		if text, ok := value.V.(string); ok && len([]rune(text)) > 100 { results = append(results, runtime.CheckResult{RuleID: "max_length", CanonicalLocation: runtime.Location().Property("description"), InputValue: text, SystemValue: 100}) }
 	}
 
 	if value, exists := input.Values["platform_id"]; (input.Operation == core.MutationInsert && !exists) || (exists && value.V == nil) {
 		results = append(results, runtime.CheckResult{RuleID: "required", CanonicalLocation: runtime.Location().Property("platform")})
 	}
+
 
 	return results
 }
@@ -201,9 +168,7 @@ func ModuleWithBehaviors() *runtime.RuntimeModule {
 		descriptor.Property(core.NewPropertyDescriptor("version", core.TypeI64).ColumnName("version").NotNull().Version())
 		descriptor.Relation(core.NewRelationDescriptor("workItemList", "Work Item").LocalKey("id").ForeignKey("platform_id").Many())
 		descriptor.AuditMaskFields([]string{})
-		for _, property := range descriptor.Properties {
-			property.LogPolicy = "plain"
-		}
+		for _, property := range descriptor.Properties { property.LogPolicy = "plain" }
 		module.EntityWithBehavior(
 			descriptor,
 			&platform.PlatformBehavior{},
@@ -219,9 +184,7 @@ func ModuleWithBehaviors() *runtime.RuntimeModule {
 		descriptor.Property(core.NewPropertyDescriptor("platform_id", core.TypeU64).ColumnName("platform").NotNull())
 		descriptor.Relation(core.NewRelationDescriptor("platformEntity", "Platform").LocalKey("platform_id").ForeignKey("id"))
 		descriptor.AuditMaskFields([]string{})
-		for _, property := range descriptor.Properties {
-			property.LogPolicy = "plain"
-		}
+		for _, property := range descriptor.Properties { property.LogPolicy = "plain" }
 		module.EntityWithBehavior(
 			descriptor,
 			&work_item.WorkItemBehavior{},
@@ -270,13 +233,9 @@ func ServiceRuntimeFromEnv() (*runtime.UserContext, error) {
 // Installing Module() or starting ServiceRuntimeFromEnv never changes database schema.
 func EnsureSchema(context *runtime.UserContext) error {
 	db, ok := context.GetResource("db").(*sql.DB)
-	if !ok || db == nil {
-		return fmt.Errorf("db not found in UserContext")
-	}
-	if err := provider.EnsureSoundex(db); err != nil {
-		return fmt.Errorf("register SQLite soundex: %w", err)
-	}
-	dialect := teaql_sql.SqlDialect(&provider.SqliteDialect{})
+	if !ok || db == nil { return fmt.Errorf("db not found in UserContext") }
+	if err := provider.EnsureSoundex(db); err != nil { return fmt.Errorf("register SQLite soundex: %w", err) }
+dialect := teaql_sql.SqlDialect(&provider.SqliteDialect{})
 	metadata := context.Metadata
 	for _, statement := range dialect.SchemaSetupSqls() {
 		if _, err := db.Exec(statement); err != nil {
@@ -297,13 +256,12 @@ func EnsureSchema(context *runtime.UserContext) error {
 			return fmt.Errorf("compile indexes for %s: %w", entity.Name, err)
 		}
 		for _, indexStatement := range indexes {
-			if _, err := db.Exec(indexStatement); err != nil {
-				return fmt.Errorf("create index for %s: %w", entity.Name, err)
-			}
+		if _, err := db.Exec(indexStatement); err != nil {
+			return fmt.Errorf("create index for %s: %w", entity.Name, err)
+		}
 		}
 	}
-	if err := ensureGeneratedBootstrap(context); err != nil {
-		return err
-	}
+	if err := ensureGeneratedBootstrap(context); err != nil { return err }
 	return nil
 }
+

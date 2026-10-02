@@ -67,14 +67,14 @@ func TestIndependentGraphSavesAreSerialized(t *testing.T) {
 	errors := make(chan error, 2)
 
 	go func() {
-		errors <- userContext.ExecuteGraphSave(func() error {
+		errors <- userContext.ExecuteGraphSave(graphTestIntent(), func() error {
 			close(firstStarted)
 			<-releaseFirst
 			return nil
 		})
 	}()
 	<-firstStarted
-	go func() { errors <- userContext.ExecuteGraphSave(func() error { return nil }) }()
+	go func() { errors <- userContext.ExecuteGraphSave(graphTestIntent(), func() error { return nil }) }()
 	time.Sleep(10 * time.Millisecond)
 
 	probe.mu.Lock()
@@ -101,7 +101,7 @@ func TestGraphSaveCapturesOneFixTime(t *testing.T) {
 	userContext := NewUserContext().WithBusinessClock(NewFixedBusinessClock(expected))
 	userContext.InsertResource("dataService", probe)
 	var first, second time.Time
-	if err := userContext.ExecuteGraphSave(func() error {
+	if err := userContext.ExecuteGraphSave(graphTestIntent(), func() error {
 		first = userContext.FixTime()
 		time.Sleep(time.Millisecond)
 		second = userContext.FixTime()
@@ -149,7 +149,7 @@ func TestCheckAndFixDefaultsToTheOneGraphFixTime(t *testing.T) {
 	userContext := NewUserContext()
 	userContext.InsertResource("dataService", probe)
 	userContext.SetCheckerRegistry(registry)
-	if err := userContext.ExecuteGraphSave(func() error {
+	if err := userContext.ExecuteGraphSave(graphTestIntent(), func() error {
 		for index := 0; index < 2; index++ {
 			if err := userContext.CheckAndFix(&CheckAndFixInput{
 				Entity: "Task", Operation: core.MutationInsert, Values: core.Record{},

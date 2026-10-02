@@ -35,7 +35,7 @@ Run `go test ./... -count=1` and `bash scripts/verify-examples.sh` against local
 source. The retained [School example](examples/school-management) tests generated
 list/page/stream rejection and missing-audit Save with logging disabled, beside
 bootstrap and mutation-policy regressions. The current checkpoint passed the
-runtime suite and all eight example groups twice; live database and telemetry
+runtime suite and all nine example groups twice; live database and telemetry
 tests requiring external configuration are explicitly skipped.
 
 Both SQL executors now use the same Rust-baseline canonical path algorithm.
@@ -46,12 +46,37 @@ node to the write. SQL metadata carries `MutationLineage` separately from
 `TraceChain`, and both use the existing privacy projection. Captured frames and
 optional ID pointers are copied rather than shared with a builder or log sink.
 
-This is still a partial local checkpoint, not full Trace Chain completion.
-The executor tests use runtime fixtures, not the generated normative graph.
-Legacy generated graph adapters still need hierarchical lineage and root
-ownership. Commit-only audit delivery, late-ID graph binding, generated
-three-level Q acceptance and internal-artifact replay remain separate
-gates in the [conformance design](https://github.com/teaql/teaql-conformance/blob/main/design/runtime-trace-chain-conformance.md).
+The [generated SQLite Trace Chain example](examples/trace-chain) now verifies
+six graph mutations at command, physical SQL metadata and committed safe-audit
+boundaries. Local child reasons survive; unannotated children inherit immutable
+parent scopes; deleted children retain their own reason. IDs assigned by the
+transaction's database allocator are present in the lineage. A complete
+per-entity ledger trace replaces inheritance rather than appending it twice.
+The scope is passed between generated save calls, never stored on UserContext.
+
+The eight generated cases also cover three-level Q provenance and loaded E,
+Checker rejection, real UNIQUE rollback, successful UPDATE with empty
+authoritative readback, intent rejection with logs off, and two overlapping
+goroutine saves on one context. The existing graph gate serializes their
+transactions; this is isolation evidence, not a claim of parallel transactions.
+SQL-executor mutation audit is queued until commit and discarded on rollback.
+An after-commit sink error returns `runtime.GraphCommittedError` and does not
+roll back an already committed transaction; do not retry it as an uncommitted save.
+
+Low-level graph adapters must now supply `core.MutationIntent` as the first
+argument to `ExecuteGraphSave` and `ExecutePreparedGraphSave`. Generated public
+`.AuditAs(...).Save(context)` calls are unchanged; old generated libraries need
+regeneration. Current source tests pass twice with 389 top-level passes, 217
+additional subtest passes and seven explicit integration skips. All nine
+example groups pass twice; the dedicated verifier runs eight cases twice on the
+same database paths and checks that all generated library bytes remain unchanged.
+Affected native packages and the generated graph also pass race checks.
+
+This remains a partial local checkpoint, not full Trace Chain completion.
+Same-type prepared batches, detached deleted children, complete privacy and
+execution-entry-point coverage, legacy allocation paths and immutable
+internal-artifact replay remain separate gates in the
+[conformance design](https://github.com/teaql/teaql-conformance/blob/main/design/runtime-trace-chain-conformance.md).
 
 ## Sensitive log data
 

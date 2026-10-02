@@ -210,7 +210,7 @@ func TestPreparedGraphSaveRunsPreflightBeforePolicyAndTransaction(t *testing.T) 
 	workCalled := false
 	var firstFixTime, secondFixTime time.Time
 
-	err := userContext.ExecutePreparedGraphSave(func() (*MutationPlan, error) {
+	err := userContext.ExecutePreparedGraphSave(graphTestIntent(), func() (*MutationPlan, error) {
 		firstFixTime = userContext.FixTime()
 		time.Sleep(time.Millisecond)
 		secondFixTime = userContext.FixTime()

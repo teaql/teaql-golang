@@ -2,7 +2,7 @@
 set -euo pipefail
 
 repo="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-expected=(basic business-id conformance mutation-policy order-management school-management security-foundations task_board)
+expected=(basic business-id conformance mutation-policy order-management school-management security-foundations task_board trace-chain)
 mapfile -t actual < <(find "$repo/examples" -mindepth 1 -maxdepth 1 -type d -printf '%f\n' | sort)
 if [[ "${actual[*]}" != "${expected[*]}" ]]; then
   echo "example inventory changed; update scripts/verify-examples.sh: ${actual[*]}" >&2
@@ -30,4 +30,5 @@ go run ./examples/mutation-policy
 (cd examples/school-management && go test ./... -count=1)
 go run ./examples/security-foundations
 (cd examples/task_board && go test ./... -count=1 && go run .)
+bash examples/trace-chain/verify.sh
 echo "PASS: all Go examples"
