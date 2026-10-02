@@ -3,6 +3,8 @@ package tracechain_test
 import (
 	"fmt"
 	"reflect"
+	goruntime "runtime"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -14,6 +16,34 @@ import (
 	"trace-chain-service-core-workspace/lib/order_item"
 	"trace-chain-service-core-workspace/lib/platform"
 )
+
+// The first transaction is held at COMMIT. Observe the other generated Save
+// actually waiting at the Context gate, rather than treating a pre-call ready
+// channel as proof that the save requests overlap. This does not change the
+// runtime or claim simultaneous SQLite writers.
+func awaitBlockedGeneratedSave(t *testing.T) {
+	t.Helper()
+	timer := time.NewTimer(5 * time.Second)
+	defer timer.Stop()
+	buffer := make([]byte, 64*1024)
+	for {
+		length := goruntime.Stack(buffer, true)
+		for _, stack := range strings.Split(string(buffer[:length]), "\n\n") {
+			if strings.Contains(stack, "[semacquire]") &&
+				strings.Contains(stack, "(*UserContext).ExecutePreparedGraphSave(") &&
+				strings.Contains(stack, "(*CustomerOrder).Save(") {
+				t.Log("second generated Save observed waiting at the same Context graph gate before first COMMIT")
+				return
+			}
+		}
+		select {
+		case <-timer.C:
+			t.Fatal("second generated Save never entered the Context gate while the first COMMIT was held")
+		default:
+			goruntime.Gosched()
+		}
+	}
+}
 
 // Q/E/save are the application path. Base/RelationEntity/EntityRoot below are
 // observation-only generated infrastructure: no expected trace, SQL, relation,
@@ -127,6 +157,7 @@ func TestGeneratedSharedReadonlyReferencesKeepIndependentMutationOwnership(t *te
 		results <- saveErr
 	}()
 	<-secondInvoked
+	awaitBlockedGeneratedSave(t)
 	if len(e.sink.snapshot()) != 0 {
 		t.Error("an uncommitted graph emitted a committed audit")
 	}
@@ -253,5 +284,5 @@ func TestGeneratedSharedReadonlyReferencesKeepIndependentMutationOwnership(t *te
 			t.Fatal("child was saved into the other graph")
 		}
 	}
-	t.Logf("TC-MUT-12 SHARED READONLY PASSED: commands=4 audits=4 commits=2 shared_record=true reference_version=%d", referenceVersion)
+	t.Logf("TC-MUT-12 SHARED READONLY PASSED: commands=4 audits=4 commits=2 shared_record=true reference_version=%d root_versions=%d,%d", referenceVersion, versions[0], versions[1])
 }

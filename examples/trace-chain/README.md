@@ -109,10 +109,11 @@ Neither reference wrapper joins a root's mutation ledger or queues an insert.
 Each loaded root owns its ledger; only its explicitly attached item joins it.
 
 Two goroutines invoke audited root saves on the same Context. An observer holds
-the first real COMMIT until the second caller is ready to save; no committed
-audit exists before release. The Context serializes graph transactions and
-Checker/Fix preparation. This is overlapping caller coverage, not simultaneous
-SQLite writers or proof that the second Checker ran before the first commit.
+the first real COMMIT, and a bounded native goroutine-stack observation confirms
+the second generated Save is already waiting at the Context graph gate. No
+committed audit exists before release. The Context serializes graph transactions
+and Checker/Fix preparation. This proves overlapping Save requests, not simultaneous
+SQLite writers or that the second Checker ran before the first commit.
 
 Exactly two root updates and two child inserts are observed in commands,
 physical SQL metadata and committed safe audits. The actual reviewed-plan
