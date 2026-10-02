@@ -4,7 +4,6 @@ import (
 	stdcontext "context"
 	"errors"
 	"fmt"
-	"strings"
 	"time"
 
 	"github.com/teaql/teaql-golang/core"
@@ -14,16 +13,6 @@ import (
 type SqlExecutorError struct {
 	CompileError   error
 	TransportError error
-}
-
-func canonicalSQLTraceFrames(frames []*core.TraceNode) []*core.TraceNode {
-	result := make([]*core.TraceNode, 0, len(frames))
-	for _, frame := range frames {
-		if frame != nil && strings.EqualFold(frame.Kind, "relation") {
-			result = append(result, frame)
-		}
-	}
-	return result
 }
 
 func (e *SqlExecutorError) Error() string {
@@ -131,15 +120,7 @@ func (e *SqlDataServiceExecutor) Query(context stdcontext.Context, request *ds.Q
 	count := len(rows)
 	debugQuery := "" // Safety projection renders before any log sink sees values.
 
-	tracePath := []*core.TraceNode{
-		core.NewTypedTraceNode("operation", "query", "query"),
-		core.NewTypedTraceNode("request", request.Query.Entity, request.Query.Entity),
-	}
-	tracePath = append(tracePath, canonicalSQLTraceFrames(request.TraceChain)...)
 	provider := e.Dialect.Kind().String()
-	tracePath = append(tracePath,
-		core.NewTypedTraceNode("provider", provider, provider),
-		core.NewTypedTraceNode("sql", "select", "select"))
 	metadata := ds.ExecutionMetadata{
 		Backend:              provider,
 		Operation:            ds.OpQuery,
@@ -151,13 +132,13 @@ func (e *SqlDataServiceExecutor) Query(context stdcontext.Context, request *ds.Q
 		EndedAt:              end,
 		AffectedRows:         nil,
 		ResultCount:          &count,
-		TraceChain:           tracePath,
 		Comment:              request.Comment,
 		Purpose:              request.Purpose,
 		InheritedIntent:      request.InheritedIntent,
 		BackendRequestId:     nil,
 		DebugQuery:           &debugQuery,
 	}
+	ds.ApplyQuerySQLTrace(&metadata, request)
 	metadata.ExecutionOutcome = "success"
 	if err != nil {
 		metadata.ExecutionOutcome = "failure"
@@ -345,17 +326,6 @@ func (e *SqlDataServiceExecutor) Mutate(context stdcontext.Context, request ds.M
 
 	debugQuery := "" // Safety projection renders before any log sink sees values.
 
-	var traceChain []*core.TraceNode
-	if len(request.TraceChain()) > 0 {
-		traceChain = make([]*core.TraceNode, len(request.TraceChain()))
-		for i, v := range request.TraceChain() {
-			node := *v
-			traceChain[i] = &node
-		}
-	} else {
-		traceChain = []*core.TraceNode{}
-	}
-
 	var comment *string
 	if request.Comment() != nil {
 		c := *request.Comment()
@@ -363,13 +333,6 @@ func (e *SqlDataServiceExecutor) Mutate(context stdcontext.Context, request ds.M
 	}
 
 	provider := e.Dialect.Kind().String()
-	tracePath := append([]*core.TraceNode{
-		core.NewTypedTraceNode("operation", "mutation", "mutation"),
-		core.NewTypedTraceNode("entity", entityName, entityName),
-	}, canonicalSQLTraceFrames(traceChain)...)
-	tracePath = append(tracePath,
-		core.NewTypedTraceNode("provider", provider, provider),
-		core.NewTypedTraceNode("sql", strings.ToLower(string(operation)), strings.ToLower(string(operation))))
 	metadata := ds.ExecutionMetadata{
 		Backend:              provider,
 		Operation:            operation,
@@ -381,12 +344,12 @@ func (e *SqlDataServiceExecutor) Mutate(context stdcontext.Context, request ds.M
 		EndedAt:              end,
 		AffectedRows:         &affectedRows,
 		ResultCount:          nil,
-		TraceChain:           tracePath,
 		Comment:              comment,
 		AuditReason:          comment,
 		BackendRequestId:     nil,
 		DebugQuery:           &debugQuery,
 	}
+	ds.ApplyMutationSQLTrace(&metadata, request, entityName)
 	metadata.ExecutionOutcome = "success"
 	if err != nil {
 		metadata.ExecutionOutcome = "failure"
@@ -486,16 +449,14 @@ func (e *SqlDataServiceExecutor) QueryStream(context stdcontext.Context, request
 			outcome = "cancelled"
 		}
 		provider := e.Dialect.Kind().String()
-		trace := []*core.TraceNode{core.NewTypedTraceNode("operation", "query", "query"), core.NewTypedTraceNode("request", request.Query.Entity, request.Query.Entity)}
-		trace = append(trace, canonicalSQLTraceFrames(request.TraceChain)...)
-		trace = append(trace, core.NewTypedTraceNode("provider", provider, provider), core.NewTypedTraceNode("sql", "select", "select"))
 		metadata := ds.ExecutionMetadata{
 			ExecutionOutcome: outcome, Backend: provider, Operation: ds.OpQuery,
 			ParameterizedSQL: compiled.Sql, Parameters: append([]core.Value(nil), compiled.Params...),
 			ParameterLogPolicies: append([]string(nil), compiled.ParameterLogPolicies...), GeneratedSQL: compiled.GeneratedSQL,
 			StartedAt: startedAt, EndedAt: time.Now(), ResultCount: &delivered,
-			TraceChain: trace, Comment: request.Comment, Purpose: request.Purpose,
+			Comment: request.Comment, Purpose: request.Purpose,
 		}
+		ds.ApplyQuerySQLTrace(&metadata, request)
 		if recorder, ok := context.(interface{ RecordExecutionMetadata(ds.ExecutionMetadata) }); ok {
 			recorder.RecordExecutionMetadata(metadata)
 		}

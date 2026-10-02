@@ -467,13 +467,11 @@ func (e *RawAuditEvent) BuildSafeEvent(auditMaskFields []string, auditValueMaxLe
 		intentValues = append(intentValues, logValueStrings(id)...)
 	}
 	sort.Slice(intentValues, func(i, j int) bool { return len(intentValues[i]) > len(intentValues[j]) })
-	trace := make([]*core.TraceNode, len(e.TraceChain))
-	for i, node := range e.TraceChain {
+	trace := core.CloneTraceNodes(e.TraceChain)
+	for _, node := range trace {
 		if node != nil {
-			clone := *node
-			clone.Comment = scrubWith(node.Comment, intentValues)
-			clone.Name = scrubWith(node.Name, intentValues)
-			trace[i] = &clone
+			node.Comment = scrubWith(node.Comment, intentValues)
+			node.Name = scrubWith(node.Name, intentValues)
 		}
 	}
 

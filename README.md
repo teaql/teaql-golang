@@ -38,9 +38,19 @@ bootstrap and mutation-policy regressions. The current checkpoint passed the
 runtime suite and all eight example groups twice; live database and telemetry
 tests requiring external configuration are explicitly skipped.
 
-This is the request-intent foundation, not full Trace Chain completion.
-Canonical typed SQL paths, per-entity hierarchical lineage, commit-only audit
-delivery, late-ID graph binding and internal-artifact replay remain separate
+Both SQL executors now use the same Rust-baseline canonical path algorithm.
+Twelve frozen path vectors verify node meaning, last-intent extraction and
+idempotence. Query relation/Facet paths retain their originating root; mutation
+readback produces a separate `select` path instead of appending a duplicate SQL
+node to the write. SQL metadata carries `MutationLineage` separately from
+`TraceChain`, and both use the existing privacy projection. Captured frames and
+optional ID pointers are copied rather than shared with a builder or log sink.
+
+This is still a partial local checkpoint, not full Trace Chain completion.
+The executor tests use runtime fixtures, not the generated normative graph.
+Legacy generated graph adapters still need hierarchical lineage and root
+ownership. Commit-only audit delivery, late-ID graph binding, generated
+three-level Q acceptance and internal-artifact replay remain separate
 gates in the [conformance design](https://github.com/teaql/teaql-conformance/blob/main/design/runtime-trace-chain-conformance.md).
 
 ## Sensitive log data

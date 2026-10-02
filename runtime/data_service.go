@@ -453,8 +453,8 @@ func (s *RuntimeDataService) enhanceRelations(context stdcontext.Context, parent
 		childQuery := cloneSelectQuery(load.Query, relation.TargetEntity)
 		childQuery.CommentText = query.CommentText
 		childQuery.PurposeText = query.PurposeText
-		childQuery.TraceChain = append(canonicalTraceFrames(query.TraceChain),
-			core.NewTypedTraceNode("relation", query.Entity+"."+load.Name, load.Name))
+		childQuery.TraceChain = append(core.QueryTraceSource(query.Entity, query.TraceChain, *query.CommentText, *query.PurposeText),
+			core.NewTypedTraceNode("relation", load.Name, query.Entity+"."+load.Name))
 		ensureProjection(childQuery, relation.ForKey)
 		bounded := relation.IsMany && childQuery.Slice != nil && childQuery.Slice.Limit != nil
 		useProbes := false
@@ -593,8 +593,8 @@ func (s *RuntimeDataService) enhanceRelationAggregates(context stdcontext.Contex
 		childQuery := cloneSelectQuery(aggregate.Query, relation.TargetEntity)
 		childQuery.CommentText = query.CommentText
 		childQuery.PurposeText = query.PurposeText
-		childQuery.TraceChain = append(canonicalTraceFrames(query.TraceChain),
-			core.NewTypedTraceNode("relation", query.Entity+"."+aggregate.RelationName, aggregate.RelationName))
+		childQuery.TraceChain = append(core.QueryTraceSource(query.Entity, query.TraceChain, *query.CommentText, *query.PurposeText),
+			core.NewTypedTraceNode("relation", aggregate.RelationName, query.Entity+"."+aggregate.RelationName))
 		childQuery.Projection = nil
 		childQuery.ExprProjection = nil
 		childQuery.OrderBy = nil

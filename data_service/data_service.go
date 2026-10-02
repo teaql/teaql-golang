@@ -115,17 +115,19 @@ const (
 type ExecutionMetadata struct {
 	// ExecutionOutcome describes statement/cursor termination, not transaction commit.
 	// Empty means the producer has not supplied an outcome.
-	ExecutionOutcome     string
-	Backend              string
-	Operation            DataServiceOperation
-	ParameterizedSQL     string
-	Parameters           []core.Value
-	ParameterCount       int
-	StartedAt            time.Time
-	EndedAt              time.Time
-	AffectedRows         *uint64
-	ResultCount          *int
-	TraceChain           []*core.TraceNode
+	ExecutionOutcome string
+	Backend          string
+	Operation        DataServiceOperation
+	ParameterizedSQL string
+	Parameters       []core.Value
+	ParameterCount   int
+	StartedAt        time.Time
+	EndedAt          time.Time
+	AffectedRows     *uint64
+	ResultCount      *int
+	TraceChain       []*core.TraceNode
+	// Graph responsibility is distinct from the canonical physical SQL path.
+	MutationLineage      []*core.TraceNode
 	Comment              *string
 	Purpose              *string
 	AuditReason          *string

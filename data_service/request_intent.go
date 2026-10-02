@@ -17,7 +17,10 @@ func NewQueryRequest(query *core.SelectQuery) (*QueryRequest, error) {
 // NewDerivedQueryRequest inherits a validated parent intent, independently of
 // privacy provenance and trace frames. It does not consult UserContext.
 func NewDerivedQueryRequest(query *core.SelectQuery, intent core.QueryIntent) (*QueryRequest, error) {
-	return CaptureQueryRequest(&QueryRequest{Query: query, intent: &intent})
+	if query == nil {
+		return CaptureQueryRequest(&QueryRequest{Query: query, intent: &intent})
+	}
+	return CaptureQueryRequest(&QueryRequest{Query: query, TraceChain: query.TraceChain, intent: &intent})
 }
 
 func (r *QueryRequest) Intent() (core.QueryIntent, error) {
@@ -47,7 +50,7 @@ func CaptureQueryRequest(input *QueryRequest) (*QueryRequest, error) {
 	copyRequest.Comment, copyRequest.Purpose = &comment, &purpose
 	copyRequest.Query = input.Query.Clone()
 	copyRequest.Query.CommentText, copyRequest.Query.PurposeText = &comment, &purpose
-	copyRequest.TraceChain = append([]*core.TraceNode(nil), input.TraceChain...)
+	copyRequest.TraceChain = core.CloneTraceNodes(input.TraceChain)
 	return &copyRequest, nil
 }
 
@@ -109,6 +112,9 @@ func captureMutation(input MutationRequest, intent core.MutationIntent) (Mutatio
 		}
 		copyRequest := *value
 		copyRequest.intent = &intent
+		command := *value.Cmd
+		command.TraceChain = core.CloneTraceNodes(value.Cmd.TraceChain)
+		copyRequest.Cmd = &command
 		return &copyRequest, nil
 	case *UpdateMutation:
 		if value == nil || value.Cmd == nil {
@@ -116,6 +122,9 @@ func captureMutation(input MutationRequest, intent core.MutationIntent) (Mutatio
 		}
 		copyRequest := *value
 		copyRequest.intent = &intent
+		command := *value.Cmd
+		command.TraceChain = core.CloneTraceNodes(value.Cmd.TraceChain)
+		copyRequest.Cmd = &command
 		return &copyRequest, nil
 	case *DeleteMutation:
 		if value == nil || value.Cmd == nil {
@@ -123,6 +132,9 @@ func captureMutation(input MutationRequest, intent core.MutationIntent) (Mutatio
 		}
 		copyRequest := *value
 		copyRequest.intent = &intent
+		command := *value.Cmd
+		command.TraceChain = core.CloneTraceNodes(value.Cmd.TraceChain)
+		copyRequest.Cmd = &command
 		return &copyRequest, nil
 	case *RecoverMutation:
 		if value == nil || value.Cmd == nil {
@@ -130,6 +142,9 @@ func captureMutation(input MutationRequest, intent core.MutationIntent) (Mutatio
 		}
 		copyRequest := *value
 		copyRequest.intent = &intent
+		command := *value.Cmd
+		command.TraceChain = core.CloneTraceNodes(value.Cmd.TraceChain)
+		copyRequest.Cmd = &command
 		return &copyRequest, nil
 	case *BatchMutation:
 		if value == nil {

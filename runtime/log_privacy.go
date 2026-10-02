@@ -324,18 +324,20 @@ func projectedSQLMetadata(metadata data_service.ExecutionMetadata, allow bool) d
 	}
 	metadata.Comment, metadata.Purpose, metadata.AuditReason = copyIntent(metadata.Comment), copyIntent(metadata.Purpose), copyIntent(metadata.AuditReason)
 	metadata.BackendRequestId = copyText(metadata.BackendRequestId)
-	trace := make([]*core.TraceNode, len(metadata.TraceChain))
-	for i, node := range metadata.TraceChain {
-		if node != nil {
-			cloned := *node
-			cloned.Comment = scrubIntent(node.Comment)
-			cloned.Name = scrubIntent(node.Name)
-			cloned.EntityType = scrubIntent(node.EntityType)
-			cloned.Kind = scrubIntent(node.Kind)
-			trace[i] = &cloned
+	projectTrace := func(source []*core.TraceNode) []*core.TraceNode {
+		trace := core.CloneTraceNodes(source)
+		for _, node := range trace {
+			if node != nil {
+				node.Comment = scrubIntent(node.Comment)
+				node.Name = scrubIntent(node.Name)
+				node.EntityType = scrubIntent(node.EntityType)
+				node.Kind = scrubIntent(node.Kind)
+			}
 		}
+		return trace
 	}
-	metadata.TraceChain = trace
+	metadata.TraceChain = projectTrace(metadata.TraceChain)
+	metadata.MutationLineage = projectTrace(metadata.MutationLineage)
 	metadata.ParameterCount = len(metadata.Parameters)
 	metadata.Parameters = values
 	metadata.ParameterLogPolicies, metadata.MaskedParameters = policies, masked

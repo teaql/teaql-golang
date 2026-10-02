@@ -426,9 +426,10 @@ func (s *TextDiagnosticSQLLogSink) WriteSQLLog(metadata data_service.ExecutionMe
 	} else if metadata.AffectedRows != nil {
 		summary = fmt.Sprintf("%d rows affected", *metadata.AffectedRows)
 	}
-	fmt.Fprintf(s.writer, "[TeaQL SQL][%s][%dus] %s outcome=%s comment=%q purpose=%q auditReason=%q tracePath=%v\nSQL omission reason: %s\nDebug SQL: %s\n",
+	fmt.Fprintf(s.writer, "[TeaQL SQL][%s][%dus] %s outcome=%s comment=%q purpose=%q auditReason=%q tracePath=%v mutationLineage=%v\nSQL omission reason: %s\nDebug SQL: %s\n",
 		strings.ToLower(string(metadata.Operation)), duration, summary, metadata.ExecutionOutcome,
 		sqlLogText(metadata.Comment), sqlLogText(metadata.Purpose), sqlLogText(metadata.AuditReason), metadata.TraceChain,
+		metadata.MutationLineage,
 		metadata.OmissionReason, sqlLogText(metadata.DebugQuery))
 }
 
@@ -459,9 +460,10 @@ func (s *SensitiveDiagnosticSQLLogSink) WriteSQLLog(metadata data_service.Execut
 	} else if metadata.AffectedRows != nil {
 		summary = fmt.Sprintf("%d rows affected", *metadata.AffectedRows)
 	}
-	fmt.Fprintf(s.writer, "[TeaQL SENSITIVE SQL][%s][%dus] %s outcome=%s comment=%q purpose=%q auditReason=%q tracePath=%v\nSQL omission reason: %s\nDebug SQL: %s\n",
+	fmt.Fprintf(s.writer, "[TeaQL SENSITIVE SQL][%s][%dus] %s outcome=%s comment=%q purpose=%q auditReason=%q tracePath=%v mutationLineage=%v\nSQL omission reason: %s\nDebug SQL: %s\n",
 		strings.ToLower(string(metadata.Operation)), duration, summary, metadata.ExecutionOutcome,
 		sqlLogText(metadata.Comment), sqlLogText(metadata.Purpose), sqlLogText(metadata.AuditReason), metadata.TraceChain,
+		metadata.MutationLineage,
 		metadata.OmissionReason, sqlLogText(metadata.DebugQuery))
 }
 
@@ -1073,7 +1075,7 @@ func (c *UserContext) emitMutationAudit(context stdcontext.Context, request data
 	default:
 		return nil
 	}
-	event.TraceChain = append([]*core.TraceNode(nil), request.TraceChain()...)
+	event.TraceChain = core.CloneTraceNodes(request.TraceChain())
 	event.AuditReason = request.Comment()
 	event.Actor = c.userIdentifier
 	if category, ok := c.GetResource("bootstrapCategory").(string); ok {
