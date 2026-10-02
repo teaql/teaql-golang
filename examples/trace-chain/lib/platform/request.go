@@ -446,7 +446,7 @@ func (e *ExecutablePlatformRequest) ExecuteForOne(context *runtime.UserContext) 
 }
 
 func (e *ExecutablePlatformRequest) ExecuteForList(context *runtime.UserContext) (*core.SmartList[*Platform], error) {
-	rows, authorized, err := e.executeRecords(context)
+	rows, authorized, err := e.executeRecords(context, true)
 	if err != nil {
 		return nil, err
 	}
@@ -493,7 +493,7 @@ func (e *ExecutablePlatformRequest) ExecuteForPage(context *runtime.UserContext,
 	}
 	query := r.Query.Clone()
 	query.Page(offset, size).Comment(r.commentText).Purpose(r.purposeText)
-	authorized, err := context.PrepareQuery(query)
+	authorized, err := context.PrepareEntityQuery(query)
 	if err != nil { return nil, err }
 	dsRaw := context.GetResource("dataService")
 	ds, ok := dsRaw.(data_service.QueryExecutor)
@@ -554,7 +554,7 @@ func (e *ExecutablePlatformRequest) ExecuteForStream(context *runtime.UserContex
 	}
 	query := r.Query.Clone()
 	query.Comment(r.commentText).Purpose(r.purposeText)
-	authorized, err := context.PrepareQuery(query)
+	authorized, err := context.PrepareEntityQuery(query)
 	if err != nil { return err }
 	dsRaw := context.GetResource("dataService")
 	ds, ok := dsRaw.(data_service.StreamQueryExecutor)
@@ -578,18 +578,20 @@ func (e *ExecutablePlatformRequest) ExecuteForStream(context *runtime.UserContex
 }
 
 func (e *ExecutablePlatformRequest) ExecuteRecords(context *runtime.UserContext) ([]core.Record, error) {
-	rows, _, err := e.executeRecords(context)
+	rows, _, err := e.executeRecords(context, false)
 	return rows, err
 }
 
 // executeRecords returns the same authorized snapshot used for row execution
 // so facets can derive their membership query without reapplying root policy.
-func (e *ExecutablePlatformRequest) executeRecords(context *runtime.UserContext) ([]core.Record, *core.SelectQuery, error) {
+func (e *ExecutablePlatformRequest) executeRecords(context *runtime.UserContext, entityProjection bool) ([]core.Record, *core.SelectQuery, error) {
 	r := e.request
 	if _, err := core.NewQueryIntent(&r.commentText, &r.purposeText); err != nil { return nil, nil, err }
 	query := r.Query.Clone()
 	query.Comment(r.commentText).Purpose(r.purposeText)
-	authorized, err := context.PrepareQuery(query)
+	prepare := context.PrepareQuery
+	if entityProjection { prepare = context.PrepareEntityQuery }
+	authorized, err := prepare(query)
 	if err != nil { return nil, nil, err }
 
 	dsRaw := context.GetResource("dataService")

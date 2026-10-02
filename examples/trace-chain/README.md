@@ -17,8 +17,8 @@ bash scripts/verify-examples.sh
 `go.work` resolves both the generated library and runtime to local source.
 The dedicated verifier runs the complete example twice against the same
 SQLite paths without deleting data and compares generated library hashes.
-It requires all eleven generated tests to execute, including the named shared
-readonly relation ownership test. It also runs fourteen separate native SQLite
+It requires all thirteen generated tests to execute, including the named shared
+readonly relation ownership and entity-projection tests. It also runs fourteen separate native SQLite
 batch and transaction regression tests twice, using fresh provider-test fixtures;
 those checks are not generated-graph or prepared-batch acceptance.
 By default it creates a temporary directory; set
@@ -45,8 +45,10 @@ its source for API discovery; current object/field Assist is retained under
 | Shared readonly references | One Q result shares the underlying Platform record; mutable wrappers and root ledgers stay independent, reviewed plans contain only the owning root and child, and SQL/audits never write Platform |
 | Clean parent with changed child | Only the changed child writes and increments version; its lineage still includes the root reason |
 | Audit consumer failure after commit | Both deliveries are attempted; an already-committed error does not roll back, retain transaction resources or replay the saved graph |
+| Default relation projection | Selecting a forward relation preserves all root fields; narrow forward/reverse children keep their identity and version, and one root update retains its audited optimistic version |
+| Narrow entity projection | List, minimal list, page and scalar stream retain ID/version without widening ordinary fields; incomplete entities still fail before transaction creation, and page count remains a count projection |
 
-Allocation is part of the six-mutation test; there are eleven test functions.
+Allocation is part of the six-mutation test; there are thirteen test functions.
 An empty authoritative readback is a
 successful SQL SELECT returning zero rows but a failed business save. It must
 not rewrite the preceding UPDATE's successful execution outcome.
@@ -122,3 +124,20 @@ or the other graph. Generated Q/E reloads root descriptions and incremented
 versions, child names and owner IDs, and an unchanged Platform version. Repeated
 runs use the loaded version in the new descriptions so saves cannot pass by
 doing nothing. The library is regenerated upstream, never hand-patched here.
+
+## Mandatory identity in entity projections
+
+Typed list/one, page and scalar-stream execution uses Context's entity-query
+preparation after one trusted policy invocation. Explicit narrow projections
+retain the metadata-declared ID/version fields and relation attachment keys;
+ordinary fields remain NotLoaded unless selected. Record and aggregate execution
+keep their existing projection boundary, and page execution derives an exact
+count without entity fields. Default relation selection does not change
+select-all into an FK-only projection. Execution works on a captured clone,
+not the caller's mutable builder.
+
+The generated example loads a complete root with narrow forward/reverse
+relations and performs one optimistic audited update. Four narrow cases prove
+real Q/E identity, request-owned SQL paths and fail-closed mutation before
+transaction creation. Scalar streaming does not hydrate selected relation
+graphs; full relation-stream and cancellation acceptance remain separate gates.

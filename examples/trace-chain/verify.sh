@@ -30,12 +30,22 @@ go test ./... -count=1 -v -timeout 120s | tee "$verification/generated-1.log"
 # Same paths and databases; no deletion or schema reset between executions.
 go test ./... -count=1 -v -timeout 120s | tee "$verification/generated-2.log"
 for iteration in 1 2; do
-  if [[ "$(rg -c '^--- PASS: TestGenerated' "$verification/generated-$iteration.log")" != 11 ]]; then
-    echo "FAIL: all eleven generated graph scenarios must execute" >&2
+  if [[ "$(rg -c '^--- PASS: TestGenerated' "$verification/generated-$iteration.log")" != 13 ]]; then
+    echo "FAIL: all thirteen generated graph scenarios must execute" >&2
     exit 1
   fi
   if ! rg -q '^--- PASS: TestGeneratedSharedReadonlyReferencesKeepIndependentMutationOwnership ' "$verification/generated-$iteration.log"; then
     echo "FAIL: shared readonly relation ownership must execute" >&2
+    exit 1
+  fi
+  for scenario in RelationSelectionPreservesFullEntityProjection NarrowEntityProjectionProtectsIdentityWithoutPermittingPartialMutation; do
+    if ! rg -q "^--- PASS: TestGenerated$scenario " "$verification/generated-$iteration.log"; then
+      echo "FAIL: mandatory entity identity projection acceptance must execute" >&2
+      exit 1
+    fi
+  done
+  if [[ "$(rg -c 'ENTITY PROJECTION NARROW PASSED: mode=' "$verification/generated-$iteration.log")" != 4 ]]; then
+    echo "FAIL: list, minimal-list, page and scalar stream identity cases must execute" >&2
     exit 1
   fi
 done

@@ -54,6 +54,13 @@ func (p *graphObserver) Query(ctx stdcontext.Context, request *data_service.Quer
 	return p.TransactionExecutor.(data_service.QueryExecutor).Query(ctx, request)
 }
 
+func (p *graphObserver) QueryStream(ctx stdcontext.Context, request *data_service.QueryRequest, chunkSize int, yield func(*data_service.StreamChunk) error) error {
+	p.mu.Lock()
+	p.queries++
+	p.mu.Unlock()
+	return p.TransactionExecutor.(data_service.StreamQueryExecutor).QueryStream(ctx, request, chunkSize, yield)
+}
+
 type observedTransaction struct {
 	data_service.Transaction
 	observer *graphObserver
@@ -209,7 +216,11 @@ func openEnvironment(t *testing.T) *environment {
 	if err := os.MkdirAll(directory, 0700); err != nil {
 		t.Fatal(err)
 	}
-	t.Setenv("TRACE_CHAIN_SERVICE_CORE_DATABASE_URL", filepath.Join(directory, t.Name()+".sqlite"))
+	databasePath := filepath.Join(directory, t.Name()+".sqlite")
+	if err := os.MkdirAll(filepath.Dir(databasePath), 0700); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("TRACE_CHAIN_SERVICE_CORE_DATABASE_URL", databasePath)
 	ctx, err := lib.ServiceRuntimeFromEnv()
 	if err != nil {
 		t.Fatal(err)

@@ -901,7 +901,7 @@ func (r *CustomerOrderRequest) SelectStatusWith(child interface {
 	GetQuery() *core.SelectQuery
 	NewRelationEntity() core.Entity
 }) *CustomerOrderRequest {
-	r.Query.Project("status_id")
+	runtime.EnsureRelationProjection(r.Query, "status_id")
 	r.Query.RelationQuery("statusEntity", child.GetQuery())
 	r.relationFactories["statusEntity"] = child.NewRelationEntity
 	return r
@@ -910,7 +910,7 @@ func (r *CustomerOrderRequest) SelectCustomerWith(child interface {
 	GetQuery() *core.SelectQuery
 	NewRelationEntity() core.Entity
 }) *CustomerOrderRequest {
-	r.Query.Project("customer_id")
+	runtime.EnsureRelationProjection(r.Query, "customer_id")
 	r.Query.RelationQuery("customerEntity", child.GetQuery())
 	r.relationFactories["customerEntity"] = child.NewRelationEntity
 	return r
@@ -919,7 +919,7 @@ func (r *CustomerOrderRequest) SelectCommercePlatformWith(child interface {
 	GetQuery() *core.SelectQuery
 	NewRelationEntity() core.Entity
 }) *CustomerOrderRequest {
-	r.Query.Project("commerce_platform_id")
+	runtime.EnsureRelationProjection(r.Query, "commerce_platform_id")
 	r.Query.RelationQuery("commercePlatformEntity", child.GetQuery())
 	r.relationFactories["commercePlatformEntity"] = child.NewRelationEntity
 	return r
@@ -1121,7 +1121,7 @@ func (e *ExecutableCustomerOrderRequest) ExecuteForOne(context *runtime.UserCont
 }
 
 func (e *ExecutableCustomerOrderRequest) ExecuteForList(context *runtime.UserContext) (*core.SmartList[*CustomerOrder], error) {
-	rows, authorized, err := e.executeRecords(context)
+	rows, authorized, err := e.executeRecords(context, true)
 	if err != nil {
 		return nil, err
 	}
@@ -1198,7 +1198,7 @@ func (e *ExecutableCustomerOrderRequest) ExecuteForPage(context *runtime.UserCon
 	}
 	query := r.Query.Clone()
 	query.Page(offset, size).Comment(r.commentText).Purpose(r.purposeText)
-	authorized, err := context.PrepareQuery(query)
+	authorized, err := context.PrepareEntityQuery(query)
 	if err != nil { return nil, err }
 	dsRaw := context.GetResource("dataService")
 	ds, ok := dsRaw.(data_service.QueryExecutor)
@@ -1289,7 +1289,7 @@ func (e *ExecutableCustomerOrderRequest) ExecuteForStream(context *runtime.UserC
 	}
 	query := r.Query.Clone()
 	query.Comment(r.commentText).Purpose(r.purposeText)
-	authorized, err := context.PrepareQuery(query)
+	authorized, err := context.PrepareEntityQuery(query)
 	if err != nil { return err }
 	dsRaw := context.GetResource("dataService")
 	ds, ok := dsRaw.(data_service.StreamQueryExecutor)
@@ -1313,18 +1313,20 @@ func (e *ExecutableCustomerOrderRequest) ExecuteForStream(context *runtime.UserC
 }
 
 func (e *ExecutableCustomerOrderRequest) ExecuteRecords(context *runtime.UserContext) ([]core.Record, error) {
-	rows, _, err := e.executeRecords(context)
+	rows, _, err := e.executeRecords(context, false)
 	return rows, err
 }
 
 // executeRecords returns the same authorized snapshot used for row execution
 // so facets can derive their membership query without reapplying root policy.
-func (e *ExecutableCustomerOrderRequest) executeRecords(context *runtime.UserContext) ([]core.Record, *core.SelectQuery, error) {
+func (e *ExecutableCustomerOrderRequest) executeRecords(context *runtime.UserContext, entityProjection bool) ([]core.Record, *core.SelectQuery, error) {
 	r := e.request
 	if _, err := core.NewQueryIntent(&r.commentText, &r.purposeText); err != nil { return nil, nil, err }
 	query := r.Query.Clone()
 	query.Comment(r.commentText).Purpose(r.purposeText)
-	authorized, err := context.PrepareQuery(query)
+	prepare := context.PrepareQuery
+	if entityProjection { prepare = context.PrepareEntityQuery }
+	authorized, err := prepare(query)
 	if err != nil { return nil, nil, err }
 
 	dsRaw := context.GetResource("dataService")

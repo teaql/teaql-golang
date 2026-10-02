@@ -455,7 +455,7 @@ func (s *RuntimeDataService) enhanceRelations(context stdcontext.Context, parent
 		childQuery.PurposeText = query.PurposeText
 		childQuery.TraceChain = append(core.QueryTraceSource(query.Entity, query.TraceChain, *query.CommentText, *query.PurposeText),
 			core.NewTypedTraceNode("relation", load.Name, query.Entity+"."+load.Name))
-		ensureProjection(childQuery, relation.ForKey)
+		EnsureRelationProjection(childQuery, relation.ForKey)
 		bounded := relation.IsMany && childQuery.Slice != nil && childQuery.Slice.Limit != nil
 		useProbes := false
 		if bounded {
@@ -476,6 +476,16 @@ func (s *RuntimeDataService) enhanceRelations(context stdcontext.Context, parent
 			}
 			childQuery = authorizedChild
 		}
+		childDescriptor := s.metadata.Entity(relation.TargetEntity)
+		if childDescriptor == nil {
+			return &RuntimeError{Type: "MissingEntity", MissingEntityName: relation.TargetEntity}
+		}
+		// RuntimeDataService owns its metadata even when its native caller uses
+		// a Context with another registry. Never invent a second metadata source.
+		protectEntityProjection(childQuery, childDescriptor)
+		// Policy may narrow the child shape; retain its attachment key without
+		// widening a default select-all query or sharing the caller's builder.
+		EnsureRelationProjection(childQuery, relation.ForKey)
 		limit := uint64(0)
 		if bounded {
 			limit = *childQuery.Slice.Limit
@@ -700,21 +710,6 @@ func attachRelationAggregateRows(parents, rows []core.Record, relation *core.Rel
 			parent[aggregate.Alias] = core.Value{V: values}
 		}
 	}
-}
-
-func ensureProjection(query *core.SelectQuery, field string) {
-	// An empty projection means SELECT all entity properties. Appending only the
-	// relation foreign key would accidentally turn it into a narrow projection
-	// and discard child id and business fields during relation loading.
-	if len(query.Projection) == 0 {
-		return
-	}
-	for _, selected := range query.Projection {
-		if selected == field {
-			return
-		}
-	}
-	query.Projection = append(query.Projection, field)
 }
 
 func relationKey(value core.Value) string {

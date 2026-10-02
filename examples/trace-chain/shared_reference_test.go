@@ -58,7 +58,6 @@ func TestGeneratedSharedReadonlyReferencesKeepIndependentMutationOwnership(t *te
 	}
 	e.reset()
 	rows, err := lib.Q.CustomerOrders().WithPlatformIs(1).OrderByIdAsc().Limit(2).
-		SelectId().SelectVersion().SelectOrderNumber().SelectDescription().
 		SelectPlatformWith(lib.Q.Platforms().Limit(1)).
 		Comment("load two roots with a shared readonly platform").
 		Purpose("verify snapshot sharing without mutation ownership sharing").ExecuteForList(e.context)
@@ -253,7 +252,7 @@ func TestGeneratedSharedReadonlyReferencesKeepIndependentMutationOwnership(t *te
 	}
 	for index := range orders {
 		persisted, err := lib.Q.CustomerOrders().WithIdIs(ids[index]).Limit(1).
-			SelectId().SelectVersion().SelectDescription().SelectPlatformWith(lib.Q.Platforms().Limit(1)).
+			SelectDescription().SelectPlatformWith(lib.Q.Platforms().Limit(1)).
 			Comment("reload independently committed root").Purpose("verify values and readonly reference version").ExecuteForList(e.context)
 		if err != nil || len(persisted.Data) != 1 {
 			t.Fatalf("root reload failed: %v", err)

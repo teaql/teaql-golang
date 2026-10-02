@@ -456,7 +456,7 @@ func (r *ShipmentRequest) SelectCustomerOrderWith(child interface {
 	GetQuery() *core.SelectQuery
 	NewRelationEntity() core.Entity
 }) *ShipmentRequest {
-	r.Query.Project("customer_order_id")
+	runtime.EnsureRelationProjection(r.Query, "customer_order_id")
 	r.Query.RelationQuery("customerOrderEntity", child.GetQuery())
 	r.relationFactories["customerOrderEntity"] = child.NewRelationEntity
 	return r
@@ -510,7 +510,7 @@ func (e *ExecutableShipmentRequest) ExecuteForOne(context *runtime.UserContext) 
 }
 
 func (e *ExecutableShipmentRequest) ExecuteForList(context *runtime.UserContext) (*core.SmartList[*Shipment], error) {
-	rows, authorized, err := e.executeRecords(context)
+	rows, authorized, err := e.executeRecords(context, true)
 	if err != nil {
 		return nil, err
 	}
@@ -557,7 +557,7 @@ func (e *ExecutableShipmentRequest) ExecuteForPage(context *runtime.UserContext,
 	}
 	query := r.Query.Clone()
 	query.Page(offset, size).Comment(r.commentText).Purpose(r.purposeText)
-	authorized, err := context.PrepareQuery(query)
+	authorized, err := context.PrepareEntityQuery(query)
 	if err != nil { return nil, err }
 	dsRaw := context.GetResource("dataService")
 	ds, ok := dsRaw.(data_service.QueryExecutor)
@@ -618,7 +618,7 @@ func (e *ExecutableShipmentRequest) ExecuteForStream(context *runtime.UserContex
 	}
 	query := r.Query.Clone()
 	query.Comment(r.commentText).Purpose(r.purposeText)
-	authorized, err := context.PrepareQuery(query)
+	authorized, err := context.PrepareEntityQuery(query)
 	if err != nil { return err }
 	dsRaw := context.GetResource("dataService")
 	ds, ok := dsRaw.(data_service.StreamQueryExecutor)
@@ -642,18 +642,20 @@ func (e *ExecutableShipmentRequest) ExecuteForStream(context *runtime.UserContex
 }
 
 func (e *ExecutableShipmentRequest) ExecuteRecords(context *runtime.UserContext) ([]core.Record, error) {
-	rows, _, err := e.executeRecords(context)
+	rows, _, err := e.executeRecords(context, false)
 	return rows, err
 }
 
 // executeRecords returns the same authorized snapshot used for row execution
 // so facets can derive their membership query without reapplying root policy.
-func (e *ExecutableShipmentRequest) executeRecords(context *runtime.UserContext) ([]core.Record, *core.SelectQuery, error) {
+func (e *ExecutableShipmentRequest) executeRecords(context *runtime.UserContext, entityProjection bool) ([]core.Record, *core.SelectQuery, error) {
 	r := e.request
 	if _, err := core.NewQueryIntent(&r.commentText, &r.purposeText); err != nil { return nil, nil, err }
 	query := r.Query.Clone()
 	query.Comment(r.commentText).Purpose(r.purposeText)
-	authorized, err := context.PrepareQuery(query)
+	prepare := context.PrepareQuery
+	if entityProjection { prepare = context.PrepareEntityQuery }
+	authorized, err := prepare(query)
 	if err != nil { return nil, nil, err }
 
 	dsRaw := context.GetResource("dataService")
