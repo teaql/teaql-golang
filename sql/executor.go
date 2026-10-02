@@ -229,6 +229,14 @@ func (e *SqlDataServiceExecutor) Mutate(context stdcontext.Context, request ds.M
 		return nil, captureErr
 	}
 	request = captured
+	plan, err := e.prepareMutation(request)
+	if err != nil {
+		return nil, err
+	}
+	return e.mutatePrepared(context, request, plan)
+}
+
+func (e *SqlDataServiceExecutor) mutatePrepared(context stdcontext.Context, request ds.MutationRequest, plan *sqlMutationPlan) (*ds.MutationResult, error) {
 	if transport, ok := e.Transport.(SqlTransactionTransport); ok {
 		tx, err := transport.BeginSql(context)
 		if err != nil {
@@ -237,7 +245,7 @@ func (e *SqlDataServiceExecutor) Mutate(context stdcontext.Context, request ds.M
 		if tx != nil {
 			transactional := NewSqlDataServiceExecutor(e.Dialect, tx, e.SchemaProvider)
 			transactional.transactional = true
-			result, err := transactional.Mutate(context, request)
+			result, err := transactional.mutatePrepared(context, request, plan)
 			if err != nil {
 				_ = tx.RollbackSql(context)
 				return nil, err
@@ -253,7 +261,7 @@ func (e *SqlDataServiceExecutor) Mutate(context stdcontext.Context, request ds.M
 		var totalAffected uint64 = 0
 		start := time.Now()
 		for _, m := range req.Mutations {
-			res, err := e.Mutate(context, m)
+			res, err := e.mutatePrepared(context, m, plan)
 			if err != nil {
 				return nil, err
 			}
@@ -273,52 +281,18 @@ func (e *SqlDataServiceExecutor) Mutate(context stdcontext.Context, request ds.M
 				TraceChain:       []*core.TraceNode{},
 				Comment:          request.Comment(),
 				AuditReason:      request.Comment(),
+				InheritedIntent:  plan.inherited,
 				BackendRequestId: nil,
 				DebugQuery:       nil,
 			},
 		}, nil
 	}
 
-	var entityName string
-	switch req := request.(type) {
-	case *ds.InsertMutation:
-		entityName = req.Cmd.Entity
-	case *ds.UpdateMutation:
-		entityName = req.Cmd.Entity
-	case *ds.DeleteMutation:
-		entityName = req.Cmd.Entity
-	case *ds.RecoverMutation:
-		entityName = req.Cmd.Entity
-	}
-
-	entityDesc := e.SchemaProvider.GetEntity(entityName)
-	if entityDesc == nil {
-		return nil, &SqlExecutorError{CompileError: fmt.Errorf("unknown entity %s", entityName)}
-	}
-
+	leaf := plan.leaves[request]
+	entityDesc := leaf.entity
+	entityName := leaf.entityName
 	defaultDialect := &DefaultSqlDialect{Dialect: e.Dialect}
-	var compiled *CompiledQuery
-	var err error
-	var operation ds.DataServiceOperation
-
-	switch req := request.(type) {
-	case *ds.InsertMutation:
-		compiled, err = defaultDialect.CompileInsert(entityDesc, req.Cmd)
-		operation = ds.OpInsert
-	case *ds.UpdateMutation:
-		compiled, err = defaultDialect.CompileUpdate(entityDesc, req.Cmd)
-		operation = ds.OpUpdate
-	case *ds.DeleteMutation:
-		compiled, err = defaultDialect.CompileDelete(entityDesc, req.Cmd)
-		operation = ds.OpDelete
-	case *ds.RecoverMutation:
-		compiled, err = defaultDialect.CompileRecover(entityDesc, req.Cmd)
-		operation = ds.OpRecover
-	}
-
-	if err != nil {
-		return nil, &SqlExecutorError{CompileError: err}
-	}
+	compiled := leaf.query
 
 	start := time.Now()
 	affectedRows, err := e.Transport.ExecuteSql(context, compiled)
@@ -335,7 +309,7 @@ func (e *SqlDataServiceExecutor) Mutate(context stdcontext.Context, request ds.M
 	provider := e.Dialect.Kind().String()
 	metadata := ds.ExecutionMetadata{
 		Backend:              provider,
-		Operation:            operation,
+		Operation:            leaf.operation,
 		ParameterizedSQL:     compiled.Sql,
 		Parameters:           append([]core.Value(nil), compiled.Params...),
 		ParameterLogPolicies: append([]string(nil), compiled.ParameterLogPolicies...),
@@ -346,6 +320,7 @@ func (e *SqlDataServiceExecutor) Mutate(context stdcontext.Context, request ds.M
 		ResultCount:          nil,
 		Comment:              comment,
 		AuditReason:          comment,
+		InheritedIntent:      plan.inherited,
 		BackendRequestId:     nil,
 		DebugQuery:           &debugQuery,
 	}

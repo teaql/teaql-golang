@@ -113,6 +113,7 @@ func captureMutation(input MutationRequest, intent core.MutationIntent) (Mutatio
 		copyRequest := *value
 		copyRequest.intent = &intent
 		command := *value.Cmd
+		command.Values = core.CloneRecord(value.Cmd.Values)
 		command.TraceChain = core.CloneTraceNodes(value.Cmd.TraceChain)
 		copyRequest.Cmd = &command
 		return &copyRequest, nil
@@ -123,6 +124,11 @@ func captureMutation(input MutationRequest, intent core.MutationIntent) (Mutatio
 		copyRequest := *value
 		copyRequest.intent = &intent
 		command := *value.Cmd
+		command.Id = core.CloneValue(value.Cmd.Id)
+		command.ExpectedVersion = cloneMutationVersion(value.Cmd.ExpectedVersion)
+		command.Values = core.CloneRecord(value.Cmd.Values)
+		command.OldValues = core.CloneRecord(value.Cmd.OldValues)
+		command.Guards = core.CloneRecord(value.Cmd.Guards)
 		command.TraceChain = core.CloneTraceNodes(value.Cmd.TraceChain)
 		copyRequest.Cmd = &command
 		return &copyRequest, nil
@@ -133,6 +139,9 @@ func captureMutation(input MutationRequest, intent core.MutationIntent) (Mutatio
 		copyRequest := *value
 		copyRequest.intent = &intent
 		command := *value.Cmd
+		command.Id = core.CloneValue(value.Cmd.Id)
+		command.ExpectedVersion = cloneMutationVersion(value.Cmd.ExpectedVersion)
+		command.Guards = core.CloneRecord(value.Cmd.Guards)
 		command.TraceChain = core.CloneTraceNodes(value.Cmd.TraceChain)
 		copyRequest.Cmd = &command
 		return &copyRequest, nil
@@ -143,6 +152,8 @@ func captureMutation(input MutationRequest, intent core.MutationIntent) (Mutatio
 		copyRequest := *value
 		copyRequest.intent = &intent
 		command := *value.Cmd
+		command.Id = core.CloneValue(value.Cmd.Id)
+		command.Guards = core.CloneRecord(value.Cmd.Guards)
 		command.TraceChain = core.CloneTraceNodes(value.Cmd.TraceChain)
 		copyRequest.Cmd = &command
 		return &copyRequest, nil
@@ -166,4 +177,12 @@ func captureMutation(input MutationRequest, intent core.MutationIntent) (Mutatio
 	default:
 		return nil, fmt.Errorf("unsupported mutation request type")
 	}
+}
+
+func cloneMutationVersion(version *int64) *int64 {
+	if version == nil {
+		return nil
+	}
+	copyVersion := *version
+	return &copyVersion
 }

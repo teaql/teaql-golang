@@ -1091,6 +1091,7 @@ func (c *UserContext) emitMutationAudit(context stdcontext.Context, request data
 	}
 	event.TraceChain = core.CloneTraceNodes(request.TraceChain())
 	event.AuditReason = request.Comment()
+	event.inheritedIntent = result.Metadata.InheritedIntent
 	event.Actor = c.userIdentifier
 	if category, ok := c.GetResource("bootstrapCategory").(string); ok {
 		event.Category = category

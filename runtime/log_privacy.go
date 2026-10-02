@@ -107,35 +107,7 @@ func logHasCredentials(value any) bool {
 }
 
 func cloneLogValue(value core.Value) core.Value {
-	switch v := value.V.(type) {
-	case []core.Value:
-		values := make([]core.Value, len(v))
-		for i, child := range v {
-			values[i] = cloneLogValue(child)
-		}
-		value.V = values
-	case core.Record:
-		values := make(core.Record, len(v))
-		for key, child := range v {
-			values[key] = cloneLogValue(child)
-		}
-		value.V = values
-	case []byte:
-		value.V = append([]byte(nil), v...)
-	case map[string]any:
-		values := make(map[string]any, len(v))
-		for key, child := range v {
-			values[key] = cloneLogValue(core.Value{V: child}).V
-		}
-		value.V = values
-	case []any:
-		values := make([]any, len(v))
-		for i, child := range v {
-			values[i] = cloneLogValue(core.Value{V: child}).V
-		}
-		value.V = values
-	}
-	return value
+	return core.CloneValue(value)
 }
 
 func businessMaskValue(value core.Value) core.Value {
@@ -186,6 +158,33 @@ func bindingIsMasked(policy string, allow bool) bool {
 	return policy == "credential" || policy == "unknown" || (!allow && policy != "plain")
 }
 
+// Readback adds its write source to an existing batch source. Resolve every
+// layer with the same binding policy; never install this state on UserContext.
+func inheritedIntentSecrets(inherited logprivacy.IntentSource, allow bool) []string {
+	var secrets []string
+	var visit func(logprivacy.IntentSource, bool)
+	visit = func(inherited logprivacy.IntentSource, allow bool) {
+		var sources []data_service.ExecutionMetadata
+		switch source := logprivacy.ReadIntentSource(inherited).(type) {
+		case data_service.ExecutionMetadata:
+			sources = []data_service.ExecutionMetadata{source}
+		case []data_service.ExecutionMetadata:
+			sources = source
+		}
+		for _, source := range sources {
+			allowSource := allow && source.LogMode != "masked"
+			for index, value := range source.Parameters {
+				if bindingIsMasked(bindingLogPolicy(source, index), allowSource) {
+					secrets = append(secrets, logValueStrings(value)...)
+				}
+			}
+			visit(source.InheritedIntent, allowSource)
+		}
+	}
+	visit(inherited, allow)
+	return secrets
+}
+
 func projectedSQLMetadata(metadata data_service.ExecutionMetadata, allow bool) data_service.ExecutionMetadata {
 	original := metadata
 	// Safe projections never become raw values again on a later opt-in.
@@ -230,13 +229,7 @@ func projectedSQLMetadata(metadata data_service.ExecutionMetadata, allow bool) d
 	}
 	// Readback binds only an ID, but its inherited intent can mention sensitive
 	// write values. Reuse precisely the same policy resolution for those values.
-	if source, ok := logprivacy.ReadIntentSource(metadata.InheritedIntent).(data_service.ExecutionMetadata); ok {
-		for i, value := range source.Parameters {
-			if bindingIsMasked(bindingLogPolicy(source, i), allow && source.LogMode != "masked") {
-				secrets = append(secrets, logValueStrings(value)...)
-			}
-		}
-	}
+	secrets = append(secrets, inheritedIntentSecrets(metadata.InheritedIntent, allow)...)
 	intentSecrets := append([]string(nil), secrets...)
 	if targetID, ok := logprivacy.ReadIntentSource(metadata.IntentTargetID).(core.Value); ok {
 		intentSecrets = append(intentSecrets, logValueStrings(targetID)...)

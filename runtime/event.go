@@ -7,6 +7,7 @@ import (
 	"unicode/utf8"
 
 	"github.com/teaql/teaql-golang/core"
+	"github.com/teaql/teaql-golang/internal/logprivacy"
 )
 
 type RawAuditEventKind int
@@ -42,6 +43,7 @@ type RawAuditEvent struct {
 	Actor              string
 	Category           string
 	MutationGovernance *MutationGovernanceSnapshot
+	inheritedIntent    logprivacy.IntentSource
 }
 
 func Created(entity string, values core.Record) *RawAuditEvent {
@@ -461,6 +463,7 @@ func (e *RawAuditEvent) BuildSafeEvent(auditMaskFields []string, auditValueMaxLe
 		safeFields = append(safeFields, field)
 	}
 	intentValues := append([]string(nil), secrets...)
+	intentValues = append(intentValues, inheritedIntentSecrets(e.inheritedIntent, allow)...)
 	if e.TargetID != nil {
 		intentValues = append(intentValues, logValueStrings(*e.TargetID)...)
 	} else if id, ok := e.Values["id"]; ok {

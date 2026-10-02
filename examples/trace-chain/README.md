@@ -17,6 +17,9 @@ bash scripts/verify-examples.sh
 `go.work` resolves both the generated library and runtime to local source.
 The dedicated verifier runs the complete example twice against the same
 SQLite paths without deleting data and compares generated library hashes.
+It requires all eight generated tests to execute. It also runs four separate
+native SQLite batch regression tests twice, using fresh provider-test fixtures;
+those checks are not generated-graph or prepared-batch acceptance.
 By default it creates a temporary directory; set
 `TEAQL_TRACE_CHAIN_DATABASE_DIRECTORY` to retain databases at a chosen path.
 Only application-owned test code is authored here. Do not patch `lib/` or use
@@ -70,3 +73,20 @@ Go's relation route currently uses generated relation keys such as
 This local example does not prove all seven-language cases, native same-type
 prepared batches, every privacy/transport boundary, detached deletes or an
 immutable Registry consumer. It is not evidence about the public v0.2.9 artifact.
+
+## Native batch privacy regression
+
+The verifier also executes `provider/sqlite/batch_intent_integration_test.go`.
+Actual native `BatchMutation` requests run inside `Context.ExecuteGraphSave` and
+a real SQLite transaction. A root reason mentioning a sibling's private value
+must be safe in every expanded SQL log and committed application audit. Tests
+cover nested batches, an independent subsequent query, a duplicate-key failure,
+an empty authoritative readback, and an UPDATE whose sensitive old value is no
+longer a SQL binding. Business values and the caller's reason remain unchanged.
+Explicit debug logs still hide credentials, while the ordinary sink remains
+masked even when the separate sensitive sink is enabled.
+
+This is the SQL executor's sequential native batch path. Generated graph saves
+currently emit individual requests; the tests do not establish whole-graph
+sibling masking across those requests, prepared batching, or commit-only audit
+when callers bypass the graph-save boundary.
