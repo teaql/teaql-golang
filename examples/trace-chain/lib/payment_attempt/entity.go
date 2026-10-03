@@ -42,6 +42,10 @@ type PaymentAttempt struct {
 	loadedRelations map[string]bool
 }
 
+// PaymentFacet reads metadata of the selected relation; it never queries the database.
+func (e *PaymentAttempt) PaymentFacet(name string) (*core.SmartList[core.Record], bool) {
+	return e.base.RelationFacet("paymentEntity", name)
+}
 
 func NewPaymentAttempt() *PaymentAttempt {
 	temporaryID := -atomic.AddInt64(&teaqlTemporaryEntityID, 1)

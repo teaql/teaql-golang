@@ -9,6 +9,7 @@ Child entity: `order_item`
 | Capability | Generated API |
 | --- | --- |
 | Select | `SelectOrderItemListWith(order_item.NewOrderItemMinimalRequest())` |
+| Read selected relation Facet | `entity.OrderItemListFacet(name)` returns `(facet, loaded)`; no implicit query |
 
 Reverse relations are model-derived and never perform an implicit database query. Select the relation explicitly before expression access. Apply query methods before the executable purpose stage, then execute with exactly one trusted context.
 

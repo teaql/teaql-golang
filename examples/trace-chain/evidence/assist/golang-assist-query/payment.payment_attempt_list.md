@@ -9,6 +9,7 @@ Child entity: `payment_attempt`
 | Capability | Generated API |
 | --- | --- |
 | Select | `SelectPaymentAttemptListWith(payment_attempt.NewPaymentAttemptMinimalRequest())` |
+| Read selected relation Facet | `entity.PaymentAttemptListFacet(name)` returns `(facet, loaded)`; no implicit query |
 
 Reverse relations are model-derived and never perform an implicit database query. Select the relation explicitly before expression access. Apply query methods before the executable purpose stage, then execute with exactly one trusted context.
 

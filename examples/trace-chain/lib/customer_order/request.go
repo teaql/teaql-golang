@@ -567,7 +567,9 @@ func (r *CustomerOrderRequest) SelectPlatformWith(child interface {
 	NewRelationEntity() core.Entity
 }) *CustomerOrderRequest {
 	runtime.EnsureRelationProjection(r.Query, "platform_id")
-	r.Query.RelationQuery("platformEntity", child.GetQuery())
+	selection := core.NewQuerySelection(child.GetQuery())
+	if provider, ok := child.(interface{ GetQuerySelection() *core.QuerySelection }); ok { selection = provider.GetQuerySelection() }
+	r.Query.RelationQuerySelection("platformEntity", selection)
 	r.relationFactories["platformEntity"] = child.NewRelationEntity
 	return r
 }
@@ -636,7 +638,7 @@ func (r *CustomerOrderRequest) SelectOrderItemList() *CustomerOrderRequest {
 }
 
 func (r *CustomerOrderRequest) SelectOrderItemListWith(child *order_item.OrderItemRequest) *CustomerOrderRequest {
-	r.Query.RelationQuery("orderItemList", child.Query)
+	r.Query.RelationQuerySelection("orderItemList", child.GetQuerySelection())
 	return r
 }
 func (r *CustomerOrderRequest) SelectPaymentList() *CustomerOrderRequest {
@@ -644,7 +646,7 @@ func (r *CustomerOrderRequest) SelectPaymentList() *CustomerOrderRequest {
 }
 
 func (r *CustomerOrderRequest) SelectPaymentListWith(child *payment.PaymentRequest) *CustomerOrderRequest {
-	r.Query.RelationQuery("paymentList", child.Query)
+	r.Query.RelationQuerySelection("paymentList", child.GetQuerySelection())
 	return r
 }
 func (r *CustomerOrderRequest) SelectShipmentList() *CustomerOrderRequest {
@@ -652,7 +654,7 @@ func (r *CustomerOrderRequest) SelectShipmentList() *CustomerOrderRequest {
 }
 
 func (r *CustomerOrderRequest) SelectShipmentListWith(child *shipment.ShipmentRequest) *CustomerOrderRequest {
-	r.Query.RelationQuery("shipmentList", child.Query)
+	r.Query.RelationQuerySelection("shipmentList", child.GetQuerySelection())
 	return r
 }
 
@@ -812,8 +814,10 @@ func (e *ExecutableCustomerOrderRequest) ExecuteForPage(context *runtime.UserCon
 	if size == 0 {
 		return nil, fmt.Errorf("QUERY_INVALID_LIMIT: size must be positive")
 	}
-	query := r.Query.Clone()
+	query, facetPlan, err := runtime.CaptureQueryPlan(r.Query, r.queryOptions)
+	if err != nil { return nil, err }
 	query.Page(offset, size).Comment(r.commentText).Purpose(r.purposeText)
+	query = facetPlan.WithQueryDiagnostics(query)
 	authorized, err := context.PrepareEntityQuery(query)
 	if err != nil { return nil, err }
 	dsRaw := context.GetResource("dataService")
@@ -824,7 +828,7 @@ func (e *ExecutableCustomerOrderRequest) ExecuteForPage(context *runtime.UserCon
 	var rows []core.Record
 	var total uint64
 	if authorized.IDSetPagination != nil {
-		rows, err = service.FetchAll(context, authorized)
+		rows, err = service.FetchAllWithFacetPlan(context, authorized, facetPlan)
 		if err != nil { return nil, err }
 		if retainedCount, accuracy := context.IDSetCount(); accuracy == "EXACT" {
 			total = retainedCount
@@ -843,7 +847,7 @@ func (e *ExecutableCustomerOrderRequest) ExecuteForPage(context *runtime.UserCon
 		var ok bool
 		total, ok = countRows[0][countAlias].TryU64()
 		if !ok { return nil, fmt.Errorf("exact count did not return an unsigned integer") }
-		rows, err = service.FetchAll(context, authorized)
+		rows, err = service.FetchAllWithFacetPlan(context, authorized, facetPlan)
 		if err != nil { return nil, err }
 	}
 	results := make([]*CustomerOrder, 0, len(rows))
@@ -903,8 +907,10 @@ func (e *ExecutableCustomerOrderRequest) ExecuteForStream(context *runtime.UserC
 	if yield == nil {
 		return fmt.Errorf("stream consumer must not be nil")
 	}
-	query := r.Query.Clone()
+	query, facetPlan, err := runtime.CaptureQueryPlan(r.Query, r.queryOptions)
+	if err != nil { return err }
 	query.Comment(r.commentText).Purpose(r.purposeText)
+	query = facetPlan.WithQueryDiagnostics(query)
 	authorized, err := context.PrepareEntityQuery(query)
 	if err != nil { return err }
 	dsRaw := context.GetResource("dataService")
@@ -938,9 +944,8 @@ func (e *ExecutableCustomerOrderRequest) ExecuteRecords(context *runtime.UserCon
 func (e *ExecutableCustomerOrderRequest) executeRecords(context *runtime.UserContext, entityProjection bool) ([]core.Record, *core.SelectQuery, *runtime.FacetPlan, error) {
 	r := e.request
 	if _, err := core.NewQueryIntent(&r.commentText, &r.purposeText); err != nil { return nil, nil, nil, err }
-	facetPlan, err := runtime.CaptureFacetPlan(r.queryOptions)
+	query, facetPlan, err := runtime.CaptureQueryPlan(r.Query, r.queryOptions)
 	if err != nil { return nil, nil, nil, err }
-	query := r.Query.Clone()
 	query.Comment(r.commentText).Purpose(r.purposeText)
 	query = facetPlan.WithQueryDiagnostics(query)
 	prepare := context.PrepareQuery
@@ -958,7 +963,7 @@ func (e *ExecutableCustomerOrderRequest) executeRecords(context *runtime.UserCon
 		return nil, nil, nil, fmt.Errorf("dataService does not implement data_service.QueryExecutor")
 	}
 
-	rows, err := runtime.NewRuntimeDataService(context.Metadata, ds).FetchAll(context, authorized)
+	rows, err := runtime.NewRuntimeDataService(context.Metadata, ds).FetchAllWithFacetPlan(context, authorized, facetPlan)
 	if err != nil {
 		return nil, nil, nil, err
 	}

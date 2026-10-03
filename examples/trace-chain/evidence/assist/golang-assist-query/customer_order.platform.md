@@ -10,6 +10,7 @@ Type: `Platform`
 | --- | --- |
 | Select | `SelectPlatform()` |
 | Select nested relation | `SelectPlatformWith(Q.PlatformsMinimal())` |
+| Read selected relation Facet | `entity.PlatformFacet(name)` returns `(facet, loaded)`; no implicit query |
 | Filter identity | `WithPlatformIs(id)`, `WithPlatformIn(ids)` |
 | Filter nested request | `WithPlatformMatching(request)`, `WithoutPlatformMatching(request)` |
 | Order | `OrderByPlatformAsc()`, `OrderByPlatformDesc()` |

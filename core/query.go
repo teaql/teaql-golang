@@ -148,6 +148,14 @@ type Slice struct {
 type RelationLoad struct {
 	Name  string
 	Query *SelectQuery
+	// Selection is builder input only. Runtime capture resolves and removes it
+	// before policy/provider callbacks; it is not an external query option.
+	Selection *QuerySelection `json:"-"`
+}
+
+func (q *SelectQuery) RelationQuerySelection(name string, selection *QuerySelection) *SelectQuery {
+	q.Relations = append(q.Relations, &RelationLoad{Name: name, Selection: selection})
+	return q
 }
 
 func NewRelationLoad(name string) *RelationLoad {

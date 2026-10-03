@@ -70,9 +70,30 @@ func (s *RuntimeDataService) FetchAll(context stdcontext.Context, query *core.Se
 	return s.fetchAllWithIntent(context, query, nil)
 }
 
+// FetchAllWithFacetPlan consumes the same invocation plan captured before policy.
+func (s *RuntimeDataService) FetchAllWithFacetPlan(context stdcontext.Context, query *core.SelectQuery, plan *FacetPlan) ([]core.Record, error) {
+	return s.fetchAllWithIntent(context, query, nil, plan)
+}
+
 // Derived runtime work can retain its parent's diagnostic source without
 // installing it on Context or exposing it as a query option.
-func (s *RuntimeDataService) fetchAllWithIntent(context stdcontext.Context, query *core.SelectQuery, inherited *logprivacy.IntentSource) (rows []core.Record, err error) {
+func (s *RuntimeDataService) fetchAllWithIntent(context stdcontext.Context, query *core.SelectQuery, inherited *logprivacy.IntentSource, plans ...*FacetPlan) (rows []core.Record, err error) {
+	var plan *FacetPlan
+	if len(plans) > 0 {
+		plan = plans[0]
+	}
+	if query != nil {
+		if _, err := core.NewQueryIntent(query.CommentText, query.PurposeText); err != nil {
+			return nil, err
+		}
+		if plan == nil {
+			query, plan, err = CaptureQueryPlan(query, nil)
+			if err != nil {
+				return nil, err
+			}
+		}
+		query = plan.WithQueryDiagnostics(query)
+	}
 	request, err := data_service.NewQueryRequest(query)
 	if err != nil {
 		return nil, err
@@ -114,7 +135,7 @@ func (s *RuntimeDataService) fetchAllWithIntent(context stdcontext.Context, quer
 	if err != nil {
 		return nil, err
 	}
-	if err := s.enhanceRelations(context, rows, executionQuery, intent); err != nil {
+	if err := s.enhanceRelations(context, rows, executionQuery, plan, intent); err != nil {
 		return nil, err
 	}
 	if err := s.enhanceRelationAggregates(context, rows, executionQuery, intent); err != nil {
@@ -441,7 +462,7 @@ func inheritQueryIntent(metadata data_service.ExecutionMetadata, inherited logpr
 	return logprivacy.NewIntentSource(result)
 }
 
-func (s *RuntimeDataService) enhanceRelations(context stdcontext.Context, parents []core.Record, query *core.SelectQuery, intent ...logprivacy.IntentSource) error {
+func (s *RuntimeDataService) enhanceRelations(context stdcontext.Context, parents []core.Record, query *core.SelectQuery, plan *FacetPlan, intent ...logprivacy.IntentSource) error {
 	if len(parents) == 0 || len(query.Relations) == 0 {
 		return nil
 	}
@@ -450,6 +471,10 @@ func (s *RuntimeDataService) enhanceRelations(context stdcontext.Context, parent
 		return fmt.Errorf("unknown entity %s", query.Entity)
 	}
 	for _, load := range query.Relations {
+		var childPlan *FacetPlan
+		if plan != nil {
+			childPlan = plan.relations[load.Name]
+		}
 		userCtx, _ := UserContextFrom(context)
 		telemetry := RuntimeTelemetry(NoopRuntimeTelemetry{})
 		if userCtx != nil {
@@ -554,11 +579,28 @@ func (s *RuntimeDataService) enhanceRelations(context stdcontext.Context, parent
 		for _, child := range children {
 			delete(child, "__teaql_partition_rank")
 		}
-		if err := s.enhanceRelations(relationContext, children, childQuery, childIntent); err != nil {
+		if err := s.enhanceRelations(relationContext, children, childQuery, childPlan, childIntent); err != nil {
 			relationScope.Failure(RuntimeErrorType(err))
 			return err
 		}
 		attachRelationRows(parents, children, load.Name, relation)
+		if childPlan.HasFacets() {
+			for _, parent := range parents {
+				key, ok := parent[relation.LocKey]
+				if !ok || key.V == nil {
+					continue
+				}
+				perParent := childQuery.Clone()
+				perParent.PartitionBy = nil
+				perParent.AndFilter(core.ExprEq(relation.ForKey, key))
+				facets, err := executeCapturedFacets(relationContext, s, perParent, childPlan.facets, childIntent)
+				if err != nil {
+					relationScope.Failure(RuntimeErrorType(err))
+					return err
+				}
+				core.AttachRecordRelationFacets(parent, load.Name, facets)
+			}
+		}
 		relationScope.Success(map[string]RuntimeAttributeValue{"teaql.result.cardinality": len(children)})
 	}
 	return nil

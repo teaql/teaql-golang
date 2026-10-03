@@ -10,6 +10,7 @@ Type: `Payment`
 | --- | --- |
 | Select | `SelectPayment()` |
 | Select nested relation | `SelectPaymentWith(Q.PaymentsMinimal())` |
+| Read selected relation Facet | `entity.PaymentFacet(name)` returns `(facet, loaded)`; no implicit query |
 | Filter identity | `WithPaymentIs(id)`, `WithPaymentIn(ids)` |
 | Filter nested request | `WithPaymentMatching(request)`, `WithoutPaymentMatching(request)` |
 | Order | `OrderByPaymentAsc()`, `OrderByPaymentDesc()` |

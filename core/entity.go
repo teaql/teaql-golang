@@ -66,9 +66,10 @@ func (a *Audited[T]) GetComment() string {
 }
 
 type BaseEntityData struct {
-	Id      uint64
-	Version int64
-	Dynamic Record
+	Id             uint64
+	Version        int64
+	Dynamic        Record
+	RelationFacets RelationFacetResults
 }
 
 func NewBaseEntityData() *BaseEntityData {
@@ -177,6 +178,10 @@ func BaseEntityDataFromRecord(record Record) (*BaseEntityData, error) {
 	}
 
 	for k, v := range record {
+		if k == relationFacetsField {
+			b.RelationFacets, _ = v.V.(RelationFacetResults)
+			continue
+		}
 		if k != "id" && k != "version" {
 			b.Dynamic[k] = v
 		}

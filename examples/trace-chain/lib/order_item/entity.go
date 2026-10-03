@@ -42,6 +42,10 @@ type OrderItem struct {
 	loadedRelations map[string]bool
 }
 
+// CustomerOrderFacet reads metadata of the selected relation; it never queries the database.
+func (e *OrderItem) CustomerOrderFacet(name string) (*core.SmartList[core.Record], bool) {
+	return e.base.RelationFacet("customerOrderEntity", name)
+}
 
 func NewOrderItem() *OrderItem {
 	temporaryID := -atomic.AddInt64(&teaqlTemporaryEntityID, 1)

@@ -118,6 +118,25 @@ type facetExecutor struct {
 	calls          int
 }
 
+func TestRelationFacetCaptureRejectsCyclesAndDetachesBuilders(t *testing.T) {
+	root := core.NewSelectQuery("School")
+	child := core.NewSelectQuery("SchoolType")
+	selection := core.NewQuerySelection(child)
+	selection.QueryOptions.Facets = append(selection.QueryOptions.Facets,
+		core.NewFacetRequest("platforms", "platform", core.NewQuerySelection(core.NewSelectQuery("Platform")), false))
+	root.RelationQuerySelection("type", selection)
+	captured, plan, err := CaptureQueryPlan(root, nil)
+	assert.NoError(t, err)
+	selection.QueryOptions.Facets = nil
+	child.AndFilter(core.ExprEq("id", core.ValU64(0)))
+	assert.True(t, plan.relations["type"].HasFacets())
+	assert.Nil(t, captured.Relations[0].Selection)
+	assert.Nil(t, captured.Relations[0].Query.Filter)
+	child.RelationQuerySelection("cycle", core.NewQuerySelection(root))
+	_, _, err = CaptureQueryPlan(root, nil)
+	assert.ErrorContains(t, err, "cyclic relation selection")
+}
+
 func (f *facetExecutor) Capabilities() data_service.DataServiceCapabilities {
 	return data_service.DataServiceCapabilities{}
 }

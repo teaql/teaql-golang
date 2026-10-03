@@ -59,6 +59,10 @@ func (l *CustomerOrderList) Add(entity *customer_order.CustomerOrder) {
 func (l *CustomerOrderList) Items() []*customer_order.CustomerOrder {
 	return l.items
 }
+// CustomerOrderListFacet reads this parent's collection facet, not a global count.
+func (e *Platform) CustomerOrderListFacet(name string) (*core.SmartList[core.Record], bool) {
+	return e.base.RelationFacet("customerOrderList", name)
+}
 
 func NewPlatform() *Platform {
 	temporaryID := -atomic.AddInt64(&teaqlTemporaryEntityID, 1)

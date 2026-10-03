@@ -10,6 +10,7 @@ Type: `Customer Order`
 | --- | --- |
 | Select | `SelectCustomerOrder()` |
 | Select nested relation | `SelectCustomerOrderWith(Q.CustomerOrdersMinimal())` |
+| Read selected relation Facet | `entity.CustomerOrderFacet(name)` returns `(facet, loaded)`; no implicit query |
 | Filter identity | `WithCustomerOrderIs(id)`, `WithCustomerOrderIn(ids)` |
 | Filter nested request | `WithCustomerOrderMatching(request)`, `WithoutCustomerOrderMatching(request)` |
 | Order | `OrderByCustomerOrderAsc()`, `OrderByCustomerOrderDesc()` |

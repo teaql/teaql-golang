@@ -95,6 +95,24 @@ func (l *ShipmentList) Add(entity *shipment.Shipment) {
 func (l *ShipmentList) Items() []*shipment.Shipment {
 	return l.items
 }
+// PlatformFacet reads metadata of the selected relation; it never queries the database.
+func (e *CustomerOrder) PlatformFacet(name string) (*core.SmartList[core.Record], bool) {
+	return e.base.RelationFacet("platformEntity", name)
+}
+// OrderItemListFacet reads this parent's collection facet, not a global count.
+func (e *CustomerOrder) OrderItemListFacet(name string) (*core.SmartList[core.Record], bool) {
+	return e.base.RelationFacet("orderItemList", name)
+}
+
+// PaymentListFacet reads this parent's collection facet, not a global count.
+func (e *CustomerOrder) PaymentListFacet(name string) (*core.SmartList[core.Record], bool) {
+	return e.base.RelationFacet("paymentList", name)
+}
+
+// ShipmentListFacet reads this parent's collection facet, not a global count.
+func (e *CustomerOrder) ShipmentListFacet(name string) (*core.SmartList[core.Record], bool) {
+	return e.base.RelationFacet("shipmentList", name)
+}
 
 func NewCustomerOrder() *CustomerOrder {
 	temporaryID := -atomic.AddInt64(&teaqlTemporaryEntityID, 1)

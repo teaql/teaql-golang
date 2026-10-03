@@ -59,6 +59,14 @@ func (l *PaymentAttemptList) Add(entity *payment_attempt.PaymentAttempt) {
 func (l *PaymentAttemptList) Items() []*payment_attempt.PaymentAttempt {
 	return l.items
 }
+// CustomerOrderFacet reads metadata of the selected relation; it never queries the database.
+func (e *Payment) CustomerOrderFacet(name string) (*core.SmartList[core.Record], bool) {
+	return e.base.RelationFacet("customerOrderEntity", name)
+}
+// PaymentAttemptListFacet reads this parent's collection facet, not a global count.
+func (e *Payment) PaymentAttemptListFacet(name string) (*core.SmartList[core.Record], bool) {
+	return e.base.RelationFacet("paymentAttemptList", name)
+}
 
 func NewPayment() *Payment {
 	temporaryID := -atomic.AddInt64(&teaqlTemporaryEntityID, 1)

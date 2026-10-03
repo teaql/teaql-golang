@@ -30,14 +30,130 @@ func ExecuteFacets(
 
 // FacetPlan owns an invocation's selections. Capture before policy or provider
 // callbacks; never reread the caller's QueryOptions after row execution begins.
-type FacetPlan struct{ facets []capturedFacet }
+type FacetPlan struct {
+	facets    []capturedFacet
+	relations map[string]*FacetPlan
+}
 
 func CaptureFacetPlan(options *core.QueryOptions) (*FacetPlan, error) {
-	facets, err := captureFacets(options, make(map[*core.QueryOptions]bool))
-	if err != nil {
-		return nil, err
+	_, plan, err := CaptureQueryPlan(core.NewSelectQuery(""), options)
+	return plan, err
+}
+
+// CaptureQueryPlan owns all relation and Facet work before any callback. Keeping
+// this in runtime avoids generating a planner for each domain entity.
+func CaptureQueryPlan(query *core.SelectQuery, options *core.QueryOptions) (*core.SelectQuery, *FacetPlan, error) {
+	return captureQueryPlan(query, options, make(map[*core.SelectQuery]bool), make(map[*core.QueryOptions]bool))
+}
+
+func captureQueryPlan(query *core.SelectQuery, options *core.QueryOptions, queries map[*core.SelectQuery]bool,
+	optionsStack map[*core.QueryOptions]bool) (*core.SelectQuery, *FacetPlan, error) {
+	if query == nil {
+		return nil, nil, fmt.Errorf("selection requires a query")
 	}
-	return &FacetPlan{facets: facets}, nil
+	if queries[query] {
+		return nil, nil, fmt.Errorf("cyclic relation selection")
+	}
+	if options != nil && optionsStack[options] {
+		return nil, nil, fmt.Errorf("cyclic facet selection")
+	}
+	queries[query] = true
+	defer delete(queries, query)
+	if options != nil {
+		optionsStack[options] = true
+		defer delete(optionsStack, options)
+	}
+	// Relations are captured recursively with cycle checks, not through Clone.
+	shallow := *query
+	shallow.Relations = nil
+	captured := shallow.Clone()
+	plan := &FacetPlan{relations: make(map[string]*FacetPlan)}
+	for _, load := range query.Relations {
+		if load == nil {
+			return nil, nil, fmt.Errorf("nil relation selection")
+		}
+		if load.Query == nil && load.Selection == nil {
+			captured.Relations = append(captured.Relations, core.NewRelationLoad(load.Name))
+			continue
+		}
+		var childQuery *core.SelectQuery
+		var childPlan *FacetPlan
+		var err error
+		if load.Selection != nil {
+			childQuery, childPlan, err = captureSelection(load.Selection, queries, optionsStack)
+		} else {
+			childQuery, childPlan, err = captureQueryPlan(load.Query, nil, queries, optionsStack)
+		}
+		if err != nil {
+			return nil, nil, err
+		}
+		captured.RelationQuery(load.Name, childQuery)
+		plan.relations[load.Name] = childPlan
+	}
+	if options != nil {
+		for _, facet := range options.Facets {
+			if facet == nil || facet.Query == nil || facet.Query.Query == nil {
+				return nil, nil, fmt.Errorf("facet requires a nested query")
+			}
+			child, childPlan, err := captureSelection(facet.Query, queries, optionsStack)
+			if err != nil {
+				return nil, nil, err
+			}
+			plan.facets = append(plan.facets, capturedFacet{name: facet.FacetName, relation: facet.RelationName,
+				query: child, includeAll: facet.IncludeAllFacets, children: childPlan.facets, plan: childPlan})
+		}
+	}
+	return captured, plan, nil
+}
+
+func captureSelection(selection *core.QuerySelection, queries map[*core.SelectQuery]bool,
+	optionsStack map[*core.QueryOptions]bool) (*core.SelectQuery, *FacetPlan, error) {
+	if selection == nil || selection.Query == nil {
+		return nil, nil, fmt.Errorf("selection requires a query")
+	}
+	if queries[selection.Query] {
+		return nil, nil, fmt.Errorf("cyclic relation selection")
+	}
+	normalized := selectionQuery(selection)
+	if normalized != selection.Query {
+		queries[selection.Query] = true
+		defer delete(queries, selection.Query)
+	}
+	return captureQueryPlan(normalized, selection.QueryOptions, queries, optionsStack)
+}
+
+// Preserve QuerySelection's non-Facet metadata as well as generated selections.
+// The shallow shell avoids recursively cloning a cycle before capture rejects it.
+func selectionQuery(selection *core.QuerySelection) *core.SelectQuery {
+	if selection == nil || selection.Query == nil {
+		return nil
+	}
+	if len(selection.RelationSelections) == 0 && len(selection.ChildEnhancements) == 0 &&
+		(selection.QueryOptions == nil || (len(selection.QueryOptions.DynamicProperties) == 0 &&
+			len(selection.QueryOptions.RawProjections) == 0 && len(selection.QueryOptions.RelationAggregates) == 0 &&
+			len(selection.QueryOptions.ObjectGroupBys) == 0 && len(selection.QueryOptions.RawSqlSearchCriteria) == 0 &&
+			selection.QueryOptions.RawSql == nil && selection.QueryOptions.Comment == nil)) {
+		return selection.Query
+	}
+	shell := *selection.Query
+	shell.Relations = append([]*core.RelationLoad(nil), selection.Query.Relations...)
+	shell.DynamicProperties = append([]*core.RawSqlProjection(nil), selection.Query.DynamicProperties...)
+	shell.RawProjections = append([]*core.RawSqlProjection(nil), selection.Query.RawProjections...)
+	shell.RawSqlSearchCriteria = append([]string(nil), selection.Query.RawSqlSearchCriteria...)
+	shell.ObjectGroupBys = append([]*core.ObjectGroupBy(nil), selection.Query.ObjectGroupBys...)
+	shell.ChildEnhancements = append([]*core.SelectQuery(nil), selection.Query.ChildEnhancements...)
+	for _, relation := range selection.RelationSelections {
+		if relation == nil {
+			continue
+		}
+		shell.RelationQuerySelection(relation.Name, &core.QuerySelection{Query: relation.Query,
+			QueryOptions: relation.QueryOptions, RelationSelections: relation.RelationSelections,
+			ChildEnhancements: relation.ChildEnhancements})
+	}
+	if selection.QueryOptions != nil {
+		core.ApplyRuntimeMetadata(&shell, selection.QueryOptions, selection.ChildEnhancements)
+	}
+	return &shell
 }
 
 func (p *FacetPlan) HasFacets() bool { return p != nil && len(p.facets) > 0 }
@@ -48,15 +164,21 @@ func (*FacetPlan) GoString() string  { return "<captured facet plan>" }
 // privacy scope without scheduling those queries or storing anything in Context.
 func (p *FacetPlan) WithQueryDiagnostics(query *core.SelectQuery) *core.SelectQuery {
 	var queries []*core.SelectQuery
-	var visit func([]capturedFacet)
-	visit = func(facets []capturedFacet) {
-		for _, facet := range facets {
+	var visit func(*FacetPlan)
+	visit = func(plan *FacetPlan) {
+		if plan == nil {
+			return
+		}
+		for _, facet := range plan.facets {
 			queries = append(queries, facet.query)
-			visit(facet.children)
+			visit(facet.plan)
+		}
+		for _, child := range plan.relations {
+			visit(child)
 		}
 	}
 	if p != nil {
-		visit(p.facets)
+		visit(p)
 	}
 	return query.WithDiagnosticQueries(queries...)
 }
@@ -78,30 +200,15 @@ type capturedFacet struct {
 	query          *core.SelectQuery
 	includeAll     bool
 	children       []capturedFacet
+	plan           *FacetPlan
 }
 
 func captureFacets(options *core.QueryOptions, active map[*core.QueryOptions]bool) ([]capturedFacet, error) {
-	if options == nil {
-		return nil, nil
+	_, plan, err := captureQueryPlan(core.NewSelectQuery(""), options, make(map[*core.SelectQuery]bool), active)
+	if err != nil {
+		return nil, err
 	}
-	if active[options] {
-		return nil, fmt.Errorf("cyclic facet selection")
-	}
-	active[options] = true
-	defer delete(active, options)
-	var result []capturedFacet
-	for _, facet := range options.Facets {
-		if facet == nil || facet.Query == nil || facet.Query.Query == nil {
-			return nil, fmt.Errorf("facet requires a nested query")
-		}
-		children, err := captureFacets(facet.Query.QueryOptions, active)
-		if err != nil {
-			return nil, err
-		}
-		result = append(result, capturedFacet{facet.FacetName, facet.RelationName,
-			facet.Query.IntoQuery().Clone(), facet.IncludeAllFacets, children})
-	}
-	return result, nil
+	return plan.facets, nil
 }
 
 func executeCapturedFacets(context stdcontext.Context, service *RuntimeDataService, outer *core.SelectQuery,
@@ -140,6 +247,10 @@ func executeCapturedFacets(context stdcontext.Context, service *RuntimeDataServi
 				}
 			}
 		}
+		if !facet.includeAll && len(membershipIDs) == 0 {
+			results[facet.name] = core.NewSmartList(make([]core.Record, 0))
+			continue
+		}
 
 		nested := facet.query.Clone()
 		nested.CommentText, nested.PurposeText = outer.CommentText, outer.PurposeText
@@ -165,7 +276,7 @@ func executeCapturedFacets(context stdcontext.Context, service *RuntimeDataServi
 				return nil, err
 			}
 		}
-		facetRows, err := service.fetchAllWithIntent(context, nested, &intent)
+		facetRows, err := service.fetchAllWithIntent(context, nested, &intent, facet.plan)
 		if err != nil {
 			return nil, err
 		}
