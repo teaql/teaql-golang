@@ -141,7 +141,8 @@ The generated example loads a complete root with narrow forward/reverse
 relations and performs one optimistic audited update. Four narrow cases prove
 real Q/E identity, request-owned SQL paths and fail-closed mutation before
 transaction creation. Scalar streaming does not hydrate selected relation
-graphs; full relation-stream and cancellation acceptance remain separate gates.
+graphs; full relation-stream acceptance remains a separate gate. Scalar
+cancellation and concurrent cursor ownership are verified below.
 
 ## Paged graphs and COUNT privacy
 
@@ -162,3 +163,23 @@ COUNT source (separate request contexts, shared executor), and the next independ
 request. Diagnostic provenance is local and opaque, never a wire query option.
 This is not complete graph-stream, arbitrary mutable-composition, or artifact
 acceptance.
+
+## Concurrent scalar streams
+
+The stream scenario creates twelve items using generated graph mutation, then
+runs two generated Q streams on the same Context in real goroutines. Both stop
+inside their first callback until the test observes two SQLite connections in
+use. After release, E verifies six correct rows per stream; both cursors close
+and each terminal SQL fact retains its own masked intent and canonical path.
+
+Entities from the same chunk and from different streams own separate mutation
+ledgers. Editing two returned entities and saving one leaves the other pending
+and version one in storage. Saving the second and reloading through Q/E confirms
+both reach version two. A one-row-chunk consumer cancellation returns the exact
+consumer error, releases the cursor and emits one masked cancelled SQL fact.
+Provider row counts measure delivered chunks, not partially consumed typed rows.
+
+Native guards reject relation loads, relation aggregates, object groups, child
+enhancements and nil consumers before SQL. Streaming is synchronous callback
+consumption in Go, not a deferred enumerable. This does not add graph streaming
+or impose the materialized-list ceiling on native streaming.

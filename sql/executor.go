@@ -417,7 +417,10 @@ func (e *SqlDataServiceExecutor) QueryStream(context stdcontext.Context, request
 	if chunkSize <= 0 {
 		return fmt.Errorf("chunk size must be positive")
 	}
-	if len(request.Query.Relations) != 0 || len(request.Query.ChildEnhancements) != 0 || len(request.Query.ObjectGroupBys) != 0 {
+	if yield == nil {
+		return fmt.Errorf("stream consumer must not be nil")
+	}
+	if len(request.Query.Relations) != 0 || len(request.Query.RelationAggregates) != 0 || len(request.Query.ChildEnhancements) != 0 || len(request.Query.ObjectGroupBys) != 0 {
 		return fmt.Errorf("streaming relation or aggregate enhancement is not supported; stream a root query or use ExecuteForList")
 	}
 	transport, ok := e.Transport.(SqlStreamingTransport)
