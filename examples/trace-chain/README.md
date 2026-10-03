@@ -17,8 +17,9 @@ bash scripts/verify-examples.sh
 `go.work` resolves both the generated library and runtime to local source.
 The dedicated verifier runs the complete example twice against the same
 SQLite paths without deleting data and compares generated library hashes.
-It requires all thirteen generated tests to execute, including the named shared
-readonly relation ownership and entity-projection tests. It also runs fourteen separate native SQLite
+It requires all fourteen generated tests to execute, including the named shared
+readonly relation ownership, entity-projection and paged-graph tests. It also runs
+six query-provenance regressions and fourteen separate native SQLite
 batch and transaction regression tests twice, using fresh provider-test fixtures;
 those checks are not generated-graph or prepared-batch acceptance.
 By default it creates a temporary directory; set
@@ -48,7 +49,7 @@ its source for API discovery; current object/field Assist is retained under
 | Default relation projection | Selecting a forward relation preserves all root fields; narrow forward/reverse children keep their identity and version, and one root update retains its audited optimistic version |
 | Narrow entity projection | List, minimal list, page and scalar stream retain ID/version without widening ordinary fields; incomplete entities still fail before transaction creation, and page count remains a count projection |
 
-Allocation is part of the six-mutation test; there are thirteen test functions.
+Allocation is part of the six-mutation test; there are fourteen test functions.
 An empty authoritative readback is a
 successful SQL SELECT returning zero rows but a failed business save. It must
 not rewrite the preceding UPDATE's successful execution outcome.
@@ -141,3 +142,23 @@ relations and performs one optimistic audited update. Four narrow cases prove
 real Q/E identity, request-owned SQL paths and fail-closed mutation before
 transaction creation. Scalar streaming does not hydrate selected relation
 graphs; full relation-stream and cancellation acceptance remain separate gates.
+
+## Paged graphs and COUNT privacy
+
+The example seeds three roots with one masked-name item each through generated
+Mutation APIs. A bounded Q page (offset 1, size 2) reports total 3; E verifies the
+selected children and owner IDs. Its actual three SELECTs are COUNT, root page
+and one batched child query. Removed/future child bindings remain private in all
+safe SQL intent fields and text output; ordinary request intent remains visible.
+No extra SQL runs to classify diagnostics.
+
+Both returned graphs are edited. Saving the first persists only its root and
+child, with two committed audits; generated Q/E confirms the second graph is
+still version 1. Saving the second then persists its own values/version/reason.
+The native companion tests cover four removed-child shapes, a real SQL failure,
+debug opt-in (credentials still hidden), logs disabled, count-stream success/
+cancellation/failure diagnostics, eight concurrent requests sharing a captured
+COUNT source (separate request contexts, shared executor), and the next independent
+request. Diagnostic provenance is local and opaque, never a wire query option.
+This is not complete graph-stream, arbitrary mutable-composition, or artifact
+acceptance.

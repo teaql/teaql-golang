@@ -115,6 +115,10 @@ func (e *SqlDataServiceExecutor) Query(context stdcontext.Context, request *ds.Q
 	if err != nil {
 		return nil, &SqlExecutorError{CompileError: err}
 	}
+	inherited, err := e.queryIntentSource(request, compiled)
+	if err != nil {
+		return nil, &SqlExecutorError{CompileError: err}
+	}
 
 	start := time.Now()
 	rows, err := e.Transport.FetchAllSql(context, compiled)
@@ -137,7 +141,7 @@ func (e *SqlDataServiceExecutor) Query(context stdcontext.Context, request *ds.Q
 		ResultCount:          &count,
 		Comment:              request.Comment,
 		Purpose:              request.Purpose,
-		InheritedIntent:      request.InheritedIntent,
+		InheritedIntent:      inherited,
 		BackendRequestId:     nil,
 		DebugQuery:           &debugQuery,
 	}
@@ -431,6 +435,10 @@ func (e *SqlDataServiceExecutor) QueryStream(context stdcontext.Context, request
 	if err != nil {
 		return err
 	}
+	inherited, err := e.queryIntentSource(request, compiled)
+	if err != nil {
+		return err
+	}
 	startedAt := time.Now()
 	delivered := 0
 	consumerStopped := false
@@ -450,6 +458,7 @@ func (e *SqlDataServiceExecutor) QueryStream(context stdcontext.Context, request
 			ParameterLogPolicies: append([]string(nil), compiled.ParameterLogPolicies...), GeneratedSQL: compiled.GeneratedSQL,
 			StartedAt: startedAt, EndedAt: time.Now(), ResultCount: &delivered,
 			Comment: request.Comment, Purpose: request.Purpose,
+			InheritedIntent: inherited,
 		}
 		ds.ApplyQuerySQLTrace(&metadata, request)
 		if recorder, ok := mutationaudit.Owner(context).(interface{ RecordExecutionMetadata(ds.ExecutionMetadata) }); ok {

@@ -423,6 +423,9 @@ func inheritQueryIntent(metadata data_service.ExecutionMetadata, inherited logpr
 			result.ParameterLogPolicies = append(result.ParameterLogPolicies, bindingLogPolicy(source, i))
 		}
 	}
+	// Keep the full root/descendant source, not only the immediate SELECT's
+	// bindings. A sibling's secret may be quoted in every inherited comment.
+	result.InheritedIntent = metadata.InheritedIntent
 	return logprivacy.NewIntentSource(result)
 }
 

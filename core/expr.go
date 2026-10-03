@@ -72,6 +72,28 @@ type Expr struct {
 	Parts []*Expr
 }
 
+// Clone captures mutable expression values and nested queries for execution.
+// Descriptor references are metadata, not request-owned mutable state.
+func (e *Expr) Clone() *Expr {
+	if e == nil {
+		return nil
+	}
+	copy := *e
+	copy.Value = CloneValue(e.Value)
+	copy.Left, copy.Right = e.Left.Clone(), e.Right.Clone()
+	copy.Lower, copy.Upper = e.Lower.Clone(), e.Upper.Clone()
+	copy.Query = e.Query.Clone()
+	copy.Args = append([]*Expr(nil), e.Args...)
+	for i, arg := range e.Args {
+		copy.Args[i] = arg.Clone()
+	}
+	copy.Parts = append([]*Expr(nil), e.Parts...)
+	for i, part := range e.Parts {
+		copy.Parts[i] = part.Clone()
+	}
+	return &copy
+}
+
 func ExprColumnNode(name string) *Expr {
 	return &Expr{Type: ExprTypeColumn, Column: name}
 }

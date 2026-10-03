@@ -25,13 +25,23 @@ for iteration in 1 2; do
     echo "FAIL: all fourteen native batch/transaction regression tests must execute" >&2
     exit 1
   fi
+  (cd "$repo" && go test ./provider/sqlite -run '^TestQuery(Count|DescendantPrivacy)' -count=1 -v -timeout 60s) |
+    tee "$verification/query-origin-$iteration.log"
+  if [[ "$(rg -c '^--- PASS: TestQuery(Count|DescendantPrivacy)' "$verification/query-origin-$iteration.log")" != 6 ]]; then
+    echo "FAIL: all six query provenance regressions must execute" >&2
+    exit 1
+  fi
 done
 go test ./... -count=1 -v -timeout 120s | tee "$verification/generated-1.log"
 # Same paths and databases; no deletion or schema reset between executions.
 go test ./... -count=1 -v -timeout 120s | tee "$verification/generated-2.log"
 for iteration in 1 2; do
-  if [[ "$(rg -c '^--- PASS: TestGenerated' "$verification/generated-$iteration.log")" != 13 ]]; then
-    echo "FAIL: all thirteen generated graph scenarios must execute" >&2
+  if [[ "$(rg -c '^--- PASS: TestGenerated' "$verification/generated-$iteration.log")" != 14 ]]; then
+    echo "FAIL: all fourteen generated graph scenarios must execute" >&2
+    exit 1
+  fi
+  if ! rg -q '^--- PASS: TestGeneratedPageCountPrivacyAndIndependentGraphSaves ' "$verification/generated-$iteration.log"; then
+    echo "FAIL: generated page/count privacy and independent saves must execute" >&2
     exit 1
   fi
   if ! rg -q '^--- PASS: TestGeneratedSharedReadonlyReferencesKeepIndependentMutationOwnership ' "$verification/generated-$iteration.log"; then

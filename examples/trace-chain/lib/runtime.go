@@ -104,7 +104,7 @@ func Module() *runtime.RuntimeModule {
 		descriptor.Property(core.NewPropertyDescriptor("version", core.TypeI64).ColumnName("version").NotNull().Version())
 		descriptor.Property(core.NewPropertyDescriptor("customer_order_id", core.TypeU64).ColumnName("customer_order").NotNull())
 		descriptor.Relation(core.NewRelationDescriptor("customerOrderEntity", "Customer Order").LocalKey("customer_order_id").ForeignKey("id"))
-		descriptor.AuditMaskFields([]string{})
+		descriptor.AuditMaskFields([]string{"name"})
 		for _, property := range descriptor.Properties { property.LogPolicy = "plain" }
 		module.Entity(descriptor)
 	}
@@ -337,7 +337,7 @@ func ModuleWithBehaviors() *runtime.RuntimeModule {
 		descriptor.Property(core.NewPropertyDescriptor("version", core.TypeI64).ColumnName("version").NotNull().Version())
 		descriptor.Property(core.NewPropertyDescriptor("customer_order_id", core.TypeU64).ColumnName("customer_order").NotNull())
 		descriptor.Relation(core.NewRelationDescriptor("customerOrderEntity", "Customer Order").LocalKey("customer_order_id").ForeignKey("id"))
-		descriptor.AuditMaskFields([]string{})
+		descriptor.AuditMaskFields([]string{"name"})
 		for _, property := range descriptor.Properties { property.LogPolicy = "plain" }
 		module.EntityWithBehavior(
 			descriptor,

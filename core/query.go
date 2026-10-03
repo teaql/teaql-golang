@@ -3,6 +3,8 @@ package core
 import (
 	"fmt"
 	"strings"
+
+	"github.com/teaql/teaql-golang/internal/logprivacy"
 )
 
 type SortDirection int
@@ -231,6 +233,7 @@ func DefaultStreamConfig() *StreamConfig {
 }
 
 type SelectQuery struct {
+	diagnosticOrigin     logprivacy.IntentSource
 	Entity               string
 	Projection           []string
 	ExprProjection       []*NamedExpr
@@ -429,24 +432,65 @@ func (q *SelectQuery) CountField(field, alias string) *SelectQuery {
 	return q.Aggregate(AggCountField(field, alias))
 }
 
-// Clone returns an execution-independent query snapshot. Expression nodes are
-// immutable; all mutable collections and nested relation queries are copied.
+// Clone returns an execution-independent query snapshot, including expressions,
+// mutable values and nested relation queries.
 func (q *SelectQuery) Clone() *SelectQuery {
 	if q == nil {
 		return nil
 	}
 	clone := *q
 	clone.Projection = append([]string(nil), q.Projection...)
-	clone.ExprProjection = append([]*NamedExpr(nil), q.ExprProjection...)
-	clone.OrderBy = append([]*OrderBy(nil), q.OrderBy...)
+	clone.Filter, clone.Having = q.Filter.Clone(), q.Having.Clone()
+	clone.ExprProjection = make([]*NamedExpr, 0, len(q.ExprProjection))
+	for _, projection := range q.ExprProjection {
+		if projection == nil {
+			clone.ExprProjection = append(clone.ExprProjection, nil)
+			continue
+		}
+		copied := *projection
+		copied.Expr = projection.Expr.Clone()
+		clone.ExprProjection = append(clone.ExprProjection, &copied)
+	}
+	clone.OrderBy = make([]*OrderBy, 0, len(q.OrderBy))
+	for _, order := range q.OrderBy {
+		if order == nil {
+			clone.OrderBy = append(clone.OrderBy, nil)
+			continue
+		}
+		copied := *order
+		copied.Expr = order.Expr.Clone()
+		clone.OrderBy = append(clone.OrderBy, &copied)
+	}
 	clone.Aggregates = append([]*Aggregate(nil), q.Aggregates...)
 	clone.GroupBy = append([]string(nil), q.GroupBy...)
 	clone.TraceChain = append([]*TraceNode(nil), q.TraceChain...)
 	clone.RawSqlSearchCriteria = append([]string(nil), q.RawSqlSearchCriteria...)
 	clone.DynamicProperties = append([]*RawSqlProjection(nil), q.DynamicProperties...)
 	clone.RawProjections = append([]*RawSqlProjection(nil), q.RawProjections...)
-	clone.ObjectGroupBys = append([]*ObjectGroupBy(nil), q.ObjectGroupBys...)
-	clone.ChildEnhancements = append([]*SelectQuery(nil), q.ChildEnhancements...)
+	clone.ObjectGroupBys = make([]*ObjectGroupBy, 0, len(q.ObjectGroupBys))
+	for _, group := range q.ObjectGroupBys {
+		if group == nil {
+			clone.ObjectGroupBys = append(clone.ObjectGroupBys, nil)
+			continue
+		}
+		copied := *group
+		copied.Query = group.Query.Clone()
+		clone.ObjectGroupBys = append(clone.ObjectGroupBys, &copied)
+	}
+	clone.ChildEnhancements = make([]*SelectQuery, 0, len(q.ChildEnhancements))
+	for _, child := range q.ChildEnhancements {
+		clone.ChildEnhancements = append(clone.ChildEnhancements, child.Clone())
+	}
+	clone.RelationAggregates = make([]*RelationAggregate, 0, len(q.RelationAggregates))
+	for _, aggregate := range q.RelationAggregates {
+		if aggregate == nil {
+			clone.RelationAggregates = append(clone.RelationAggregates, nil)
+			continue
+		}
+		copied := *aggregate
+		copied.Query = aggregate.Query.Clone()
+		clone.RelationAggregates = append(clone.RelationAggregates, &copied)
+	}
 	if q.Slice != nil {
 		copied := *q.Slice
 		clone.Slice = &copied
@@ -466,6 +510,9 @@ func (q *SelectQuery) Clone() *SelectQuery {
 // row-shaping state with a single framework-owned count aggregation.
 func (q *SelectQuery) ForExactCount(alias string) *SelectQuery {
 	count := q.Clone()
+	if logprivacy.ReadIntentSource(count.diagnosticOrigin) == nil {
+		count.diagnosticOrigin = logprivacy.NewIntentSource(q.Clone())
+	}
 	count.Projection = nil
 	count.ExprProjection = nil
 	count.OrderBy = nil
@@ -474,12 +521,17 @@ func (q *SelectQuery) ForExactCount(alias string) *SelectQuery {
 	count.Aggregates = []*Aggregate{AggCountField("id", alias)}
 	count.GroupBy = nil
 	count.Relations = nil
+	count.RelationAggregates = nil
 	count.DynamicProperties = nil
 	count.RawProjections = nil
 	count.ObjectGroupBys = nil
 	count.ChildEnhancements = nil
 	return count
 }
+
+// DiagnosticOrigin is an opaque local-only source for runtime SQL privacy.
+// It is not executable work, a public query option, or wire metadata.
+func (q *SelectQuery) DiagnosticOrigin() logprivacy.IntentSource { return q.diagnosticOrigin }
 
 func (q *SelectQuery) Sum(field, alias string) *SelectQuery {
 	return q.Aggregate(AggSumAlias(field, alias))
