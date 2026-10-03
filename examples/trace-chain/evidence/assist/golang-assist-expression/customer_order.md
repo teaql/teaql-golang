@@ -7,6 +7,13 @@ The generated Expression facade preserves Value, loaded null, and NotLoaded.
 `TeaQLNotLoadedError` for the third. `OrElse` is null-only and never hides
 NotLoaded.
 
+A selected forward relation expression also supports `Eval()`, returning
+`(core.Record, present)` and preserving the same NotLoaded guard. If a nested
+request selected an explicitly named related aggregate, read that alias from
+the returned record and use the runtime Value conversion (e.g. `TryU64()` for a
+count). Do not treat an absent alias as zero. Discover the aggregate selector
+through the reverse-relation field Query Assist.
+
 ```go
 package assist_expression
 

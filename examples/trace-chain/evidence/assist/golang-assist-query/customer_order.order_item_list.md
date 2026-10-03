@@ -10,6 +10,9 @@ Child entity: `order_item`
 | --- | --- |
 | Select | `SelectOrderItemListWith(order_item.NewOrderItemMinimalRequest())` |
 | Read selected relation Facet | `entity.OrderItemListFacet(name)` returns `(facet, loaded)`; no implicit query |
+| Related count | `CountOrderItemsAs(alias)` |
+| Filtered related count | `CountOrderItemsWith(alias, childRequest)` |
+| Read related count | `entity.Base().DynamicU64(alias)` returns `(value, present)` |
 
 Reverse relations are model-derived and never perform an implicit database query. Select the relation explicitly before expression access. Apply query methods before the executable purpose stage, then execute with exactly one trusted context.
 

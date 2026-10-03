@@ -10,6 +10,9 @@ Child entity: `payment_attempt`
 | --- | --- |
 | Select | `SelectPaymentAttemptListWith(payment_attempt.NewPaymentAttemptMinimalRequest())` |
 | Read selected relation Facet | `entity.PaymentAttemptListFacet(name)` returns `(facet, loaded)`; no implicit query |
+| Related count | `CountPaymentAttemptsAs(alias)` |
+| Filtered related count | `CountPaymentAttemptsWith(alias, childRequest)` |
+| Read related count | `entity.Base().DynamicU64(alias)` returns `(value, present)` |
 
 Reverse relations are model-derived and never perform an implicit database query. Select the relation explicitly before expression access. Apply query methods before the executable purpose stage, then execute with exactly one trusted context.
 

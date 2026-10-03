@@ -35,7 +35,7 @@ func (t *relationLogTransport) ExecuteSql(ctx context.Context, q *tsql.CompiledQ
 
 func TestDerivedRelationMasking(t *testing.T) {
 	for _, wrapper := range []bool{false, true} {
-		for _, shape := range []string{"batch", "probe", "window", "aggregate", "nested"} {
+		for _, shape := range []string{"batch", "probe", "window", "aggregate", "nested", "nested-aggregate"} {
 			for _, debug := range []bool{false, true} {
 				for _, failure := range []bool{false, true} {
 					t.Run(fmt.Sprintf("runtime=%v/%s/debug=%v/failure=%v", wrapper, shape, debug, failure), func(t *testing.T) {
@@ -103,7 +103,7 @@ func TestDerivedRelationMasking(t *testing.T) {
 						}
 						if failure {
 							transport.failTable = "order_data"
-							if shape == "nested" {
+							if shape == "nested" || shape == "nested-aggregate" {
 								transport.failTable = "line_data"
 							}
 						}
@@ -118,6 +118,9 @@ func TestDerivedRelationMasking(t *testing.T) {
 							child.Limit(1).TopNProbeParentThreshold(0)
 						case "nested":
 							child.WithFilter(core.ExprEq("name", core.ValText("Lakeside"))).RelationQuery("lines", core.NewSelectQuery("Line").Project("id").Limit(2))
+						case "nested-aggregate":
+							child.WithFilter(core.ExprEq("name", core.ValText("Lakeside")))
+							child.RelationAggregates = []*core.RelationAggregate{core.NewRelationAggregate("lines", "line_count", core.NewSelectQuery("Line"), true)}
 						}
 						if shape == "aggregate" {
 							query.RelationAggregates = append(query.RelationAggregates, core.NewRelationAggregate("orders", "count", core.NewSelectQuery("Order"), true))
@@ -151,16 +154,26 @@ func TestDerivedRelationMasking(t *testing.T) {
 										t.Fatal("wrong nested graph")
 									}
 								}
+								if shape == "nested-aggregate" && fmt.Sprint(children[0]["line_count"].V) != "1" {
+									t.Fatal("nested aggregate missing or wrong")
+								}
 							}
 						}
 						expected := 2
-						if shape == "nested" {
+						if shape == "nested" || shape == "nested-aggregate" {
 							expected = 3
 						}
 						if len(capture.entries) != expected {
 							t.Fatalf("log count %d", len(capture.entries))
 						}
 						entry := capture.entries[expected-1]
+						if shape == "nested-aggregate" {
+							path := entry.TraceChain
+							if len(path) != 6 || path[0].Name != "Customer" || path[1].Name != "Customer" ||
+								path[2].Name != "orders" || path[3].Name != "lines" || path[4].Kind != "provider" || path[5].Name != "select" {
+								t.Fatalf("nested aggregate success/failure lost ancestry: %+v", path)
+							}
+						}
 						outcome := "success"
 						if failure {
 							outcome = "failure"
@@ -183,7 +196,7 @@ func TestDerivedRelationMasking(t *testing.T) {
 						if !debug && strings.Contains(output.String(), "Riverside") {
 							t.Fatal("default output leaked")
 						}
-						if !debug && shape == "nested" && strings.Contains(*entry.Comment, "Lakeside") {
+						if !debug && (shape == "nested" || shape == "nested-aggregate") && strings.Contains(*entry.Comment, "Lakeside") {
 							t.Fatal("intermediate source lost")
 						}
 						if len(entry.Parameters) != len(transport.reads[expected-1].Params) {

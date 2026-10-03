@@ -17,7 +17,7 @@ bash scripts/verify-examples.sh
 `go.work` resolves both the generated library and runtime to local source.
 The dedicated verifier runs the complete example twice against the same
 SQLite paths without deleting data and compares generated library hashes.
-It requires all twenty-two generated tests to execute, including the named shared
+It requires all twenty-three generated tests to execute, including the named shared
 readonly relation ownership, entity-projection and paged-graph tests. It also runs
 six query-provenance regressions and fourteen separate native SQLite
 batch and transaction regression tests twice, using fresh provider-test fixtures;
@@ -225,7 +225,7 @@ explicitly passes it through owned children, and refreshes loaded values only
 after commit. The runtime owns copying and provider-side policy classification;
 neither serialized requests nor shared Context carry a mutable graph snapshot.
 Existing libraries need regeneration to supply this provenance. The mandatory
-verifier now executes twenty-two generated scenarios twice without cleaning their
+verifier now executes twenty-three generated scenarios twice without cleaning their
 SQLite databases.
 
 The unchanged-child case loads a parent/item graph and changes only the parent.
@@ -233,3 +233,12 @@ Its reason mentions the child's alphabetic private name. Exactly one write,
 one authoritative readback and one committed audit occur, with safe intent and
 no child write. Q/E verifies the child's name and optimistic version remain
 unchanged; an independent query does not inherit the graph's privacy scope.
+
+The dynamic relation-count case compares a root `CountOrderItemsWith(...)` with
+the same count inside `SelectCustomerOrderWith(...)`. Both return the filtered
+count through generated Q and loaded E access, including with SQL logging off.
+With logging on, actual SQL retains the initiating root, ordinary relation and
+metadata-backed aggregate edge. A numeric grouping adds no fabricated edge;
+metric aliases are not relations. Provider call deltas, not missing log events,
+verify execution when logging is off. Native SQLite regressions additionally
+cover nested aggregation failures and both safe/debug sinks.

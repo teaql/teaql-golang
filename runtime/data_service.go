@@ -583,6 +583,10 @@ func (s *RuntimeDataService) enhanceRelations(context stdcontext.Context, parent
 			relationScope.Failure(RuntimeErrorType(err))
 			return err
 		}
+		if err := s.enhanceRelationAggregates(relationContext, children, childQuery, childIntent); err != nil {
+			relationScope.Failure(RuntimeErrorType(err))
+			return err
+		}
 		attachRelationRows(parents, children, load.Name, relation)
 		if childPlan.HasFacets() {
 			for _, parent := range parents {

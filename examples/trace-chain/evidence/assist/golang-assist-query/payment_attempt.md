@@ -32,6 +32,12 @@ func QueryExample(context *runtime.UserContext, id uint64) (*core.SmartList[*pay
 ```
 
 ### Your Task
+For an explicit count projection, use `CountAs(alias)` with the field-specific
+`GroupBy...()` selector, then `Comment(...).Purpose(...).ExecuteForRows(context)`.
+This returns a SmartList of records rather than pretending aggregate rows are
+fully loaded entities. Convert a count Value with `TryU64()` and check presence.
+For related counts, use the reverse-relation field Assist.
+
 Please implement the real query logic for `Payment Attempt` based on my specific business needs.
 
 Allow-list filters from the generated field methods above. For reverse relations, use only the
