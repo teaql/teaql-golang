@@ -2,6 +2,7 @@ package runtime
 
 import (
 	"errors"
+	"fmt"
 	"testing"
 
 	"github.com/teaql/teaql-golang/core"
@@ -98,20 +99,44 @@ func TestGraphCommittedAuditFailureDoesNotRollbackOrSkipCleanup(t *testing.T) {
 }
 
 func TestGraphSaveRejectsMissingRootIntentBeforeCallbacksAndProvider(t *testing.T) {
-	probe := &graphTransactionProbe{}
-	ctx := NewUserContext()
-	ctx.InsertResource("dataService", probe)
-	called := false
-	err := ctx.ExecutePreparedGraphSave(core.MutationIntent{}, func() (*MutationPlan, error) {
-		called = true
-		return nil, nil
-	}, func() error { called = true; return nil })
-	if err == nil || called || probe.begins != 0 {
-		t.Fatalf("error=%v callbacks=%t begins=%d", err, called, probe.begins)
-	}
-	err = ctx.ExecuteGraphSave(core.MutationIntent{}, func() error { called = true; return nil })
-	if err == nil || called || probe.begins != 0 {
-		t.Fatal("direct graph callback bypassed request intent")
+	for _, logging := range []bool{false, true} {
+		t.Run(fmt.Sprintf("logging=%t", logging), func(t *testing.T) {
+			probe := &graphTransactionProbe{}
+			sink := &capturingAppAuditSink{}
+			registryCalls := 0
+			ctx := NewUserContext().WithAppAuditEventSink(sink).WithMutationPolicyRegistry(MutationPolicyRegistryFunc(func(string) MutationPolicy {
+				registryCalls++
+				return nil
+			}))
+			if logging {
+				ctx.EnableAllSqlLog()
+			} else {
+				ctx.DisableSqlLog()
+			}
+			ctx.InsertResource("dataService", probe)
+			called := false
+			err := ctx.ExecutePreparedGraphSave(core.MutationIntent{}, func() (*MutationPlan, error) {
+				called = true
+				return nil, nil
+			}, func() error { called = true; return nil })
+			assertIntentGate(t, err, "REQUEST_COMMENT_REQUIRED", "comment", "mutation")
+			err = ctx.ExecuteGraphSave(core.MutationIntent{}, func() error { called = true; return nil })
+			assertIntentGate(t, err, "REQUEST_COMMENT_REQUIRED", "comment", "mutation")
+			for _, blank := range []string{"", " \t\r\n", "\u0085", "\u00a0", "\u2003"} {
+				err = ctx.ExecutePlannedGraphSave(&MutationPlan{RequestKey: "CustomerOrder.saveGraph", RootEntity: "CustomerOrder", AuditReason: blank}, func() error { called = true; return nil })
+				assertIntentGate(t, err, "REQUEST_COMMENT_REQUIRED", "comment", "mutation")
+			}
+			if called || probe.begins != 0 || registryCalls != 0 || len(sink.events) != 0 {
+				t.Fatalf("rejected graph reached downstream work: callback=%t begin=%d policy=%d audit=%d", called, probe.begins, registryCalls, len(sink.events))
+			}
+			// Rejection must not retain the graph gate or poison the next request.
+			if err := ctx.ExecuteGraphSave(graphTestIntent(), func() error { called = true; return nil }); err != nil {
+				t.Fatal(err)
+			}
+			if !called || probe.begins != 1 || probe.commits != 1 || probe.active != 0 {
+				t.Fatal("valid graph did not recover after rejection")
+			}
+		})
 	}
 }
 
