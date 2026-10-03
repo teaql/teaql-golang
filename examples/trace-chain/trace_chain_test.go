@@ -648,30 +648,89 @@ func TestGeneratedCompleteLedgerOverrideReplacesInheritance(t *testing.T) {
 	pay := lib.Q.Payments().Comment("initialize payment").Purpose("verify ledger override").NewEntity(e.context)
 	pay.UpdateReferenceCode("override payment")
 	order.PaymentList().Add(pay)
+	sibling := newItem(e, "override sibling")
+	order.OrderItemList().Add(sibling)
 	if _, err := order.AuditAs("prepare override").Save(e.context); err != nil {
 		t.Fatal(err)
 	}
 	rootID, _ := customer_order.NewCustomerOrderExpression(order).Id().Eval()
 	payID, _ := payment.NewPaymentExpression(pay).Id().Eval()
+	siblingID, _ := order_item.NewOrderItemExpression(sibling).Id().Eval()
 	full := []*core.TraceNode{reasonNode("Customer Order", rootID, "submit override graph"), reasonNode("Payment", payID, "complete reviewed authorization")}
 	pay.EntityRoot().SetTraceChain(pay.EntityKey(), full)
 	full[1].Comment = "must not corrupt ledger"
 	order.UpdateDescription("reviewed")
 	pay.UpdateReferenceCode("reviewed reference").Comment("fallback must be replaced")
+	sibling.UpdateName("reviewed sibling")
 	e.reset()
 	if _, err := order.AuditAs("submit override graph").Save(e.context); err != nil {
 		t.Fatal(err)
 	}
 	want := []*core.TraceNode{reasonNode("Customer Order", rootID, "submit override graph"), reasonNode("Payment", payID, "complete reviewed authorization")}
-	requests := e.observer.snapshot()
-	if len(requests) != 2 {
-		t.Fatal("wrong override graph size")
+	wantByEntity := map[string][]*core.TraceNode{
+		"Customer Order": {reasonNode("Customer Order", rootID, "submit override graph")},
+		"Order Item":     {reasonNode("Customer Order", rootID, "submit override graph")},
+		"Payment":        want,
 	}
-	assertLineage(t, requests[1].TraceChain(), want)
-	assertLineage(t, e.sink.snapshot()[1].TraceChain, want)
+	ids := map[string]uint64{"Customer Order": rootID, "Order Item": siblingID, "Payment": payID}
+	requests := e.observer.snapshot()
+	events := e.sink.snapshot()
+	if len(requests) != 3 || len(events) != 3 {
+		t.Fatalf("wrong override graph size: commands=%d audits=%d", len(requests), len(events))
+	}
+	commands := make(map[string]data_service.MutationRequest)
+	for _, request := range requests {
+		update, ok := request.(*data_service.UpdateMutation)
+		if !ok {
+			t.Fatalf("override graph emitted non-update command %T", request)
+		}
+		id, _ := update.Cmd.Id.TryU64()
+		if _, exists := commands[update.Cmd.Entity]; exists || id != ids[update.Cmd.Entity] || id == 0 {
+			t.Fatalf("unexpected or duplicate command identity: %s#%d", update.Cmd.Entity, id)
+		}
+		assertLineage(t, request.TraceChain(), wantByEntity[update.Cmd.Entity])
+		commands[update.Cmd.Entity] = request
+	}
+	seenEvents := make(map[string]bool)
+	for _, event := range events {
+		request, ok := commands[event.Entity]
+		if !ok || seenEvents[event.Entity] {
+			t.Fatalf("unexpected or duplicate audit entity: %s", event.Entity)
+		}
+		seenEvents[event.Entity] = true
+		assertLineage(t, event.TraceChain, request.TraceChain())
+	}
+	writes := make(map[string]int)
+	for _, metadata := range e.sqlEvidence.Snapshot() {
+		if metadata.Operation == data_service.OpQuery {
+			continue
+		}
+		if metadata.Operation != data_service.OpUpdate || metadata.ExecutionOutcome != "success" || metadata.AffectedRows == nil || *metadata.AffectedRows != 1 {
+			t.Fatalf("override graph did not observe a successful physical update: %+v", metadata)
+		}
+		if len(metadata.TraceChain) != 4 || metadata.TraceChain[0].Kind != "operation" || metadata.TraceChain[0].Name != "Customer Order" || metadata.TraceChain[1].Kind != "entity" {
+			t.Fatalf("override SQL lost its originating graph route: %+v", metadata.TraceChain)
+		}
+		entity := metadata.TraceChain[1].Name
+		request, ok := commands[entity]
+		if !ok {
+			t.Fatalf("unexpected physical override entity: %s", entity)
+		}
+		assertLineage(t, metadata.MutationLineage, request.TraceChain())
+		if metadata.AuditReason == nil || *metadata.AuditReason != "submit override graph" {
+			t.Fatal("ledger-specific lineage replaced the SQL request's root intent")
+		}
+		writes[entity]++
+	}
+	for entity := range wantByEntity {
+		if writes[entity] != 1 {
+			t.Fatalf("physical updates for %s=%d, want 1", entity, writes[entity])
+		}
+	}
 	if len(pay.EntityRoot().TraceChain(pay.EntityKey())) != 0 {
 		t.Fatal("committed ledger override leaked into next operation")
 	}
+	t.Logf("LEDGER OVERRIDE PASSED: commands=%d writes=%d audits=%d; Payment override replaces fallback; Order Item inherits only root", len(requests), len(writes), len(events))
 }
 
 func TestGeneratedConcurrentGraphsOnOneContext(t *testing.T) {
