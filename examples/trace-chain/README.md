@@ -17,7 +17,7 @@ bash scripts/verify-examples.sh
 `go.work` resolves both the generated library and runtime to local source.
 The dedicated verifier runs the complete example twice against the same
 SQLite paths without deleting data and compares generated library hashes.
-It requires all seventeen generated tests to execute, including the named shared
+It requires all nineteen generated tests to execute, including the named shared
 readonly relation ownership, entity-projection and paged-graph tests. It also runs
 six query-provenance regressions and fourteen separate native SQLite
 batch and transaction regression tests twice, using fresh provider-test fixtures;
@@ -25,7 +25,12 @@ those checks are not generated-graph or prepared-batch acceptance.
 The native Facet regression also verifies the original root and metadata-backed
 relation path, safe inherited membership intent, failure evidence and isolation
 of the next independent request. This is a real SQLite test, not yet a generated
-nested-Facet acceptance scenario.
+nested-Facet acceptance scenario. Two generated cases now separately cover root
+Facets with private removed-child bindings and Facets nested inside a Facet
+selection (Payment → CustomerOrder → Platform). Storage aliases resolve through
+metadata rather than suffix guessing. Counts retain active membership and every
+physical statement retains the initiating root and ordered relation path.
+Facets inside an ordinary loaded relation are not yet covered by these cases.
 By default it creates a temporary directory; set
 `TEAQL_TRACE_CHAIN_DATABASE_DIRECTORY` to retain databases at a chosen path.
 Set `TEAQL_TRACE_CHAIN_EVIDENCE_DIRECTORY` to retain logs and the before/after
@@ -203,7 +208,7 @@ explicitly passes it through owned children, and refreshes loaded values only
 after commit. The runtime owns copying and provider-side policy classification;
 neither serialized requests nor shared Context carry a mutable graph snapshot.
 Existing libraries need regeneration to supply this provenance. The mandatory
-verifier now executes seventeen generated scenarios twice without cleaning their
+verifier now executes nineteen generated scenarios twice without cleaning their
 SQLite databases.
 
 The unchanged-child case loads a parent/item graph and changes only the parent.

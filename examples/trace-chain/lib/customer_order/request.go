@@ -52,6 +52,12 @@ func (r *CustomerOrderRequest) GetQuery() *core.SelectQuery {
 	return r.Query
 }
 
+func (r *CustomerOrderRequest) GetQuerySelection() *core.QuerySelection {
+	selection := core.NewQuerySelection(r.Query)
+	selection.QueryOptions = r.queryOptions
+	return selection
+}
+
 func (r *CustomerOrderRequest) GetEntityDescriptor() *core.EntityDescriptor {
 	return NewCustomerOrder().EntityDescriptor()
 }
@@ -276,8 +282,12 @@ func (r *CustomerOrderRequest) FacetByPlatformAs(
 ) *CustomerOrderRequest {
 	includeAll := true
 	if len(includeAllFacets) > 0 { includeAll = includeAllFacets[0] }
+	selection := core.NewQuerySelection(nestedReq.GetQuery())
+	if provider, ok := nestedReq.(interface{ GetQuerySelection() *core.QuerySelection }); ok {
+		selection = provider.GetQuerySelection()
+	}
 	r.queryOptions.Facets = append(r.queryOptions.Facets, core.NewFacetRequest(
-		name, "platform_id", core.NewQuerySelection(nestedReq.GetQuery()), includeAll))
+		name, "platform_id", selection, includeAll))
 	return r
 }
 func (r *CustomerOrderRequest) OrderByPlatformAsc() *CustomerOrderRequest {

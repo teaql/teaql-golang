@@ -49,6 +49,12 @@ func (r *OrderItemRequest) GetQuery() *core.SelectQuery {
 	return r.Query
 }
 
+func (r *OrderItemRequest) GetQuerySelection() *core.QuerySelection {
+	selection := core.NewQuerySelection(r.Query)
+	selection.QueryOptions = r.queryOptions
+	return selection
+}
+
 func (r *OrderItemRequest) GetEntityDescriptor() *core.EntityDescriptor {
 	return NewOrderItem().EntityDescriptor()
 }
@@ -273,8 +279,12 @@ func (r *OrderItemRequest) FacetByCustomerOrderAs(
 ) *OrderItemRequest {
 	includeAll := true
 	if len(includeAllFacets) > 0 { includeAll = includeAllFacets[0] }
+	selection := core.NewQuerySelection(nestedReq.GetQuery())
+	if provider, ok := nestedReq.(interface{ GetQuerySelection() *core.QuerySelection }); ok {
+		selection = provider.GetQuerySelection()
+	}
 	r.queryOptions.Facets = append(r.queryOptions.Facets, core.NewFacetRequest(
-		name, "customer_order_id", core.NewQuerySelection(nestedReq.GetQuery()), includeAll))
+		name, "customer_order_id", selection, includeAll))
 	return r
 }
 func (r *OrderItemRequest) OrderByCustomerOrderAsc() *OrderItemRequest {

@@ -46,6 +46,45 @@ func TestExecuteFacetsAppliesPolicyToNestedEntityBeforeProvider(t *testing.T) {
 	assert.Equal(t, 1, executor.calls, "nested facet denial must happen before its provider query")
 }
 
+func TestFacetRelationUsesMetadataAndRejectsAmbiguousAliases(t *testing.T) {
+	first := core.NewRelationDescriptor("platformEntity", "Platform").LocalKey("platform_id")
+	descriptor := core.NewEntityDescriptor("School").Relation(first)
+	assert.Same(t, first, facetRelation(descriptor, "platform_id", "Platform"))
+	assert.Nil(t, facetRelation(descriptor, "platform_id", "Employee"))
+	descriptor.Relation(core.NewRelationDescriptor("otherPlatform", "Platform").LocalKey("platform_id"))
+	assert.Nil(t, facetRelation(descriptor, "platform_id", "Platform"))
+	assert.Same(t, first, facetRelation(descriptor, "platformEntity", "Platform"))
+}
+
+func TestFacetCaptureOwnsNestedSelectionBeforeExecution(t *testing.T) {
+	nested := core.NewSelectQuery("SchoolType").WithFilter(core.ExprEq("code", core.ValText("PRIMARY")))
+	options := core.NewQueryOptions()
+	selection := core.NewQuerySelection(nested)
+	options.Facets = append(options.Facets, core.NewFacetRequest("types", "school_type", selection, true))
+	selection.QueryOptions.Facets = append(selection.QueryOptions.Facets,
+		core.NewFacetRequest("platforms", "platform_id", core.NewQuerySelection(core.NewSelectQuery("Platform")), false))
+	captured, err := captureFacets(options, make(map[*core.QueryOptions]bool))
+	assert.NoError(t, err)
+	nested.Filter = nil
+	options.Facets[0].FacetName = "changed"
+	selection.QueryOptions.Facets = nil
+	assert.Equal(t, "types", captured[0].name)
+	assert.NotNil(t, captured[0].query.Filter)
+	assert.Len(t, captured[0].children, 1)
+}
+
+func TestFacetCycleFailsBeforeProvider(t *testing.T) {
+	executor := &facetExecutor{}
+	options := core.NewQueryOptions()
+	selection := core.NewQuerySelection(core.NewSelectQuery("School"))
+	selection.QueryOptions = options
+	options.Facets = append(options.Facets, core.NewFacetRequest("cycle", "parent", selection, true))
+	_, err := ExecuteFacets(stdcontext.Background(), NewRuntimeDataService(nil, executor),
+		core.NewSelectQuery("School").Comment("cyclic facet").Purpose("reject before execution"), options)
+	assert.ErrorContains(t, err, "cyclic facet")
+	assert.Zero(t, executor.calls)
+}
+
 type facetExecutor struct {
 	sawOuterFilter bool
 	calls          int

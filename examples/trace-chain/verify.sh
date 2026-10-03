@@ -42,13 +42,15 @@ go test ./... -count=1 -v -timeout 120s | tee "$verification/generated-1.log"
 # Same paths and databases; no deletion or schema reset between executions.
 go test ./... -count=1 -v -timeout 120s | tee "$verification/generated-2.log"
 for iteration in 1 2; do
-  if [[ "$(rg -c '^--- PASS: TestGenerated' "$verification/generated-$iteration.log")" != 17 ]]; then
-    echo "FAIL: all seventeen generated graph scenarios must execute" >&2
+  if [[ "$(rg -c '^--- PASS: TestGenerated' "$verification/generated-$iteration.log")" != 19 ]]; then
+    echo "FAIL: all nineteen generated graph scenarios must execute" >&2
     exit 1
   fi
   rg -q '^--- PASS: TestGeneratedStreamsOverlapWithIndependentSavesAndSafeTermination ' "$verification/generated-$iteration.log"
   rg -q '^--- PASS: TestGeneratedLoadedScalarPrivacyAndCommittedRefresh ' "$verification/generated-$iteration.log"
   rg -q '^--- PASS: TestGeneratedUnchangedPrivateChildProtectsParentIntent ' "$verification/generated-$iteration.log"
+  rg -q '^--- PASS: TestGeneratedFacetTraceRetainsFilteredRoot ' "$verification/generated-$iteration.log"
+  rg -q '^--- PASS: TestGeneratedNestedFacetsRetainAncestorPath ' "$verification/generated-$iteration.log"
   if ! rg -q '^--- PASS: TestGeneratedPageCountPrivacyAndIndependentGraphSaves ' "$verification/generated-$iteration.log"; then
     echo "FAIL: generated page/count privacy and independent saves must execute" >&2
     exit 1

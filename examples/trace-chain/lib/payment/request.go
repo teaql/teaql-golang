@@ -50,6 +50,12 @@ func (r *PaymentRequest) GetQuery() *core.SelectQuery {
 	return r.Query
 }
 
+func (r *PaymentRequest) GetQuerySelection() *core.QuerySelection {
+	selection := core.NewQuerySelection(r.Query)
+	selection.QueryOptions = r.queryOptions
+	return selection
+}
+
 func (r *PaymentRequest) GetEntityDescriptor() *core.EntityDescriptor {
 	return NewPayment().EntityDescriptor()
 }
@@ -274,8 +280,12 @@ func (r *PaymentRequest) FacetByCustomerOrderAs(
 ) *PaymentRequest {
 	includeAll := true
 	if len(includeAllFacets) > 0 { includeAll = includeAllFacets[0] }
+	selection := core.NewQuerySelection(nestedReq.GetQuery())
+	if provider, ok := nestedReq.(interface{ GetQuerySelection() *core.QuerySelection }); ok {
+		selection = provider.GetQuerySelection()
+	}
 	r.queryOptions.Facets = append(r.queryOptions.Facets, core.NewFacetRequest(
-		name, "customer_order_id", core.NewQuerySelection(nestedReq.GetQuery()), includeAll))
+		name, "customer_order_id", selection, includeAll))
 	return r
 }
 func (r *PaymentRequest) OrderByCustomerOrderAsc() *PaymentRequest {

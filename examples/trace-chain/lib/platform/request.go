@@ -50,6 +50,12 @@ func (r *PlatformRequest) GetQuery() *core.SelectQuery {
 	return r.Query
 }
 
+func (r *PlatformRequest) GetQuerySelection() *core.QuerySelection {
+	selection := core.NewQuerySelection(r.Query)
+	selection.QueryOptions = r.queryOptions
+	return selection
+}
+
 func (r *PlatformRequest) GetEntityDescriptor() *core.EntityDescriptor {
 	return NewPlatform().EntityDescriptor()
 }
