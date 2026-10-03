@@ -3,6 +3,7 @@ package runtime
 import (
 	"context"
 	"errors"
+	"fmt"
 	"testing"
 
 	"github.com/teaql/teaql-golang/core"
@@ -19,38 +20,54 @@ func (e *intentGateExecutor) Query(_ context.Context, _ *ds.QueryRequest) (*ds.Q
 	return &ds.QueryResult{}, nil
 }
 
-func TestRequestIntentGatesBeforePolicyOrProviderWithLogsDisabled(t *testing.T) {
-	policy := &tenantQueryPolicy{}
-	ctx := NewUserContext().WithRequestPolicy(policy)
-	ctx.DisableSqlLog()
-	if ctx.QuerySqlLogEnabled() || ctx.MutationSqlLogEnabled() {
-		t.Fatal("test did not disable logging")
-	}
-	provider := &intentGateExecutor{}
-	service := NewRuntimeDataService(NewInMemoryMetadataStore(), provider)
-	for _, missing := range []string{"", "\u0085", "\u00a0"} {
-		query := core.NewSelectQuery("CustomerOrder").Comment(missing).Purpose("render orders")
-		query.TraceChain = append(query.TraceChain, core.NewTypedTraceNode("comment", "CustomerOrder", "trace-only substitute"))
-		_, err := ctx.PrepareQuery(query)
-		assertIntentGate(t, err, "REQUEST_COMMENT_REQUIRED")
-		_, err = service.FetchAll(ctx, query)
-		assertIntentGate(t, err, "REQUEST_COMMENT_REQUIRED")
-		_, err = ExecuteFacets(ctx, service, query, core.NewQueryOptions())
-		assertIntentGate(t, err, "REQUEST_COMMENT_REQUIRED")
-	}
-	_, err := ctx.PrepareQuery(core.NewSelectQuery("CustomerOrder").Comment("load orders"))
-	assertIntentGate(t, err, "QUERY_PURPOSE_REQUIRED")
-	_, err = ctx.ReviewMutationPlan(&MutationPlan{RequestKey: "save-order", RootEntity: "CustomerOrder"})
-	assertIntentGate(t, err, "REQUEST_COMMENT_REQUIRED")
-	if policy.calls != 0 || provider.queries != 0 {
-		t.Fatal("missing intent reached policy/provider")
+func TestRequestIntentGatesBeforePolicyOrProvider(t *testing.T) {
+	for _, logging := range []bool{false, true} {
+		t.Run(fmt.Sprintf("logging=%t", logging), func(t *testing.T) {
+			policy := &tenantQueryPolicy{}
+			registryCalls := 0
+			ctx := NewUserContext().WithRequestPolicy(policy).WithMutationPolicyRegistry(MutationPolicyRegistryFunc(func(string) MutationPolicy {
+				registryCalls++
+				return nil
+			}))
+			if logging {
+				ctx.EnableAllSqlLog()
+			} else {
+				ctx.DisableSqlLog()
+			}
+			provider := &intentGateExecutor{}
+			service := NewRuntimeDataService(NewInMemoryMetadataStore(), provider)
+			for _, missing := range []string{"", " \t\r\n", "\u0085", "\u00a0", "\u2003"} {
+				for _, field := range []string{"comment", "purpose"} {
+					query := core.NewSelectQuery("CustomerOrder").Comment("load orders").Purpose("render orders")
+					code := "REQUEST_COMMENT_REQUIRED"
+					if field == "comment" {
+						query.Comment(missing)
+					} else {
+						query.Purpose(missing)
+						code = "QUERY_PURPOSE_REQUIRED"
+					}
+					query.TraceChain = append(query.TraceChain, core.NewTypedTraceNode("comment", "CustomerOrder", "trace-only substitute"))
+					_, err := ctx.PrepareQuery(query)
+					assertIntentGate(t, err, code, field, "query")
+					_, err = service.FetchAll(ctx, query)
+					assertIntentGate(t, err, code, field, "query")
+					_, err = ExecuteFacets(ctx, service, query, core.NewQueryOptions())
+					assertIntentGate(t, err, code, field, "query")
+				}
+			}
+			_, err := ctx.ReviewMutationPlan(&MutationPlan{RequestKey: "save-order", RootEntity: "CustomerOrder"})
+			assertIntentGate(t, err, "REQUEST_COMMENT_REQUIRED", "comment", "mutation")
+			if policy.calls != 0 || provider.queries != 0 || registryCalls != 0 {
+				t.Fatal("missing intent reached policy/provider")
+			}
+		})
 	}
 }
 
-func assertIntentGate(t *testing.T, err error, code string) {
+func assertIntentGate(t *testing.T, err error, code, field, kind string) {
 	t.Helper()
 	var required *core.RequestIntentError
-	if !errors.As(err, &required) || required.Code != code {
+	if !errors.As(err, &required) || required.Code != code || required.Field != field || required.RequestKind != kind {
 		t.Fatalf("expected %s, got %v", code, err)
 	}
 }
