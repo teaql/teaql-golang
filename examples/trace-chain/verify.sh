@@ -34,6 +34,9 @@ for iteration in 1 2; do
   (cd "$repo" && go test ./provider/sqlite -run '^TestStreamRejectsUnsupportedWorkBeforeSQL$' -count=1 -v -timeout 60s) |
     tee "$verification/stream-shape-$iteration.log"
   rg -q '^--- PASS: TestStreamRejectsUnsupportedWorkBeforeSQL ' "$verification/stream-shape-$iteration.log"
+  (cd "$repo" && go test ./provider/sqlite -run '^TestFacetRetainsRootPathAndPrivateMembershipIntent$' -count=1 -v -timeout 60s) |
+    tee "$verification/facet-trace-$iteration.log"
+  rg -q '^--- PASS: TestFacetRetainsRootPathAndPrivateMembershipIntent ' "$verification/facet-trace-$iteration.log"
 done
 go test ./... -count=1 -v -timeout 120s | tee "$verification/generated-1.log"
 # Same paths and databases; no deletion or schema reset between executions.

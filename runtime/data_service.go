@@ -67,6 +67,12 @@ func NewRuntimeDataService(metadata MetadataStore, executor data_service.DataSer
 }
 
 func (s *RuntimeDataService) FetchAll(context stdcontext.Context, query *core.SelectQuery) (rows []core.Record, err error) {
+	return s.fetchAllWithIntent(context, query, nil)
+}
+
+// Derived runtime work can retain its parent's diagnostic source without
+// installing it on Context or exposing it as a query option.
+func (s *RuntimeDataService) fetchAllWithIntent(context stdcontext.Context, query *core.SelectQuery, inherited *logprivacy.IntentSource) (rows []core.Record, err error) {
 	request, err := data_service.NewQueryRequest(query)
 	if err != nil {
 		return nil, err
@@ -97,7 +103,10 @@ func (s *RuntimeDataService) FetchAll(context stdcontext.Context, query *core.Se
 	}
 	executionQuery, continuous := s.prepareContinuousPage(context, prepared)
 	var intent logprivacy.IntentSource
-	if len(executionQuery.Relations) > 0 || len(executionQuery.RelationAggregates) > 0 {
+	if inherited != nil {
+		intent = *inherited
+	}
+	if inherited != nil || len(executionQuery.Relations) > 0 || len(executionQuery.RelationAggregates) > 0 {
 		rows, err = s.fetchRows(context, executionQuery, &intent)
 	} else {
 		rows, err = s.fetchRows(context, executionQuery)
@@ -115,6 +124,9 @@ func (s *RuntimeDataService) FetchAll(context stdcontext.Context, query *core.Se
 		rows = restoreIDSetOrder(rows, idSetOrder)
 	}
 	s.registerContinuousPage(context, continuous, rows)
+	if inherited != nil {
+		*inherited = intent
+	}
 	return rows, nil
 }
 
@@ -402,7 +414,7 @@ func (s *RuntimeDataService) fetchRows(context stdcontext.Context, query *core.S
 	}
 
 	rows = res.Rows
-	if len(intent) > 0 && (len(query.Relations) > 0 || len(query.RelationAggregates) > 0) {
+	if len(intent) > 0 {
 		*intent[0] = inheritQueryIntent(res.Metadata, *intent[0])
 	}
 	return rows, nil

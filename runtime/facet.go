@@ -6,6 +6,7 @@ import (
 
 	"github.com/teaql/teaql-golang/core"
 	"github.com/teaql/teaql-golang/data_service"
+	"github.com/teaql/teaql-golang/internal/logprivacy"
 )
 
 // ExecuteFacets evaluates relation membership from the filtered outer query,
@@ -23,15 +24,10 @@ func ExecuteFacets(
 	outer = request.Query
 	results := make(map[string]*core.SmartList[core.Record])
 	for _, facet := range options.Facets {
-		membership := cloneSelectQuery(outer, outer.Entity)
-		membership.Projection = nil
-		membership.Relations = nil
-		membership.OrderBy = nil
-		membership.Slice = nil
-		membership.Aggregates = []*core.Aggregate{core.AggCountField("id", "__teaql_facet_count")}
+		membership := outer.ForExactCount("__teaql_facet_count")
 		membership.GroupBy = []string{facet.RelationName}
-		membership.ObjectGroupBys = nil
-		rows, err := service.FetchAll(context, membership)
+		var intent logprivacy.IntentSource
+		rows, err := service.fetchAllWithIntent(context, membership, &intent)
 		if err != nil {
 			return nil, err
 		}
@@ -48,6 +44,14 @@ func ExecuteFacets(
 		nested := facet.Query.IntoQuery()
 		nested = nested.Clone()
 		nested.CommentText, nested.PurposeText = request.Comment, request.Purpose
+		nested.TraceChain = core.QueryTraceSource(outer.Entity, outer.TraceChain, *request.Comment, *request.Purpose)
+		if service.metadata != nil {
+			if descriptor := service.metadata.Entity(outer.Entity); descriptor != nil {
+				if relation := descriptor.RelationByName(facet.RelationName); relation != nil && relation.TargetEntity == nested.Entity {
+					nested.TraceChain = append(nested.TraceChain, core.NewTypedTraceNode("relation", facet.RelationName, outer.Entity+"."+facet.RelationName))
+				}
+			}
+		}
 		countAliases := make([]string, 0)
 		for _, aggregate := range nested.Aggregates {
 			if aggregate.Function == core.AggCount {
@@ -63,7 +67,7 @@ func ExecuteFacets(
 				return nil, err
 			}
 		}
-		facetRows, err := service.FetchAll(context, nested)
+		facetRows, err := service.fetchAllWithIntent(context, nested, &intent)
 		if err != nil {
 			return nil, err
 		}

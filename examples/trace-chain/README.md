@@ -22,6 +22,10 @@ readonly relation ownership, entity-projection and paged-graph tests. It also ru
 six query-provenance regressions and fourteen separate native SQLite
 batch and transaction regression tests twice, using fresh provider-test fixtures;
 those checks are not generated-graph or prepared-batch acceptance.
+The native Facet regression also verifies the original root and metadata-backed
+relation path, safe inherited membership intent, failure evidence and isolation
+of the next independent request. This is a real SQLite test, not yet a generated
+nested-Facet acceptance scenario.
 By default it creates a temporary directory; set
 `TEAQL_TRACE_CHAIN_DATABASE_DIRECTORY` to retain databases at a chosen path.
 Set `TEAQL_TRACE_CHAIN_EVIDENCE_DIRECTORY` to retain logs and the before/after
