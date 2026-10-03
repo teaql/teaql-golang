@@ -17,7 +17,7 @@ bash scripts/verify-examples.sh
 `go.work` resolves both the generated library and runtime to local source.
 The dedicated verifier runs the complete example twice against the same
 SQLite paths without deleting data and compares generated library hashes.
-It requires all fourteen generated tests to execute, including the named shared
+It requires all seventeen generated tests to execute, including the named shared
 readonly relation ownership, entity-projection and paged-graph tests. It also runs
 six query-provenance regressions and fourteen separate native SQLite
 batch and transaction regression tests twice, using fresh provider-test fixtures;
@@ -96,8 +96,8 @@ Explicit debug logs still hide credentials, while the ordinary sink remains
 masked even when the separate sensitive sink is enabled.
 
 This is the SQL executor's sequential native batch path. Generated graph saves
-currently emit individual requests; the tests do not establish whole-graph
-sibling masking across those requests, prepared batching, or commit-only audit
+currently emit individual requests; the native batch tests alone do not establish
+whole-graph sibling masking (covered below), prepared batching, or commit-only audit
 when callers bypass the graph-save boundary. Separate native transaction tests
 now prove commit-owned delivery and rollback suppression without that boundary;
 this does not establish prepared-batch or every legacy callback path.
@@ -199,5 +199,11 @@ explicitly passes it through owned children, and refreshes loaded values only
 after commit. The runtime owns copying and provider-side policy classification;
 neither serialized requests nor shared Context carry a mutable graph snapshot.
 Existing libraries need regeneration to supply this provenance. The mandatory
-verifier now executes sixteen generated scenarios twice without cleaning their
+verifier now executes seventeen generated scenarios twice without cleaning their
 SQLite databases.
+
+The unchanged-child case loads a parent/item graph and changes only the parent.
+Its reason mentions the child's alphabetic private name. Exactly one write,
+one authoritative readback and one committed audit occur, with safe intent and
+no child write. Q/E verifies the child's name and optimistic version remain
+unchanged; an independent query does not inherit the graph's privacy scope.
