@@ -339,6 +339,7 @@ func (e *SqlDataServiceExecutor) mutatePrepared(context stdcontext.Context, requ
 		Comment:              comment,
 		AuditReason:          comment,
 		InheritedIntent:      plan.inherited,
+		IntentTargetID:       leaf.targetID,
 		BackendRequestId:     nil,
 		DebugQuery:           &debugQuery,
 	}

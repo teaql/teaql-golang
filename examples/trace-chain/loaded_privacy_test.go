@@ -67,7 +67,10 @@ WHEN NEW.name = 'PRIVATE-FAIL-GO-LOADED' BEGIN DELETE FROM order_item_data WHERE
 		}
 		item.UpdateName(next)
 		e.reset()
-		if _, err := loaded.AuditAs("page 1 replace " + old + " with " + next).Save(e.context); err != nil {
+		// A literal digit 1 collides with a fresh database's target ID and is
+		// correctly redacted by target-ID provenance. Keep the ordinary-prose
+		// control independent of assigned IDs; bootstrap tests cover ID masking.
+		if _, err := loaded.AuditAs("first page replace " + old + " with " + next).Save(e.context); err != nil {
 			t.Fatal(err)
 		}
 		if len(e.observer.snapshot()) != 2 || len(e.sink.snapshot()) != 2 || len(e.sqlEvidence.Snapshot()) != 4 {
@@ -82,7 +85,7 @@ WHEN NEW.name = 'PRIVATE-FAIL-GO-LOADED' BEGIN DELETE FROM order_item_data WHERE
 			}
 		}
 		for _, fact := range e.sqlEvidence.Snapshot() {
-			if fact.AuditReason == nil || !strings.Contains(*fact.AuditReason, "page 1") {
+			if fact.AuditReason == nil || !strings.Contains(*fact.AuditReason, "first page") {
 				t.Fatal("ordinary intent disappeared")
 			}
 		}

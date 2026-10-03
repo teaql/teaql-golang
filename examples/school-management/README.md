@@ -21,3 +21,13 @@ Run `go test -v ./... -count=1` from this directory. The local `replace` is
 intentional for pre-publication runtime verification. Individual tests use
 temporary SQLite paths; two suite invocations are not a no-cleanup graph replay
 or proof of full hierarchical Trace Chain completion.
+
+## Generated bootstrap Trace Chain gate
+
+`bash scripts/verify-school-bootstrap-example.sh` (from the runtime root) runs
+the actual generated School bootstrap twice per retained SQLite file, with SQL
+logs on/off and the race detector enabled. No trace nodes are injected. It
+checks request intent, canonical physical paths, matching typed mutation and
+audit lineage, caller identity restoration, no-op reseeding and an audited
+constant edit/reconciliation. An independent read-only connection must see the
+expected version at audit delivery. Generated-library hashes must stay unchanged.

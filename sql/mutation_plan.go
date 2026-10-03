@@ -13,6 +13,7 @@ type compiledMutationLeaf struct {
 	entityName string
 	query      *CompiledQuery
 	operation  ds.DataServiceOperation
+	targetID   logprivacy.IntentSource
 }
 
 // One invocation owns both the captured commands and their compiled bindings.
@@ -72,15 +73,26 @@ func (e *SqlDataServiceExecutor) prepareMutation(request ds.MutationRequest) (*s
 		var err error
 		switch command := request.(type) {
 		case *ds.InsertMutation:
+			for _, property := range entity.Properties {
+				if property.IsId {
+					if id, ok := command.Cmd.Values[property.Name]; ok {
+						leaf.targetID = logprivacy.NewIntentSource(core.CloneValue(id))
+					}
+					break
+				}
+			}
 			leaf.query, err = dialect.CompileInsert(entity, command.Cmd)
 			leaf.operation = ds.OpInsert
 		case *ds.UpdateMutation:
+			leaf.targetID = logprivacy.NewIntentSource(core.CloneValue(command.Cmd.Id))
 			leaf.query, err = dialect.CompileUpdate(entity, command.Cmd)
 			leaf.operation = ds.OpUpdate
 		case *ds.DeleteMutation:
+			leaf.targetID = logprivacy.NewIntentSource(core.CloneValue(command.Cmd.Id))
 			leaf.query, err = dialect.CompileDelete(entity, command.Cmd)
 			leaf.operation = ds.OpDelete
 		case *ds.RecoverMutation:
+			leaf.targetID = logprivacy.NewIntentSource(core.CloneValue(command.Cmd.Id))
 			leaf.query, err = dialect.CompileRecover(entity, command.Cmd)
 			leaf.operation = ds.OpRecover
 		}
