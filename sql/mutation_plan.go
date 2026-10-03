@@ -28,6 +28,19 @@ func (e *SqlDataServiceExecutor) prepareMutation(request ds.MutationRequest) (*s
 	var sources []ds.ExecutionMetadata
 	var compile func(ds.MutationRequest) error
 	compile = func(request ds.MutationRequest) error {
+		for _, entry := range ds.MutationPrivacyEntries(request) {
+			entity := e.SchemaProvider.GetEntity(entry.Entity())
+			previous := ds.ExecutionMetadata{GeneratedSQL: true}
+			for field, value := range entry.Values() {
+				previous.Parameters = append(previous.Parameters, value)
+				policy := "unknown"
+				if entity != nil {
+					policy = fieldLogPolicy(entity, field)
+				}
+				previous.ParameterLogPolicies = append(previous.ParameterLogPolicies, policy)
+			}
+			sources = append(sources, previous)
+		}
 		if batch, ok := request.(*ds.BatchMutation); ok {
 			for _, child := range batch.Mutations {
 				if err := compile(child); err != nil {

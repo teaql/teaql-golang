@@ -183,3 +183,21 @@ Native guards reject relation loads, relation aggregates, object groups, child
 enhancements and nil consumers before SQL. Streaming is synchronous callback
 consumption in Go, not a deferred enumerable. This does not add graph streaming
 or impose the materialized-list ceiling on native streaming.
+
+## Loaded scalar provenance
+
+The generated loaded-privacy scenario saves a fully loaded parent/item graph,
+updates the same wrapper repeatedly, forces a real SQLite readback failure,
+retries it, then marks the item for deletion. Old private values remain masked
+in parent/sibling SQL, readbacks and committed audit even when absent from the
+actual write bindings. Public SQL intent and later independent queries remain
+unchanged. Failure rolls back storage and does not advance the loaded snapshot.
+
+Snapshots contain only declared scalar fields. A generated save collects old
+and current scalar records into an immutable per-invocation privacy source,
+explicitly passes it through owned children, and refreshes loaded values only
+after commit. The runtime owns copying and provider-side policy classification;
+neither serialized requests nor shared Context carry a mutable graph snapshot.
+Existing libraries need regeneration to supply this provenance. The mandatory
+verifier now executes sixteen generated scenarios twice without cleaning their
+SQLite databases.

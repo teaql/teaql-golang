@@ -432,8 +432,17 @@ func TestGeneratedGraphMutationLineage(t *testing.T) {
 	if len(events) != 6 {
 		t.Fatalf("committed safe audits=%d", len(events))
 	}
+	// The deleted item's loaded name is private. Trusted requests retain the
+	// full reason; exported safe evidence must preserve its shape but mask it.
+	expectedSafeLineage := func(request data_service.MutationRequest) []*core.TraceNode {
+		want := core.CloneTraceNodes(request.TraceChain())
+		if _, deleting := request.(*data_service.DeleteMutation); deleting {
+			want[len(want)-1].Comment = "remove [REDACTED]"
+		}
+		return want
+	}
 	for index, event := range events {
-		assertLineage(t, event.TraceChain, requests[index].TraceChain())
+		assertLineage(t, event.TraceChain, expectedSafeLineage(requests[index]))
 		if event.AuditReason == nil || *event.AuditReason != "submit order" {
 			t.Fatal("safe audit lost root intent")
 		}
@@ -450,7 +459,7 @@ func TestGeneratedGraphMutationLineage(t *testing.T) {
 		if len(metadata.TraceChain) != 4 || metadata.TraceChain[0].Kind != "operation" || metadata.TraceChain[1].Kind != "entity" || metadata.TraceChain[2].Kind != "provider" || metadata.TraceChain[3].Kind != "sql" {
 			t.Fatalf("non-canonical SQL path: %+v", metadata.TraceChain)
 		}
-		assertLineage(t, metadata.MutationLineage, requests[writes-1].TraceChain())
+		assertLineage(t, metadata.MutationLineage, expectedSafeLineage(requests[writes-1]))
 	}
 	if writes != 6 {
 		t.Fatalf("physical writes=%d", writes)

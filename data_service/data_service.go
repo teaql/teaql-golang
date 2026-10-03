@@ -41,6 +41,7 @@ type MutationRequest interface {
 }
 
 type InsertMutation struct {
+	privacy     *MutationPrivacy
 	Cmd         *core.InsertCommand
 	RootComment *string
 	intent      *core.MutationIntent
@@ -52,6 +53,7 @@ func (m *InsertMutation) Comment() *string {
 }
 
 type UpdateMutation struct {
+	privacy     *MutationPrivacy
 	Cmd         *core.UpdateCommand
 	RootComment *string
 	intent      *core.MutationIntent
@@ -63,6 +65,7 @@ func (m *UpdateMutation) Comment() *string {
 }
 
 type DeleteMutation struct {
+	privacy     *MutationPrivacy
 	Cmd         *core.DeleteCommand
 	RootComment *string
 	intent      *core.MutationIntent
@@ -74,6 +77,7 @@ func (m *DeleteMutation) Comment() *string {
 }
 
 type RecoverMutation struct {
+	privacy     *MutationPrivacy
 	Cmd         *core.RecoverCommand
 	RootComment *string
 	intent      *core.MutationIntent
@@ -85,6 +89,7 @@ func (m *RecoverMutation) Comment() *string {
 }
 
 type BatchMutation struct {
+	privacy     *MutationPrivacy
 	Mutations   []MutationRequest
 	RootComment *string
 	intent      *core.MutationIntent
