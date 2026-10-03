@@ -37,6 +37,13 @@ for iteration in 1 2; do
   (cd "$repo" && go test ./provider/sqlite -run '^TestFacetRetainsRootPathAndPrivateMembershipIntent$' -count=1 -v -timeout 60s) |
     tee "$verification/facet-trace-$iteration.log"
   rg -q '^--- PASS: TestFacetRetainsRootPathAndPrivateMembershipIntent ' "$verification/facet-trace-$iteration.log"
+  (cd "$repo" && go test ./provider/sqlite -run '^TestRelationMembershipSurvivesForwardHydration$' -count=1 -v -timeout 60s) |
+    tee "$verification/relation-membership-$iteration.log"
+  rg -q '^--- PASS: TestRelationMembershipSurvivesForwardHydration ' "$verification/relation-membership-$iteration.log"
+  if [[ "$(rg -c '^    --- PASS: TestRelationMembershipSurvivesForwardHydration/' "$verification/relation-membership-$iteration.log")" != 32 ]]; then
+    echo "FAIL: all thirty-two scalar/filtered relation membership cases must execute" >&2
+    exit 1
+  fi
 done
 go test ./... -count=1 -v -timeout 120s | tee "$verification/generated-1.log"
 # Same paths and databases; no deletion or schema reset between executions.

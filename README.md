@@ -54,7 +54,7 @@ transaction's database allocator are present in the lineage. A complete
 per-entity ledger trace replaces inheritance rather than appending it twice.
 The scope is passed between generated save calls, never stored on UserContext.
 
-The eight generated cases also cover three-level Q provenance and loaded E,
+The generated cases also cover three-level Q provenance and loaded E,
 Checker rejection, real UNIQUE rollback, successful UPDATE with empty
 authoritative readback, intent rejection with logs off, and two overlapping
 goroutine saves on one context. The existing graph gate serializes their
@@ -66,11 +66,20 @@ roll back an already committed transaction; do not retry it as an uncommitted sa
 Low-level graph adapters must now supply `core.MutationIntent` as the first
 argument to `ExecuteGraphSave` and `ExecutePreparedGraphSave`. Generated public
 `.AuditAs(...).Save(context)` calls are unchanged; old generated libraries need
-regeneration. Current source tests pass twice with 389 top-level passes, 217
+regeneration. Current source tests pass twice with 433 top-level passes, 304
 additional subtest passes and seven explicit integration skips. All nine
-example groups pass twice; the dedicated verifier runs eight cases twice on the
+example groups pass twice; the dedicated verifier runs 23 cases twice on the
 same database paths and checks that all generated library bytes remain unchanged.
 Affected native packages and the generated graph also pass race checks.
+
+Native relation loading retains scalar attachment keys before any nested
+hydration or aggregate output can overwrite them. A filtered forward reference
+stays null without removing its child from an enclosing list; later sibling
+relations and counts still use the original key. These snapshots are private to
+one execution, not entity properties, mutation data, or shared Context state.
+The example verifier also runs 32 real-SQLite regression cases through both SQL
+executors, with text keys, nested relations, empty lists and logging on/off. The
+same tests fail 24 cases on the prior runtime while eight scalar controls pass.
 
 This remains a partial local checkpoint, not full Trace Chain completion.
 Same-type prepared batches, detached deleted children, complete privacy and

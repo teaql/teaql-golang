@@ -135,10 +135,7 @@ func (s *RuntimeDataService) fetchAllWithIntent(context stdcontext.Context, quer
 	if err != nil {
 		return nil, err
 	}
-	if err := s.enhanceRelations(context, rows, executionQuery, plan, intent); err != nil {
-		return nil, err
-	}
-	if err := s.enhanceRelationAggregates(context, rows, executionQuery, intent); err != nil {
+	if err := s.enhanceQueryRows(context, rows, executionQuery, plan, intent); err != nil {
 		return nil, err
 	}
 	if len(idSetOrder) > 0 {
@@ -462,7 +459,53 @@ func inheritQueryIntent(metadata data_service.ExecutionMetadata, inherited logpr
 	return logprivacy.NewIntentSource(result)
 }
 
-func (s *RuntimeDataService) enhanceRelations(context stdcontext.Context, parents []core.Record, query *core.SelectQuery, plan *FacetPlan, intent ...logprivacy.IntentSource) error {
+// Assembly keys are invocation-local scalar snapshots, never record properties,
+// Context state, or mutation data. Hydration (including a filtered null) and
+// aggregate aliases may replace the source field without changing membership.
+func captureRelationKeys(rows []core.Record, field string) []core.Value {
+	keys := make([]core.Value, len(rows))
+	for i, row := range rows {
+		keys[i] = row[field]
+	}
+	return keys
+}
+
+func (s *RuntimeDataService) enhanceQueryRows(context stdcontext.Context, rows []core.Record, query *core.SelectQuery, plan *FacetPlan, intent logprivacy.IntentSource) error {
+	if len(rows) == 0 || (len(query.Relations) == 0 && len(query.RelationAggregates) == 0) {
+		return nil
+	}
+	descriptor := s.metadata.Entity(query.Entity)
+	if descriptor == nil {
+		return fmt.Errorf("unknown entity %s", query.Entity)
+	}
+	keys := make(map[string][]core.Value)
+	capture := func(name string) error {
+		relation := descriptor.RelationByName(name)
+		if relation == nil {
+			return fmt.Errorf("missing relation %s.%s", query.Entity, name)
+		}
+		if _, exists := keys[relation.LocKey]; !exists {
+			keys[relation.LocKey] = captureRelationKeys(rows, relation.LocKey)
+		}
+		return nil
+	}
+	for _, relation := range query.Relations {
+		if err := capture(relation.Name); err != nil {
+			return err
+		}
+	}
+	for _, aggregate := range query.RelationAggregates {
+		if err := capture(aggregate.RelationName); err != nil {
+			return err
+		}
+	}
+	if err := s.enhanceRelations(context, rows, query, plan, keys, intent); err != nil {
+		return err
+	}
+	return s.enhanceRelationAggregates(context, rows, query, keys, intent)
+}
+
+func (s *RuntimeDataService) enhanceRelations(context stdcontext.Context, parents []core.Record, query *core.SelectQuery, plan *FacetPlan, keys map[string][]core.Value, intent ...logprivacy.IntentSource) error {
 	if len(parents) == 0 || len(query.Relations) == 0 {
 		return nil
 	}
@@ -485,8 +528,9 @@ func (s *RuntimeDataService) enhanceRelations(context stdcontext.Context, parent
 			return fmt.Errorf("missing relation %s.%s", query.Entity, load.Name)
 		}
 		ids := make([]core.Value, 0, len(parents))
-		for _, parent := range parents {
-			if id, ok := parent[relation.LocKey]; ok {
+		parentKeys := keys[relation.LocKey]
+		for _, id := range parentKeys {
+			if id.V != nil {
 				ids = append(ids, id)
 			}
 		}
@@ -579,19 +623,16 @@ func (s *RuntimeDataService) enhanceRelations(context stdcontext.Context, parent
 		for _, child := range children {
 			delete(child, "__teaql_partition_rank")
 		}
-		if err := s.enhanceRelations(relationContext, children, childQuery, childPlan, childIntent); err != nil {
+		childKeys := captureRelationKeys(children, relation.ForKey)
+		if err := s.enhanceQueryRows(relationContext, children, childQuery, childPlan, childIntent); err != nil {
 			relationScope.Failure(RuntimeErrorType(err))
 			return err
 		}
-		if err := s.enhanceRelationAggregates(relationContext, children, childQuery, childIntent); err != nil {
-			relationScope.Failure(RuntimeErrorType(err))
-			return err
-		}
-		attachRelationRows(parents, children, load.Name, relation)
+		attachRelationRows(parents, children, load.Name, relation, parentKeys, childKeys)
 		if childPlan.HasFacets() {
-			for _, parent := range parents {
-				key, ok := parent[relation.LocKey]
-				if !ok || key.V == nil {
+			for i, parent := range parents {
+				key := parentKeys[i]
+				if key.V == nil {
 					continue
 				}
 				perParent := childQuery.Clone()
@@ -638,7 +679,7 @@ func cloneSelectQuery(source *core.SelectQuery, entity string) *core.SelectQuery
 	return &clone
 }
 
-func (s *RuntimeDataService) enhanceRelationAggregates(context stdcontext.Context, parents []core.Record, query *core.SelectQuery, intent ...logprivacy.IntentSource) error {
+func (s *RuntimeDataService) enhanceRelationAggregates(context stdcontext.Context, parents []core.Record, query *core.SelectQuery, keys map[string][]core.Value, intent ...logprivacy.IntentSource) error {
 	if len(parents) == 0 || len(query.RelationAggregates) == 0 {
 		return nil
 	}
@@ -652,8 +693,9 @@ func (s *RuntimeDataService) enhanceRelationAggregates(context stdcontext.Contex
 			return fmt.Errorf("missing relation %s.%s", query.Entity, aggregate.RelationName)
 		}
 		ids := make([]core.Value, 0, len(parents))
-		for _, parent := range parents {
-			if id, ok := parent[relation.LocKey]; ok {
+		parentKeys := keys[relation.LocKey]
+		for _, id := range parentKeys {
+			if id.V != nil {
 				ids = append(ids, id)
 			}
 		}
@@ -703,7 +745,7 @@ func (s *RuntimeDataService) enhanceRelationAggregates(context stdcontext.Contex
 				}
 			}
 		}
-		attachRelationAggregateRows(parents, rows, relation, aggregate, childQuery)
+		attachRelationAggregateRows(parents, rows, relation, aggregate, childQuery, parentKeys)
 	}
 	return nil
 }
@@ -734,18 +776,15 @@ func emptyAggregateValue(query *core.SelectQuery) core.Value {
 	return core.ValNull()
 }
 
-func attachRelationAggregateRows(parents, rows []core.Record, relation *core.RelationDescriptor, aggregate *core.RelationAggregate, query *core.SelectQuery) {
+func attachRelationAggregateRows(parents, rows []core.Record, relation *core.RelationDescriptor, aggregate *core.RelationAggregate, query *core.SelectQuery, parentKeys []core.Value) {
 	buckets := make(map[string]core.Record, len(rows))
 	for _, row := range rows {
 		if foreignKey, ok := row[relation.ForKey]; ok {
 			buckets[relationKey(foreignKey)] = row
 		}
 	}
-	for _, parent := range parents {
-		localKey, ok := parent[relation.LocKey]
-		if !ok {
-			continue
-		}
+	for i, parent := range parents {
+		localKey := parentKeys[i]
 		row, found := buckets[relationKey(localKey)]
 		if !found {
 			if aggregate.SingleResult {
@@ -777,19 +816,16 @@ func relationKey(value core.Value) string {
 	return fmt.Sprintf("%T:%v", value.V, value.V)
 }
 
-func attachRelationRows(parents, children []core.Record, name string, relation *core.RelationDescriptor) {
+func attachRelationRows(parents, children []core.Record, name string, relation *core.RelationDescriptor, parentKeys, childKeys []core.Value) {
 	buckets := make(map[string][]core.Record)
-	for _, child := range children {
-		if foreignKey, ok := child[relation.ForKey]; ok {
+	for i, child := range children {
+		if foreignKey := childKeys[i]; foreignKey.V != nil {
 			key := relationKey(foreignKey)
 			buckets[key] = append(buckets[key], child)
 		}
 	}
-	for _, parent := range parents {
-		localKey, ok := parent[relation.LocKey]
-		if !ok {
-			continue
-		}
+	for i, parent := range parents {
+		localKey := parentKeys[i]
 		related := buckets[relationKey(localKey)]
 		if relation.IsMany {
 			parent[name] = core.Value{V: related}
