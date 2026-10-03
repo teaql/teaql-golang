@@ -21,12 +21,56 @@ func ExecuteFacets(
 	if err != nil {
 		return nil, err
 	}
-	outer = request.Query
+	plan, err := CaptureFacetPlan(options)
+	if err != nil {
+		return nil, err
+	}
+	return plan.Execute(context, service, request.Query)
+}
+
+// FacetPlan owns an invocation's selections. Capture before policy or provider
+// callbacks; never reread the caller's QueryOptions after row execution begins.
+type FacetPlan struct{ facets []capturedFacet }
+
+func CaptureFacetPlan(options *core.QueryOptions) (*FacetPlan, error) {
 	facets, err := captureFacets(options, make(map[*core.QueryOptions]bool))
 	if err != nil {
 		return nil, err
 	}
-	return executeCapturedFacets(context, service, outer, facets, logprivacy.IntentSource{})
+	return &FacetPlan{facets: facets}, nil
+}
+
+func (p *FacetPlan) HasFacets() bool { return p != nil && len(p.facets) > 0 }
+func (*FacetPlan) String() string    { return "<captured facet plan>" }
+func (*FacetPlan) GoString() string  { return "<captured facet plan>" }
+
+// WithQueryDiagnostics includes all future Facet bindings in the first SQL's
+// privacy scope without scheduling those queries or storing anything in Context.
+func (p *FacetPlan) WithQueryDiagnostics(query *core.SelectQuery) *core.SelectQuery {
+	var queries []*core.SelectQuery
+	var visit func([]capturedFacet)
+	visit = func(facets []capturedFacet) {
+		for _, facet := range facets {
+			queries = append(queries, facet.query)
+			visit(facet.children)
+		}
+	}
+	if p != nil {
+		visit(p.facets)
+	}
+	return query.WithDiagnosticQueries(queries...)
+}
+
+func (p *FacetPlan) Execute(context stdcontext.Context, service *RuntimeDataService,
+	outer *core.SelectQuery) (map[string]*core.SmartList[core.Record], error) {
+	request, err := data_service.NewQueryRequest(outer)
+	if err != nil {
+		return nil, err
+	}
+	if !p.HasFacets() {
+		return map[string]*core.SmartList[core.Record]{}, nil
+	}
+	return executeCapturedFacets(context, service, p.WithQueryDiagnostics(request.Query), p.facets, logprivacy.IntentSource{})
 }
 
 type capturedFacet struct {

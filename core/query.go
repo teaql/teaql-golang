@@ -533,6 +533,24 @@ func (q *SelectQuery) ForExactCount(alias string) *SelectQuery {
 // It is not executable work, a public query option, or wire metadata.
 func (q *SelectQuery) DiagnosticOrigin() logprivacy.IntentSource { return q.diagnosticOrigin }
 
+// WithDiagnosticQueries captures future work for safe intent projection before
+// the first statement. These snapshots are never executable child selections
+// and are absent from serialized queries. The caller's builders are not retained.
+func (q *SelectQuery) WithDiagnosticQueries(queries ...*SelectQuery) *SelectQuery {
+	result := q.Clone()
+	if len(queries) == 0 {
+		return result
+	}
+	origin := q.Clone()
+	for _, query := range queries {
+		if query != nil {
+			origin.ChildEnhancements = append(origin.ChildEnhancements, query.Clone())
+		}
+	}
+	result.diagnosticOrigin = logprivacy.NewIntentSource(origin)
+	return result
+}
+
 func (q *SelectQuery) Sum(field, alias string) *SelectQuery {
 	return q.Aggregate(AggSumAlias(field, alias))
 }

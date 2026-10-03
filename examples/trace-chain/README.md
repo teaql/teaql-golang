@@ -17,7 +17,7 @@ bash scripts/verify-examples.sh
 `go.work` resolves both the generated library and runtime to local source.
 The dedicated verifier runs the complete example twice against the same
 SQLite paths without deleting data and compares generated library hashes.
-It requires all nineteen generated tests to execute, including the named shared
+It requires all twenty generated tests to execute, including the named shared
 readonly relation ownership, entity-projection and paged-graph tests. It also runs
 six query-provenance regressions and fourteen separate native SQLite
 batch and transaction regression tests twice, using fresh provider-test fixtures;
@@ -30,6 +30,15 @@ Facets with private removed-child bindings and Facets nested inside a Facet
 selection (Payment → CustomerOrder → Platform). Storage aliases resolve through
 metadata rather than suffix guessing. Counts retain active membership and every
 physical statement retains the initiating root and ordered relation path.
+The future-Facet case puts a private predicate only in a later selection while
+the initiating comment mentions its value. All four physical statements must
+mask it, including the first root SELECT. A policy callback changes the caller's
+builder during execution: the captured invocation must retain its original
+rows and Facet tree. A subsequent independent query must not inherit redaction.
+This requires regenerated requests: capture the runtime-owned `FacetPlan`
+before policy/provider callbacks, attach diagnostic-only binding snapshots to
+the root query, and execute that same plan after root rows load. No plan is kept
+in shared Context or serialized query metadata.
 Facets inside an ordinary loaded relation are not yet covered by these cases.
 By default it creates a temporary directory; set
 `TEAQL_TRACE_CHAIN_DATABASE_DIRECTORY` to retain databases at a chosen path.
@@ -208,7 +217,7 @@ explicitly passes it through owned children, and refreshes loaded values only
 after commit. The runtime owns copying and provider-side policy classification;
 neither serialized requests nor shared Context carry a mutable graph snapshot.
 Existing libraries need regeneration to supply this provenance. The mandatory
-verifier now executes nineteen generated scenarios twice without cleaning their
+verifier now executes twenty generated scenarios twice without cleaning their
 SQLite databases.
 
 The unchanged-child case loads a parent/item graph and changes only the parent.

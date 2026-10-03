@@ -2,7 +2,10 @@ package runtime
 
 import (
 	stdcontext "context"
+	"encoding/json"
 	"errors"
+	"fmt"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -83,6 +86,31 @@ func TestFacetCycleFailsBeforeProvider(t *testing.T) {
 		core.NewSelectQuery("School").Comment("cyclic facet").Purpose("reject before execution"), options)
 	assert.ErrorContains(t, err, "cyclic facet")
 	assert.Zero(t, executor.calls)
+}
+
+func TestFacetPlanCapturesBeforeCallerChangesAndCanBeReused(t *testing.T) {
+	executor := &facetExecutor{}
+	service := NewRuntimeDataService(nil, executor)
+	options := core.NewQueryOptions()
+	nested := core.NewQuerySelection(core.NewSelectQuery("SchoolType").WithFilter(core.ExprEq("code", core.ValText("PRIVATE-PLAN"))))
+	options.Facets = append(options.Facets, core.NewFacetRequest("types", "schoolType", nested, false))
+	plan, err := CaptureFacetPlan(options)
+	assert.NoError(t, err)
+	nested.Query.Filter = nil
+	options.Facets[0].FacetName = "changed"
+	options.Facets = nil
+	assert.True(t, plan.HasFacets())
+	assert.NotNil(t, plan.facets[0].query.Filter)
+	encoded, err := json.Marshal(plan)
+	assert.NoError(t, err)
+	assert.False(t, strings.Contains(string(encoded)+fmt.Sprintf("%+v %#v", plan, plan), "PRIVATE-PLAN"))
+	for i := 0; i < 2; i++ {
+		result, err := plan.Execute(stdcontext.Background(), service,
+			core.NewSelectQuery("School").Comment("captured plan").Purpose("immutable execution"))
+		assert.NoError(t, err)
+		assert.Len(t, result["types"].Data, 1)
+		assert.Nil(t, plan.facets[0].query.CommentText, "execution must not mutate captured selection")
+	}
 }
 
 type facetExecutor struct {

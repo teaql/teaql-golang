@@ -520,7 +520,7 @@ func (e *ExecutableShipmentRequest) ExecuteForOne(context *runtime.UserContext) 
 }
 
 func (e *ExecutableShipmentRequest) ExecuteForList(context *runtime.UserContext) (*core.SmartList[*Shipment], error) {
-	rows, authorized, err := e.executeRecords(context, true)
+	rows, authorized, facetPlan, err := e.executeRecords(context, true)
 	if err != nil {
 		return nil, err
 	}
@@ -544,13 +544,13 @@ func (e *ExecutableShipmentRequest) ExecuteForList(context *runtime.UserContext)
 		results = append(results, entity)
 	}
 	list := core.NewSmartList(results)
-	if len(e.request.queryOptions.Facets) > 0 {
+	if facetPlan.HasFacets() {
 		dsRaw := context.GetResource("dataService")
 		ds, ok := dsRaw.(data_service.QueryExecutor)
 		if !ok { return nil, fmt.Errorf("dataService does not implement data_service.QueryExecutor") }
-		facets, err := runtime.ExecuteFacets(
+		facets, err := facetPlan.Execute(
 			context, runtime.NewRuntimeDataService(context.Metadata, ds),
-			authorized, e.request.queryOptions)
+			authorized)
 		if err != nil { return nil, err }
 		core.AttachFacets(list, facets)
 	}
@@ -652,37 +652,40 @@ func (e *ExecutableShipmentRequest) ExecuteForStream(context *runtime.UserContex
 }
 
 func (e *ExecutableShipmentRequest) ExecuteRecords(context *runtime.UserContext) ([]core.Record, error) {
-	rows, _, err := e.executeRecords(context, false)
+	rows, _, _, err := e.executeRecords(context, false)
 	return rows, err
 }
 
 // executeRecords returns the same authorized snapshot used for row execution
 // so facets can derive their membership query without reapplying root policy.
-func (e *ExecutableShipmentRequest) executeRecords(context *runtime.UserContext, entityProjection bool) ([]core.Record, *core.SelectQuery, error) {
+func (e *ExecutableShipmentRequest) executeRecords(context *runtime.UserContext, entityProjection bool) ([]core.Record, *core.SelectQuery, *runtime.FacetPlan, error) {
 	r := e.request
-	if _, err := core.NewQueryIntent(&r.commentText, &r.purposeText); err != nil { return nil, nil, err }
+	if _, err := core.NewQueryIntent(&r.commentText, &r.purposeText); err != nil { return nil, nil, nil, err }
+	facetPlan, err := runtime.CaptureFacetPlan(r.queryOptions)
+	if err != nil { return nil, nil, nil, err }
 	query := r.Query.Clone()
 	query.Comment(r.commentText).Purpose(r.purposeText)
+	query = facetPlan.WithQueryDiagnostics(query)
 	prepare := context.PrepareQuery
 	if entityProjection { prepare = context.PrepareEntityQuery }
 	authorized, err := prepare(query)
-	if err != nil { return nil, nil, err }
+	if err != nil { return nil, nil, nil, err }
 
 	dsRaw := context.GetResource("dataService")
 	if dsRaw == nil {
-		return nil, nil, fmt.Errorf("dataService not found in UserContext")
+		return nil, nil, nil, fmt.Errorf("dataService not found in UserContext")
 	}
 
 	ds, ok := dsRaw.(data_service.QueryExecutor)
 	if !ok {
-		return nil, nil, fmt.Errorf("dataService does not implement data_service.QueryExecutor")
+		return nil, nil, nil, fmt.Errorf("dataService does not implement data_service.QueryExecutor")
 	}
 
 	rows, err := runtime.NewRuntimeDataService(context.Metadata, ds).FetchAll(context, authorized)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
-	return rows, authorized, nil
+	return rows, authorized, facetPlan, nil
 }
 
 // ExecuteForRows preserves aggregate/group projections as records while keeping
