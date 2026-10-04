@@ -587,6 +587,11 @@ func TestGeneratedThreeLevelQueryTrace(t *testing.T) {
 				t.Fatalf("lost relation level %d: %+v", relation, node)
 			}
 		}
+		if frames[0].Comment != "query" || frames[1].Name != "Payment Attempt" || frames[1].Comment != "" ||
+			frames[len(frames)-2].Name != "sqlite" || frames[len(frames)-2].Comment != "" ||
+			frames[len(frames)-1].Kind != "sql" || frames[len(frames)-1].Comment != "" {
+			t.Fatalf("canonical generated path at every physical boundary: %+v", frames)
+		}
 	}
 	if len(e.sink.snapshot()) != 0 {
 		t.Fatal("read-only query emitted mutation audit")
