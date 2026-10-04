@@ -6,7 +6,17 @@ import (
 )
 
 func (d *DefaultSqlDialect) forCompilation() *DefaultSqlDialect {
-	return &DefaultSqlDialect{Dialect: d.Dialect, logPolicies: make(map[int]string), generatedSQL: true}
+	return &DefaultSqlDialect{Dialect: d.Dialect, logPolicies: make(map[int]string), generatedSQL: true, likeOperands: make(map[int]core.Value)}
+}
+
+func (d *DefaultSqlDialect) intentOperands(params []core.Value) []intentOperand {
+	var result []intentOperand
+	for index, policy := range d.parameterPolicies(params) {
+		if value, ok := d.likeOperands[index]; ok {
+			result = append(result, intentOperand{value: value, policy: policy})
+		}
+	}
+	return result
 }
 
 func fieldLogPolicy(entity *core.EntityDescriptor, field string) string {

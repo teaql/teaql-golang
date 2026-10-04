@@ -45,6 +45,10 @@ func (e *SqlDataServiceExecutor) queryIntentSource(request *ds.QueryRequest, com
 		for _, value := range bindings.Params {
 			source.Parameters = append(source.Parameters, core.CloneValue(value))
 		}
+		for _, operand := range bindings.intentOperands {
+			source.Parameters = append(source.Parameters, core.CloneValue(operand.value))
+			source.ParameterLogPolicies = append(source.ParameterLogPolicies, operand.policy)
+		}
 		sources = append(sources, source)
 		if origin, ok := logprivacy.ReadIntentSource(query.DiagnosticOrigin()).(*core.SelectQuery); ok {
 			stack = append(stack, origin)
