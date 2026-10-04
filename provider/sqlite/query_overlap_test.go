@@ -45,6 +45,17 @@ type queryStatementCapture struct {
 	entries []ds.ExecutionMetadata
 }
 
+// Observe private storage only in this native test. Do not introduce a runtime
+// introspection API, or compare the SQL evidence sink's legitimate contents.
+func sharedQueryContextResources(ctx *runtime.UserContext) map[string]interface{} {
+	resources := reflect.ValueOf(ctx).Elem().FieldByName("resources")
+	snapshot := make(map[string]interface{}, resources.Len())
+	for _, key := range resources.MapKeys() {
+		snapshot[key.String()] = ctx.GetResource(key.String())
+	}
+	return snapshot
+}
+
 func (c *queryStatementCapture) Query(ctx context.Context, request *ds.QueryRequest) (*ds.QueryResult, error) {
 	result, err := c.query.Query(ctx, request)
 	if err == nil {
@@ -116,6 +127,14 @@ func TestSharedContextLiveQueryGraphs(t *testing.T) {
 				deadline, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 				ctx.Context = deadline
 				defer cancel()
+				ctx.WithTraceId("caller-correlation-not-query-intent")
+				resourcesBefore := sharedQueryContextResources(ctx)
+				assertContextUnchanged := func() {
+					t.Helper()
+					if ctx.Context != deadline || !reflect.DeepEqual(sharedQueryContextResources(ctx), resourcesBefore) {
+						t.Fatal("shared Context resources changed during independent queries")
+					}
+				}
 				var group sync.WaitGroup
 				var once sync.Once
 				release := func() { once.Do(func() { close(transport.release) }) }
@@ -149,6 +168,7 @@ func TestSharedContextLiveQueryGraphs(t *testing.T) {
 				if len(capture.snapshot()) != 0 || len(logs.Snapshot()) != 0 || len(results) != 0 {
 					t.Fatal("query completed before root barrier release")
 				}
+				assertContextUnchanged()
 				release()
 				for i := 0; i < 2; i++ {
 					select {
@@ -170,6 +190,7 @@ func TestSharedContextLiveQueryGraphs(t *testing.T) {
 						t.Fatal("graph completion timeout")
 					}
 				}
+				assertContextUnchanged()
 				for index, entries := range [][]ds.ExecutionMetadata{capture.snapshot(), logs.Snapshot()} {
 					want := 8
 					if index == 1 && !logging {
