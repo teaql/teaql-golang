@@ -115,6 +115,11 @@ func (s *RuntimeDataService) fetchAllWithIntent(context stdcontext.Context, quer
 		}
 	}()
 	prepared := cloneSelectQuery(query, query.Entity)
+	if s.metadata != nil {
+		if descriptor := s.metadata.Entity(query.Entity); descriptor != nil {
+			protectForwardRelationProjection(prepared, descriptor)
+		}
+	}
 	if err = prepared.PrepareForList(); err != nil {
 		return nil, err
 	}
@@ -831,6 +836,10 @@ func attachRelationRows(parents, children []core.Record, name string, relation *
 			parent[name] = core.Value{V: related}
 		} else if len(related) > 0 {
 			parent[name] = core.Value{V: related[0]}
+		} else if localKey.V != nil {
+			// Keep the real reference key. Absent target fields are NotLoaded,
+			// and an alternate-key relation must not invent a target ID.
+			parent[name] = core.Value{V: core.Record{relation.ForKey: core.CloneValue(localKey)}}
 		} else {
 			parent[name] = core.ValNull()
 		}

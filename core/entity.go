@@ -66,10 +66,13 @@ func (a *Audited[T]) GetComment() string {
 }
 
 type BaseEntityData struct {
-	Id             uint64
-	Version        int64
-	Dynamic        Record
-	RelationFacets RelationFacetResults
+	Id                 uint64
+	Version            int64
+	Dynamic            Record
+	RelationFacets     RelationFacetResults
+	identityProjection bool
+	idLoaded           bool
+	versionLoaded      bool
 }
 
 func NewBaseEntityData() *BaseEntityData {
@@ -80,11 +83,13 @@ func NewBaseEntityData() *BaseEntityData {
 
 func (b *BaseEntityData) WithId(id uint64) *BaseEntityData {
 	b.Id = id
+	b.idLoaded = true
 	return b
 }
 
 func (b *BaseEntityData) WithVersion(version int64) *BaseEntityData {
 	b.Version = version
+	b.versionLoaded = true
 	return b
 }
 
@@ -150,8 +155,15 @@ func (b *BaseEntityData) RemoveDynamic(key string) {
 
 func (b *BaseEntityData) ToRecord() Record {
 	record := make(Record)
-	record["id"] = ValU64(b.Id)
-	record["version"] = ValI64(b.Version)
+	// Generated saves also assign allocated IDs/version directly to Base().
+	// Nonzero assignments are real values; zero defaults are not evidence that
+	// an identity-only loaded reference included the field.
+	if !b.identityProjection || b.idLoaded || b.Id != 0 {
+		record["id"] = ValU64(b.Id)
+	}
+	if !b.identityProjection || b.versionLoaded || b.Version != 0 {
+		record["version"] = ValI64(b.Version)
+	}
 	for k, v := range b.Dynamic {
 		record[k] = v
 	}
@@ -160,10 +172,12 @@ func (b *BaseEntityData) ToRecord() Record {
 
 func BaseEntityDataFromRecord(record Record) (*BaseEntityData, error) {
 	b := NewBaseEntityData()
+	b.identityProjection = true
 
 	if idVal, ok := record["id"]; ok {
 		if id, ok := idVal.TryU64(); ok {
 			b.Id = id
+			b.idLoaded = true
 		} else {
 			return nil, NewEntityError("BaseEntity", fmt.Sprintf("invalid id field: %v", idVal))
 		}
@@ -172,6 +186,7 @@ func BaseEntityDataFromRecord(record Record) (*BaseEntityData, error) {
 	if versionVal, ok := record["version"]; ok {
 		if version, ok := versionVal.TryI64(); ok {
 			b.Version = version
+			b.versionLoaded = true
 		} else {
 			return nil, NewEntityError("BaseEntity", fmt.Sprintf("invalid version field: %v", versionVal))
 		}

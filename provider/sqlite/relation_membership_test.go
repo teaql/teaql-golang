@@ -15,6 +15,61 @@ import (
 
 // A forward relation may deliberately use the scalar FK's model name. Its
 // filtered result must not destroy the child's independent list membership.
+func TestForwardIDReferenceDistinguishesHiddenDetailFromNull(t *testing.T) {
+	db, err := sql.Open("sqlite3", ":memory:")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer db.Close()
+	db.SetMaxOpenConns(1)
+	for _, statement := range []string{
+		"CREATE TABLE parent_data(id INTEGER PRIMARY KEY, version INTEGER, name TEXT)",
+		"CREATE TABLE child_data(id INTEGER PRIMARY KEY, version INTEGER, parent_id INTEGER)",
+		"INSERT INTO parent_data VALUES(1,1,'visible')",
+		"INSERT INTO child_data VALUES(1,1,1),(2,1,NULL)",
+	} {
+		if _, err := db.Exec(statement); err != nil {
+			t.Fatal(err)
+		}
+	}
+	metadata := runtime.NewInMemoryMetadataStore()
+	metadata.Register(core.NewEntityDescriptor("Parent").TableName("parent_data").
+		Property(core.NewPropertyDescriptor("id", core.TypeI64).Id()).
+		Property(core.NewPropertyDescriptor("version", core.TypeI64).Version()).
+		Property(core.NewPropertyDescriptor("name", core.TypeText)))
+	metadata.Register(core.NewEntityDescriptor("Child").TableName("child_data").
+		Property(core.NewPropertyDescriptor("id", core.TypeI64).Id()).
+		Property(core.NewPropertyDescriptor("version", core.TypeI64).Version()).
+		Property(core.NewPropertyDescriptor("parent_id", core.TypeI64)).
+		Relation(core.NewRelationDescriptor("parent", "Parent").LocalKey("parent_id").ForeignKey("id")))
+	service := runtime.NewRuntimeDataService(metadata,
+		tsql.NewSqlDataServiceExecutor(&SqliteDialect{}, NewSqliteMutationExecutor(db), metadata))
+	ctx := runtime.NewUserContext()
+	ctx.DisableSqlLog()
+	query := core.NewSelectQuery("Child").Project("id").OrderAsc("id").Limit(2).
+		Comment("load child identities").Purpose("preserve explicit loading boundaries")
+	plain, err := service.FetchAll(ctx, query)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, exists := plain[0]["parent"]; exists {
+		t.Fatal("unrequested relation fabricated")
+	}
+	query.RelationQuery("parent", core.NewSelectQuery("Parent").
+		WithFilter(core.ExprEq("name", core.ValText("absent"))))
+	rows, err := service.FetchAll(ctx, query)
+	if err != nil {
+		t.Fatal(err)
+	}
+	identity, ok := rows[0]["parent"].V.(core.Record)
+	if !ok || len(identity) != 1 || fmt.Sprint(identity["id"].V) != "1" {
+		t.Fatalf("hidden detail erased identity: %v", rows)
+	}
+	if rows[1]["parent"].V != nil {
+		t.Fatal("real SQL NULL became an identity")
+	}
+}
+
 func TestRelationMembershipSurvivesForwardHydration(t *testing.T) {
 	for _, wrapper := range []bool{false, true} {
 		for _, nested := range []bool{false, true} {
@@ -123,8 +178,11 @@ func TestRelationMembershipSurvivesForwardHydration(t *testing.T) {
 								if child["parent_ref"].V.(core.Record)["code"].V != "P-A" {
 									t.Fatal("wrong visible reference")
 								}
-							} else if child["parent_ref"].V != nil {
-								t.Fatal("filtered reference must remain null")
+							} else {
+								identity, ok := child["parent_ref"].V.(core.Record)
+								if !ok || len(identity) != 1 || identity["code"].V != "P-A" {
+									t.Fatal("filtered reference must preserve only its known code")
+								}
 							}
 							if shape == "filtered-sibling" && child["parent_again"].V.(core.Record)["code"].V != "P-A" {
 								t.Fatal("sibling lost original key")

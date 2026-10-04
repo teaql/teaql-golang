@@ -118,3 +118,29 @@ func TestEnsureRelationProjectionCompletesExpressionShapeWithoutDuplicates(t *te
 		t.Fatalf("expression-only row shape lost or duplicated the join key: %v", query.Projection)
 	}
 }
+
+func TestForwardRecordProjectionRetainsOnlyRequestedJoinKeys(t *testing.T) {
+	descriptor := projectionContext().Metadata.Entity("Order")
+	descriptor.Relation(core.NewRelationDescriptor("items", "Item").LocalKey("entity_id").Many())
+	for _, shape := range []struct {
+		name  string
+		query *core.SelectQuery
+		want  []string
+	}{
+		{"plain", core.NewSelectQuery("Order").Project("description"), []string{"description"}},
+		{"forward", core.NewSelectQuery("Order").Project("description").Relation("owner"), []string{"description", "owner_id"}},
+		{"reverse", core.NewSelectQuery("Order").Project("description").Relation("items"), []string{"description"}},
+		{"all", core.NewSelectQuery("Order").Relation("owner"), nil},
+		{"group", core.NewSelectQuery("Order").Project("description").WithGroupBy("description").Relation("owner"), []string{"description"}},
+		{"aggregate", core.NewSelectQuery("Order").Count("count").Relation("owner"), nil},
+		{"raw", core.NewSelectQuery("Order").WithRawSql("SELECT 1").Relation("owner"), nil},
+	} {
+		t.Run(shape.name, func(t *testing.T) {
+			protectForwardRelationProjection(shape.query, descriptor)
+			protectForwardRelationProjection(shape.query, descriptor)
+			if !reflect.DeepEqual(shape.query.Projection, shape.want) && !(len(shape.query.Projection) == 0 && len(shape.want) == 0) {
+				t.Fatalf("record projection=%v, want %v", shape.query.Projection, shape.want)
+			}
+		})
+	}
+}

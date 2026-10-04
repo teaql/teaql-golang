@@ -11,6 +11,58 @@ import (
 	"trace-chain-service-core-workspace/lib/payment"
 )
 
+func TestGeneratedFilteredForwardReferencePreservesIdentity(t *testing.T) {
+	for _, loggingOff := range []bool{false, true} {
+		t.Run(fmt.Sprintf("logging_off=%t", loggingOff), func(t *testing.T) {
+			e := openEnvironment(t)
+			if loggingOff {
+				e.context.DisableSqlLog()
+			}
+			root := newOrder(t, e, "filtered forward fixture")
+			pay := lib.Q.Payments().Comment("create reference fixture").Purpose("test generated hydration").NewEntity(e.context)
+			pay.UpdateReferenceCode("filtered forward payment")
+			root.PaymentList().Add(pay)
+			if _, err := root.AuditAs("seed filtered reference graph").Save(e.context); err != nil {
+				t.Fatal(err)
+			}
+			rootID, _ := customer_order.NewCustomerOrderExpression(root).Id().Eval()
+			payID, _ := payment.NewPaymentExpression(pay).Id().Eval()
+			rows, err := lib.Q.Payments().WithIdIs(payID).Limit(1).
+				SelectCustomerOrderWith(lib.Q.CustomerOrders().WithIdIs(0).Limit(1)).
+				Comment("load filtered reference").Purpose("retain identity but not hidden details").ExecuteForList(e.context)
+			if err != nil || len(rows.Data) != 1 {
+				t.Fatalf("filtered generated query: %v", err)
+			}
+			identity, loaded := payment.NewPaymentExpression(rows.Data[0]).CustomerOrder().Eval()
+			if !loaded || len(identity) != 1 {
+				t.Fatalf("filtered reference is not identity-only: loaded=%v record=%v", loaded, identity)
+			}
+			id, known := identity["id"].TryU64()
+			if !known || id != rootID {
+				t.Fatalf("actual FK was erased: got %v want %v", identity, rootID)
+			}
+			func() {
+				defer func() {
+					if failure := recover(); failure == nil || !strings.Contains(fmt.Sprint(failure), "TeaQLNotLoadedError") {
+						t.Fatalf("hidden description did not fail as NotLoaded: %v", failure)
+					}
+				}()
+				payment.NewPaymentExpression(rows.Data[0]).CustomerOrder().Description().Eval()
+			}()
+			visible, err := lib.Q.Payments().WithIdIs(payID).Limit(1).
+				SelectCustomerOrderWith(lib.Q.CustomerOrders().WithIdIs(rootID).Limit(1)).
+				Comment("load full reference").Purpose("verify independent detail view").ExecuteForList(e.context)
+			if err != nil || len(visible.Data) != 1 {
+				t.Fatalf("visible generated query: %v", err)
+			}
+			full, loaded := payment.NewPaymentExpression(visible.Data[0]).CustomerOrder().Eval()
+			if !loaded || len(full) <= 1 || len(identity) != 1 {
+				t.Fatalf("detail views were mixed: full=%v hidden=%v", full, identity)
+			}
+		})
+	}
+}
+
 func TestGeneratedRelationAggregateKeepsOriginalRoute(t *testing.T) {
 	for _, nested := range []bool{false, true} {
 		for _, loggingOff := range []bool{false, true} {

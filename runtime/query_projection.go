@@ -33,6 +33,19 @@ func protectEntityProjection(query *core.SelectQuery, descriptor *core.EntityDes
 	}
 }
 
+// Record queries need only the join keys for requested forward details, not
+// typed-entity ID/version protection. Keep raw and aggregate row shapes intact.
+func protectForwardRelationProjection(query *core.SelectQuery, descriptor *core.EntityDescriptor) {
+	if query.RawSql != nil || len(query.Aggregates) > 0 || len(query.GroupBy) > 0 || selectsAllProperties(query) {
+		return
+	}
+	for _, load := range query.Relations {
+		if relation := descriptor.RelationByName(load.Name); relation != nil && !relation.IsMany {
+			EnsureRelationProjection(query, relation.LocKey)
+		}
+	}
+}
+
 func selectsAllProperties(query *core.SelectQuery) bool {
 	return len(query.Projection) == 0 && len(query.ExprProjection) == 0 &&
 		len(query.RawProjections) == 0 && len(query.DynamicProperties) == 0
