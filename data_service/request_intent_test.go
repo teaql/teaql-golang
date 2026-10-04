@@ -18,14 +18,44 @@ func TestMutationIntentNeverUsesTraceTailOrBatchChildren(t *testing.T) {
 		t.Fatal(err)
 	}
 	cmd.TraceChain = append(cmd.TraceChain, core.NewTypedTraceNode("entity", "Payment", ""))
-	if *request.Comment() != " submit order " {
-		t.Fatal("trace tail replaced request intent")
+	if *request.Comment() != " submit order " || len(request.TraceChain()) != 1 {
+		t.Fatal("mutating the caller's trace changed the captured request")
 	}
 	_, err = CaptureMutationRequest(&BatchMutation{Mutations: []MutationRequest{request}})
 	assertCommentRequired(t, err)
 	batch, err := NewMutationRequest(&BatchMutation{Mutations: []MutationRequest{request}}, "save order graph")
 	if err != nil || *batch.Comment() != "save order graph" {
 		t.Fatal("batch did not capture its own root comment", err)
+	}
+}
+
+func TestMutationCommentSurvivesCapturedBlankTypedTraceTail(t *testing.T) {
+	for _, kind := range []string{"entity", "provider", "sql"} {
+		t.Run(kind, func(t *testing.T) {
+			cmd := core.NewInsertCommand("CustomerOrder")
+			cmd.TraceChain = []*core.TraceNode{
+				core.NewTypedTraceNode("auditReason", "CustomerOrder", "lineage reason"),
+				core.NewTypedTraceNode(kind, "tail", ""),
+			}
+			request, err := NewMutationRequest(&InsertMutation{Cmd: cmd}, " explicit root comment ")
+			if err != nil {
+				t.Fatal(err)
+			}
+			trace := request.TraceChain()
+			if len(trace) != 2 || trace[1].Kind != kind || trace[1].Name != "tail" || trace[1].Comment != "" {
+				t.Fatalf("captured request does not contain the blank typed tail: %+v", trace)
+			}
+			if request.Comment() == nil || *request.Comment() != " explicit root comment " {
+				t.Fatal("blank typed trace tail replaced the explicit root comment")
+			}
+			// A second capture must preserve both the actual input tail and the
+			// request-owned comment, not recover a reason from the trace.
+			recaptured, err := CaptureMutationRequest(request)
+			if err != nil || !reflect.DeepEqual(recaptured.TraceChain(), trace) ||
+				recaptured.Comment() == nil || *recaptured.Comment() != " explicit root comment " {
+				t.Fatalf("request recapture changed its owned intent or trace: %v", err)
+			}
+		})
 	}
 }
 
