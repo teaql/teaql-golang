@@ -484,9 +484,21 @@ func (e *RawAuditEvent) BuildSafeEvent(auditMaskFields []string, auditValueMaxLe
 		text := scrubWith(*e.AuditReason, intentValues)
 		auditReason = &text
 	}
+	// Identity is audit metadata, not a property change. An update may not
+	// change id, and a delete has no new field values at all. Preserve the
+	// authoritative target separately while owning its snapshot.
+	var targetID *core.Value
+	if e.TargetID != nil {
+		value := core.CloneValue(*e.TargetID)
+		targetID = &value
+	} else if id, present := e.Values["id"]; present {
+		value := core.CloneValue(id)
+		targetID = &value
+	}
 	return &SafeAuditEvent{
 		Kind:               e.Kind,
 		Entity:             e.Entity,
+		TargetID:           targetID,
 		Fields:             safeFields,
 		TraceChain:         trace,
 		AuditReason:        auditReason,
@@ -508,8 +520,13 @@ type SafeAuditField struct {
 }
 
 type SafeAuditEvent struct {
-	Kind               RawAuditEventKind
-	Entity             string
+	Kind   RawAuditEventKind
+	Entity string
+	// TargetID identifies the affected entity with Entity. It is not inferred
+	// from the responsibility lineage or included among changed Fields.
+	// Schema events have no target. Like typed IDs in trace nodes, it is
+	// structured identity metadata; free-form intent remains safely projected.
+	TargetID           *core.Value
 	Fields             []*SafeAuditField
 	TraceChain         []*core.TraceNode
 	AuditReason        *string

@@ -54,6 +54,8 @@ for iteration in 1 2; do
     exit 1
   fi
   rg -q '^--- PASS: TestGeneratedStreamsOverlapWithIndependentSavesAndSafeTermination ' "$verification/generated-$iteration.log"
+  rg -q 'PASS Go graph identity controls: duplicate, missing and equal-ID type collapse rejected' "$verification/generated-$iteration.log"
+  rg -q 'GRAPH IDENTITY EVIDENCE ' "$verification/generated-$iteration.log"
   rg -q '^--- PASS: TestGeneratedLoadedScalarPrivacyAndCommittedRefresh ' "$verification/generated-$iteration.log"
   rg -q '^--- PASS: TestGeneratedUnchangedPrivateChildProtectsParentIntent ' "$verification/generated-$iteration.log"
   rg -q '^--- PASS: TestGeneratedFacetTraceRetainsFilteredRoot ' "$verification/generated-$iteration.log"

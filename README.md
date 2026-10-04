@@ -54,6 +54,14 @@ transaction's database allocator are present in the lineage. A complete
 per-entity ledger trace replaces inheritance rather than appending it twice.
 The scope is passed between generated save calls, never stored on UserContext.
 
+Committed `SafeAuditEvent` also retains its independent `TargetID`, paired with
+`Entity`. Responsibility lineage is not target identity: an unannotated child's
+trace can contain only its parent's ID. Updates do not fabricate ID property
+changes, and deletes still identify the target when `Fields` is empty. Target
+values are copied; schema events have no target. Existing intent masking stays
+in effect. The generated six-object test checks exact command, successful SQL
+write and safe-audit identity sets, with duplicate/missing/type-collapse controls.
+
 The generated cases also cover three-level Q provenance and loaded E,
 Checker rejection, real UNIQUE rollback, successful UPDATE with empty
 authoritative readback, intent rejection with logs off, and two overlapping

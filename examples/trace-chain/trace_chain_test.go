@@ -3,6 +3,7 @@ package tracechain_test
 import (
 	stdcontext "context"
 	"database/sql"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
@@ -21,6 +22,7 @@ import (
 	"trace-chain-service-core-workspace/lib/order_item"
 	"trace-chain-service-core-workspace/lib/payment"
 	"trace-chain-service-core-workspace/lib/payment_attempt"
+	"trace-chain-service-core-workspace/lib/shipment"
 )
 
 // This observer wraps the real generated SQLite executor. It does not invent
@@ -334,6 +336,7 @@ func TestGeneratedCleanParentRetainsChangedChildLineage(t *testing.T) {
 }
 
 func TestGeneratedGraphMutationLineage(t *testing.T) {
+	graphIdentityControls(t)
 	e := openEnvironment(t)
 	order := newOrder(t, e, "draft")
 	first, removed := newItem(e, "retained item"), newItem(e, "unavailable item")
@@ -359,7 +362,8 @@ func TestGeneratedGraphMutationLineage(t *testing.T) {
 	removedID, _ := order_item.NewOrderItemExpression(removed).Id().Eval()
 	payID, _ := payment.NewPaymentExpression(pay).Id().Eval()
 	attemptID, _ := payment_attempt.NewPaymentAttemptExpression(attempt).Id().Eval()
-	if firstID == 0 || removedID == 0 || payID == 0 || attemptID == 0 {
+	shipID, _ := shipment.NewShipmentExpression(ship).Id().Eval()
+	if firstID == 0 || removedID == 0 || payID == 0 || attemptID == 0 || shipID == 0 {
 		t.Fatal("allocated child ID missing")
 	}
 	created := e.observer.snapshot()
@@ -379,6 +383,8 @@ func TestGeneratedGraphMutationLineage(t *testing.T) {
 	if orderID != payID {
 		t.Fatal("fixture must exercise same numeric ID across distinct entity types")
 	}
+	wantIdentities := []graphIdentity{{"Customer Order", orderID}, {"Order Item", firstID}, {"Order Item", removedID},
+		{"Payment", payID}, {"Payment Attempt", attemptID}, {"Shipment", shipID}}
 
 	e.reset()
 	e.observer.beforeCommit = func() {
@@ -400,7 +406,13 @@ func TestGeneratedGraphMutationLineage(t *testing.T) {
 	if len(requests) != 6 {
 		t.Fatalf("commands=%d, want 6", len(requests))
 	}
+	commandIdentities := make([]graphIdentity, 0, len(requests))
 	for _, request := range requests {
+		key, err := observedMutationIdentity(request)
+		if err != nil {
+			t.Fatal(err)
+		}
+		commandIdentities = append(commandIdentities, key)
 		if request.Comment() == nil || *request.Comment() != "submit order" {
 			t.Fatal("request root intent lost")
 		}
@@ -428,6 +440,7 @@ func TestGeneratedGraphMutationLineage(t *testing.T) {
 		}
 		assertLineage(t, request.TraceChain(), want)
 	}
+	assertExactGraphIdentities(t, wantIdentities, commandIdentities, "actual commands")
 	events := e.sink.snapshot()
 	if len(events) != 6 {
 		t.Fatalf("committed safe audits=%d", len(events))
@@ -441,18 +454,42 @@ func TestGeneratedGraphMutationLineage(t *testing.T) {
 		}
 		return want
 	}
+	auditIdentities := make([]graphIdentity, 0, len(events))
 	for index, event := range events {
+		if event.TargetID == nil {
+			t.Fatal("committed safe audit omitted target identity")
+		}
+		id, present := event.TargetID.TryU64()
+		if !present {
+			t.Fatal("committed safe audit target is not a numeric ID")
+		}
+		auditIdentities = append(auditIdentities, graphIdentity{event.Entity, id})
 		assertLineage(t, event.TraceChain, expectedSafeLineage(requests[index]))
 		if event.AuditReason == nil || *event.AuditReason != "submit order" {
 			t.Fatal("safe audit lost root intent")
 		}
 	}
+	assertExactGraphIdentities(t, wantIdentities, auditIdentities, "committed audit")
 	writes := 0
+	physicalIdentities := make([]graphIdentity, 0, len(requests))
 	for _, metadata := range e.sqlEvidence.Snapshot() {
 		if metadata.Operation == data_service.OpQuery {
 			continue
 		}
 		writes++
+		if writes > len(requests) {
+			t.Fatal("extra physical write without a command")
+		}
+		if metadata.ExecutionOutcome != "success" || metadata.AffectedRows == nil || *metadata.AffectedRows != 1 {
+			t.Fatal("physical graph evidence must be a successful single-target write")
+		}
+		wantOperation := data_service.OpUpdate
+		if _, deleting := requests[writes-1].(*data_service.DeleteMutation); deleting {
+			wantOperation = data_service.OpDelete
+		}
+		if metadata.Operation != wantOperation {
+			t.Fatal("physical write action differs from its observed command")
+		}
 		if metadata.AuditReason == nil || *metadata.AuditReason != "submit order" {
 			t.Fatal("SQL replaced request root reason with descendant comment")
 		}
@@ -460,10 +497,27 @@ func TestGeneratedGraphMutationLineage(t *testing.T) {
 			t.Fatalf("non-canonical SQL path: %+v", metadata.TraceChain)
 		}
 		assertLineage(t, metadata.MutationLineage, expectedSafeLineage(requests[writes-1]))
+		key, err := observedMutationIdentity(requests[writes-1])
+		if err != nil {
+			t.Fatal(err)
+		}
+		if metadata.TraceChain[1].Name != key.Entity {
+			t.Fatal("physical write uses a different entity than its command")
+		}
+		// Canonical paths do not carry IDs. Bind the actual ordered SQL fact to
+		// its observed provider command, never invent an ID in the path.
+		physicalIdentities = append(physicalIdentities, key)
 	}
 	if writes != 6 {
 		t.Fatalf("physical writes=%d", writes)
 	}
+	assertExactGraphIdentities(t, wantIdentities, physicalIdentities, "command-bound physical SQL")
+	fact, err := json.Marshal(map[string][]graphIdentity{"expected": wantIdentities, "commands": commandIdentities,
+		"physical": physicalIdentities, "audit": auditIdentities})
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Log("GRAPH IDENTITY EVIDENCE " + string(fact))
 	loaded, err := lib.Q.CustomerOrders().WithIdIs(orderID).
 		SelectOrderItemListWith(order_item.NewOrderItemMinimalRequest()).Limit(1).
 		Comment("verify submitted graph").Purpose("assert committed generated Q/E").ExecuteForList(e.context)

@@ -17,7 +17,7 @@ bash scripts/verify-examples.sh
 `go.work` resolves both the generated library and runtime to local source.
 The dedicated verifier runs the complete example twice against the same
 SQLite paths without deleting data and compares generated library hashes.
-It requires all twenty-four generated tests to execute, including the named shared
+It requires all twenty-five generated tests to execute, including the named shared
 readonly relation ownership, entity-projection and paged-graph tests. It also runs
 six query-provenance regressions and sixteen separate native SQLite
 batch and transaction regression tests twice, using fresh provider-test fixtures;
@@ -75,7 +75,14 @@ its source for API discovery; current object/field Assist is retained under
 | Default relation projection | Selecting a forward relation preserves all root fields; narrow forward/reverse children keep their identity and version, and one root update retains its audited optimistic version |
 | Narrow entity projection | List, minimal list, page and scalar stream retain ID/version without widening ordinary fields; incomplete entities still fail before transaction creation, and page count remains a count projection |
 
-Allocation is part of the six-mutation test; there are fourteen test functions.
+Allocation is part of the six-mutation test. It compares the exact six typed
+identities `(Entity, ID)` at the command, physical-write and committed safe-audit
+boundaries, including an Order and Payment with the same numeric ID. Negative
+controls reject a duplicate, a missing identity and a collapse across entity
+types. Safe audit `TargetID` is independent of `Fields`: an unchanged ID is not
+fabricated as a changed property, and inherited responsibility does not identify
+the child being modified. Schema events have no entity target. Free-form intent
+remains masked; adding target metadata does not enable plaintext diagnostics.
 An empty authoritative readback is a
 successful SQL SELECT returning zero rows but a failed business save. It must
 not rewrite the preceding UPDATE's successful execution outcome.
