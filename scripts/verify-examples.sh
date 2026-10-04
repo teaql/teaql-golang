@@ -11,15 +11,28 @@ fi
 
 cd "$repo"
 # An example must test this checkout, never an older published runtime. Go
-# ignores dependency-module replace directives, so inspect every module itself.
-while IFS= read -r module_file; do
+# ignores dependency-module replace directives. A library's standalone go.mod
+# can therefore resolve differently from its application. Bind every module in
+# one explicit temporary workspace; do not rely on an ambient parent go.work,
+# rewrite generated go.mod files, or silently download an older runtime.
+mapfile -t module_files < <(find "$repo/examples" -name go.mod -type f | sort)
+module_dirs=("$repo")
+for module_file in "${module_files[@]}"; do
+  module_dirs+=("$(dirname "$module_file")")
+done
+workspace="$(mktemp -d -t teaql-go-examples-work.XXXXXXXX)"
+(cd "$workspace" && GOWORK=off go work init "${module_dirs[@]}")
+export GOWORK="$workspace/go.work"
+echo "Local Go example workspace retained: $GOWORK"
+for module_file in "${module_files[@]}"; do
   module_dir="$(dirname "$module_file")"
   resolved_runtime="$(cd "$module_dir" && go list -m -f '{{.Dir}}' github.com/teaql/teaql-golang)"
-  if [[ "$(realpath "$resolved_runtime")" != "$(realpath "$repo")" ]]; then
+  if [[ -z "$resolved_runtime" || "$(realpath "$resolved_runtime")" != "$(realpath "$repo")" ]]; then
     echo "example runtime dependency is not local: $module_file -> $resolved_runtime" >&2
     exit 1
   fi
-done < <(find "$repo/examples" -name go.mod -type f | sort)
+done
+echo "PASS: all ${#module_files[@]} Go example modules resolve the local runtime"
 go run ./examples/basic
 go run ./examples/business-id
 go run ./examples/mutation-policy
