@@ -171,6 +171,7 @@ func captureMutation(input MutationRequest, intent core.MutationIntent) (Mutatio
 			if err != nil {
 				return nil, err
 			}
+			prefixBatchResponsibility(captured, intent.Comment())
 			copyRequest.Mutations[index] = captured
 		}
 		return &copyRequest, nil

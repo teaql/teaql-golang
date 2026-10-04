@@ -21,8 +21,8 @@ for iteration in 1 2; do
   # not the generated graph databases or a prepared-batch transport.
   (cd "$repo" && go test ./provider/sqlite -run '^TestNative(Batch|Transaction)' -count=1 -v -timeout 60s) |
     tee "$verification/native-batch-$iteration.log"
-  if [[ "$(rg -c '^--- PASS: TestNative(Batch|Transaction)' "$verification/native-batch-$iteration.log")" != 14 ]]; then
-    echo "FAIL: all fourteen native batch/transaction regression tests must execute" >&2
+  if [[ "$(rg -c '^--- PASS: TestNative(Batch|Transaction)' "$verification/native-batch-$iteration.log")" != 16 ]]; then
+    echo "FAIL: all sixteen native batch/transaction regression tests must execute" >&2
     exit 1
   fi
   (cd "$repo" && go test ./provider/sqlite -run '^TestQuery(Count|DescendantPrivacy)' -count=1 -v -timeout 60s) |
@@ -85,5 +85,5 @@ done
 find lib -type f -print0 | sort -z | xargs -0 sha256sum > "$verification/library-after.sha256"
 diff -u "$verification/library-before.sha256" "$verification/library-after.sha256"
 echo "PASS: generated Go graph/Q/E acceptance twice without cleanup; library unchanged"
-echo "PASS: fourteen native SQLite batch/transaction regressions twice; not prepared/generated batching"
+echo "PASS: sixteen native SQLite batch/transaction regressions twice; not prepared/generated batching"
 echo "Evidence directory: $verification"

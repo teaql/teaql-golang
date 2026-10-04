@@ -17,9 +17,9 @@ bash scripts/verify-examples.sh
 `go.work` resolves both the generated library and runtime to local source.
 The dedicated verifier runs the complete example twice against the same
 SQLite paths without deleting data and compares generated library hashes.
-It requires all twenty-three generated tests to execute, including the named shared
+It requires all twenty-four generated tests to execute, including the named shared
 readonly relation ownership, entity-projection and paged-graph tests. It also runs
-six query-provenance regressions and fourteen separate native SQLite
+six query-provenance regressions and sixteen separate native SQLite
 batch and transaction regression tests twice, using fresh provider-test fixtures;
 those checks are not generated-graph or prepared-batch acceptance.
 The native Facet regression also verifies the original root and metadata-backed
@@ -127,6 +127,17 @@ whole-graph sibling masking (covered below), prepared batching, or commit-only a
 when callers bypass the graph-save boundary. Separate native transaction tests
 now prove commit-owned delivery and rollback suppression without that boundary;
 this does not establish prepared-batch or every legacy callback path.
+
+The same-type native batch case uses runtime scope recovery for two reversed
+Customer identities, then submits one `BatchMutation` for INSERT and another
+for same-column UPDATE. Each executes two physical statements plus two
+authoritative readbacks. Command, physical metadata and committed audit preserve
+the batch-owned root responsibility before each item's local reason and ID.
+Capture is idempotent and preserves a known ID when the first reason repeats the
+root. Real uniqueness failure rolls back both items without committed audit;
+logging on/off, shared privacy, raw values and independent following requests are
+checked. This is native ordered grouping, not generated prepared grouping or
+one multi-row SQL statement. The capture fix changes neither SQL nor bindings.
 
 ## Shared readonly relation ownership
 
