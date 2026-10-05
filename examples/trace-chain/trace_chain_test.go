@@ -498,9 +498,47 @@ func TestGeneratedGraphMutationLineage(t *testing.T) {
 	assertExactGraphIdentities(t, wantIdentities, auditIdentities, "committed audit")
 	writes := 0
 	physicalIdentities := make([]graphIdentity, 0, len(requests))
-	for _, metadata := range e.sqlEvidence.Snapshot() {
+	statements := e.sqlEvidence.Snapshot()
+	if len(statements) != 2*len(requests) {
+		t.Fatalf("physical statements=%d, want six writes paired with six readbacks", len(statements))
+	}
+	for index, metadata := range statements {
 		if metadata.Operation == data_service.OpQuery {
+			if index%2 != 1 {
+				t.Fatal("readback must immediately follow its physical write")
+			}
+			request := requests[index/2]
+			intent, err := core.NewMutationIntent(request.Comment())
+			if err != nil {
+				t.Fatal(err)
+			}
+			readIntent, err := intent.ReadbackIntent()
+			if err != nil {
+				t.Fatal(err)
+			}
+			if metadata.Comment == nil || *metadata.Comment != readIntent.Comment() ||
+				metadata.AuditReason == nil || *metadata.AuditReason != intent.AuditReason() ||
+				metadata.Purpose == nil || *metadata.Purpose != readIntent.Purpose() {
+				t.Fatal("readback must inherit actual mutation comment and audit reason with its readback purpose")
+			}
+			if metadata.ExecutionOutcome != "success" || metadata.ResultCount == nil || *metadata.ResultCount != 1 || metadata.AffectedRows != nil {
+				t.Fatal("readback must observe one persisted row, never another affected write")
+			}
+			write := statements[index-1]
+			if len(metadata.TraceChain) != 4 || metadata.TraceChain[0].Name != write.TraceChain[0].Name ||
+				metadata.TraceChain[1].Name != write.TraceChain[0].Name || metadata.TraceChain[3].Name != "select" ||
+				metadata.TraceChain[0].Kind != "operation" || metadata.TraceChain[1].Kind != "request" ||
+				metadata.TraceChain[2].Kind != "provider" || metadata.TraceChain[3].Kind != "sql" {
+				t.Fatal("readback must retain command ownership and have its own canonical SELECT path")
+			}
+			if write.EndedAt.After(metadata.StartedAt) {
+				t.Fatal("physical write must finish before its readback")
+			}
+			assertLineage(t, metadata.MutationLineage, expectedSafeLineage(request))
 			continue
+		}
+		if index%2 != 0 {
+			t.Fatal("physical write must be followed by exactly one readback")
 		}
 		writes++
 		if writes > len(requests) {
@@ -538,6 +576,12 @@ func TestGeneratedGraphMutationLineage(t *testing.T) {
 		t.Fatalf("physical writes=%d", writes)
 	}
 	assertExactGraphIdentities(t, wantIdentities, physicalIdentities, "command-bound physical SQL")
+	readbackFact, err := json.Marshal(map[string]any{"case": "TC-REQ-10", "writes": writes,
+		"readbacks": len(statements) - writes, "statements": statements})
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Log("TC-REQ-10 GO READBACK EVIDENCE " + string(readbackFact))
 	fact, err := json.Marshal(map[string][]graphIdentity{"expected": wantIdentities, "commands": commandIdentities,
 		"physical": physicalIdentities, "audit": auditIdentities})
 	if err != nil {
