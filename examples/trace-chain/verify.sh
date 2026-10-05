@@ -58,6 +58,10 @@ for iteration in 1 2; do
   rg -q 'GRAPH IDENTITY EVIDENCE ' "$verification/generated-$iteration.log"
   rg -q 'TC-REQ-10 GO READBACK EVIDENCE ' "$verification/generated-$iteration.log"
   rg -q '^--- PASS: TestGeneratedLoadedScalarPrivacyAndCommittedRefresh ' "$verification/generated-$iteration.log"
+  if [[ "$(rg -c 'PASS Go complete private lineage:' "$verification/generated-$iteration.log")" != 4 ]]; then
+    echo "FAIL: loaded privacy must retain command/SQL/audit lineage through three updates and deletion" >&2
+    exit 1
+  fi
   rg -q '^--- PASS: TestGeneratedUnchangedPrivateChildProtectsParentIntent ' "$verification/generated-$iteration.log"
   rg -q '^--- PASS: TestGeneratedFacetTraceRetainsFilteredRoot ' "$verification/generated-$iteration.log"
   rg -q '^--- PASS: TestGeneratedNestedFacetsRetainAncestorPath ' "$verification/generated-$iteration.log"
