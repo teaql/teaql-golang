@@ -29,13 +29,15 @@ import (
 // trace nodes, mutate commands, replace Checker, or simulate a successful write.
 type graphObserver struct {
 	data_service.TransactionExecutor
-	mu           sync.Mutex
-	requests     []data_service.MutationRequest
-	commits      int
-	rollbacks    int
-	queries      int
-	begins       int
-	beforeCommit func()
+	mu            sync.Mutex
+	requests      []data_service.MutationRequest
+	commits       int
+	rollbacks     int
+	queries       int
+	queryFacts    []bootstrapQueryFact
+	mutationFacts []data_service.ExecutionMetadata
+	begins        int
+	beforeCommit  func()
 }
 
 func (p *graphObserver) Begin(ctx stdcontext.Context) (data_service.Transaction, error) {
@@ -53,7 +55,11 @@ func (p *graphObserver) Query(ctx stdcontext.Context, request *data_service.Quer
 	p.mu.Lock()
 	p.queries++
 	p.mu.Unlock()
-	return p.TransactionExecutor.(data_service.QueryExecutor).Query(ctx, request)
+	result, err := p.TransactionExecutor.(data_service.QueryExecutor).Query(ctx, request)
+	if err == nil {
+		p.observeBootstrapQuery(request, result)
+	}
+	return result, err
 }
 
 func (p *graphObserver) QueryStream(ctx stdcontext.Context, request *data_service.QueryRequest, chunkSize int, yield func(*data_service.StreamChunk) error) error {
@@ -76,7 +82,21 @@ func (tx *observedTransaction) Mutate(ctx stdcontext.Context, request data_servi
 	tx.observer.mu.Lock()
 	tx.observer.requests = append(tx.observer.requests, captured)
 	tx.observer.mu.Unlock()
-	return tx.Transaction.Mutate(ctx, request)
+	result, err := tx.Transaction.Mutate(ctx, request)
+	if err == nil {
+		tx.observer.mu.Lock()
+		tx.observer.mutationFacts = append(tx.observer.mutationFacts, result.Metadata)
+		tx.observer.mu.Unlock()
+	}
+	return result, err
+}
+
+func (tx *observedTransaction) Query(ctx stdcontext.Context, request *data_service.QueryRequest) (*data_service.QueryResult, error) {
+	result, err := tx.Transaction.Query(ctx, request)
+	if err == nil {
+		tx.observer.observeBootstrapQuery(request, result)
+	}
+	return result, err
 }
 
 func (tx *observedTransaction) GenerateId(entity string) (uint64, error) {
@@ -176,7 +196,13 @@ func (tx *observedTransaction) Rollback(ctx stdcontext.Context) error {
 	return err
 }
 
-func (p *graphObserver) reset() { p.mu.Lock(); p.requests = nil; p.mu.Unlock() }
+func (p *graphObserver) reset() {
+	p.mu.Lock()
+	p.requests = nil
+	p.queryFacts = nil
+	p.mutationFacts = nil
+	p.mu.Unlock()
+}
 func (p *graphObserver) snapshot() []data_service.MutationRequest {
 	p.mu.Lock()
 	defer p.mu.Unlock()
