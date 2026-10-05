@@ -582,6 +582,47 @@ func TestGeneratedDriverFailureRollsBackWithoutAudit(t *testing.T) {
 	if !ok {
 		t.Fatal("root insert did not allocate an ID")
 	}
+	requests := e.observer.snapshot()
+	if len(requests) != 3 {
+		t.Fatalf("expected root, item and failing shipment commands; got %d", len(requests))
+	}
+	writes := 0
+	for _, metadata := range e.sqlEvidence.Snapshot() {
+		if metadata.Operation == data_service.OpQuery {
+			continue
+		}
+		if writes >= len(requests) || metadata.Operation != data_service.OpInsert {
+			t.Fatal("unexpected physical operation in failed graph")
+		}
+		identity, identityErr := observedMutationIdentity(requests[writes])
+		if identityErr != nil {
+			t.Fatal(identityErr)
+		}
+		want := []*core.TraceNode{reasonNode("Customer Order", allocatedID, "submit rollback graph")}
+		if writes == 2 {
+			if identity.Entity != "Shipment" {
+				t.Fatal("failure must belong to the generated shipment command")
+			}
+			want = append(want, reasonNode("Shipment", identity.ID, "dispatch conflict"))
+		}
+		assertLineage(t, requests[writes].TraceChain(), want)
+		assertLineage(t, metadata.MutationLineage, want)
+		outcome := "success"
+		if writes == 2 {
+			outcome = "failure"
+		}
+		if metadata.ExecutionOutcome != outcome || metadata.AuditReason == nil || *metadata.AuditReason != "submit rollback graph" {
+			t.Fatal("failed graph SQL lost its outcome or request-owned root intent")
+		}
+		if len(metadata.TraceChain) != 4 || metadata.TraceChain[1].Name != identity.Entity || metadata.TraceChain[3].Name != "insert" {
+			t.Fatal("failed physical SQL lost its actual target or operation")
+		}
+		writes++
+	}
+	if writes != 3 {
+		t.Fatalf("expected two successful physical writes and one failure; got %d", writes)
+	}
+	t.Log("PASS Go generated failure: actual command and SQL retain assigned typed ancestry; no committed audit")
 	rows, queryErr := lib.Q.CustomerOrders().WithIdIs(allocatedID).Limit(1).
 		Comment("verify rolled back graph").Purpose("assert no committed root").ExecuteForList(e.context)
 	if queryErr != nil || len(rows.Data) != 0 {
@@ -852,6 +893,32 @@ func TestGeneratedConcurrentGraphsOnOneContext(t *testing.T) {
 		}
 		assertLineage(t, events[index].TraceChain, trace)
 	}
+	writes := 0
+	for _, metadata := range e.sqlEvidence.Snapshot() {
+		if metadata.Operation == data_service.OpQuery {
+			continue
+		}
+		if writes >= len(requests) {
+			t.Fatal("concurrent graph produced physical SQL without a command")
+		}
+		request := requests[writes]
+		identity, err := observedMutationIdentity(request)
+		if err != nil {
+			t.Fatal(err)
+		}
+		assertLineage(t, metadata.MutationLineage, request.TraceChain())
+		if metadata.AuditReason == nil || *metadata.AuditReason != *request.Comment() || metadata.ExecutionOutcome != "success" {
+			t.Fatal("concurrent physical SQL inherited another operation's intent or outcome")
+		}
+		if len(metadata.TraceChain) != 4 || metadata.TraceChain[1].Name != identity.Entity {
+			t.Fatal("concurrent SQL target differs from its generated command")
+		}
+		writes++
+	}
+	if writes != 4 {
+		t.Fatalf("expected four concurrent physical writes; got %d", writes)
+	}
+	t.Log("PASS Go generated concurrent graphs: each physical SQL belongs to its command and committed audit")
 	// Independently query both committed roots through Q and extract through E.
 	for _, order := range []*customer_order.CustomerOrder{left, right} {
 		id, _ := customer_order.NewCustomerOrderExpression(order).Id().Eval()
