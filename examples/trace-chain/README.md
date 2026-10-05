@@ -1,5 +1,17 @@
 # Generated Go Trace Chain Example
 
+The generated dynamic-aggregate suite observes each physical provider result,
+including when diagnostic logs are disabled. Root/nested counts retain the
+initiating root and verified reverse-relation ancestry. Numeric grouping emits
+real GROUP BY/COUNT SQL but no fabricated relation edge. Filtered forward detail
+retains the actual FK ID while generated E rejects unfetched description as
+NotLoaded; another full view does not change the first view's load boundary.
+`GO_AGGREGATE_OBSERVED`, `GO_AGGREGATE_NUMERIC` and `GO_AGGREGATE_FORWARD` records
+are required in both runs. Separate native SQLite membership tests combine
+loaded children, related counts, scalar/text keys, empty parents and filtered
+forward references. Expected path nodes are test assertions only, never injected
+into runtime queries. Forward-detail filtering policy remains a design discussion.
+
 This example checks business responsibility through a real generated object
 graph, not a hand-built expected trace sent to the runtime. The evaluated KSML
 model describes Customer Order, Order Item, Payment, Payment Attempt, Shipment

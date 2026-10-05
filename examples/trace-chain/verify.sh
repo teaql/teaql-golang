@@ -75,6 +75,16 @@ for iteration in 1 2; do
   fi
   rg -q '^--- PASS: TestGeneratedRelationAggregateKeepsOriginalRoute ' "$verification/generated-$iteration.log"
   rg -q '^--- PASS: TestGeneratedFilteredForwardReferencePreservesIdentity ' "$verification/generated-$iteration.log"
+  for marker in GO_AGGREGATE_OBSERVED GO_AGGREGATE_NUMERIC; do
+    if [[ "$(rg -c "$marker " "$verification/generated-$iteration.log")" != 4 ]]; then
+      echo "FAIL: all four root/nested/logging aggregate observations must execute: $marker" >&2
+      exit 1
+    fi
+  done
+  if [[ "$(rg -c 'GO_AGGREGATE_FORWARD ' "$verification/generated-$iteration.log")" != 2 ]]; then
+    echo "FAIL: both filtered-forward logging modes must retain real identity/NotLoaded evidence" >&2
+    exit 1
+  fi
   rg -q '^--- PASS: TestGeneratedCheckerOverlapKeepsAcceptedAndRejectedGraphsSeparate ' "$verification/generated-$iteration.log"
   rg -q '^--- PASS: TestGeneratedBootstrapOwnedIntent ' "$verification/generated-$iteration.log"
   for logging in false true; do
