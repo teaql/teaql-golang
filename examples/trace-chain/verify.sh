@@ -49,8 +49,8 @@ go test ./... -count=1 -v -timeout 120s | tee "$verification/generated-1.log"
 # Same paths and databases; no deletion or schema reset between executions.
 go test ./... -count=1 -v -timeout 120s | tee "$verification/generated-2.log"
 for iteration in 1 2; do
-  if [[ "$(rg -c '^--- PASS: TestGenerated' "$verification/generated-$iteration.log")" != 26 ]]; then
-    echo "FAIL: all twenty-six generated graph scenarios must execute" >&2
+  if [[ "$(rg -c '^--- PASS: TestGenerated' "$verification/generated-$iteration.log")" != 27 ]]; then
+    echo "FAIL: all twenty-seven generated graph scenarios must execute" >&2
     exit 1
   fi
   rg -q '^--- PASS: TestGeneratedStreamsOverlapWithIndependentSavesAndSafeTermination ' "$verification/generated-$iteration.log"
@@ -68,6 +68,11 @@ for iteration in 1 2; do
   rg -q '^--- PASS: TestGeneratedFutureFacetPrivacyAndSnapshot ' "$verification/generated-$iteration.log"
   rg -q '^--- PASS: TestGeneratedLoadedRelationFacet ' "$verification/generated-$iteration.log"
   rg -q '^--- PASS: TestGeneratedRelationFacetsKeepParentsAndEmptyResultsSeparate ' "$verification/generated-$iteration.log"
+  rg -q '^--- PASS: TestGeneratedLoadedFacetPhysicalPathsAndFullMembership ' "$verification/generated-$iteration.log"
+  if [[ "$(rg -c 'GO_LOADED_FACET_PATHS ' "$verification/generated-$iteration.log")" != 4 ]]; then
+    echo "FAIL: all four loaded Facet logging/include-all scenarios must execute" >&2
+    exit 1
+  fi
   rg -q '^--- PASS: TestGeneratedRelationAggregateKeepsOriginalRoute ' "$verification/generated-$iteration.log"
   rg -q '^--- PASS: TestGeneratedFilteredForwardReferencePreservesIdentity ' "$verification/generated-$iteration.log"
   rg -q '^--- PASS: TestGeneratedCheckerOverlapKeepsAcceptedAndRejectedGraphsSeparate ' "$verification/generated-$iteration.log"

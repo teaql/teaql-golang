@@ -17,7 +17,7 @@ bash scripts/verify-examples.sh
 `go.work` resolves both the generated library and runtime to local source.
 The dedicated verifier runs the complete example twice against the same
 SQLite paths without deleting data and compares generated library hashes.
-It requires all twenty-five generated tests to execute, including the named shared
+It requires all twenty-seven generated tests to execute, including the named shared
 readonly relation ownership, entity-projection and paged-graph tests. It also runs
 six query-provenance regressions and sixteen separate native SQLite
 batch and transaction regression tests twice, using fresh provider-test fixtures;
@@ -48,6 +48,14 @@ actual result IDs/counts, caller edits during policy, empty results, separate
 counts for three parents (0/1/2 payments) and a subsequent audited save. A child
 row limit does not truncate its matching Facet count. No implicit query occurs
 when reading the returned Facet.
+The physical-path follow-up checks matching/all targets with logging off/on:
+three parents have 0/1/2 payments, while the child page contains at most one.
+Real provider results retain full counts and the exact original root, reverse
+edge, Facet edge, provider and SELECT frames. The window child query plus each
+parent's membership COUNT and optional target SELECT produce seven statements
+for matching-only and eight for include-all. Logging-off preserves that work
+and raw intent/path while emitting zero diagnostic SQL facts. Query-only Facet
+metadata creates neither mutation commands nor committed audit events.
 By default it creates a temporary directory; set
 `TEAQL_TRACE_CHAIN_DATABASE_DIRECTORY` to retain databases at a chosen path.
 Set `TEAQL_TRACE_CHAIN_EVIDENCE_DIRECTORY` to retain logs and the before/after
