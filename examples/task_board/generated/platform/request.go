@@ -4,7 +4,6 @@ package platform
 
 import (
 	"fmt"
-	"strings"
 	"time"
 
 	"github.com/shopspring/decimal"
@@ -57,7 +56,7 @@ func (r *PlatformRequest) GetEntityDescriptor() *core.EntityDescriptor {
 }
 
 func (r *PlatformRequest) NewRelationEntity() core.Entity {
-	return NewPlatform()
+	return newLoadedPlatform()
 }
 
 func (r *PlatformRequest) Comment(comment string) *PlatformRequest {
@@ -753,9 +752,7 @@ func (r *PlatformRequest) WithoutTaskListMatching(child *task.TaskRequest) *Plat
 
 func (e *ExecutablePlatformRequest) NewEntity(context *runtime.UserContext) *Platform {
 	r := e.request
-	if strings.TrimSpace(r.purposeText) == "" || strings.TrimSpace(r.commentText) == "" {
-		panic("security audit failure: non-empty Comment() and Purpose() are required before NewEntity()")
-	}
+	if _, err := core.NewQueryIntent(&r.commentText, &r.purposeText); err != nil { panic(err) }
 	entity := NewPlatform()
 	initialized := context.InitializeEntity("Platform", entity)
 	typed, ok := initialized.(*Platform)
@@ -766,7 +763,12 @@ func (e *ExecutablePlatformRequest) NewEntity(context *runtime.UserContext) *Pla
 }
 
 func (e *ExecutablePlatformRequest) ExecuteForOne(context *runtime.UserContext) (*Platform, error) {
-	list, err := e.ExecuteForList(context)
+	request := *e.request
+	request.Query = e.request.Query.Clone()
+	request.Query.Limit(1)
+	executable := *e
+	executable.request = &request
+	list, err := executable.ExecuteForList(context)
 	if err != nil {
 		return nil, err
 	}
@@ -777,16 +779,14 @@ func (e *ExecutablePlatformRequest) ExecuteForOne(context *runtime.UserContext) 
 }
 
 func (e *ExecutablePlatformRequest) ExecuteForList(context *runtime.UserContext) (*core.SmartList[*Platform], error) {
-	rows, err := e.ExecuteRecords(context)
+	rows, authorized, err := e.executeRecords(context, true)
 	if err != nil {
 		return nil, err
 	}
 
 	var results []*Platform
-	queryRoot := core.NewEntityRoot()
 	for _, rec := range rows {
-		entity := NewPlatform()
-		entity.AttachEntityRoot(queryRoot)
+		entity := newLoadedPlatform()
 		if err := entity.FromRecord(rec); err != nil {
 			return nil, err
 		}
@@ -795,6 +795,7 @@ func (e *ExecutablePlatformRequest) ExecuteForList(context *runtime.UserContext)
 				if !ok { return nil, fmt.Errorf("relation taskStatusList has unexpected runtime type %T", relationValue.V) }
 				for _, childRecord := range childRecords {
 					childEntity := task_status.NewTaskStatus()
+					childEntity.EntityRoot().ClearEntity(childEntity.EntityKey())
 					childEntity.AttachEntityRoot(entity.EntityRoot())
 					if err := childEntity.FromRecord(childRecord); err != nil { return nil, err }
 					entity.TaskStatusList().Add(childEntity)
@@ -804,6 +805,7 @@ func (e *ExecutablePlatformRequest) ExecuteForList(context *runtime.UserContext)
 				if !ok { return nil, fmt.Errorf("relation taskList has unexpected runtime type %T", relationValue.V) }
 				for _, childRecord := range childRecords {
 					childEntity := task.NewTask()
+					childEntity.EntityRoot().ClearEntity(childEntity.EntityKey())
 					childEntity.AttachEntityRoot(entity.EntityRoot())
 					if err := childEntity.FromRecord(childRecord); err != nil { return nil, err }
 					entity.TaskList().Add(childEntity)
@@ -817,7 +819,7 @@ func (e *ExecutablePlatformRequest) ExecuteForList(context *runtime.UserContext)
 		if !ok { return nil, fmt.Errorf("dataService does not implement data_service.QueryExecutor") }
 		facets, err := runtime.ExecuteFacets(
 			context, runtime.NewRuntimeDataService(context.Metadata, ds),
-			e.request.Query, e.request.queryOptions)
+			authorized, e.request.queryOptions)
 		if err != nil { return nil, err }
 		core.AttachFacets(list, facets)
 	}
@@ -828,14 +830,13 @@ func (e *ExecutablePlatformRequest) ExecuteForList(context *runtime.UserContext)
 // queries from that same authorized snapshot.
 func (e *ExecutablePlatformRequest) ExecuteForPage(context *runtime.UserContext, offset uint64, size uint64) (*core.SmartList[*Platform], error) {
 	r := e.request
-	if strings.TrimSpace(r.purposeText) == "" || strings.TrimSpace(r.commentText) == "" {
-		return nil, fmt.Errorf("security audit failure: Comment() and Purpose() must be called before ExecuteForPage()")
-	}
+	if _, err := core.NewQueryIntent(&r.commentText, &r.purposeText); err != nil { return nil, err }
 	if size == 0 {
 		return nil, fmt.Errorf("QUERY_INVALID_LIMIT: size must be positive")
 	}
-	r.Query.Page(offset, size).Comment(r.commentText).Purpose(r.purposeText)
-	authorized, err := context.PrepareQuery(r.Query)
+	query := r.Query.Clone()
+	query.Page(offset, size).Comment(r.commentText).Purpose(r.purposeText)
+	authorized, err := context.PrepareEntityQuery(query)
 	if err != nil { return nil, err }
 	dsRaw := context.GetResource("dataService")
 	ds, ok := dsRaw.(data_service.QueryExecutor)
@@ -868,16 +869,15 @@ func (e *ExecutablePlatformRequest) ExecuteForPage(context *runtime.UserContext,
 		if err != nil { return nil, err }
 	}
 	results := make([]*Platform, 0, len(rows))
-	queryRoot := core.NewEntityRoot()
 	for _, rec := range rows {
-		entity := NewPlatform()
-		entity.AttachEntityRoot(queryRoot)
+		entity := newLoadedPlatform()
 		if err := entity.FromRecord(rec); err != nil { return nil, err }
 		if relationValue, selected := rec["taskStatusList"]; selected {
 			childRecords, ok := relationValue.V.([]core.Record)
 				if !ok { return nil, fmt.Errorf("relation taskStatusList has unexpected runtime type %T", relationValue.V) }
 				for _, childRecord := range childRecords {
 					childEntity := task_status.NewTaskStatus()
+					childEntity.EntityRoot().ClearEntity(childEntity.EntityKey())
 					childEntity.AttachEntityRoot(entity.EntityRoot())
 					if err := childEntity.FromRecord(childRecord); err != nil { return nil, err }
 					entity.TaskStatusList().Add(childEntity)
@@ -887,6 +887,7 @@ func (e *ExecutablePlatformRequest) ExecuteForPage(context *runtime.UserContext,
 				if !ok { return nil, fmt.Errorf("relation taskList has unexpected runtime type %T", relationValue.V) }
 				for _, childRecord := range childRecords {
 					childEntity := task.NewTask()
+					childEntity.EntityRoot().ClearEntity(childEntity.EntityKey())
 					childEntity.AttachEntityRoot(entity.EntityRoot())
 					if err := childEntity.FromRecord(childRecord); err != nil { return nil, err }
 					entity.TaskList().Add(childEntity)
@@ -900,27 +901,24 @@ func (e *ExecutablePlatformRequest) ExecuteForPage(context *runtime.UserContext,
 // an error from yield cancels iteration and releases the database resources.
 func (e *ExecutablePlatformRequest) ExecuteForStream(context *runtime.UserContext, chunkSize int, yield func(*Platform) error) error {
 	r := e.request
-	if strings.TrimSpace(r.purposeText) == "" || strings.TrimSpace(r.commentText) == "" {
-		return fmt.Errorf("security audit failure: Comment() and Purpose() must be called before ExecuteForStream()")
-	}
+	if _, err := core.NewQueryIntent(&r.commentText, &r.purposeText); err != nil { return err }
 	if yield == nil {
 		return fmt.Errorf("stream consumer must not be nil")
 	}
-	r.Query.Comment(r.commentText).Purpose(r.purposeText)
+	query := r.Query.Clone()
+	query.Comment(r.commentText).Purpose(r.purposeText)
+	authorized, err := context.PrepareEntityQuery(query)
+	if err != nil { return err }
 	dsRaw := context.GetResource("dataService")
 	ds, ok := dsRaw.(data_service.StreamQueryExecutor)
 	if !ok {
 		return fmt.Errorf("dataService does not implement data_service.StreamQueryExecutor")
 	}
-	req := &data_service.QueryRequest{
-		Query: r.Query, TraceChain: r.Query.TraceChain,
-		Comment: r.Query.CommentText, Purpose: r.Query.PurposeText,
-	}
-	queryRoot := core.NewEntityRoot()
+	req, err := data_service.NewQueryRequest(authorized)
+	if err != nil { return err }
 	return ds.QueryStream(context, req, chunkSize, func(chunk *data_service.StreamChunk) error {
 		for _, rec := range chunk.Rows {
-			entity := NewPlatform()
-			entity.AttachEntityRoot(queryRoot)
+			entity := newLoadedPlatform()
 			if err := entity.FromRecord(rec); err != nil {
 				return err
 			}
@@ -933,27 +931,37 @@ func (e *ExecutablePlatformRequest) ExecuteForStream(context *runtime.UserContex
 }
 
 func (e *ExecutablePlatformRequest) ExecuteRecords(context *runtime.UserContext) ([]core.Record, error) {
+	rows, _, err := e.executeRecords(context, false)
+	return rows, err
+}
+
+// executeRecords returns the same authorized snapshot used for row execution
+// so facets can derive their membership query without reapplying root policy.
+func (e *ExecutablePlatformRequest) executeRecords(context *runtime.UserContext, entityProjection bool) ([]core.Record, *core.SelectQuery, error) {
 	r := e.request
-	if strings.TrimSpace(r.purposeText) == "" || strings.TrimSpace(r.commentText) == "" {
-		return nil, fmt.Errorf("security audit failure: Comment() and Purpose() must be called before ExecuteForList()")
-	}
-	r.Query.Comment(r.commentText).Purpose(r.purposeText)
+	if _, err := core.NewQueryIntent(&r.commentText, &r.purposeText); err != nil { return nil, nil, err }
+	query := r.Query.Clone()
+	query.Comment(r.commentText).Purpose(r.purposeText)
+	prepare := context.PrepareQuery
+	if entityProjection { prepare = context.PrepareEntityQuery }
+	authorized, err := prepare(query)
+	if err != nil { return nil, nil, err }
 
 	dsRaw := context.GetResource("dataService")
 	if dsRaw == nil {
-		return nil, fmt.Errorf("dataService not found in UserContext")
+		return nil, nil, fmt.Errorf("dataService not found in UserContext")
 	}
 
 	ds, ok := dsRaw.(data_service.QueryExecutor)
 	if !ok {
-		return nil, fmt.Errorf("dataService does not implement data_service.QueryExecutor")
+		return nil, nil, fmt.Errorf("dataService does not implement data_service.QueryExecutor")
 	}
 
-	rows, err := runtime.NewRuntimeDataService(context.Metadata, ds).FetchAll(context, r.Query)
+	rows, err := runtime.NewRuntimeDataService(context.Metadata, ds).FetchAll(context, authorized)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
-	return rows, nil
+	return rows, authorized, nil
 }
 
 // ExecuteForRows preserves aggregate/group projections as records while keeping

@@ -8,16 +8,23 @@ import (
 	"github.com/teaql/teaql-golang/core"
 	ds "github.com/teaql/teaql-golang/data_service"
 	"github.com/teaql/teaql-golang/internal/logprivacy"
+	"github.com/teaql/teaql-golang/internal/mutationaudit"
 )
 
 // The write has already been observed. Report only the readback, preserving
 // the write's outcome even when the business operation will roll back.
 func recordMutationReadback(ctx context.Context, query *CompiledQuery, source ds.ExecutionMetadata, started time.Time, count int, readErr error) {
-	recorder, ok := ctx.(interface{ RecordExecutionMetadata(ds.ExecutionMetadata) })
+	recorder, ok := mutationaudit.Owner(ctx).(interface{ RecordExecutionMetadata(ds.ExecutionMetadata) })
 	if !ok {
 		return
 	}
 	metadata := source
+	intent, intentErr := core.NewMutationIntent(source.AuditReason)
+	if intentErr == nil {
+		readIntent, _ := intent.ReadbackIntent()
+		purpose := readIntent.Purpose()
+		metadata.Purpose = &purpose
+	}
 	metadata.InheritedIntent = logprivacy.NewIntentSource(source)
 	metadata.Operation = ds.OpQuery
 	metadata.ParameterizedSQL = query.Sql
@@ -27,8 +34,29 @@ func recordMutationReadback(ctx context.Context, query *CompiledQuery, source ds
 	metadata.StartedAt, metadata.EndedAt = started, time.Now()
 	metadata.AffectedRows, metadata.ResultCount = nil, nil
 	metadata.DebugQuery = nil
-	metadata.TraceChain = append([]*core.TraceNode(nil), source.TraceChain...)
-	metadata.TraceChain = append(metadata.TraceChain, core.NewTypedTraceNode("sql", "readback", "readback"))
+	// Rebuild a separate query path from the write root and inherited relation
+	// frames. Reusing the canonical write and appending another Sql node is not
+	// idempotent and labels a SELECT as a mutation.
+	root := "unknown"
+	if len(source.TraceChain) > 0 && source.TraceChain[0] != nil {
+		root = source.TraceChain[0].Name
+	}
+	frames := core.CloneTraceNodes(source.MutationLineage)
+	for _, frame := range core.CloneTraceNodes(source.TraceChain) {
+		if frame != nil && frame.Kind == "relation" {
+			frames = append(frames, frame)
+		}
+	}
+	comment, purpose := "", ""
+	if metadata.Comment != nil {
+		comment = *metadata.Comment
+	}
+	if metadata.Purpose != nil {
+		purpose = *metadata.Purpose
+	}
+	path := core.CanonicalSQLTracePath(core.QueryTraceSource(root, frames, comment, purpose), source.Backend, "select")
+	metadata.TraceChain = path.TraceChain
+	metadata.MutationLineage = core.CloneTraceNodes(source.MutationLineage)
 	metadata.ExecutionOutcome = "success"
 	if readErr != nil {
 		metadata.ExecutionOutcome = "failure"

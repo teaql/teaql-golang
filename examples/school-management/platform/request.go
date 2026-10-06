@@ -1,16 +1,17 @@
+
+
 package platform
 
 import (
 	"fmt"
-	"strings"
 	"time"
 
 	"github.com/shopspring/decimal"
 	"github.com/teaql/teaql-golang/core"
 	"github.com/teaql/teaql-golang/data_service"
 	"github.com/teaql/teaql-golang/runtime"
-	"school-management-service-core-workspace/lib/school"
 	"school-management-service-core-workspace/lib/school_type"
+	"school-management-service-core-workspace/lib/school"
 )
 
 var (
@@ -19,10 +20,10 @@ var (
 )
 
 type PlatformRequest struct {
-	Query             *core.SelectQuery
-	queryOptions      *core.QueryOptions
-	purposeText       string
-	commentText       string
+	Query       *core.SelectQuery
+	queryOptions *core.QueryOptions
+	purposeText string
+	commentText string
 	relationFactories map[string]func() core.Entity
 }
 
@@ -32,8 +33,8 @@ type ExecutablePlatformRequest struct {
 
 func NewPlatformRequest() *PlatformRequest {
 	r := &PlatformRequest{
-		Query:             core.NewSelectQuery("Platform"),
-		queryOptions:      core.NewQueryOptions(),
+		Query: core.NewSelectQuery("Platform"),
+		queryOptions: core.NewQueryOptions(),
 		relationFactories: make(map[string]func() core.Entity),
 	}
 	r.Query.AndFilter(core.ExprGte("version", core.ValI64(1)))
@@ -55,7 +56,7 @@ func (r *PlatformRequest) GetEntityDescriptor() *core.EntityDescriptor {
 }
 
 func (r *PlatformRequest) NewRelationEntity() core.Entity {
-	return NewPlatform()
+	return newLoadedPlatform()
 }
 
 func (r *PlatformRequest) Comment(comment string) *PlatformRequest {
@@ -109,28 +110,20 @@ func (r *PlatformRequest) TopNProbeParentThreshold(threshold uint64) *PlatformRe
 }
 
 func removePlatformVersionFilter(expr *core.Expr) *core.Expr {
-	if expr == nil {
-		return nil
-	}
+	if expr == nil { return nil }
 	if expr.Type == core.ExprTypeBinary && expr.Left != nil &&
 		expr.Left.Type == core.ExprTypeColumn && expr.Left.Column == "version" {
 		return nil
 	}
-	if expr.Type != core.ExprTypeAnd {
-		return expr
-	}
+	if expr.Type != core.ExprTypeAnd { return expr }
 	parts := make([]*core.Expr, 0, len(expr.Parts))
 	for _, part := range expr.Parts {
 		if kept := removePlatformVersionFilter(part); kept != nil {
 			parts = append(parts, kept)
 		}
 	}
-	if len(parts) == 0 {
-		return nil
-	}
-	if len(parts) == 1 {
-		return parts[0]
-	}
+	if len(parts) == 0 { return nil }
+	if len(parts) == 1 { return parts[0] }
 	return core.ExprAndNode(parts...)
 }
 
@@ -616,6 +609,8 @@ func (r *PlatformRequest) OrderByVersionDesc() *PlatformRequest {
 	return r
 }
 
+
+
 func (r *PlatformRequest) CountSchoolTypes() *PlatformRequest {
 	return r.CountSchoolTypesAs("countSchoolTypes")
 
@@ -873,9 +868,7 @@ func (r *PlatformRequest) WithoutSchoolListMatching(child *school.SchoolRequest)
 
 func (e *ExecutablePlatformRequest) NewEntity(context *runtime.UserContext) *Platform {
 	r := e.request
-	if strings.TrimSpace(r.purposeText) == "" || strings.TrimSpace(r.commentText) == "" {
-		panic("security audit failure: non-empty Comment() and Purpose() are required before NewEntity()")
-	}
+	if _, err := core.NewQueryIntent(&r.commentText, &r.purposeText); err != nil { panic(err) }
 	entity := NewPlatform()
 	initialized := context.InitializeEntity("Platform", entity)
 	typed, ok := initialized.(*Platform)
@@ -886,7 +879,12 @@ func (e *ExecutablePlatformRequest) NewEntity(context *runtime.UserContext) *Pla
 }
 
 func (e *ExecutablePlatformRequest) ExecuteForOne(context *runtime.UserContext) (*Platform, error) {
-	list, err := e.ExecuteForList(context)
+	request := *e.request
+	request.Query = e.request.Query.Clone()
+	request.Query.Limit(1)
+	executable := *e
+	executable.request = &request
+	list, err := executable.ExecuteForList(context)
 	if err != nil {
 		return nil, err
 	}
@@ -897,62 +895,48 @@ func (e *ExecutablePlatformRequest) ExecuteForOne(context *runtime.UserContext) 
 }
 
 func (e *ExecutablePlatformRequest) ExecuteForList(context *runtime.UserContext) (*core.SmartList[*Platform], error) {
-	rows, err := e.ExecuteRecords(context)
+	rows, authorized, err := e.executeRecords(context, true)
 	if err != nil {
 		return nil, err
 	}
 
 	var results []*Platform
-	queryRoot := core.NewEntityRoot()
 	for _, rec := range rows {
-		entity := NewPlatform()
-		entity.AttachEntityRoot(queryRoot)
+		entity := newLoadedPlatform()
 		if err := entity.FromRecord(rec); err != nil {
 			return nil, err
 		}
 		if relationValue, selected := rec["schoolTypeList"]; selected {
 			childRecords, ok := relationValue.V.([]core.Record)
-			if !ok {
-				return nil, fmt.Errorf("relation schoolTypeList has unexpected runtime type %T", relationValue.V)
-			}
-			for _, childRecord := range childRecords {
-				childEntity := school_type.NewSchoolType()
-				childEntity.AttachEntityRoot(entity.EntityRoot())
-				if err := childEntity.FromRecord(childRecord); err != nil {
-					return nil, err
-				}
-				entity.SchoolTypeList().Add(childEntity)
-			}
-		}
+				if !ok { return nil, fmt.Errorf("relation schoolTypeList has unexpected runtime type %T", relationValue.V) }
+				for _, childRecord := range childRecords {
+					childEntity := school_type.NewSchoolType()
+					childEntity.EntityRoot().ClearEntity(childEntity.EntityKey())
+					childEntity.AttachEntityRoot(entity.EntityRoot())
+					if err := childEntity.FromRecord(childRecord); err != nil { return nil, err }
+					entity.SchoolTypeList().Add(childEntity)
+				}}
 		if relationValue, selected := rec["schoolList"]; selected {
 			childRecords, ok := relationValue.V.([]core.Record)
-			if !ok {
-				return nil, fmt.Errorf("relation schoolList has unexpected runtime type %T", relationValue.V)
-			}
-			for _, childRecord := range childRecords {
-				childEntity := school.NewSchool()
-				childEntity.AttachEntityRoot(entity.EntityRoot())
-				if err := childEntity.FromRecord(childRecord); err != nil {
-					return nil, err
-				}
-				entity.SchoolList().Add(childEntity)
-			}
-		}
+				if !ok { return nil, fmt.Errorf("relation schoolList has unexpected runtime type %T", relationValue.V) }
+				for _, childRecord := range childRecords {
+					childEntity := school.NewSchool()
+					childEntity.EntityRoot().ClearEntity(childEntity.EntityKey())
+					childEntity.AttachEntityRoot(entity.EntityRoot())
+					if err := childEntity.FromRecord(childRecord); err != nil { return nil, err }
+					entity.SchoolList().Add(childEntity)
+				}}
 		results = append(results, entity)
 	}
 	list := core.NewSmartList(results)
 	if len(e.request.queryOptions.Facets) > 0 {
 		dsRaw := context.GetResource("dataService")
 		ds, ok := dsRaw.(data_service.QueryExecutor)
-		if !ok {
-			return nil, fmt.Errorf("dataService does not implement data_service.QueryExecutor")
-		}
+		if !ok { return nil, fmt.Errorf("dataService does not implement data_service.QueryExecutor") }
 		facets, err := runtime.ExecuteFacets(
 			context, runtime.NewRuntimeDataService(context.Metadata, ds),
-			e.request.Query, e.request.queryOptions)
-		if err != nil {
-			return nil, err
-		}
+			authorized, e.request.queryOptions)
+		if err != nil { return nil, err }
 		core.AttachFacets(list, facets)
 	}
 	return list, nil
@@ -962,101 +946,68 @@ func (e *ExecutablePlatformRequest) ExecuteForList(context *runtime.UserContext)
 // queries from that same authorized snapshot.
 func (e *ExecutablePlatformRequest) ExecuteForPage(context *runtime.UserContext, offset uint64, size uint64) (*core.SmartList[*Platform], error) {
 	r := e.request
-	if strings.TrimSpace(r.purposeText) == "" || strings.TrimSpace(r.commentText) == "" {
-		return nil, fmt.Errorf("security audit failure: Comment() and Purpose() must be called before ExecuteForPage()")
-	}
+	if _, err := core.NewQueryIntent(&r.commentText, &r.purposeText); err != nil { return nil, err }
 	if size == 0 {
 		return nil, fmt.Errorf("QUERY_INVALID_LIMIT: size must be positive")
 	}
-	r.Query.Page(offset, size).Comment(r.commentText).Purpose(r.purposeText)
-	authorized, err := context.PrepareQuery(r.Query)
-	if err != nil {
-		return nil, err
-	}
+	query := r.Query.Clone()
+	query.Page(offset, size).Comment(r.commentText).Purpose(r.purposeText)
+	authorized, err := context.PrepareEntityQuery(query)
+	if err != nil { return nil, err }
 	dsRaw := context.GetResource("dataService")
 	ds, ok := dsRaw.(data_service.QueryExecutor)
-	if !ok {
-		return nil, fmt.Errorf("dataService does not implement data_service.QueryExecutor")
-	}
+	if !ok { return nil, fmt.Errorf("dataService does not implement data_service.QueryExecutor") }
 	service := runtime.NewRuntimeDataService(context.Metadata, ds)
 	const countAlias = "__teaql_total"
 	var rows []core.Record
 	var total uint64
 	if authorized.IDSetPagination != nil {
 		rows, err = service.FetchAll(context, authorized)
-		if err != nil {
-			return nil, err
-		}
+		if err != nil { return nil, err }
 		if retainedCount, accuracy := context.IDSetCount(); accuracy == "EXACT" {
 			total = retainedCount
 		} else {
 			countRows, countErr := service.FetchAll(context, authorized.ForExactCount(countAlias))
-			if countErr != nil {
-				return nil, countErr
-			}
-			if len(countRows) != 1 {
-				return nil, fmt.Errorf("exact count returned %d rows", len(countRows))
-			}
+			if countErr != nil { return nil, countErr }
+			if len(countRows) != 1 { return nil, fmt.Errorf("exact count returned %d rows", len(countRows)) }
 			var ok bool
 			total, ok = countRows[0][countAlias].TryU64()
-			if !ok {
-				return nil, fmt.Errorf("exact count did not return an unsigned integer")
-			}
+			if !ok { return nil, fmt.Errorf("exact count did not return an unsigned integer") }
 		}
 	} else {
 		countRows, countErr := service.FetchAll(context, authorized.ForExactCount(countAlias))
-		if countErr != nil {
-			return nil, countErr
-		}
-		if len(countRows) != 1 {
-			return nil, fmt.Errorf("exact count returned %d rows", len(countRows))
-		}
+		if countErr != nil { return nil, countErr }
+		if len(countRows) != 1 { return nil, fmt.Errorf("exact count returned %d rows", len(countRows)) }
 		var ok bool
 		total, ok = countRows[0][countAlias].TryU64()
-		if !ok {
-			return nil, fmt.Errorf("exact count did not return an unsigned integer")
-		}
+		if !ok { return nil, fmt.Errorf("exact count did not return an unsigned integer") }
 		rows, err = service.FetchAll(context, authorized)
-		if err != nil {
-			return nil, err
-		}
+		if err != nil { return nil, err }
 	}
 	results := make([]*Platform, 0, len(rows))
-	queryRoot := core.NewEntityRoot()
 	for _, rec := range rows {
-		entity := NewPlatform()
-		entity.AttachEntityRoot(queryRoot)
-		if err := entity.FromRecord(rec); err != nil {
-			return nil, err
-		}
+		entity := newLoadedPlatform()
+		if err := entity.FromRecord(rec); err != nil { return nil, err }
 		if relationValue, selected := rec["schoolTypeList"]; selected {
 			childRecords, ok := relationValue.V.([]core.Record)
-			if !ok {
-				return nil, fmt.Errorf("relation schoolTypeList has unexpected runtime type %T", relationValue.V)
-			}
-			for _, childRecord := range childRecords {
-				childEntity := school_type.NewSchoolType()
-				childEntity.AttachEntityRoot(entity.EntityRoot())
-				if err := childEntity.FromRecord(childRecord); err != nil {
-					return nil, err
-				}
-				entity.SchoolTypeList().Add(childEntity)
-			}
-		}
+				if !ok { return nil, fmt.Errorf("relation schoolTypeList has unexpected runtime type %T", relationValue.V) }
+				for _, childRecord := range childRecords {
+					childEntity := school_type.NewSchoolType()
+					childEntity.EntityRoot().ClearEntity(childEntity.EntityKey())
+					childEntity.AttachEntityRoot(entity.EntityRoot())
+					if err := childEntity.FromRecord(childRecord); err != nil { return nil, err }
+					entity.SchoolTypeList().Add(childEntity)
+				}}
 		if relationValue, selected := rec["schoolList"]; selected {
 			childRecords, ok := relationValue.V.([]core.Record)
-			if !ok {
-				return nil, fmt.Errorf("relation schoolList has unexpected runtime type %T", relationValue.V)
-			}
-			for _, childRecord := range childRecords {
-				childEntity := school.NewSchool()
-				childEntity.AttachEntityRoot(entity.EntityRoot())
-				if err := childEntity.FromRecord(childRecord); err != nil {
-					return nil, err
-				}
-				entity.SchoolList().Add(childEntity)
-			}
-		}
+				if !ok { return nil, fmt.Errorf("relation schoolList has unexpected runtime type %T", relationValue.V) }
+				for _, childRecord := range childRecords {
+					childEntity := school.NewSchool()
+					childEntity.EntityRoot().ClearEntity(childEntity.EntityKey())
+					childEntity.AttachEntityRoot(entity.EntityRoot())
+					if err := childEntity.FromRecord(childRecord); err != nil { return nil, err }
+					entity.SchoolList().Add(childEntity)
+				}}
 		results = append(results, entity)
 	}
 	return core.NewSmartList(results).WithTotalCount(total), nil
@@ -1066,27 +1017,24 @@ func (e *ExecutablePlatformRequest) ExecuteForPage(context *runtime.UserContext,
 // an error from yield cancels iteration and releases the database resources.
 func (e *ExecutablePlatformRequest) ExecuteForStream(context *runtime.UserContext, chunkSize int, yield func(*Platform) error) error {
 	r := e.request
-	if strings.TrimSpace(r.purposeText) == "" || strings.TrimSpace(r.commentText) == "" {
-		return fmt.Errorf("security audit failure: Comment() and Purpose() must be called before ExecuteForStream()")
-	}
+	if _, err := core.NewQueryIntent(&r.commentText, &r.purposeText); err != nil { return err }
 	if yield == nil {
 		return fmt.Errorf("stream consumer must not be nil")
 	}
-	r.Query.Comment(r.commentText).Purpose(r.purposeText)
+	query := r.Query.Clone()
+	query.Comment(r.commentText).Purpose(r.purposeText)
+	authorized, err := context.PrepareEntityQuery(query)
+	if err != nil { return err }
 	dsRaw := context.GetResource("dataService")
 	ds, ok := dsRaw.(data_service.StreamQueryExecutor)
 	if !ok {
 		return fmt.Errorf("dataService does not implement data_service.StreamQueryExecutor")
 	}
-	req := &data_service.QueryRequest{
-		Query: r.Query, TraceChain: r.Query.TraceChain,
-		Comment: r.Query.CommentText, Purpose: r.Query.PurposeText,
-	}
-	queryRoot := core.NewEntityRoot()
+	req, err := data_service.NewQueryRequest(authorized)
+	if err != nil { return err }
 	return ds.QueryStream(context, req, chunkSize, func(chunk *data_service.StreamChunk) error {
 		for _, rec := range chunk.Rows {
-			entity := NewPlatform()
-			entity.AttachEntityRoot(queryRoot)
+			entity := newLoadedPlatform()
 			if err := entity.FromRecord(rec); err != nil {
 				return err
 			}
@@ -1099,36 +1047,44 @@ func (e *ExecutablePlatformRequest) ExecuteForStream(context *runtime.UserContex
 }
 
 func (e *ExecutablePlatformRequest) ExecuteRecords(context *runtime.UserContext) ([]core.Record, error) {
+	rows, _, err := e.executeRecords(context, false)
+	return rows, err
+}
+
+// executeRecords returns the same authorized snapshot used for row execution
+// so facets can derive their membership query without reapplying root policy.
+func (e *ExecutablePlatformRequest) executeRecords(context *runtime.UserContext, entityProjection bool) ([]core.Record, *core.SelectQuery, error) {
 	r := e.request
-	if strings.TrimSpace(r.purposeText) == "" || strings.TrimSpace(r.commentText) == "" {
-		return nil, fmt.Errorf("security audit failure: Comment() and Purpose() must be called before ExecuteForList()")
-	}
-	r.Query.Comment(r.commentText).Purpose(r.purposeText)
+	if _, err := core.NewQueryIntent(&r.commentText, &r.purposeText); err != nil { return nil, nil, err }
+	query := r.Query.Clone()
+	query.Comment(r.commentText).Purpose(r.purposeText)
+	prepare := context.PrepareQuery
+	if entityProjection { prepare = context.PrepareEntityQuery }
+	authorized, err := prepare(query)
+	if err != nil { return nil, nil, err }
 
 	dsRaw := context.GetResource("dataService")
 	if dsRaw == nil {
-		return nil, fmt.Errorf("dataService not found in UserContext")
+		return nil, nil, fmt.Errorf("dataService not found in UserContext")
 	}
 
 	ds, ok := dsRaw.(data_service.QueryExecutor)
 	if !ok {
-		return nil, fmt.Errorf("dataService does not implement data_service.QueryExecutor")
+		return nil, nil, fmt.Errorf("dataService does not implement data_service.QueryExecutor")
 	}
 
-	rows, err := runtime.NewRuntimeDataService(context.Metadata, ds).FetchAll(context, r.Query)
+	rows, err := runtime.NewRuntimeDataService(context.Metadata, ds).FetchAll(context, authorized)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
-	return rows, nil
+	return rows, authorized, nil
 }
 
 // ExecuteForRows preserves aggregate/group projections as records while keeping
 // the cross-language SmartList result boundary.
 func (e *ExecutablePlatformRequest) ExecuteForRows(context *runtime.UserContext) (*core.SmartList[core.Record], error) {
 	rows, err := e.ExecuteRecords(context)
-	if err != nil {
-		return nil, err
-	}
+	if err != nil { return nil, err }
 	return core.NewSmartList(rows), nil
 }
 
@@ -1140,6 +1096,7 @@ func (r *PlatformRequest) CountAs(alias string) *PlatformRequest {
 	r.Query.CountField("id", alias)
 	return r
 }
+
 
 func (r *PlatformRequest) GroupById() *PlatformRequest {
 	r.Query.WithGroupBy("id")

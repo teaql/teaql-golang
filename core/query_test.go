@@ -2,7 +2,9 @@ package core
 
 import (
 	"encoding/json"
+	"fmt"
 	"github.com/stretchr/testify/assert"
+	"github.com/teaql/teaql-golang/internal/logprivacy"
 	"testing"
 )
 
@@ -52,6 +54,26 @@ func TestForExactCountDropsRowShape(t *testing.T) {
 	assert.Len(t, count.Aggregates, 1)
 	assert.Equal(t, "__teaql_total", count.Aggregates[0].Alias)
 	assert.NotNil(t, q.Slice)
+}
+
+func TestCountDiagnosticOriginIsPrivateAndStable(t *testing.T) {
+	child := NewSelectQuery("Child").WithFilter(ExprEq("secret", ValText("PRIVATE-ORIGIN-CANARY")))
+	query := NewSelectQuery("Root")
+	query.ChildEnhancements = []*SelectQuery{child}
+	count := query.ForExactCount("n")
+	child.Filter.Right.Value = ValText("changed by caller")
+	child.Filter = nil
+	origin := logprivacy.ReadIntentSource(count.DiagnosticOrigin()).(*SelectQuery)
+	assert.NotNil(t, origin.ChildEnhancements[0].Filter)
+	assert.Equal(t, "PRIVATE-ORIGIN-CANARY", origin.ChildEnhancements[0].Filter.Right.Value.V)
+	assert.Same(t, origin, logprivacy.ReadIntentSource(count.Clone().ForExactCount("n").DiagnosticOrigin()))
+	payload, err := json.Marshal(count)
+	assert.NoError(t, err)
+	assert.NotContains(t, string(payload), "PRIVATE-ORIGIN-CANARY")
+	assert.NotContains(t, fmt.Sprintf("%+v %#v", count, count), "PRIVATE-ORIGIN-CANARY")
+	var decoded SelectQuery
+	assert.NoError(t, json.Unmarshal(payload, &decoded))
+	assert.Nil(t, logprivacy.ReadIntentSource(decoded.DiagnosticOrigin()))
 }
 
 func TestContinuousPageFetchIsExplicitLocalAndValidated(t *testing.T) {

@@ -35,6 +35,13 @@ type CompiledQuery struct {
 	Comment              *string
 	ParameterLogPolicies []string
 	GeneratedSQL         bool
+	// Compilation-owned intent provenance, not execution params or wire data.
+	intentOperands []intentOperand
+}
+
+type intentOperand struct {
+	value  core.Value
+	policy string
 }
 
 func (q *CompiledQuery) SqlWithComment() string {

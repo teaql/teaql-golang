@@ -209,6 +209,28 @@ type TfpMutationQuery struct {
 	Comment         *string                `json:"comment,omitempty"`
 }
 
+// Decode only the required intent before typed payload decoding, so wrong JSON
+// types produce the same stable, value-free error as missing/null text.
+func validateWireRequestIntent(payload []byte, query bool) error {
+	var object map[string]json.RawMessage
+	if err := json.Unmarshal(payload, &object); err != nil {
+		return &TfpError{Code: "TFP_INVALID_REQUEST", Message: "invalid JSON"}
+	}
+	text := func(key string) *string {
+		var value *string
+		if err := json.Unmarshal(object[key], &value); err != nil {
+			return nil
+		}
+		return value
+	}
+	if query {
+		_, err := core.NewQueryIntent(text("commentText"), text("purposeText"))
+		return err
+	}
+	_, err := core.NewMutationIntent(text("comment"))
+	return err
+}
+
 func (e *TfpEndpoint) HandleQuery(context stdcontext.Context, payload []byte) (map[string]interface{}, error) {
 	if e.trusted == nil {
 		return nil, &TfpError{Code: "TFP_UNAUTHORIZED", Message: "trusted federation context is required"}
@@ -220,8 +242,14 @@ func (e *TfpEndpoint) HandleQuery(context stdcontext.Context, payload []byte) (m
 		return nil, err
 	}
 	var tfpQuery TfpSelectQuery
+	if err := validateWireRequestIntent(payload, true); err != nil {
+		return nil, err
+	}
 	if err := json.Unmarshal(payload, &tfpQuery); err != nil {
 		return nil, fmt.Errorf("failed to parse JSON payload: %w", err)
+	}
+	if _, err := core.NewQueryIntent(tfpQuery.CommentText, tfpQuery.PurposeText); err != nil {
+		return nil, err
 	}
 
 	trusted := e.trusted
@@ -231,12 +259,6 @@ func (e *TfpEndpoint) HandleQuery(context stdcontext.Context, payload []byte) (m
 	fields, ok := trusted.ReadableFields[tfpQuery.Entity]
 	if !ok {
 		return nil, &TfpError{Code: "TFP_POLICY_VIOLATION", Message: "no readable field policy"}
-	}
-	if tfpQuery.CommentText == nil || strings.TrimSpace(*tfpQuery.CommentText) == "" {
-		return nil, &TfpError{Code: "TFP_INVALID_REQUEST", Message: "commentText is required"}
-	}
-	if tfpQuery.PurposeText == nil || strings.TrimSpace(*tfpQuery.PurposeText) == "" {
-		return nil, &TfpError{Code: "TFP_POLICY_VIOLATION", Message: "purposeText is required"}
 	}
 	if err := validateIntentText(*tfpQuery.CommentText); err != nil {
 		return nil, err
@@ -325,10 +347,13 @@ func (e *TfpEndpoint) HandleQuery(context stdcontext.Context, payload []byte) (m
 		q.Comment(*tfpQuery.CommentText)
 	}
 
-	req := &data_service.QueryRequest{
+	req, err := data_service.CaptureQueryRequest(&data_service.QueryRequest{
 		Query:   q,
 		Comment: tfpQuery.CommentText,
 		Purpose: tfpQuery.PurposeText,
+	})
+	if err != nil {
+		return nil, err
 	}
 
 	res, err := e.queryExecutor.Query(context, req)
@@ -366,8 +391,14 @@ func (e *TfpEndpoint) HandleMutation(context stdcontext.Context, payload []byte)
 		return nil, err
 	}
 	var tfpMut TfpMutationQuery
+	if err := validateWireRequestIntent(payload, false); err != nil {
+		return nil, err
+	}
 	if err := json.Unmarshal(payload, &tfpMut); err != nil {
 		return nil, fmt.Errorf("failed to parse JSON payload: %w", err)
+	}
+	if _, err := core.NewMutationIntent(tfpMut.Comment); err != nil {
+		return nil, err
 	}
 
 	trusted := e.trusted
@@ -376,9 +407,6 @@ func (e *TfpEndpoint) HandleMutation(context stdcontext.Context, payload []byte)
 	}
 	if !trusted.AllowedActions[tfpMut.Entity][tfpMut.Action] {
 		return nil, &TfpError{Code: "TFP_POLICY_VIOLATION", Message: "mutation action is not allowed"}
-	}
-	if tfpMut.Comment == nil || strings.TrimSpace(*tfpMut.Comment) == "" {
-		return nil, &TfpError{Code: "TFP_AUDIT_REASON_REQUIRED", Message: "mutation audit reason is required"}
 	}
 	if err := validateIntentText(*tfpMut.Comment); err != nil {
 		return nil, err
@@ -462,6 +490,10 @@ func (e *TfpEndpoint) HandleMutation(context stdcontext.Context, payload []byte)
 		return nil, &TfpError{Code: "TFP_INVALID_REQUEST", Message: "unknown mutation action"}
 	}
 
+	mutReq, err := data_service.NewMutationRequest(mutReq, *tfpMut.Comment)
+	if err != nil {
+		return nil, err
+	}
 	res, err := e.mutationExecutor.Mutate(context, mutReq)
 	if err != nil {
 		return nil, &TfpError{Code: "TFP_EXECUTION_FAILED", Message: "Data service execution failed"}

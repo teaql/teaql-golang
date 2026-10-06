@@ -1,5 +1,110 @@
 # TeaQL Golang SDK
 
+## Required request intent
+
+This contract is implemented on the local `feature/request-trace-chain` branch;
+it is not a claim about the published `v0.2.9` module.
+
+Every Query Request owns a non-blank `comment` and `purpose`. Every Mutation
+Request owns one non-blank root `comment`, also used as its audit reason.
+Generated callers continue to use `.Comment(...).Purpose(...)` and
+`.AuditAs(...)`; regenerate older libraries against the paired generator before
+using the changed runtime. Application-owned low-level adapters capture intent
+explicitly:
+
+```go
+query := core.NewSelectQuery("School").Limit(20).
+    Comment("what: load the school list").Purpose("why: render the school page")
+request, err := data_service.NewQueryRequest(query)
+if err != nil { return err }
+
+mutation, err := data_service.NewMutationRequest(
+    &data_service.UpdateMutation{Cmd: command}, "rename the reviewed school")
+if err != nil { return err }
+```
+
+The request captures intent independently of `UserContext`, optional trace
+frames and later builder changes. Missing or Unicode-whitespace-only intent
+fails with `REQUEST_COMMENT_REQUIRED` or `QUERY_PURPOSE_REQUIRED` before
+policy, Checker or provider access, including when SQL logging is disabled.
+Trace text or an annotated batch child cannot fill a missing root comment.
+Mutation command payloads remain available to Checker/Fix; this does not make
+the entire payload immutable. Comments must not contain secrets.
+
+Run `go test ./... -count=1` and `bash scripts/verify-examples.sh` against local
+source. The retained [School example](examples/school-management) tests generated
+list/page/stream rejection and missing-audit Save with logging disabled, beside
+bootstrap and mutation-policy regressions. The current checkpoint passed the
+runtime suite and all nine example groups twice; live database and telemetry
+tests requiring external configuration are explicitly skipped.
+
+Both SQL executors now use the same Rust-baseline canonical path algorithm.
+Twelve frozen path vectors verify node meaning, last-intent extraction and
+idempotence. Query relation/Facet paths retain their originating root; mutation
+readback produces a separate `select` path instead of appending a duplicate SQL
+node to the write. SQL metadata carries `MutationLineage` separately from
+`TraceChain`, and both use the existing privacy projection. Captured frames and
+optional ID pointers are copied rather than shared with a builder or log sink.
+
+The [generated SQLite Trace Chain example](examples/trace-chain) now verifies
+six graph mutations at command, physical SQL metadata and committed safe-audit
+boundaries. Local child reasons survive; unannotated children inherit immutable
+parent scopes; deleted children retain their own reason. IDs assigned by the
+transaction's database allocator are present in the lineage. A complete
+per-entity ledger trace replaces inheritance rather than appending it twice.
+The scope is passed between generated save calls, never stored on UserContext.
+
+Committed `SafeAuditEvent` also retains its independent `TargetID`, paired with
+`Entity`. Responsibility lineage is not target identity: an unannotated child's
+trace can contain only its parent's ID. Updates do not fabricate ID property
+changes, and deletes still identify the target when `Fields` is empty. Target
+values are copied; schema events have no target. Existing intent masking stays
+in effect. The generated six-object test checks exact command, successful SQL
+write and safe-audit identity sets, with duplicate/missing/type-collapse controls.
+
+The generated cases also cover three-level Q provenance and loaded E,
+Checker rejection, real UNIQUE rollback, successful UPDATE with empty
+authoritative readback, intent rejection with logs off, and two overlapping
+goroutine saves on one context. The existing graph gate serializes their
+transactions; this is isolation evidence, not a claim of parallel transactions.
+SQL-executor mutation audit is queued until commit and discarded on rollback.
+An after-commit sink error returns `runtime.GraphCommittedError` and does not
+roll back an already committed transaction; do not retry it as an uncommitted save.
+
+Low-level graph adapters must now supply `core.MutationIntent` as the first
+argument to `ExecuteGraphSave` and `ExecutePreparedGraphSave`. Generated public
+`.AuditAs(...).Save(context)` calls are unchanged; old generated libraries need
+regeneration. Current source tests pass twice with 433 top-level passes, 304
+additional subtest passes and seven explicit integration skips. All nine
+example groups pass twice; the dedicated verifier runs 23 cases twice on the
+same database paths and checks that all generated library bytes remain unchanged.
+Affected native packages and the generated graph also pass race checks.
+
+Native relation loading retains scalar attachment keys before any nested
+hydration or aggregate output can overwrite them. A non-null FK whose forward
+detail is filtered out retains an identity-only reference with NotLoaded detail;
+a real SQL NULL remains null. Neither removes its child from an enclosing list; later sibling
+relations and counts still use the original key. These snapshots are private to
+one execution, not entity properties, mutation data, or shared Context state.
+The example verifier also runs 32 real-SQLite regression cases through both SQL
+executors, with text keys, nested relations, empty lists and logging on/off. The
+same tests fail 24 cases on the prior runtime while eight scalar controls pass.
+
+Numeric grouping and window pagination retain `GROUP BY` and `HAVING` inside
+the ranked query, including bounded loaded relations. Grouped relation results
+use their group keys for default stable ordering, not an ungrouped entity ID.
+The two-entity SQLite regression checks root groups, numeric windows and
+loaded-relation groups/HAVING in both logging modes, actual SQL paths and
+privacy, unchanged caller input and an independent subsequent query. Run
+`go test -race ./provider/sqlite -run TestNumericRootAndLoadedGroupingKeepOnlyActualRelationEdges`.
+This fix references [Trace Chain issue #41](https://github.com/teaql/teaql-golang/issues/41).
+
+This remains a partial local checkpoint, not full Trace Chain completion.
+Same-type prepared batches, detached deleted children, complete privacy and
+execution-entry-point coverage, legacy allocation paths and immutable
+internal-artifact replay remain separate gates in the
+[conformance design](https://github.com/teaql/teaql-conformance/blob/main/design/runtime-trace-chain-conformance.md).
+
 ## Sensitive log data
 
 Runtime diagnostic logs redact payload values by default, before delivery to

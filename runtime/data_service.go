@@ -67,6 +67,38 @@ func NewRuntimeDataService(metadata MetadataStore, executor data_service.DataSer
 }
 
 func (s *RuntimeDataService) FetchAll(context stdcontext.Context, query *core.SelectQuery) (rows []core.Record, err error) {
+	return s.fetchAllWithIntent(context, query, nil)
+}
+
+// FetchAllWithFacetPlan consumes the same invocation plan captured before policy.
+func (s *RuntimeDataService) FetchAllWithFacetPlan(context stdcontext.Context, query *core.SelectQuery, plan *FacetPlan) ([]core.Record, error) {
+	return s.fetchAllWithIntent(context, query, nil, plan)
+}
+
+// Derived runtime work can retain its parent's diagnostic source without
+// installing it on Context or exposing it as a query option.
+func (s *RuntimeDataService) fetchAllWithIntent(context stdcontext.Context, query *core.SelectQuery, inherited *logprivacy.IntentSource, plans ...*FacetPlan) (rows []core.Record, err error) {
+	var plan *FacetPlan
+	if len(plans) > 0 {
+		plan = plans[0]
+	}
+	if query != nil {
+		if _, err := core.NewQueryIntent(query.CommentText, query.PurposeText); err != nil {
+			return nil, err
+		}
+		if plan == nil {
+			query, plan, err = CaptureQueryPlan(query, nil)
+			if err != nil {
+				return nil, err
+			}
+		}
+		query = plan.WithQueryDiagnostics(query)
+	}
+	request, err := data_service.NewQueryRequest(query)
+	if err != nil {
+		return nil, err
+	}
+	query = request.Query
 	userCtx, _ := UserContextFrom(context)
 	telemetry := RuntimeTelemetry(NoopRuntimeTelemetry{})
 	if userCtx != nil {
@@ -83,6 +115,11 @@ func (s *RuntimeDataService) FetchAll(context stdcontext.Context, query *core.Se
 		}
 	}()
 	prepared := cloneSelectQuery(query, query.Entity)
+	if s.metadata != nil {
+		if descriptor := s.metadata.Entity(query.Entity); descriptor != nil {
+			protectForwardRelationProjection(prepared, descriptor)
+		}
+	}
 	if err = prepared.PrepareForList(); err != nil {
 		return nil, err
 	}
@@ -92,7 +129,10 @@ func (s *RuntimeDataService) FetchAll(context stdcontext.Context, query *core.Se
 	}
 	executionQuery, continuous := s.prepareContinuousPage(context, prepared)
 	var intent logprivacy.IntentSource
-	if len(executionQuery.Relations) > 0 || len(executionQuery.RelationAggregates) > 0 {
+	if inherited != nil {
+		intent = *inherited
+	}
+	if inherited != nil || len(executionQuery.Relations) > 0 || len(executionQuery.RelationAggregates) > 0 {
 		rows, err = s.fetchRows(context, executionQuery, &intent)
 	} else {
 		rows, err = s.fetchRows(context, executionQuery)
@@ -100,16 +140,16 @@ func (s *RuntimeDataService) FetchAll(context stdcontext.Context, query *core.Se
 	if err != nil {
 		return nil, err
 	}
-	if err := s.enhanceRelations(context, rows, executionQuery, intent); err != nil {
-		return nil, err
-	}
-	if err := s.enhanceRelationAggregates(context, rows, executionQuery, intent); err != nil {
+	if err := s.enhanceQueryRows(context, rows, executionQuery, plan, intent); err != nil {
 		return nil, err
 	}
 	if len(idSetOrder) > 0 {
 		rows = restoreIDSetOrder(rows, idSetOrder)
 	}
 	s.registerContinuousPage(context, continuous, rows)
+	if inherited != nil {
+		*inherited = intent
+	}
 	return rows, nil
 }
 
@@ -383,11 +423,9 @@ func (s *RuntimeDataService) fetchRows(context stdcontext.Context, query *core.S
 		return nil, fmt.Errorf("executor does not support Query")
 	}
 
-	req := &data_service.QueryRequest{
-		Query:      query,
-		TraceChain: query.TraceChain,
-		Comment:    query.CommentText,
-		Purpose:    query.PurposeText,
+	req, err := data_service.NewQueryRequest(query)
+	if err != nil {
+		return nil, err
 	}
 	if len(intent) > 0 {
 		req.InheritedIntent = *intent[0]
@@ -399,7 +437,7 @@ func (s *RuntimeDataService) fetchRows(context stdcontext.Context, query *core.S
 	}
 
 	rows = res.Rows
-	if len(intent) > 0 && (len(query.Relations) > 0 || len(query.RelationAggregates) > 0) {
+	if len(intent) > 0 {
 		*intent[0] = inheritQueryIntent(res.Metadata, *intent[0])
 	}
 	return rows, nil
@@ -420,10 +458,59 @@ func inheritQueryIntent(metadata data_service.ExecutionMetadata, inherited logpr
 			result.ParameterLogPolicies = append(result.ParameterLogPolicies, bindingLogPolicy(source, i))
 		}
 	}
+	// Keep the full root/descendant source, not only the immediate SELECT's
+	// bindings. A sibling's secret may be quoted in every inherited comment.
+	result.InheritedIntent = metadata.InheritedIntent
 	return logprivacy.NewIntentSource(result)
 }
 
-func (s *RuntimeDataService) enhanceRelations(context stdcontext.Context, parents []core.Record, query *core.SelectQuery, intent ...logprivacy.IntentSource) error {
+// Assembly keys are invocation-local scalar snapshots, never record properties,
+// Context state, or mutation data. Hydration (including a filtered null) and
+// aggregate aliases may replace the source field without changing membership.
+func captureRelationKeys(rows []core.Record, field string) []core.Value {
+	keys := make([]core.Value, len(rows))
+	for i, row := range rows {
+		keys[i] = row[field]
+	}
+	return keys
+}
+
+func (s *RuntimeDataService) enhanceQueryRows(context stdcontext.Context, rows []core.Record, query *core.SelectQuery, plan *FacetPlan, intent logprivacy.IntentSource) error {
+	if len(rows) == 0 || (len(query.Relations) == 0 && len(query.RelationAggregates) == 0) {
+		return nil
+	}
+	descriptor := s.metadata.Entity(query.Entity)
+	if descriptor == nil {
+		return fmt.Errorf("unknown entity %s", query.Entity)
+	}
+	keys := make(map[string][]core.Value)
+	capture := func(name string) error {
+		relation := descriptor.RelationByName(name)
+		if relation == nil {
+			return fmt.Errorf("missing relation %s.%s", query.Entity, name)
+		}
+		if _, exists := keys[relation.LocKey]; !exists {
+			keys[relation.LocKey] = captureRelationKeys(rows, relation.LocKey)
+		}
+		return nil
+	}
+	for _, relation := range query.Relations {
+		if err := capture(relation.Name); err != nil {
+			return err
+		}
+	}
+	for _, aggregate := range query.RelationAggregates {
+		if err := capture(aggregate.RelationName); err != nil {
+			return err
+		}
+	}
+	if err := s.enhanceRelations(context, rows, query, plan, keys, intent); err != nil {
+		return err
+	}
+	return s.enhanceRelationAggregates(context, rows, query, keys, intent)
+}
+
+func (s *RuntimeDataService) enhanceRelations(context stdcontext.Context, parents []core.Record, query *core.SelectQuery, plan *FacetPlan, keys map[string][]core.Value, intent ...logprivacy.IntentSource) error {
 	if len(parents) == 0 || len(query.Relations) == 0 {
 		return nil
 	}
@@ -432,6 +519,10 @@ func (s *RuntimeDataService) enhanceRelations(context stdcontext.Context, parent
 		return fmt.Errorf("unknown entity %s", query.Entity)
 	}
 	for _, load := range query.Relations {
+		var childPlan *FacetPlan
+		if plan != nil {
+			childPlan = plan.relations[load.Name]
+		}
 		userCtx, _ := UserContextFrom(context)
 		telemetry := RuntimeTelemetry(NoopRuntimeTelemetry{})
 		if userCtx != nil {
@@ -442,17 +533,18 @@ func (s *RuntimeDataService) enhanceRelations(context stdcontext.Context, parent
 			return fmt.Errorf("missing relation %s.%s", query.Entity, load.Name)
 		}
 		ids := make([]core.Value, 0, len(parents))
-		for _, parent := range parents {
-			if id, ok := parent[relation.LocKey]; ok {
+		parentKeys := keys[relation.LocKey]
+		for _, id := range parentKeys {
+			if id.V != nil {
 				ids = append(ids, id)
 			}
 		}
 		childQuery := cloneSelectQuery(load.Query, relation.TargetEntity)
 		childQuery.CommentText = query.CommentText
 		childQuery.PurposeText = query.PurposeText
-		childQuery.TraceChain = append(canonicalTraceFrames(query.TraceChain),
-			core.NewTypedTraceNode("relation", query.Entity+"."+load.Name, load.Name))
-		ensureProjection(childQuery, relation.ForKey)
+		childQuery.TraceChain = append(core.QueryTraceSource(query.Entity, query.TraceChain, *query.CommentText, *query.PurposeText),
+			core.NewTypedTraceNode("relation", load.Name, query.Entity+"."+load.Name))
+		EnsureRelationProjection(childQuery, relation.ForKey)
 		bounded := relation.IsMany && childQuery.Slice != nil && childQuery.Slice.Limit != nil
 		useProbes := false
 		if bounded {
@@ -473,6 +565,16 @@ func (s *RuntimeDataService) enhanceRelations(context stdcontext.Context, parent
 			}
 			childQuery = authorizedChild
 		}
+		childDescriptor := s.metadata.Entity(relation.TargetEntity)
+		if childDescriptor == nil {
+			return &RuntimeError{Type: "MissingEntity", MissingEntityName: relation.TargetEntity}
+		}
+		// RuntimeDataService owns its metadata even when its native caller uses
+		// a Context with another registry. Never invent a second metadata source.
+		protectEntityProjection(childQuery, childDescriptor)
+		// Policy may narrow the child shape; retain its attachment key without
+		// widening a default select-all query or sharing the caller's builder.
+		EnsureRelationProjection(childQuery, relation.ForKey)
 		limit := uint64(0)
 		if bounded {
 			limit = *childQuery.Slice.Limit
@@ -526,23 +628,52 @@ func (s *RuntimeDataService) enhanceRelations(context stdcontext.Context, parent
 		for _, child := range children {
 			delete(child, "__teaql_partition_rank")
 		}
-		if err := s.enhanceRelations(relationContext, children, childQuery, childIntent); err != nil {
+		childKeys := captureRelationKeys(children, relation.ForKey)
+		if err := s.enhanceQueryRows(relationContext, children, childQuery, childPlan, childIntent); err != nil {
 			relationScope.Failure(RuntimeErrorType(err))
 			return err
 		}
-		attachRelationRows(parents, children, load.Name, relation)
+		attachRelationRows(parents, children, load.Name, relation, parentKeys, childKeys)
+		if childPlan.HasFacets() {
+			for i, parent := range parents {
+				key := parentKeys[i]
+				if key.V == nil {
+					continue
+				}
+				perParent := childQuery.Clone()
+				perParent.PartitionBy = nil
+				perParent.AndFilter(core.ExprEq(relation.ForKey, key))
+				facets, err := executeCapturedFacets(relationContext, s, perParent, childPlan.facets, childIntent)
+				if err != nil {
+					relationScope.Failure(RuntimeErrorType(err))
+					return err
+				}
+				core.AttachRecordRelationFacets(parent, load.Name, facets)
+			}
+		}
 		relationScope.Success(map[string]RuntimeAttributeValue{"teaql.result.cardinality": len(children)})
 	}
 	return nil
 }
 
 func ensureStableIDOrder(query *core.SelectQuery) {
-	for _, order := range query.OrderBy {
-		if order.Field == "id" {
-			return
+	fields := []string{"id"}
+	if len(query.GroupBy) > 0 {
+		// Grouped rows have group identities, not individual entity IDs.
+		fields = query.GroupBy
+	}
+	for _, field := range fields {
+		found := false
+		for _, order := range query.OrderBy {
+			if order.Field == field {
+				found = true
+				break
+			}
+		}
+		if !found {
+			query.OrderAsc(field)
 		}
 	}
-	query.OrderAsc("id")
 }
 
 func cloneSelectQuery(source *core.SelectQuery, entity string) *core.SelectQuery {
@@ -564,7 +695,7 @@ func cloneSelectQuery(source *core.SelectQuery, entity string) *core.SelectQuery
 	return &clone
 }
 
-func (s *RuntimeDataService) enhanceRelationAggregates(context stdcontext.Context, parents []core.Record, query *core.SelectQuery, intent ...logprivacy.IntentSource) error {
+func (s *RuntimeDataService) enhanceRelationAggregates(context stdcontext.Context, parents []core.Record, query *core.SelectQuery, keys map[string][]core.Value, intent ...logprivacy.IntentSource) error {
 	if len(parents) == 0 || len(query.RelationAggregates) == 0 {
 		return nil
 	}
@@ -578,8 +709,9 @@ func (s *RuntimeDataService) enhanceRelationAggregates(context stdcontext.Contex
 			return fmt.Errorf("missing relation %s.%s", query.Entity, aggregate.RelationName)
 		}
 		ids := make([]core.Value, 0, len(parents))
-		for _, parent := range parents {
-			if id, ok := parent[relation.LocKey]; ok {
+		parentKeys := keys[relation.LocKey]
+		for _, id := range parentKeys {
+			if id.V != nil {
 				ids = append(ids, id)
 			}
 		}
@@ -590,8 +722,8 @@ func (s *RuntimeDataService) enhanceRelationAggregates(context stdcontext.Contex
 		childQuery := cloneSelectQuery(aggregate.Query, relation.TargetEntity)
 		childQuery.CommentText = query.CommentText
 		childQuery.PurposeText = query.PurposeText
-		childQuery.TraceChain = append(canonicalTraceFrames(query.TraceChain),
-			core.NewTypedTraceNode("relation", query.Entity+"."+aggregate.RelationName, aggregate.RelationName))
+		childQuery.TraceChain = append(core.QueryTraceSource(query.Entity, query.TraceChain, *query.CommentText, *query.PurposeText),
+			core.NewTypedTraceNode("relation", aggregate.RelationName, query.Entity+"."+aggregate.RelationName))
 		childQuery.Projection = nil
 		childQuery.ExprProjection = nil
 		childQuery.OrderBy = nil
@@ -629,7 +761,7 @@ func (s *RuntimeDataService) enhanceRelationAggregates(context stdcontext.Contex
 				}
 			}
 		}
-		attachRelationAggregateRows(parents, rows, relation, aggregate, childQuery)
+		attachRelationAggregateRows(parents, rows, relation, aggregate, childQuery, parentKeys)
 	}
 	return nil
 }
@@ -660,18 +792,15 @@ func emptyAggregateValue(query *core.SelectQuery) core.Value {
 	return core.ValNull()
 }
 
-func attachRelationAggregateRows(parents, rows []core.Record, relation *core.RelationDescriptor, aggregate *core.RelationAggregate, query *core.SelectQuery) {
+func attachRelationAggregateRows(parents, rows []core.Record, relation *core.RelationDescriptor, aggregate *core.RelationAggregate, query *core.SelectQuery, parentKeys []core.Value) {
 	buckets := make(map[string]core.Record, len(rows))
 	for _, row := range rows {
 		if foreignKey, ok := row[relation.ForKey]; ok {
 			buckets[relationKey(foreignKey)] = row
 		}
 	}
-	for _, parent := range parents {
-		localKey, ok := parent[relation.LocKey]
-		if !ok {
-			continue
-		}
+	for i, parent := range parents {
+		localKey := parentKeys[i]
 		row, found := buckets[relationKey(localKey)]
 		if !found {
 			if aggregate.SingleResult {
@@ -699,43 +828,29 @@ func attachRelationAggregateRows(parents, rows []core.Record, relation *core.Rel
 	}
 }
 
-func ensureProjection(query *core.SelectQuery, field string) {
-	// An empty projection means SELECT all entity properties. Appending only the
-	// relation foreign key would accidentally turn it into a narrow projection
-	// and discard child id and business fields during relation loading.
-	if len(query.Projection) == 0 {
-		return
-	}
-	for _, selected := range query.Projection {
-		if selected == field {
-			return
-		}
-	}
-	query.Projection = append(query.Projection, field)
-}
-
 func relationKey(value core.Value) string {
 	return fmt.Sprintf("%T:%v", value.V, value.V)
 }
 
-func attachRelationRows(parents, children []core.Record, name string, relation *core.RelationDescriptor) {
+func attachRelationRows(parents, children []core.Record, name string, relation *core.RelationDescriptor, parentKeys, childKeys []core.Value) {
 	buckets := make(map[string][]core.Record)
-	for _, child := range children {
-		if foreignKey, ok := child[relation.ForKey]; ok {
+	for i, child := range children {
+		if foreignKey := childKeys[i]; foreignKey.V != nil {
 			key := relationKey(foreignKey)
 			buckets[key] = append(buckets[key], child)
 		}
 	}
-	for _, parent := range parents {
-		localKey, ok := parent[relation.LocKey]
-		if !ok {
-			continue
-		}
+	for i, parent := range parents {
+		localKey := parentKeys[i]
 		related := buckets[relationKey(localKey)]
 		if relation.IsMany {
 			parent[name] = core.Value{V: related}
 		} else if len(related) > 0 {
 			parent[name] = core.Value{V: related[0]}
+		} else if localKey.V != nil {
+			// Keep the real reference key. Absent target fields are NotLoaded,
+			// and an alternate-key relation must not invent a target ID.
+			parent[name] = core.Value{V: core.Record{relation.ForKey: core.CloneValue(localKey)}}
 		} else {
 			parent[name] = core.ValNull()
 		}

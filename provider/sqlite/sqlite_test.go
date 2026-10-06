@@ -430,9 +430,9 @@ func TestRelationLimitIsAppliedPerParent(t *testing.T) {
 	service := runtime.NewRuntimeDataService(metadata, executor)
 	telemetry := &topNTelemetry{}
 	ctx := runtime.NewUserContext().WithRuntimeTelemetry(telemetry)
-	query := core.NewSelectQuery("Order").OrderAsc("id").RelationQuery(
+	query := core.NewSelectQuery("Order").Comment("verify query fixture").Purpose("preserve the query regression contract").OrderAsc("id").RelationQuery(
 		"lines",
-		core.NewSelectQuery("OrderLine").Project("id").Project("name").WithFilter(core.ExprEq("state", core.ValText("visible"))).OrderDesc("name").Limit(3),
+		core.NewSelectQuery("OrderLine").Comment("verify query fixture").Purpose("preserve the query regression contract").Project("id").Project("name").WithFilter(core.ExprEq("state", core.ValText("visible"))).OrderDesc("name").Limit(3),
 	)
 	rows, err := service.FetchAll(ctx, query)
 	if err != nil {
@@ -466,9 +466,9 @@ func TestRelationLimitIsAppliedPerParent(t *testing.T) {
 	assertTopNQueriesKeepPredicatesAndAvoidCount(t, transport.queries)
 	probeIDs := relationIDs(rows, "lines")
 	transport.queries = nil
-	windowQuery := core.NewSelectQuery("Order").OrderAsc("id").RelationQuery(
+	windowQuery := core.NewSelectQuery("Order").Comment("verify query fixture").Purpose("preserve the query regression contract").OrderAsc("id").RelationQuery(
 		"lines",
-		core.NewSelectQuery("OrderLine").Project("id").Project("name").WithFilter(core.ExprEq("state", core.ValText("visible"))).OrderDesc("name").Limit(3).TopNProbeParentThreshold(0),
+		core.NewSelectQuery("OrderLine").Comment("verify query fixture").Purpose("preserve the query regression contract").Project("id").Project("name").WithFilter(core.ExprEq("state", core.ValText("visible"))).OrderDesc("name").Limit(3).TopNProbeParentThreshold(0),
 	)
 	windowRows, err := service.FetchAll(ctx, windowQuery)
 	if err != nil {
@@ -483,8 +483,8 @@ func TestRelationLimitIsAppliedPerParent(t *testing.T) {
 	}
 	for threshold, expectedQueries := range map[uint64]int{3: 4, 2: 2} {
 		transport.queries = nil
-		thresholdQuery := core.NewSelectQuery("Order").OrderAsc("id").RelationQuery(
-			"lines", core.NewSelectQuery("OrderLine").Project("id").Project("name").
+		thresholdQuery := core.NewSelectQuery("Order").Comment("verify query fixture").Purpose("preserve the query regression contract").OrderAsc("id").RelationQuery(
+			"lines", core.NewSelectQuery("OrderLine").Comment("verify query fixture").Purpose("preserve the query regression contract").Project("id").Project("name").
 				WithFilter(core.ExprEq("state", core.ValText("visible"))).OrderDesc("name").Limit(3).TopNProbeParentThreshold(threshold),
 		)
 		if _, err = service.FetchAll(ctx, thresholdQuery); err != nil {
@@ -601,13 +601,13 @@ func TestRelationSubqueriesExecutePositiveAndNegativePredicates(t *testing.T) {
 	metadata.Register(record)
 	service := runtime.NewRuntimeDataService(metadata,
 		teaql_sql.NewSqlDataServiceExecutor(&SqliteDialect{}, NewSqliteMutationExecutor(db), metadata))
-	child := core.NewSelectQuery("QueryGroup").AndFilter(core.ExprEq("name", core.ValText("Core")))
-	included, err := service.FetchAll(stdcontext.Background(), core.NewSelectQuery("QueryRecord").
+	child := core.NewSelectQuery("QueryGroup").Comment("verify query fixture").Purpose("preserve the query regression contract").AndFilter(core.ExprEq("name", core.ValText("Core")))
+	included, err := service.FetchAll(stdcontext.Background(), core.NewSelectQuery("QueryRecord").Comment("verify query fixture").Purpose("preserve the query regression contract").
 		AndFilter(core.ExprInSubQuery("query_group", group, child, "id")))
 	if err != nil {
 		t.Fatal(err)
 	}
-	excluded, err := service.FetchAll(stdcontext.Background(), core.NewSelectQuery("QueryRecord").
+	excluded, err := service.FetchAll(stdcontext.Background(), core.NewSelectQuery("QueryRecord").Comment("verify query fixture").Purpose("preserve the query regression contract").
 		AndFilter(core.ExprNotInSubQuery("query_group", group, child, "id")))
 	if err != nil {
 		t.Fatal(err)
@@ -620,7 +620,7 @@ func TestRelationSubqueriesExecutePositiveAndNegativePredicates(t *testing.T) {
 	}
 	fetchIDs := func(entity string, filter *core.Expr) []string {
 		rows, fetchErr := service.FetchAll(stdcontext.Background(),
-			core.NewSelectQuery(entity).AndFilter(filter).OrderAsc("id"))
+			core.NewSelectQuery(entity).Comment("verify query fixture").Purpose("preserve the query regression contract").AndFilter(filter).OrderAsc("id"))
 		if fetchErr != nil {
 			t.Fatal(fetchErr)
 		}
@@ -639,7 +639,7 @@ func TestRelationSubqueriesExecutePositiveAndNegativePredicates(t *testing.T) {
 	assertIDs([]string{"13"}, fetchIDs("QueryRecord", core.ExprIsNullNode("query_group")))
 	assertIDs([]string{"11"}, fetchIDs("QueryRecord", core.ExprInSubQuery("query_group", group, child, "id")))
 	assertIDs([]string{"12"}, fetchIDs("QueryRecord", core.ExprNotInSubQuery("query_group", group, child, "id")))
-	allRecords := core.NewSelectQuery("QueryRecord")
+	allRecords := core.NewSelectQuery("QueryRecord").Comment("verify query fixture").Purpose("preserve the query regression contract")
 	assertIDs([]string{"1", "2"}, fetchIDs("QueryGroup", core.ExprInSubQuery("id", record, allRecords, "query_group")))
 	assertIDs([]string{"3"}, fetchIDs("QueryGroup", core.ExprNotInSubQuery("id", record, allRecords, "query_group")))
 }
@@ -686,7 +686,7 @@ func TestCompleteScalarFixtureIncludingNullableBooleanExecutes(t *testing.T) {
 	service := runtime.NewRuntimeDataService(metadata,
 		teaql_sql.NewSqlDataServiceExecutor(&SqliteDialect{}, NewSqliteMutationExecutor(db), metadata))
 	ids := func(expr *core.Expr) []uint64 {
-		rows, queryErr := service.FetchAll(stdcontext.Background(), core.NewSelectQuery("QueryRecord").
+		rows, queryErr := service.FetchAll(stdcontext.Background(), core.NewSelectQuery("QueryRecord").Comment("verify query fixture").Purpose("preserve the query regression contract").
 			Project("id").AndFilter(expr).OrderAsc("id"))
 		if queryErr != nil {
 			t.Fatal(queryErr)
@@ -757,8 +757,8 @@ func TestRelationFacetUsesOuterFilterAndIncludeAll(t *testing.T) {
 	transport := NewSqliteMutationExecutor(db)
 	executor := teaql_sql.NewSqlDataServiceExecutor(&SqliteDialect{}, transport, metadata)
 	service := runtime.NewRuntimeDataService(metadata, executor)
-	outer := core.NewSelectQuery("School").AndFilter(core.ExprContain("name", "Riverside"))
-	nested := core.NewQuerySelection(core.NewSelectQuery("SchoolType").Project("id").Project("code").Count("school_count"))
+	outer := core.NewSelectQuery("School").Comment("verify query fixture").Purpose("preserve the query regression contract").AndFilter(core.ExprContain("name", "Riverside"))
+	nested := core.NewQuerySelection(core.NewSelectQuery("SchoolType").Comment("verify query fixture").Purpose("preserve the query regression contract").Project("id").Project("code").Count("school_count"))
 	options := core.NewQueryOptions()
 	options.Facets = append(options.Facets, core.NewFacetRequest("types", "school_type", nested, true))
 	all, err := runtime.ExecuteFacets(stdcontext.Background(), service, outer, options)

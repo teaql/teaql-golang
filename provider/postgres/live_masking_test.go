@@ -83,7 +83,9 @@ func TestLiveProviderMaskedQAndMutation(t *testing.T) {
 				Value("public_address", core.ValText("1 Runtime Road")).
 				Value("password_hash", core.ValText("PASSWORD-CANARY"))
 			insert.TraceChain = []*core.TraceNode{core.NewTraceNode("Customer", nil, "what: create masked customer")}
-			if _, err := service.Mutate(context, &ds.InsertMutation{Cmd: insert}); err != nil {
+			if _, err := service.Mutate(context, &ds.InsertMutation{Cmd: insert,
+				RootComment: fixtureIntentText("verify mutation fixture"),
+			}); err != nil {
 				t.Fatal(err)
 			}
 			comment, purpose := "what: read masked customer", "why: verify live-provider SQL masking"
@@ -91,7 +93,9 @@ func TestLiveProviderMaskedQAndMutation(t *testing.T) {
 				AndFilter(core.ExprEq("display_name", core.ValText("Riverside"))).
 				AndFilter(core.ExprEq("public_address", core.ValText("1 Runtime Road"))).
 				Limit(1).Comment(comment).Purpose(purpose)
-			result, err := service.Query(context, &ds.QueryRequest{Query: query, Comment: &comment, Purpose: &purpose})
+			result, err := service.Query(context, &ds.QueryRequest{Query: query,
+				Comment: &comment,
+				Purpose: &purpose})
 			if err != nil {
 				t.Fatal(err)
 			}

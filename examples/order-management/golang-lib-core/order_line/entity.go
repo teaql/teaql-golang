@@ -25,6 +25,7 @@ var (
 
 var teaqlTemporaryEntityID int64
 
+
 type OrderLine struct {
 	base        *core.BaseEntityData
 	dirtyFields map[string]bool
@@ -54,6 +55,15 @@ func NewOrderLine() *OrderLine {
 		loadedRelations: make(map[string]bool),
 	}
 	entity.root.MarkAsNew(entity.EntityKey())
+	return entity
+}
+
+// Hydration is not a create request. Keep this constructor private so public
+// NewEntity still records new-object intent, while a loaded snapshot starts
+// with independent mutation ownership and no pending insert.
+func newLoadedOrderLine() *OrderLine {
+	entity := NewOrderLine()
+	entity.root.ClearEntity(entity.EntityKey())
 	return entity
 }
 
@@ -179,9 +189,7 @@ func (e *OrderLine) SetComment(comment string) {
 }
 
 func (e *OrderLine) AuditAs(comment string) *OrderLine {
-	if strings.TrimSpace(comment) == "" {
-		panic("Security audit failure: AuditAs() requires a non-empty reason")
-	}
+	if _, err := core.NewMutationIntent(&comment); err != nil { panic(err) }
 	e.comment = &comment
 	return e
 }
@@ -208,11 +216,16 @@ func (e *OrderLine) IntoJson() any {
 }
 
 func (e *OrderLine) Save(context *runtime.UserContext) (*OrderLine, error) {
+	intent, intentErr := core.NewMutationIntent(e.comment)
+	if intentErr != nil { return nil, intentErr }
 	var saved *OrderLine
-	err := context.ExecuteGraphSave(func() error {
-		if preflightErr := e.TeaqlPreflightGraph(context); preflightErr != nil { return preflightErr }
+	err := context.ExecutePreparedGraphSave(intent, func() (*runtime.MutationPlan, error) {
+		if preflightErr := e.TeaqlPreflightGraph(context, intent); preflightErr != nil { return nil, preflightErr }
+		auditReason := intent.AuditReason()
+		return runtime.MutationPlanFromEntityRoot(e.root, e.EntityName(), auditReason), nil
+	}, func() error {
 		var innerErr error
-		saved, innerErr = e.TeaqlSaveWithinGraph(context)
+		saved, innerErr = e.TeaqlSaveWithinGraph(context, intent, nil)
 		return innerErr
 	})
 	return saved, err
@@ -220,11 +233,11 @@ func (e *OrderLine) Save(context *runtime.UserContext) (*OrderLine, error) {
 
 // TeaqlPreflightGraph runs Checker/Fix for the complete aggregate before the
 // first provider mutation. It is generated infrastructure, not application API.
-func (e *OrderLine) TeaqlPreflightGraph(context *runtime.UserContext) error {
-	if e.comment == nil || strings.TrimSpace(*e.comment) == "" {
-		return fmt.Errorf("Security audit failure: AuditAs() must be called before Save()")
-	}
+func (e *OrderLine) TeaqlPreflightGraph(context *runtime.UserContext, intent core.MutationIntent) error {
+	if err := intent.Validate(); err != nil { return err }
 	if !e.markedAsDelete {
+		if e.isNew {
+		}
 		operation := core.MutationUpdate
 		if e.isNew { operation = core.MutationInsert }
 		if operation == core.MutationUpdate {
@@ -316,7 +329,8 @@ func (e *OrderLine) teaqlRegisterGraphOutcome(context *runtime.UserContext, snap
 
 // TeaqlSaveWithinGraph is generated infrastructure used by related entity
 // packages after the public root Save has opened the graph transaction.
-func (e *OrderLine) TeaqlSaveWithinGraph(context *runtime.UserContext) (*OrderLine, error) {
+func (e *OrderLine) TeaqlSaveWithinGraph(context *runtime.UserContext, intent core.MutationIntent, parentScope *core.MutationTraceScope) (*OrderLine, error) {
+	if err := intent.Validate(); err != nil { return nil, err }
 	snapshot := e.teaqlSaveSnapshot()
 	e.teaqlRegisterGraphOutcome(context, snapshot)
 	dsRaw := context.GetResource("dataService")
@@ -330,9 +344,6 @@ func (e *OrderLine) TeaqlSaveWithinGraph(context *runtime.UserContext) (*OrderLi
 	ds, ok := dsRaw.(mutator)
 	if !ok {
 		return nil, fmt.Errorf("dataService does not implement Mutator")
-	}
-	if e.comment == nil || strings.TrimSpace(*e.comment) == "" {
-		return nil, fmt.Errorf("Security audit failure: AuditAs() must be called before Save()")
 	}
 
 	if e.isNew {
@@ -372,12 +383,14 @@ func (e *OrderLine) TeaqlSaveWithinGraph(context *runtime.UserContext) (*OrderLi
 		if e.base.Version == 0 {
 			e.base.Version = 1
 		}
+		scope, err := core.MutationScopeForEntity(parentScope, e.EntityKey(), intent, e.comment)
+		if err != nil { return nil, err }
 		cmd := core.NewInsertCommand("order_line")
 		cmd.Values = e.IntoRecord()
-		if e.comment != nil {
-			cmd.TraceChain = append(cmd.TraceChain, &core.TraceNode{Comment: *e.comment})
-		}
-		res, err := ds.Mutate(context, &data_service.InsertMutation{Cmd: cmd})
+		cmd.TraceChain = core.MutationTraceForEntity(e.root, e.EntityKey(), scope)
+		request, err := data_service.NewMutationRequest(&data_service.InsertMutation{Cmd: cmd}, intent.Comment())
+		if err != nil { return nil, err }
+		res, err := ds.Mutate(context, request)
 		if err == nil {
 			e.isNew = false
 			e.dirtyFields = make(map[string]bool)
@@ -400,16 +413,18 @@ func (e *OrderLine) TeaqlSaveWithinGraph(context *runtime.UserContext) (*OrderLi
 		if err := e.FromRecord(res.PersistedRecord); err != nil {
 			return nil, err
 		}
-		if err := e.saveCascade(context); err != nil { return nil, err }
+		if err := e.saveCascade(context, intent, scope); err != nil { return nil, err }
 		return e, nil
 	} else if e.markedAsDelete {
+		scope, err := core.MutationScopeForEntity(parentScope, e.EntityKey(), intent, e.comment)
+		if err != nil { return nil, err }
 		expectedVersion := e.base.Version
 		cmd := core.NewDeleteCommand("order_line", core.ValU64(e.base.Id)).
 			WithExpectedVersion(expectedVersion)
-		if e.comment != nil {
-			cmd.TraceChain = append(cmd.TraceChain, &core.TraceNode{Comment: *e.comment})
-		}
-		res, err := ds.Mutate(context, &data_service.DeleteMutation{Cmd: cmd})
+		cmd.TraceChain = core.MutationTraceForEntity(e.root, e.EntityKey(), scope)
+		request, err := data_service.NewMutationRequest(&data_service.DeleteMutation{Cmd: cmd}, intent.Comment())
+		if err != nil { return nil, err }
+		res, err := ds.Mutate(context, request)
 		if err != nil { return nil, err }
 		if res.AffectedRows == 0 {
 			return nil, fmt.Errorf("optimistic lock failed for %s(%d) at version %d", e.EntityName(), e.base.Id, expectedVersion)
@@ -433,14 +448,22 @@ func (e *OrderLine) TeaqlSaveWithinGraph(context *runtime.UserContext) (*OrderLi
 		}
 		if checkErr != nil { return nil, checkErr }
 		if err := e.FromRecord(checkedValues); err != nil { return nil, err }
+		scope, err := core.MutationScopeForEntity(parentScope, e.EntityKey(), intent, e.comment)
+		if err != nil { return nil, err }
 		cmd := core.NewUpdateCommand("order_line", core.ValU64(e.base.Id))
 		cmd.Values = e.root.Change(e.EntityKey())
+		// A clean parent still carries the scope for changed descendants, but
+		// must not emit an empty UPDATE or bump its optimistic version.
+		if len(cmd.Values) == 0 {
+			if err := e.saveCascade(context, intent, scope); err != nil { return nil, err }
+			return e, nil
+		}
 		expectedVersion := e.base.Version
 		cmd.ExpectedVersion = &expectedVersion
-		if e.comment != nil {
-			cmd.TraceChain = append(cmd.TraceChain, &core.TraceNode{Comment: *e.comment})
-		}
-		res, err := ds.Mutate(context, &data_service.UpdateMutation{Cmd: cmd})
+		cmd.TraceChain = core.MutationTraceForEntity(e.root, e.EntityKey(), scope)
+		request, err := data_service.NewMutationRequest(&data_service.UpdateMutation{Cmd: cmd}, intent.Comment())
+		if err != nil { return nil, err }
+		res, err := ds.Mutate(context, request)
 		if err == nil {
 			if res.AffectedRows == 0 {
 				return nil, fmt.Errorf("optimistic lock failed for %s(%d) at version %d", e.EntityName(), e.base.Id, expectedVersion)
@@ -455,12 +478,12 @@ func (e *OrderLine) TeaqlSaveWithinGraph(context *runtime.UserContext) (*OrderLi
 			return nil, fmt.Errorf("mutation did not return the authoritative persisted record")
 		}
 		if err := e.FromRecord(res.PersistedRecord); err != nil { return nil, err }
-		if err := e.saveCascade(context); err != nil { return nil, err }
+		if err := e.saveCascade(context, intent, scope); err != nil { return nil, err }
 		return e, nil
 	}
 }
 
-func (e *OrderLine) saveCascade(context *runtime.UserContext) error {
+func (e *OrderLine) saveCascade(context *runtime.UserContext, intent core.MutationIntent, scope *core.MutationTraceScope) error {
 	return nil
 }
 

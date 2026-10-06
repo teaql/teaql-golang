@@ -46,13 +46,17 @@ func TestCRUDLogPrivacyPreservesSQLiteValues(t *testing.T) {
 	exec := runtime.NewSqlDataServiceExecutor(NewSqliteMutationExecutor(db), &SqliteDialect{}, meta)
 	markers := []string{"PRIVATE-CREATE-CANARY", "PRIVATE-UPDATE-CANARY", "PRIVATE-FAILURE-CANARY"}
 	insert := func(value string) error {
-		_, err := exec.Mutate(ctx, &data_service.InsertMutation{Cmd: core.NewInsertCommand("Person").Value("id", core.ValI64(1)).Value("name", core.ValText(value)).Value("version", core.ValI64(1))})
+		_, err := exec.Mutate(ctx, &data_service.InsertMutation{Cmd: core.NewInsertCommand("Person").Value("id", core.ValI64(1)).Value("name", core.ValText(value)).Value("version", core.ValI64(1)),
+			RootComment: fixtureIntentText("verify mutation fixture"),
+		})
 		return err
 	}
 	read := func(want string, count int) {
 		t.Helper()
 		comment, purpose := "what: read privacy fixture", "why: verify unchanged persistence"
-		result, err := exec.Query(ctx, &data_service.QueryRequest{Query: core.NewSelectQuery("Person"), Comment: &comment, Purpose: &purpose})
+		result, err := exec.Query(ctx, &data_service.QueryRequest{Query: core.NewSelectQuery("Person"),
+			Comment: &comment,
+			Purpose: &purpose})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -67,7 +71,9 @@ func TestCRUDLogPrivacyPreservesSQLiteValues(t *testing.T) {
 		t.Fatal(err)
 	}
 	read(markers[0], 1)
-	if _, err := exec.Mutate(ctx, &data_service.UpdateMutation{Cmd: core.NewUpdateCommand("Person", core.ValI64(1)).WithExpectedVersion(1).Value("name", core.ValText(markers[1]))}); err != nil {
+	if _, err := exec.Mutate(ctx, &data_service.UpdateMutation{Cmd: core.NewUpdateCommand("Person", core.ValI64(1)).WithExpectedVersion(1).Value("name", core.ValText(markers[1])),
+		RootComment: fixtureIntentText("verify mutation fixture"),
+	}); err != nil {
 		t.Fatal(err)
 	}
 	read(markers[1], 1)
@@ -75,7 +81,9 @@ func TestCRUDLogPrivacyPreservesSQLiteValues(t *testing.T) {
 		t.Fatal("duplicate primary key unexpectedly succeeded")
 	}
 	read(markers[1], 1)
-	if _, err := exec.Mutate(ctx, &data_service.DeleteMutation{Cmd: core.NewDeleteCommand("Person", core.ValI64(1)).WithExpectedVersion(2).HardDelete()}); err != nil {
+	if _, err := exec.Mutate(ctx, &data_service.DeleteMutation{Cmd: core.NewDeleteCommand("Person", core.ValI64(1)).WithExpectedVersion(2).HardDelete(),
+		RootComment: fixtureIntentText("verify mutation fixture"),
+	}); err != nil {
 		t.Fatal(err)
 	}
 	read("", 0)

@@ -31,6 +31,8 @@ type EntityRoot struct {
 	originalKeys     map[string]EntityKey
 	newKeys          map[string]EntityKey
 	deletedKeys      map[string]EntityKey
+	traceChains      map[string][]*TraceNode
+	traceKeys        map[string]EntityKey
 }
 
 func NewEntityRoot() *EntityRoot {
@@ -40,6 +42,8 @@ func NewEntityRoot() *EntityRoot {
 		originalKeys:     make(map[string]EntityKey),
 		newKeys:          make(map[string]EntityKey),
 		deletedKeys:      make(map[string]EntityKey),
+		traceChains:      make(map[string][]*TraceNode),
+		traceKeys:        make(map[string]EntityKey),
 	}
 }
 
@@ -100,6 +104,9 @@ func (r *EntityRoot) MergeFrom(other *EntityRoot) {
 		if other.IsDeleted(key) {
 			r.MarkAsDeleted(key)
 		}
+		if trace := other.TraceChain(key); len(trace) != 0 {
+			r.SetTraceChain(key, trace)
+		}
 	}
 }
 
@@ -119,6 +126,9 @@ func (r *EntityRoot) Keys() []EntityKey {
 	for id, key := range r.originalKeys {
 		keys[id] = key
 	}
+	for id, key := range r.traceKeys {
+		keys[id] = key
+	}
 	result := make([]EntityKey, 0, len(keys))
 	for _, key := range keys {
 		result = append(result, key)
@@ -130,6 +140,12 @@ func (r *EntityRoot) Rekey(oldKey, newKey EntityKey) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	oldID, newID := oldKey.mapKey(), newKey.mapKey()
+	if trace, ok := r.traceChains[oldID]; ok {
+		delete(r.traceChains, oldID)
+		delete(r.traceKeys, oldID)
+		r.traceChains[newID] = trace
+		r.traceKeys[newID] = newKey
+	}
 	if entry, ok := r.changes[oldID]; ok {
 		delete(r.changes, oldID)
 		entry.Key = newKey
@@ -157,6 +173,8 @@ func (r *EntityRoot) ClearEntity(key EntityKey) {
 	delete(r.changes, key.mapKey())
 	delete(r.newKeys, key.mapKey())
 	delete(r.deletedKeys, key.mapKey())
+	delete(r.traceChains, key.mapKey())
+	delete(r.traceKeys, key.mapKey())
 }
 
 func (r *EntityRoot) SetOriginalVersion(key EntityKey, version int64) {
@@ -206,4 +224,24 @@ func (r *EntityRoot) ClearCommitted() {
 	r.changes = make(map[string]EntityChange)
 	r.newKeys = make(map[string]EntityKey)
 	r.deletedKeys = make(map[string]EntityKey)
+	r.traceChains = make(map[string][]*TraceNode)
+	r.traceKeys = make(map[string]EntityKey)
+}
+
+func (r *EntityRoot) SetTraceChain(key EntityKey, trace []*TraceNode) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	if len(trace) == 0 {
+		delete(r.traceChains, key.mapKey())
+		delete(r.traceKeys, key.mapKey())
+		return
+	}
+	r.traceChains[key.mapKey()] = CloneTraceNodes(trace)
+	r.traceKeys[key.mapKey()] = key
+}
+
+func (r *EntityRoot) TraceChain(key EntityKey) []*TraceNode {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+	return CloneTraceNodes(r.traceChains[key.mapKey()])
 }

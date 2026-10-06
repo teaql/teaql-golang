@@ -31,6 +31,7 @@ var (
 
 var teaqlTemporaryEntityID int64
 
+
 type CommercePlatform struct {
 	base        *core.BaseEntityData
 	dirtyFields map[string]bool
@@ -170,6 +171,15 @@ func NewCommercePlatform() *CommercePlatform {
 	return entity
 }
 
+// Hydration is not a create request. Keep this constructor private so public
+// NewEntity still records new-object intent, while a loaded snapshot starts
+// with independent mutation ownership and no pending insert.
+func newLoadedCommercePlatform() *CommercePlatform {
+	entity := NewCommercePlatform()
+	entity.root.ClearEntity(entity.EntityKey())
+	return entity
+}
+
 func (e *CommercePlatform) EntityKey() core.EntityKey {
 	if e.base.Id != 0 { return core.NewEntityKey(e.EntityName(), core.ValU64(e.base.Id)) }
 	return core.NewEntityKey(e.EntityName(), e.ledgerID)
@@ -298,9 +308,7 @@ func (e *CommercePlatform) SetComment(comment string) {
 }
 
 func (e *CommercePlatform) AuditAs(comment string) *CommercePlatform {
-	if strings.TrimSpace(comment) == "" {
-		panic("Security audit failure: AuditAs() requires a non-empty reason")
-	}
+	if _, err := core.NewMutationIntent(&comment); err != nil { panic(err) }
 	e.comment = &comment
 	return e
 }
@@ -327,11 +335,16 @@ func (e *CommercePlatform) IntoJson() any {
 }
 
 func (e *CommercePlatform) Save(context *runtime.UserContext) (*CommercePlatform, error) {
+	intent, intentErr := core.NewMutationIntent(e.comment)
+	if intentErr != nil { return nil, intentErr }
 	var saved *CommercePlatform
-	err := context.ExecuteGraphSave(func() error {
-		if preflightErr := e.TeaqlPreflightGraph(context); preflightErr != nil { return preflightErr }
+	err := context.ExecutePreparedGraphSave(intent, func() (*runtime.MutationPlan, error) {
+		if preflightErr := e.TeaqlPreflightGraph(context, intent); preflightErr != nil { return nil, preflightErr }
+		auditReason := intent.AuditReason()
+		return runtime.MutationPlanFromEntityRoot(e.root, e.EntityName(), auditReason), nil
+	}, func() error {
 		var innerErr error
-		saved, innerErr = e.TeaqlSaveWithinGraph(context)
+		saved, innerErr = e.TeaqlSaveWithinGraph(context, intent, nil)
 		return innerErr
 	})
 	return saved, err
@@ -339,11 +352,11 @@ func (e *CommercePlatform) Save(context *runtime.UserContext) (*CommercePlatform
 
 // TeaqlPreflightGraph runs Checker/Fix for the complete aggregate before the
 // first provider mutation. It is generated infrastructure, not application API.
-func (e *CommercePlatform) TeaqlPreflightGraph(context *runtime.UserContext) error {
-	if e.comment == nil || strings.TrimSpace(*e.comment) == "" {
-		return fmt.Errorf("Security audit failure: AuditAs() must be called before Save()")
-	}
+func (e *CommercePlatform) TeaqlPreflightGraph(context *runtime.UserContext, intent core.MutationIntent) error {
+	if err := intent.Validate(); err != nil { return err }
 	if !e.markedAsDelete {
+		if e.isNew {
+		}
 		operation := core.MutationUpdate
 		if e.isNew { operation = core.MutationInsert }
 		if operation == core.MutationUpdate {
@@ -384,8 +397,7 @@ func (e *CommercePlatform) TeaqlPreflightGraph(context *runtime.UserContext) err
 		parentID := core.ValU64(e.base.Id)
 		if e.base.Id == 0 { parentID = e.ledgerID }
 		child.Base().PutDynamic("commerce_platform_id", parentID)
-		child.SetComment(*e.comment)
-		if err := child.TeaqlPreflightGraph(context); err != nil {
+		if err := child.TeaqlPreflightGraph(context, intent); err != nil {
 			var checkError *runtime.RuntimeError
 			if errors.As(err, &checkError) && checkError.Type == "Check" {
 				prefix := runtime.Location().Property("customer_list").At(index)
@@ -401,8 +413,7 @@ func (e *CommercePlatform) TeaqlPreflightGraph(context *runtime.UserContext) err
 		parentID := core.ValU64(e.base.Id)
 		if e.base.Id == 0 { parentID = e.ledgerID }
 		child.Base().PutDynamic("commerce_platform_id", parentID)
-		child.SetComment(*e.comment)
-		if err := child.TeaqlPreflightGraph(context); err != nil {
+		if err := child.TeaqlPreflightGraph(context, intent); err != nil {
 			var checkError *runtime.RuntimeError
 			if errors.As(err, &checkError) && checkError.Type == "Check" {
 				prefix := runtime.Location().Property("order_status_list").At(index)
@@ -418,8 +429,7 @@ func (e *CommercePlatform) TeaqlPreflightGraph(context *runtime.UserContext) err
 		parentID := core.ValU64(e.base.Id)
 		if e.base.Id == 0 { parentID = e.ledgerID }
 		child.Base().PutDynamic("commerce_platform_id", parentID)
-		child.SetComment(*e.comment)
-		if err := child.TeaqlPreflightGraph(context); err != nil {
+		if err := child.TeaqlPreflightGraph(context, intent); err != nil {
 			var checkError *runtime.RuntimeError
 			if errors.As(err, &checkError) && checkError.Type == "Check" {
 				prefix := runtime.Location().Property("customer_order_list").At(index)
@@ -435,8 +445,7 @@ func (e *CommercePlatform) TeaqlPreflightGraph(context *runtime.UserContext) err
 		parentID := core.ValU64(e.base.Id)
 		if e.base.Id == 0 { parentID = e.ledgerID }
 		child.Base().PutDynamic("commerce_platform_id", parentID)
-		child.SetComment(*e.comment)
-		if err := child.TeaqlPreflightGraph(context); err != nil {
+		if err := child.TeaqlPreflightGraph(context, intent); err != nil {
 			var checkError *runtime.RuntimeError
 			if errors.As(err, &checkError) && checkError.Type == "Check" {
 				prefix := runtime.Location().Property("product_list").At(index)
@@ -452,8 +461,7 @@ func (e *CommercePlatform) TeaqlPreflightGraph(context *runtime.UserContext) err
 		parentID := core.ValU64(e.base.Id)
 		if e.base.Id == 0 { parentID = e.ledgerID }
 		child.Base().PutDynamic("commerce_platform_id", parentID)
-		child.SetComment(*e.comment)
-		if err := child.TeaqlPreflightGraph(context); err != nil {
+		if err := child.TeaqlPreflightGraph(context, intent); err != nil {
 			var checkError *runtime.RuntimeError
 			if errors.As(err, &checkError) && checkError.Type == "Check" {
 				prefix := runtime.Location().Property("order_line_list").At(index)
@@ -469,8 +477,7 @@ func (e *CommercePlatform) TeaqlPreflightGraph(context *runtime.UserContext) err
 		parentID := core.ValU64(e.base.Id)
 		if e.base.Id == 0 { parentID = e.ledgerID }
 		child.Base().PutDynamic("commerce_platform_id", parentID)
-		child.SetComment(*e.comment)
-		if err := child.TeaqlPreflightGraph(context); err != nil {
+		if err := child.TeaqlPreflightGraph(context, intent); err != nil {
 			var checkError *runtime.RuntimeError
 			if errors.As(err, &checkError) && checkError.Type == "Check" {
 				prefix := runtime.Location().Property("order_search_preset_list").At(index)
@@ -521,7 +528,8 @@ func (e *CommercePlatform) teaqlRegisterGraphOutcome(context *runtime.UserContex
 
 // TeaqlSaveWithinGraph is generated infrastructure used by related entity
 // packages after the public root Save has opened the graph transaction.
-func (e *CommercePlatform) TeaqlSaveWithinGraph(context *runtime.UserContext) (*CommercePlatform, error) {
+func (e *CommercePlatform) TeaqlSaveWithinGraph(context *runtime.UserContext, intent core.MutationIntent, parentScope *core.MutationTraceScope) (*CommercePlatform, error) {
+	if err := intent.Validate(); err != nil { return nil, err }
 	snapshot := e.teaqlSaveSnapshot()
 	e.teaqlRegisterGraphOutcome(context, snapshot)
 	dsRaw := context.GetResource("dataService")
@@ -535,9 +543,6 @@ func (e *CommercePlatform) TeaqlSaveWithinGraph(context *runtime.UserContext) (*
 	ds, ok := dsRaw.(mutator)
 	if !ok {
 		return nil, fmt.Errorf("dataService does not implement Mutator")
-	}
-	if e.comment == nil || strings.TrimSpace(*e.comment) == "" {
-		return nil, fmt.Errorf("Security audit failure: AuditAs() must be called before Save()")
 	}
 
 	if e.isNew {
@@ -577,12 +582,14 @@ func (e *CommercePlatform) TeaqlSaveWithinGraph(context *runtime.UserContext) (*
 		if e.base.Version == 0 {
 			e.base.Version = 1
 		}
+		scope, err := core.MutationScopeForEntity(parentScope, e.EntityKey(), intent, e.comment)
+		if err != nil { return nil, err }
 		cmd := core.NewInsertCommand("commerce_platform")
 		cmd.Values = e.IntoRecord()
-		if e.comment != nil {
-			cmd.TraceChain = append(cmd.TraceChain, &core.TraceNode{Comment: *e.comment})
-		}
-		res, err := ds.Mutate(context, &data_service.InsertMutation{Cmd: cmd})
+		cmd.TraceChain = core.MutationTraceForEntity(e.root, e.EntityKey(), scope)
+		request, err := data_service.NewMutationRequest(&data_service.InsertMutation{Cmd: cmd}, intent.Comment())
+		if err != nil { return nil, err }
+		res, err := ds.Mutate(context, request)
 		if err == nil {
 			e.isNew = false
 			e.dirtyFields = make(map[string]bool)
@@ -605,16 +612,18 @@ func (e *CommercePlatform) TeaqlSaveWithinGraph(context *runtime.UserContext) (*
 		if err := e.FromRecord(res.PersistedRecord); err != nil {
 			return nil, err
 		}
-		if err := e.saveCascade(context); err != nil { return nil, err }
+		if err := e.saveCascade(context, intent, scope); err != nil { return nil, err }
 		return e, nil
 	} else if e.markedAsDelete {
+		scope, err := core.MutationScopeForEntity(parentScope, e.EntityKey(), intent, e.comment)
+		if err != nil { return nil, err }
 		expectedVersion := e.base.Version
 		cmd := core.NewDeleteCommand("commerce_platform", core.ValU64(e.base.Id)).
 			WithExpectedVersion(expectedVersion)
-		if e.comment != nil {
-			cmd.TraceChain = append(cmd.TraceChain, &core.TraceNode{Comment: *e.comment})
-		}
-		res, err := ds.Mutate(context, &data_service.DeleteMutation{Cmd: cmd})
+		cmd.TraceChain = core.MutationTraceForEntity(e.root, e.EntityKey(), scope)
+		request, err := data_service.NewMutationRequest(&data_service.DeleteMutation{Cmd: cmd}, intent.Comment())
+		if err != nil { return nil, err }
+		res, err := ds.Mutate(context, request)
 		if err != nil { return nil, err }
 		if res.AffectedRows == 0 {
 			return nil, fmt.Errorf("optimistic lock failed for %s(%d) at version %d", e.EntityName(), e.base.Id, expectedVersion)
@@ -638,14 +647,22 @@ func (e *CommercePlatform) TeaqlSaveWithinGraph(context *runtime.UserContext) (*
 		}
 		if checkErr != nil { return nil, checkErr }
 		if err := e.FromRecord(checkedValues); err != nil { return nil, err }
+		scope, err := core.MutationScopeForEntity(parentScope, e.EntityKey(), intent, e.comment)
+		if err != nil { return nil, err }
 		cmd := core.NewUpdateCommand("commerce_platform", core.ValU64(e.base.Id))
 		cmd.Values = e.root.Change(e.EntityKey())
+		// A clean parent still carries the scope for changed descendants, but
+		// must not emit an empty UPDATE or bump its optimistic version.
+		if len(cmd.Values) == 0 {
+			if err := e.saveCascade(context, intent, scope); err != nil { return nil, err }
+			return e, nil
+		}
 		expectedVersion := e.base.Version
 		cmd.ExpectedVersion = &expectedVersion
-		if e.comment != nil {
-			cmd.TraceChain = append(cmd.TraceChain, &core.TraceNode{Comment: *e.comment})
-		}
-		res, err := ds.Mutate(context, &data_service.UpdateMutation{Cmd: cmd})
+		cmd.TraceChain = core.MutationTraceForEntity(e.root, e.EntityKey(), scope)
+		request, err := data_service.NewMutationRequest(&data_service.UpdateMutation{Cmd: cmd}, intent.Comment())
+		if err != nil { return nil, err }
+		res, err := ds.Mutate(context, request)
 		if err == nil {
 			if res.AffectedRows == 0 {
 				return nil, fmt.Errorf("optimistic lock failed for %s(%d) at version %d", e.EntityName(), e.base.Id, expectedVersion)
@@ -660,17 +677,16 @@ func (e *CommercePlatform) TeaqlSaveWithinGraph(context *runtime.UserContext) (*
 			return nil, fmt.Errorf("mutation did not return the authoritative persisted record")
 		}
 		if err := e.FromRecord(res.PersistedRecord); err != nil { return nil, err }
-		if err := e.saveCascade(context); err != nil { return nil, err }
+		if err := e.saveCascade(context, intent, scope); err != nil { return nil, err }
 		return e, nil
 	}
 }
 
-func (e *CommercePlatform) saveCascade(context *runtime.UserContext) error {
+func (e *CommercePlatform) saveCascade(context *runtime.UserContext, intent core.MutationIntent, scope *core.MutationTraceScope) error {
 	for index, child := range e.customerList.Items() {
 		child.AttachEntityRoot(e.root)
 		child.Base().PutDynamic("commerce_platform_id", core.ValU64(e.base.Id))
-		child.SetComment(*e.comment)
-		if _, err := child.TeaqlSaveWithinGraph(context); err != nil {
+		if _, err := child.TeaqlSaveWithinGraph(context, intent, scope); err != nil {
 			var checkError *runtime.RuntimeError
 			if errors.As(err, &checkError) && checkError.Type == "Check" {
 				prefix := runtime.Location().Property("customer_list").At(index)
@@ -684,8 +700,7 @@ func (e *CommercePlatform) saveCascade(context *runtime.UserContext) error {
 	for index, child := range e.orderStatusList.Items() {
 		child.AttachEntityRoot(e.root)
 		child.Base().PutDynamic("commerce_platform_id", core.ValU64(e.base.Id))
-		child.SetComment(*e.comment)
-		if _, err := child.TeaqlSaveWithinGraph(context); err != nil {
+		if _, err := child.TeaqlSaveWithinGraph(context, intent, scope); err != nil {
 			var checkError *runtime.RuntimeError
 			if errors.As(err, &checkError) && checkError.Type == "Check" {
 				prefix := runtime.Location().Property("order_status_list").At(index)
@@ -699,8 +714,7 @@ func (e *CommercePlatform) saveCascade(context *runtime.UserContext) error {
 	for index, child := range e.customerOrderList.Items() {
 		child.AttachEntityRoot(e.root)
 		child.Base().PutDynamic("commerce_platform_id", core.ValU64(e.base.Id))
-		child.SetComment(*e.comment)
-		if _, err := child.TeaqlSaveWithinGraph(context); err != nil {
+		if _, err := child.TeaqlSaveWithinGraph(context, intent, scope); err != nil {
 			var checkError *runtime.RuntimeError
 			if errors.As(err, &checkError) && checkError.Type == "Check" {
 				prefix := runtime.Location().Property("customer_order_list").At(index)
@@ -714,8 +728,7 @@ func (e *CommercePlatform) saveCascade(context *runtime.UserContext) error {
 	for index, child := range e.productList.Items() {
 		child.AttachEntityRoot(e.root)
 		child.Base().PutDynamic("commerce_platform_id", core.ValU64(e.base.Id))
-		child.SetComment(*e.comment)
-		if _, err := child.TeaqlSaveWithinGraph(context); err != nil {
+		if _, err := child.TeaqlSaveWithinGraph(context, intent, scope); err != nil {
 			var checkError *runtime.RuntimeError
 			if errors.As(err, &checkError) && checkError.Type == "Check" {
 				prefix := runtime.Location().Property("product_list").At(index)
@@ -729,8 +742,7 @@ func (e *CommercePlatform) saveCascade(context *runtime.UserContext) error {
 	for index, child := range e.orderLineList.Items() {
 		child.AttachEntityRoot(e.root)
 		child.Base().PutDynamic("commerce_platform_id", core.ValU64(e.base.Id))
-		child.SetComment(*e.comment)
-		if _, err := child.TeaqlSaveWithinGraph(context); err != nil {
+		if _, err := child.TeaqlSaveWithinGraph(context, intent, scope); err != nil {
 			var checkError *runtime.RuntimeError
 			if errors.As(err, &checkError) && checkError.Type == "Check" {
 				prefix := runtime.Location().Property("order_line_list").At(index)
@@ -744,8 +756,7 @@ func (e *CommercePlatform) saveCascade(context *runtime.UserContext) error {
 	for index, child := range e.orderSearchPresetList.Items() {
 		child.AttachEntityRoot(e.root)
 		child.Base().PutDynamic("commerce_platform_id", core.ValU64(e.base.Id))
-		child.SetComment(*e.comment)
-		if _, err := child.TeaqlSaveWithinGraph(context); err != nil {
+		if _, err := child.TeaqlSaveWithinGraph(context, intent, scope); err != nil {
 			var checkError *runtime.RuntimeError
 			if errors.As(err, &checkError) && checkError.Type == "Check" {
 				prefix := runtime.Location().Property("order_search_preset_list").At(index)

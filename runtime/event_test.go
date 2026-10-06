@@ -75,6 +75,24 @@ func TestBootstrapAuditIdentitySurvivesSafeProjection(t *testing.T) {
 	assert.Equal(t, "runtime-bootstrap", safe.Category)
 }
 
+func TestRequestOwnedAuditReasonIsMaskedWithoutTraceFallback(t *testing.T) {
+	t.Setenv("TEAQL_ALLOW_SENSITIVE_PLAINTEXT_LOGS", "")
+	comment := "create Riverside using PASSWORD-CANARY for 1001"
+	event := Created("School", core.Record{"id": core.ValI64(1001), "name": core.ValText("Riverside"), "password_hash": core.ValText("PASSWORD-CANARY")})
+	event.AuditReason = &comment
+	event.TraceChain = []*core.TraceNode{core.NewTypedTraceNode("entity", "School", "")}
+	safe := event.BuildSafeEvent([]string{"name"}, nil)
+	if safe.AuditReason == nil || *safe.AuditReason != "create [REDACTED] using [REDACTED] for [REDACTED]" {
+		t.Fatal("root reason was lost or not masked")
+	}
+	if *event.AuditReason != comment {
+		t.Fatal("projection changed the request's original intent")
+	}
+	if safe.TraceChain[0].Comment != "" {
+		t.Fatal("intent was inferred from or injected into the trace tail")
+	}
+}
+
 func TestRawAuditEventUpdated(t *testing.T) {
 	values := core.Record{"a": core.ValI64(2)}
 	event := Updated("User", values)
@@ -458,7 +476,7 @@ func TestMutationAuditEmitsIndependentRawAndMaskedAppEvents(t *testing.T) {
 	trace := []*core.TraceNode{{Comment: "approved change 1001"}}
 	request := &data_service.InsertMutation{Cmd: &core.InsertCommand{
 		Entity: "User", Values: core.Record{"email": core.ValText("person@example.invalid")}, TraceChain: trace,
-	}}
+	}, RootComment: intentTestComment("approved change 1001")}
 
 	err := context.EmitMutationAudit(request, &data_service.MutationResult{
 		AffectedRows: 1, GeneratedValues: core.Record{"id": core.ValI64(1001)},
@@ -482,6 +500,8 @@ func TestMutationAuditEmitsIndependentRawAndMaskedAppEvents(t *testing.T) {
 		}
 	}
 	assert.Equal(t, "approved change [REDACTED]", app.events[0].TraceChain[0].Comment)
+	assert.Equal(t, "approved change 1001", *raw.events[0].AuditReason)
+	assert.Equal(t, "approved change [REDACTED]", *app.events[0].AuditReason)
 }
 
 func TestUpdateAppAuditScrubsTargetIDWithoutMutatingCommand(t *testing.T) {
@@ -492,7 +512,7 @@ func TestUpdateAppAuditScrubsTargetIDWithoutMutatingCommand(t *testing.T) {
 		Entity: "User", Id: core.ValI64(1001),
 		Values:     core.Record{"name": core.ValText("Changed")},
 		TraceChain: []*core.TraceNode{{Comment: "rename user 1001"}},
-	}}
+	}, RootComment: intentTestComment("rename user 1001")}
 
 	err := context.EmitMutationAudit(request, &data_service.MutationResult{AffectedRows: 1})
 	assert.NoError(t, err)
@@ -506,7 +526,10 @@ func TestUpdateAppAuditScrubsTargetIDWithoutMutatingCommand(t *testing.T) {
 	_, commandHasID := request.Cmd.Values["id"]
 	assert.False(t, commandHasID)
 	assert.Equal(t, "rename user 1001", request.Cmd.TraceChain[0].Comment)
+	assert.Equal(t, "rename user [REDACTED]", *app.events[0].AuditReason)
 }
+
+func intentTestComment(text string) *string { return &text }
 
 func TestAllMutationKindsScrubTargetIDFromSafeTrace(t *testing.T) {
 	id := core.ValI64(1001)

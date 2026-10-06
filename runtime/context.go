@@ -2,6 +2,7 @@ package runtime
 
 import (
 	stdcontext "context"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -11,6 +12,7 @@ import (
 
 	"github.com/teaql/teaql-golang/core"
 	"github.com/teaql/teaql-golang/data_service"
+	"github.com/teaql/teaql-golang/internal/mutationaudit"
 )
 
 type ContinuousPageCursor struct {
@@ -316,7 +318,7 @@ type UserContext struct {
 	graphSaveGate                     sync.Mutex
 	graphSaveMu                       sync.Mutex
 	graphSaveActive                   bool
-	graphCommitActions                []func()
+	graphCommitActions                []func() error
 	graphRollbackActions              []func()
 	graphFixTime                      time.Time
 	businessClockMu                   sync.RWMutex
@@ -426,9 +428,10 @@ func (s *TextDiagnosticSQLLogSink) WriteSQLLog(metadata data_service.ExecutionMe
 	} else if metadata.AffectedRows != nil {
 		summary = fmt.Sprintf("%d rows affected", *metadata.AffectedRows)
 	}
-	fmt.Fprintf(s.writer, "[TeaQL SQL][%s][%dus] %s outcome=%s comment=%q purpose=%q auditReason=%q tracePath=%v\nSQL omission reason: %s\nDebug SQL: %s\n",
+	fmt.Fprintf(s.writer, "[TeaQL SQL][%s][%dus] %s outcome=%s comment=%q purpose=%q auditReason=%q tracePath=%v mutationLineage=%v\nSQL omission reason: %s\nDebug SQL: %s\n",
 		strings.ToLower(string(metadata.Operation)), duration, summary, metadata.ExecutionOutcome,
 		sqlLogText(metadata.Comment), sqlLogText(metadata.Purpose), sqlLogText(metadata.AuditReason), metadata.TraceChain,
+		metadata.MutationLineage,
 		metadata.OmissionReason, sqlLogText(metadata.DebugQuery))
 }
 
@@ -459,9 +462,10 @@ func (s *SensitiveDiagnosticSQLLogSink) WriteSQLLog(metadata data_service.Execut
 	} else if metadata.AffectedRows != nil {
 		summary = fmt.Sprintf("%d rows affected", *metadata.AffectedRows)
 	}
-	fmt.Fprintf(s.writer, "[TeaQL SENSITIVE SQL][%s][%dus] %s outcome=%s comment=%q purpose=%q auditReason=%q tracePath=%v\nSQL omission reason: %s\nDebug SQL: %s\n",
+	fmt.Fprintf(s.writer, "[TeaQL SENSITIVE SQL][%s][%dus] %s outcome=%s comment=%q purpose=%q auditReason=%q tracePath=%v mutationLineage=%v\nSQL omission reason: %s\nDebug SQL: %s\n",
 		strings.ToLower(string(metadata.Operation)), duration, summary, metadata.ExecutionOutcome,
 		sqlLogText(metadata.Comment), sqlLogText(metadata.Purpose), sqlLogText(metadata.AuditReason), metadata.TraceChain,
+		metadata.MutationLineage,
 		metadata.OmissionReason, sqlLogText(metadata.DebugQuery))
 }
 
@@ -611,6 +615,7 @@ func NewUserContext() *UserContext {
 		businessClock:                     SystemBusinessClock{},
 	}
 	context.Context = stdcontext.WithValue(context.Context, userContextKey{}, context)
+	context.Context = stdcontext.WithValue(context.Context, mutationaudit.ContextKey{}, context)
 	return context
 }
 
@@ -710,7 +715,10 @@ func (c *UserContext) GetResource(name string) interface{} {
 
 // ExecuteGraphSave coordinates one generated object graph through one provider
 // transaction. Nested entity saves join the active graph transaction.
-func (c *UserContext) ExecuteGraphSave(work func() error) error {
+func (c *UserContext) ExecuteGraphSave(intent core.MutationIntent, work func() error) error {
+	if err := intent.Validate(); err != nil {
+		return err
+	}
 	// Generated child entities use their within-graph save entry point directly.
 	// Every public/root save is serialized here, preventing an unrelated goroutine
 	// from joining whichever transaction happens to be active on this context.
@@ -745,9 +753,13 @@ func (c *UserContext) ExecutePlannedGraphSave(plan *MutationPlan, work func() er
 // plan preparation, review the immutable plan, then begin the provider
 // transaction. A denial therefore cannot begin a transaction or mutate a row.
 func (c *UserContext) ExecutePreparedGraphSave(
+	intent core.MutationIntent,
 	prepare func() (*MutationPlan, error),
 	work func() error,
 ) error {
+	if err := intent.Validate(); err != nil {
+		return err
+	}
 	if prepare == nil || work == nil {
 		return fmt.Errorf("prepared graph save requires prepare and work callbacks")
 	}
@@ -759,6 +771,10 @@ func (c *UserContext) ExecutePreparedGraphSave(
 	if err != nil {
 		c.finishGraphPreparation()
 		return err
+	}
+	if plan != nil {
+		plan = cloneMutationPlan(plan)
+		plan.AuditReason = intent.AuditReason()
 	}
 	snapshot, err := c.ReviewMutationPlan(plan)
 	if err != nil {
@@ -825,10 +841,13 @@ func (c *UserContext) executeGraphSave(work func() error, preparationStarted boo
 	c.graphSaveMu.Unlock()
 
 	err = work()
+	committed := false
 	if err == nil {
 		err = transaction.Commit(c)
+		var afterCommit *data_service.MutationCommittedError
+		committed = err == nil || errors.As(err, &afterCommit)
 	}
-	if err != nil {
+	if !committed {
 		rollbackErr := transaction.Rollback(c)
 		for index := len(c.graphRollbackActions) - 1; index >= 0; index-- {
 			c.graphRollbackActions[index]()
@@ -838,7 +857,9 @@ func (c *UserContext) executeGraphSave(work func() error, preparationStarted boo
 		}
 	} else {
 		for _, action := range c.graphCommitActions {
-			action()
+			if actionErr := action(); actionErr != nil && err == nil {
+				err = &GraphCommittedError{Cause: actionErr}
+			}
 		}
 	}
 
@@ -983,7 +1004,7 @@ func (c *UserContext) AfterGraphCommit(action func()) {
 	if !c.graphSaveActive {
 		panic("no graph save is active")
 	}
-	c.graphCommitActions = append(c.graphCommitActions, action)
+	c.graphCommitActions = append(c.graphCommitActions, func() error { action(); return nil })
 }
 
 func (c *UserContext) AfterGraphRollback(action func()) {
@@ -1000,7 +1021,9 @@ func (c *UserContext) SendEvent(event *RawAuditEvent) error {
 }
 
 func (c *UserContext) sendEvent(context stdcontext.Context, event *RawAuditEvent) (err error) {
-	event.MutationGovernance = c.CurrentMutationGovernance()
+	if !event.governanceCaptured {
+		event.MutationGovernance = c.CurrentMutationGovernance()
+	}
 	context, scope := StartRuntimeOperation(context, c.RuntimeTelemetry(), NewRuntimeOperation("audit", event.Entity+".event", map[string]RuntimeAttributeValue{
 		"teaql.entity.type": event.Entity,
 	}))
@@ -1038,9 +1061,45 @@ func (c *UserContext) EmitMutationAudit(request data_service.MutationRequest, re
 }
 
 func (c *UserContext) emitMutationAudit(context stdcontext.Context, request data_service.MutationRequest, result *data_service.MutationResult) error {
-	if result == nil || result.AffectedRows == 0 {
+	event, err := c.captureMutationAudit(request, result)
+	if err != nil || event == nil {
+		return err
+	}
+	c.graphSaveMu.Lock()
+	if c.graphSaveActive {
+		c.graphCommitActions = append(c.graphCommitActions, func() error { return c.sendEvent(context, event) })
+		c.graphSaveMu.Unlock()
 		return nil
 	}
+	c.graphSaveMu.Unlock()
+	return c.sendEvent(context, event)
+}
+
+// CaptureRuntimeMutationAudit is an internal provider SPI: its ticket type
+// cannot be imported by a workspace. Capture actor and evidence now; the owning
+// transaction, not shared Context state, schedules delivery after commit.
+func (c *UserContext) CaptureRuntimeMutationAudit(capture *mutationaudit.Capture) error {
+	if capture == nil {
+		return fmt.Errorf("runtime mutation audit capture is required")
+	}
+	request, result := capture.Input()
+	event, err := c.captureMutationAudit(request, result)
+	if err != nil || event == nil {
+		return err
+	}
+	capture.SetDelivery(func() error { return c.sendEvent(capture.Context(), event) })
+	return nil
+}
+
+func (c *UserContext) captureMutationAudit(request data_service.MutationRequest, result *data_service.MutationResult) (*RawAuditEvent, error) {
+	if result == nil || result.AffectedRows == 0 {
+		return nil, nil
+	}
+	captured, captureErr := data_service.CaptureMutationRequest(request)
+	if captureErr != nil {
+		return nil, captureErr
+	}
+	request = captured
 	var event *RawAuditEvent
 	switch req := request.(type) {
 	case *data_service.InsertMutation:
@@ -1057,8 +1116,9 @@ func (c *UserContext) emitMutationAudit(context stdcontext.Context, request data
 		for k := range req.Cmd.Values {
 			fields = append(fields, k)
 		}
-		oldValues := req.Cmd.OldValues
-		event = UpdatedWithOldValues(req.Cmd.Entity, req.Cmd.Values, &oldValues, req.Cmd.Values, fields)
+		oldValues := cloneRecord(req.Cmd.OldValues)
+		values := cloneRecord(req.Cmd.Values)
+		event = UpdatedWithOldValues(req.Cmd.Entity, values, &oldValues, values, fields)
 		targetID := req.Cmd.Id
 		event.TargetID = &targetID
 	case *data_service.DeleteMutation:
@@ -1066,15 +1126,23 @@ func (c *UserContext) emitMutationAudit(context stdcontext.Context, request data
 	case *data_service.RecoverMutation:
 		event = Recovered(req.Cmd.Entity, req.Cmd.Id, req.Cmd.ExpectedVersion)
 	default:
-		return nil
+		return nil, nil
 	}
-	event.TraceChain = append([]*core.TraceNode(nil), request.TraceChain()...)
+	event.TraceChain = core.CloneTraceNodes(request.TraceChain())
+	event.AuditReason = request.Comment()
+	event.inheritedIntent = result.Metadata.InheritedIntent
 	event.Actor = c.userIdentifier
+	event.MutationGovernance = c.CurrentMutationGovernance()
+	event.governanceCaptured = true
 	if category, ok := c.GetResource("bootstrapCategory").(string); ok {
 		event.Category = category
 	}
-	return c.sendEvent(context, event)
+	return event, nil
 }
+
+// GraphCommittedError means the database committed but an audit consumer failed.
+// It must not be retried as an uncommitted mutation or cause a false rollback.
+type GraphCommittedError = data_service.MutationCommittedError
 
 func (c *UserContext) SetAppAuditEventSink(sink AppAuditEventSink) { c.appAuditSink = sink }
 func (c *UserContext) WithAppAuditEventSink(sink AppAuditEventSink) *UserContext {
@@ -1525,15 +1593,20 @@ func (c *UserContext) RuntimeReadiness() error {
 // PrepareQuery snapshots a request and applies trusted authorization exactly
 // once before callers derive row and aggregate executions from it.
 func (c *UserContext) PrepareQuery(query *core.SelectQuery) (*core.SelectQuery, error) {
-	if query == nil {
-		return nil, fmt.Errorf("query is required")
+	request, err := data_service.NewQueryRequest(query)
+	if err != nil {
+		return nil, err
 	}
-	prepared := query.Clone()
+	prepared := request.Query
 	if c.requestPolicy != nil {
 		if err := c.requestPolicy.EnforceSelect(c, prepared); err != nil {
 			return nil, err
 		}
 	}
+	// Policies constrain data access, not the caller's captured business intent.
+	intent, _ := request.Intent()
+	comment, purpose := intent.Comment(), intent.Purpose()
+	prepared.CommentText, prepared.PurposeText = &comment, &purpose
 	return prepared, nil
 }
 

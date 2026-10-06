@@ -2,12 +2,11 @@ package lib
 
 import (
 	"school-management-service-core-workspace/lib/platform"
-	"school-management-service-core-workspace/lib/school"
 	"school-management-service-core-workspace/lib/school_type"
+	"school-management-service-core-workspace/lib/school"
 )
 
-type QType struct{}
-
+type QType struct {}
 var Q = &QType{}
 
 func (q *QType) Platforms() *platform.PlatformRequest {
@@ -34,29 +33,24 @@ func (q *QType) SchoolsMinimal() *school.SchoolRequest {
 	return school.NewSchoolMinimalRequest()
 }
 
+
 func (q *QType) SchoolTypePlatform(entity *school_type.SchoolType) (*platform.Platform, bool) {
 	value, ok := entity.RelationEntity("platformEntity")
-	if !ok {
-		return nil, false
-	}
+	if !ok { return nil, false }
 	typed, ok := value.(*platform.Platform)
 	return typed, ok
 }
 
 func (q *QType) SchoolPlatform(entity *school.School) (*platform.Platform, bool) {
 	value, ok := entity.RelationEntity("platformEntity")
-	if !ok {
-		return nil, false
-	}
+	if !ok { return nil, false }
 	typed, ok := value.(*platform.Platform)
 	return typed, ok
 }
 
 func (q *QType) SchoolSchoolType(entity *school.School) (*school_type.SchoolType, bool) {
 	value, ok := entity.RelationEntity("schoolTypeEntity")
-	if !ok {
-		return nil, false
-	}
+	if !ok { return nil, false }
 	typed, ok := value.(*school_type.SchoolType)
 	return typed, ok
 }

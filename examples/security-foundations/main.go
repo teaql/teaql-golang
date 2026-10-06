@@ -150,7 +150,7 @@ func verifyBusinessClock() {
 func verifyQueryPolicy() {
 	policy := &exampleQueryPolicy{}
 	context := runtime.NewUserContext().WithRequestPolicy(policy)
-	original := core.NewSelectQuery("Order")
+	original := core.NewSelectQuery("Order").Comment("load scoped orders").Purpose("verify trusted query policy")
 	authorized, err := context.PrepareQuery(original)
 	if err != nil {
 		panic(err)
@@ -158,7 +158,7 @@ func verifyQueryPolicy() {
 	require(authorized != original, "query policy did not receive an execution snapshot")
 	require(original.Filter == nil, "query policy mutated the caller-owned query")
 	require(authorized.Filter != nil, "query policy did not add the trusted scope")
-	_, err = context.PrepareQuery(core.NewSelectQuery("ForbiddenReport"))
+	_, err = context.PrepareQuery(core.NewSelectQuery("ForbiddenReport").Comment("load restricted report").Purpose("verify query policy denial"))
 	require(err != nil && err.Error() == "query policy denied ForbiddenReport", "query denial did not fail closed")
 	require(strings.Join(policy.calls, ",") == "Order,ForbiddenReport", "query policy was not applied exactly once")
 }

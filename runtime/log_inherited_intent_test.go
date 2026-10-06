@@ -72,6 +72,28 @@ func TestInheritedIntentUnknownInvalidPolicies(t *testing.T) {
 	}
 }
 
+func TestNestedBatchReadbackIntentUsesAllSourcePolicies(t *testing.T) {
+	for _, debug := range []bool{false, true} {
+		sibling := ds.ExecutionMetadata{GeneratedSQL: true,
+			Parameters:           []core.Value{core.ValText("PRIVATE-CANARY"), core.ValText("CREDENTIAL-CANARY"), core.ValText("UNKNOWN-CANARY"), core.ValText("VISIBLE-CONTROL")},
+			ParameterLogPolicies: []string{"masked", "credential", "unknown", "plain"}}
+		write := ds.ExecutionMetadata{GeneratedSQL: true, Parameters: []core.Value{core.ValI64(1)}, ParameterLogPolicies: []string{"plain"},
+			InheritedIntent: logprivacy.NewIntentSource([]ds.ExecutionMetadata{sibling})}
+		text := "load PRIVATE-CANARY CREDENTIAL-CANARY UNKNOWN-CANARY VISIBLE-CONTROL"
+		read := ds.ExecutionMetadata{GeneratedSQL: true, ParameterizedSQL: "SELECT id FROM customer WHERE id=?",
+			Parameters: []core.Value{core.ValI64(1)}, ParameterLogPolicies: []string{"plain"},
+			Comment: &text, InheritedIntent: logprivacy.NewIntentSource(write)}
+		safe := projectedSQLMetadata(read, debug)
+		if strings.Contains(*safe.Comment, "CREDENTIAL-CANARY") || strings.Contains(*safe.Comment, "UNKNOWN-CANARY") ||
+			strings.Contains(*safe.Comment, "PRIVATE-CANARY") != debug || !strings.Contains(*safe.Comment, "VISIBLE-CONTROL") {
+			t.Fatalf("nested inherited policy lost (debug=%v): %s", debug, *safe.Comment)
+		}
+		if logprivacy.ReadIntentSource(safe.InheritedIntent) != nil || *read.Comment != text {
+			t.Fatal("safe projection retained provenance or changed caller text")
+		}
+	}
+}
+
 func TestRepeatedMaskProjectionPreservesCompiledSQLStructure(t *testing.T) {
 	for _, value := range []core.Value{core.ValI64(1), core.ValText("customer")} {
 		query := "SELECT id FROM customer WHERE version = ? LIMIT 10000"

@@ -27,7 +27,7 @@ func (p *tenantQueryPolicy) EnforceSelect(_ *UserContext, query *core.SelectQuer
 func TestPrepareQueryClonesAndAppliesPolicy(t *testing.T) {
 	policy := &tenantQueryPolicy{}
 	context := NewUserContext().WithRequestPolicy(policy)
-	original := core.NewSelectQuery("Order")
+	original := core.NewSelectQuery("Order").Comment("verify query fixture").Purpose("preserve the query regression contract")
 
 	prepared, err := context.PrepareQuery(original)
 	if err != nil {
@@ -45,7 +45,7 @@ func TestPrepareQueryDenialIsExact(t *testing.T) {
 	policy := &tenantQueryPolicy{rejected: "Secret"}
 	context := NewUserContext().WithRequestPolicy(policy)
 
-	_, err := context.PrepareQuery(core.NewSelectQuery("Secret"))
+	_, err := context.PrepareQuery(core.NewSelectQuery("Secret").Comment("verify query fixture").Purpose("preserve the query regression contract"))
 	if !errors.Is(err, errQueryDenied) || policy.calls != 1 {
 		t.Fatalf("expected exact policy denial, got calls=%d err=%v", policy.calls, err)
 	}

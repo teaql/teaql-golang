@@ -40,6 +40,11 @@ func (e *LinuxDataServiceExecutor) Capabilities() data_service.DataServiceCapabi
 }
 
 func (e *LinuxDataServiceExecutor) Query(context stdcontext.Context, request *data_service.QueryRequest) (*data_service.QueryResult, error) {
+	captured, err := data_service.CaptureQueryRequest(request)
+	if err != nil {
+		return nil, err
+	}
+	request = captured
 	startedAt := time.Now()
 	entity := request.Query.Entity
 
@@ -67,10 +72,14 @@ func (e *LinuxDataServiceExecutor) Query(context stdcontext.Context, request *da
 			ResultCount: &resultCount,
 			TraceChain:  request.TraceChain,
 			Comment:     request.Comment,
+			Purpose:     request.Purpose,
 		},
 	}, nil
 }
 
 func (e *LinuxDataServiceExecutor) Mutate(context stdcontext.Context, request data_service.MutationRequest) (*data_service.MutationResult, error) {
+	if _, err := data_service.CaptureMutationRequest(request); err != nil {
+		return nil, err
+	}
 	return nil, fmt.Errorf("linux provider is read-only")
 }

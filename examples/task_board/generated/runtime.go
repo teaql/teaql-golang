@@ -566,7 +566,6 @@ func ServiceRuntimeFromEnv() (*runtime.UserContext, error) {
 	context.InsertResource("dataService", executor)
 	context.InsertResource("db", db)
 	context.InsertResource("idGenerator", transport)
-
 	return context, nil
 }
 
@@ -605,3 +604,4 @@ dialect := teaql_sql.SqlDialect(&provider.SqliteDialect{})
 	if err := ensureGeneratedBootstrap(context); err != nil { return err }
 	return nil
 }
+

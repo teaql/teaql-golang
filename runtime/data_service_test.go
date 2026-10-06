@@ -104,8 +104,8 @@ func TestRelationQueryAppliesTargetPolicyBeforeProvider(t *testing.T) {
 	policy := &rejectingChildPolicy{}
 	context := runtime.NewUserContext().WithRequestPolicy(policy)
 	service := runtime.NewRuntimeDataService(metadata, executor)
-	query := core.NewSelectQuery("School").RelationQuery(
-		"schoolType", core.NewSelectQuery("SchoolType"))
+	query := core.NewSelectQuery("School").Comment("verify query fixture").Purpose("preserve the query regression contract").RelationQuery(
+		"schoolType", core.NewSelectQuery("SchoolType").Comment("verify query fixture").Purpose("preserve the query regression contract"))
 
 	_, err := service.FetchAll(context, query)
 	if err == nil || err.Error() != "QUERY_POLICY_DENIED" {
@@ -157,7 +157,7 @@ func TestRuntimeDataService_FetchAll(t *testing.T) {
 		executor := &dummyExecutor{}
 		svc := runtime.NewRuntimeDataService(metadata, executor)
 
-		query := &core.SelectQuery{}
+		query := &core.SelectQuery{CommentText: fixtureIntentText("verify query fixture"), PurposeText: fixtureIntentText("preserve the query regression contract")}
 
 		rows, err := svc.FetchAll(context, query)
 		if err != nil {
@@ -177,7 +177,7 @@ func TestRuntimeDataService_FetchAll(t *testing.T) {
 		executor := &dummyFailingExecutor{}
 		svc := runtime.NewRuntimeDataService(metadata, executor)
 
-		query := &core.SelectQuery{}
+		query := &core.SelectQuery{CommentText: fixtureIntentText("verify query fixture"), PurposeText: fixtureIntentText("preserve the query regression contract")}
 
 		rows, err := svc.FetchAll(context, query)
 		if err == nil {
@@ -202,7 +202,7 @@ func TestRuntimeDataService_FetchAll(t *testing.T) {
 		executor := &dummyNonQueryExecutor{}
 		svc := runtime.NewRuntimeDataService(metadata, executor)
 
-		query := &core.SelectQuery{}
+		query := &core.SelectQuery{CommentText: fixtureIntentText("verify query fixture"), PurposeText: fixtureIntentText("preserve the query regression contract")}
 
 		rows, err := svc.FetchAll(context, query)
 		if err == nil {
@@ -226,7 +226,7 @@ func TestRuntimeDataServiceContinuousPageFetch(t *testing.T) {
 		context.SetUserIdentifier("tenant-1:user-1")
 		svc := runtime.NewRuntimeDataService(runtime.NewInMemoryMetadataStore(), executor)
 
-		first := core.NewSelectQuery("Order").WithOrderBy(core.OrderDesc("id")).Page(0, 10).
+		first := core.NewSelectQuery("Order").Comment("verify query fixture").Purpose("preserve the query regression contract").WithOrderBy(core.OrderDesc("id")).Page(0, 10).
 			OptimizeForContinuousPageFetchWith("recent-orders", 60)
 		_, err := svc.FetchAll(context, first)
 		if err != nil {
@@ -236,7 +236,7 @@ func TestRuntimeDataServiceContinuousPageFetch(t *testing.T) {
 			t.Fatalf("plan=%s", got)
 		}
 
-		second := core.NewSelectQuery("Order").WithOrderBy(core.OrderDesc("id")).Page(10, 10).
+		second := core.NewSelectQuery("Order").Comment("verify query fixture").Purpose("preserve the query regression contract").WithOrderBy(core.OrderDesc("id")).Page(10, 10).
 			OptimizeForContinuousPageFetchWith("recent-orders", 60)
 		_, err = svc.FetchAll(context, second)
 		if err != nil {
@@ -261,7 +261,7 @@ func TestRuntimeDataServiceContinuousPageFetch(t *testing.T) {
 		context := runtime.NewUserContext()
 		svc := runtime.NewRuntimeDataService(runtime.NewInMemoryMetadataStore(), executor)
 		for _, offset := range []uint64{0, 10} {
-			query := core.NewSelectQuery("Order").WithOrderBy(core.OrderAsc("id")).Page(offset, 10).
+			query := core.NewSelectQuery("Order").Comment("verify query fixture").Purpose("preserve the query regression contract").WithOrderBy(core.OrderAsc("id")).Page(offset, 10).
 				OptimizeForContinuousPageFetchWith("oldest-orders", 60)
 			if _, err := svc.FetchAll(context, query); err != nil {
 				t.Fatal(err)
@@ -279,7 +279,7 @@ func TestRuntimeDataServiceContinuousPageFetch(t *testing.T) {
 		executor := &capturingExecutor{rows: [][]core.Record{pageRows(90, 10, true), pageRows(80, 10, true)}}
 		context := runtime.NewUserContext()
 		svc := runtime.NewRuntimeDataService(runtime.NewInMemoryMetadataStore(), executor)
-		query := core.NewSelectQuery("Order").WithOrderBy(core.OrderDesc("id")).Page(10, 10).
+		query := core.NewSelectQuery("Order").Comment("verify query fixture").Purpose("preserve the query regression contract").WithOrderBy(core.OrderDesc("id")).Page(10, 10).
 			OptimizeForContinuousPageFetchWith("missing", 60)
 		if _, err := svc.FetchAll(context, query); err != nil {
 			t.Fatal(err)
@@ -288,7 +288,7 @@ func TestRuntimeDataServiceContinuousPageFetch(t *testing.T) {
 			t.Fatalf("plan=%s", got)
 		}
 		context.SetContinuousPageCursorStore(unavailableCursorStore{})
-		query = core.NewSelectQuery("Order").WithOrderBy(core.OrderDesc("id")).Page(10, 10).
+		query = core.NewSelectQuery("Order").Comment("verify query fixture").Purpose("preserve the query regression contract").WithOrderBy(core.OrderDesc("id")).Page(10, 10).
 			OptimizeForContinuousPageFetchWith("outage", 60)
 		if _, err := svc.FetchAll(context, query); err != nil {
 			t.Fatal(err)
@@ -310,7 +310,7 @@ func TestRuntimeDataServiceIDSetPagination(t *testing.T) {
 		context.SetUserIdentifier("tenant-1:user-1")
 		svc := runtime.NewRuntimeDataService(runtime.NewInMemoryMetadataStore(), executor)
 
-		jumped := core.NewSelectQuery("Order").WithOrderBy(core.OrderDesc("id")).Page(2, 2).
+		jumped := core.NewSelectQuery("Order").Comment("verify query fixture").Purpose("preserve the query regression contract").WithOrderBy(core.OrderDesc("id")).Page(2, 2).
 			OptimizePaginationWithIDSetConfig("orders", 60, 100)
 		rows, err := svc.FetchAll(context, jumped)
 		if err != nil {
@@ -326,7 +326,7 @@ func TestRuntimeDataServiceIDSetPagination(t *testing.T) {
 			t.Fatalf("plan=%s", context.IDSetPlan())
 		}
 
-		first := core.NewSelectQuery("Order").WithOrderBy(core.OrderDesc("id")).Page(0, 2).
+		first := core.NewSelectQuery("Order").Comment("verify query fixture").Purpose("preserve the query regression contract").WithOrderBy(core.OrderDesc("id")).Page(0, 2).
 			OptimizePaginationWithIDSetConfig("orders", 60, 100)
 		rows, err = svc.FetchAll(context, first)
 		if err != nil {
@@ -347,7 +347,7 @@ func TestRuntimeDataServiceIDSetPagination(t *testing.T) {
 		executor := &capturingExecutor{rows: [][]core.Record{pageRows(5, 4, true), pageRows(5, 2, true), pageRows(5, 2, true)}}
 		context := runtime.NewUserContext()
 		svc := runtime.NewRuntimeDataService(runtime.NewInMemoryMetadataStore(), executor)
-		query := core.NewSelectQuery("Order").WithOrderBy(core.OrderDesc("id")).Page(0, 2).
+		query := core.NewSelectQuery("Order").Comment("verify query fixture").Purpose("preserve the query regression contract").WithOrderBy(core.OrderDesc("id")).Page(0, 2).
 			OptimizePaginationWithIDSetConfig("overflow", 60, 3)
 		if _, err := svc.FetchAll(context, query); err != nil {
 			t.Fatal(err)
@@ -360,7 +360,7 @@ func TestRuntimeDataServiceIDSetPagination(t *testing.T) {
 		}
 
 		context.SetIDSetStore(unavailableIDSetStore{})
-		query = core.NewSelectQuery("Order").WithOrderBy(core.OrderDesc("id")).Page(0, 2).
+		query = core.NewSelectQuery("Order").Comment("verify query fixture").Purpose("preserve the query regression contract").WithOrderBy(core.OrderDesc("id")).Page(0, 2).
 			OptimizePaginationWithIDSetConfig("outage", 60, 10)
 		if _, err := svc.FetchAll(context, query); err != nil {
 			t.Fatal(err)
@@ -374,7 +374,7 @@ func TestRuntimeDataServiceIDSetPagination(t *testing.T) {
 		executor := &capturingExecutor{rows: [][]core.Record{{}}}
 		context := runtime.NewUserContext()
 		svc := runtime.NewRuntimeDataService(runtime.NewInMemoryMetadataStore(), executor)
-		query := core.NewSelectQuery("Order").WithOrderBy(core.OrderAsc("status")).Page(0, 2).
+		query := core.NewSelectQuery("Order").Comment("verify query fixture").Purpose("preserve the query regression contract").WithOrderBy(core.OrderAsc("status")).Page(0, 2).
 			OptimizePaginationWithIDSetConfig("empty", 60, 10)
 		rows, err := svc.FetchAll(context, query)
 		if err != nil {
@@ -389,7 +389,7 @@ func TestRuntimeDataServiceIDSetPagination(t *testing.T) {
 		if orders := executor.queries[0].OrderBy; len(orders) != 2 || orders[1].Field != "id" {
 			t.Fatalf("orders=%#v", orders)
 		}
-		query = core.NewSelectQuery("Order").WithOrderBy(core.OrderAsc("status")).Page(0, 2).
+		query = core.NewSelectQuery("Order").Comment("verify query fixture").Purpose("preserve the query regression contract").WithOrderBy(core.OrderAsc("status")).Page(0, 2).
 			OptimizePaginationWithIDSetConfig("empty", 60, 10)
 		if _, err = svc.FetchAll(context, query); err != nil {
 			t.Fatal(err)
@@ -407,7 +407,7 @@ func TestRuntimeDataServiceIDSetPagination(t *testing.T) {
 			context := runtime.NewUserContext()
 			context.SetUserIdentifier(principal)
 			context.SetIDSetStore(store)
-			query := core.NewSelectQuery("Order").WithOrderBy(core.OrderDesc("id")).Page(0, 2).
+			query := core.NewSelectQuery("Order").Comment("verify query fixture").Purpose("preserve the query regression contract").WithOrderBy(core.OrderDesc("id")).Page(0, 2).
 				OptimizePaginationWithIDSetConfig("isolation", 60, 10)
 			if _, err := svc.FetchAll(context, query); err != nil {
 				t.Fatal(err)
@@ -438,7 +438,7 @@ func TestRuntimeDataServiceIDSetPagination(t *testing.T) {
 			context.SetIDSetStore(store)
 			context.InsertResource("db", tc.db)
 			context.WithActiveRoot(runtime.EntityReference{Entity: "Platform", ID: tc.rootID})
-			query := core.NewSelectQuery("Order").WithFilter(core.ExprEq("status", core.ValText(tc.status))).
+			query := core.NewSelectQuery("Order").Comment("verify query fixture").Purpose("preserve the query regression contract").WithFilter(core.ExprEq("status", core.ValText(tc.status))).
 				WithOrderBy(core.OrderDesc("id")).Page(0, 1).
 				OptimizePaginationWithIDSetConfig("scope", 60, 10)
 			if _, err := svc.FetchAll(context, query); err != nil {
@@ -459,13 +459,13 @@ func TestRuntimeDataServiceIDSetPagination(t *testing.T) {
 		}}
 		context := runtime.NewUserContext()
 		svc := runtime.NewRuntimeDataService(runtime.NewInMemoryMetadataStore(), executor)
-		query := core.NewSelectQuery("Order").WithOrderBy(core.OrderDesc("id")).Page(2, 2).
+		query := core.NewSelectQuery("Order").Comment("verify query fixture").Purpose("preserve the query regression contract").WithOrderBy(core.OrderDesc("id")).Page(2, 2).
 			OptimizePaginationWithIDSetConfig("ttl", 1, 10)
 		if _, err := svc.FetchAll(context, query); err != nil {
 			t.Fatal(err)
 		}
 		time.Sleep(1100 * time.Millisecond)
-		query = core.NewSelectQuery("Order").WithOrderBy(core.OrderDesc("id")).Page(2, 2).
+		query = core.NewSelectQuery("Order").Comment("verify query fixture").Purpose("preserve the query regression contract").WithOrderBy(core.OrderDesc("id")).Page(2, 2).
 			OptimizePaginationWithIDSetConfig("ttl", 1, 10)
 		if _, err := svc.FetchAll(context, query); err != nil {
 			t.Fatal(err)
@@ -474,12 +474,12 @@ func TestRuntimeDataServiceIDSetPagination(t *testing.T) {
 			t.Fatalf("plan=%s", context.IDSetPlan())
 		}
 
-		query = core.NewSelectQuery("Order").WithOrderBy(core.OrderDesc("id")).Page(2, 2).
+		query = core.NewSelectQuery("Order").Comment("verify query fixture").Purpose("preserve the query regression contract").WithOrderBy(core.OrderDesc("id")).Page(2, 2).
 			OptimizePaginationWithIDSetConfig("deletion", 60, 10)
 		if _, err := svc.FetchAll(context, query); err != nil {
 			t.Fatal(err)
 		}
-		query = core.NewSelectQuery("Order").WithOrderBy(core.OrderDesc("id")).Page(2, 2).
+		query = core.NewSelectQuery("Order").Comment("verify query fixture").Purpose("preserve the query regression contract").WithOrderBy(core.OrderDesc("id")).Page(2, 2).
 			OptimizePaginationWithIDSetConfig("deletion", 60, 10)
 		rows, err := svc.FetchAll(context, query)
 		if err != nil {
@@ -502,7 +502,7 @@ func TestRuntimeDataServiceIDSetPagination(t *testing.T) {
 				context.SetUserIdentifier("same-principal")
 				context.SetIDSetStore(store)
 				<-start
-				query := core.NewSelectQuery("Order").WithOrderBy(core.OrderDesc("id")).Page(0, 1).
+				query := core.NewSelectQuery("Order").Comment("verify query fixture").Purpose("preserve the query regression contract").WithOrderBy(core.OrderDesc("id")).Page(0, 1).
 					OptimizePaginationWithIDSetConfig("single-flight", 60, 10)
 				_, err := svc.FetchAll(context, query)
 				errors <- err

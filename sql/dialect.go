@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/teaql/teaql-golang/core"
+	"github.com/teaql/teaql-golang/internal/logprivacy"
 )
 
 var SqlKeywords = []string{
@@ -77,6 +78,7 @@ type DefaultSqlDialect struct {
 	// Fresh per top-level compilation, never shared across requests.
 	logPolicies  map[int]string
 	generatedSQL bool
+	likeOperands map[int]core.Value
 }
 
 func (d *DefaultSqlDialect) SchemaSetupSqls() []string {
@@ -219,7 +221,8 @@ func (d *DefaultSqlDialect) CompileSelect(entity *core.EntityDescriptor, query *
 		Sql:                  resultSql,
 		Params:               params,
 		ParameterLogPolicies: d.parameterPolicies(params), GeneratedSQL: d.generatedSQL,
-		Comment: query.CommentText,
+		Comment:        query.CommentText,
+		intentOperands: d.intentOperands(params),
 	}, nil
 }
 
@@ -288,15 +291,6 @@ func (d *DefaultSqlDialect) compileSelectSql(entity *core.EntityDescriptor, quer
 		sqlBuilder.WriteString(strings.Join(whereParts, " AND "))
 	}
 
-	if partitioned {
-		rank := d.Dialect.QuoteIdent("__teaql_partition_rank")
-		predicates := []string{fmt.Sprintf("%s > %d", rank, query.Slice.Offset)}
-		if query.Slice.Limit != nil {
-			predicates = append(predicates, fmt.Sprintf("%s <= %d", rank, query.Slice.Offset+*query.Slice.Limit))
-		}
-		return fmt.Sprintf("SELECT * FROM (%s) AS %s WHERE %s ORDER BY %s", sqlBuilder.String(), d.Dialect.QuoteIdent("__teaql_partitioned"), strings.Join(predicates, " AND "), rank), nil
-	}
-
 	if len(query.GroupBy) > 0 {
 		var groupByParts []string
 		for _, field := range query.GroupBy {
@@ -317,6 +311,17 @@ func (d *DefaultSqlDialect) compileSelectSql(entity *core.EntityDescriptor, quer
 		}
 		sqlBuilder.WriteString(" HAVING ")
 		sqlBuilder.WriteString(havingSql)
+	}
+
+	// Rank the grouped/HAVING-filtered rows, not the pre-aggregation input.
+	// Bounded relation loading also uses this path for grouped child queries.
+	if partitioned {
+		rank := d.Dialect.QuoteIdent("__teaql_partition_rank")
+		predicates := []string{fmt.Sprintf("%s > %d", rank, query.Slice.Offset)}
+		if query.Slice.Limit != nil {
+			predicates = append(predicates, fmt.Sprintf("%s <= %d", rank, query.Slice.Offset+*query.Slice.Limit))
+		}
+		return fmt.Sprintf("SELECT * FROM (%s) AS %s WHERE %s ORDER BY %s", sqlBuilder.String(), d.Dialect.QuoteIdent("__teaql_partitioned"), strings.Join(predicates, " AND "), rank), nil
 	}
 
 	if len(query.OrderBy) > 0 {
@@ -921,6 +926,9 @@ func (d *DefaultSqlDialect) compileExprSQL(entity *core.EntityDescriptor, expr *
 		rhs, err := d.compileExpr(entity, expr.Right, params)
 		if err != nil {
 			return "", err
+		}
+		if operand, ok := logprivacy.ReadIntentSource(expr.DiagnosticLikeOperand()).(core.Value); ok && d.likeOperands != nil {
+			d.likeOperands[len(*params)-1] = operand
 		}
 		opStr := ""
 		switch op {

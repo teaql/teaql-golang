@@ -36,6 +36,29 @@ func TestBaseEntityDataToAndFromRecord(t *testing.T) {
 	assert.Equal(t, "test", name)
 }
 
+func TestBaseEntityRecordRoundTripDoesNotInventIdentityFields(t *testing.T) {
+	for _, record := range []Record{
+		{"id": ValU64(7)},
+		{"code": ValText("P-A")},
+		{"id": ValU64(7), "version": ValI64(0)},
+	} {
+		base, err := BaseEntityDataFromRecord(record)
+		assert.NoError(t, err)
+		assert.Equal(t, record, base.ToRecord())
+	}
+	identity, err := BaseEntityDataFromRecord(Record{"id": ValU64(7)})
+	assert.NoError(t, err)
+	assert.NotContains(t, identity.ToRecord(), "version")
+	identity.WithVersion(0)
+	assert.Contains(t, identity.ToRecord(), "version", "an explicitly supplied zero is loaded")
+	assert.Contains(t, NewBaseEntityData().ToRecord(), "version", "new-entity defaults stay compatible")
+	pending, err := BaseEntityDataFromRecord(Record{"name": ValText("new")})
+	assert.NoError(t, err)
+	pending.Id, pending.Version = 19, 1
+	assert.Equal(t, ValU64(19), pending.ToRecord()["id"], "allocated IDs are not lost after checker hydration")
+	assert.Equal(t, ValI64(1), pending.ToRecord()["version"])
+}
+
 type entityTestMockEntity struct {
 	comment string
 }

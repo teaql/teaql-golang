@@ -1,6 +1,9 @@
 package core
 
-import "fmt"
+import (
+	"fmt"
+	"github.com/teaql/teaql-golang/internal/logprivacy"
+)
 
 type BinaryOp int
 
@@ -70,6 +73,46 @@ type Expr struct {
 	Lower *Expr
 	Upper *Expr
 	Parts []*Expr
+	// Helper-owned immutable lowering provenance, never serialized or formatted.
+	likeOperand logprivacy.IntentSource
+}
+
+type likeOperandSource struct{ original, binding string }
+
+// DiagnosticLikeOperand is internal compiler plumbing, not a query option.
+// Return an opaque source only while the typed helper's operator and physical
+// binding remain intact. Arbitrary LIKE strings never imply a stripped operand.
+func (e *Expr) DiagnosticLikeOperand() logprivacy.IntentSource {
+	if e == nil || e.Type != ExprTypeBinary || (e.Op != OpLike && e.Op != OpNotLike) || e.Right == nil || e.Right.Type != ExprTypeValue {
+		return logprivacy.IntentSource{}
+	}
+	source, ok := logprivacy.ReadIntentSource(e.likeOperand).(likeOperandSource)
+	if binding, text := e.Right.Value.V.(string); ok && text && binding == source.binding {
+		return logprivacy.NewIntentSource(ValText(source.original))
+	}
+	return logprivacy.IntentSource{}
+}
+
+// Clone captures mutable expression values and nested queries for execution.
+// Descriptor references are metadata, not request-owned mutable state.
+func (e *Expr) Clone() *Expr {
+	if e == nil {
+		return nil
+	}
+	copy := *e
+	copy.Value = CloneValue(e.Value)
+	copy.Left, copy.Right = e.Left.Clone(), e.Right.Clone()
+	copy.Lower, copy.Upper = e.Lower.Clone(), e.Upper.Clone()
+	copy.Query = e.Query.Clone()
+	copy.Args = append([]*Expr(nil), e.Args...)
+	for i, arg := range e.Args {
+		copy.Args[i] = arg.Clone()
+	}
+	copy.Parts = append([]*Expr(nil), e.Parts...)
+	for i, part := range e.Parts {
+		copy.Parts[i] = part.Clone()
+	}
+	return &copy
 }
 
 func ExprColumnNode(name string) *Expr {
@@ -189,27 +232,37 @@ func ExprNotLike(column string, pattern string) *Expr {
 }
 
 func ExprContain(column string, value string) *Expr {
-	return ExprLike(column, fmt.Sprintf("%%%s%%", value))
+	return exprTypedLike(column, value, "%", "%", false)
 }
 
 func ExprNotContain(column string, value string) *Expr {
-	return ExprNotLike(column, fmt.Sprintf("%%%s%%", value))
+	return exprTypedLike(column, value, "%", "%", true)
 }
 
 func ExprBeginWith(column string, value string) *Expr {
-	return ExprLike(column, fmt.Sprintf("%s%%", value))
+	return exprTypedLike(column, value, "", "%", false)
 }
 
 func ExprNotBeginWith(column string, value string) *Expr {
-	return ExprNotLike(column, fmt.Sprintf("%s%%", value))
+	return exprTypedLike(column, value, "", "%", true)
 }
 
 func ExprEndWith(column string, value string) *Expr {
-	return ExprLike(column, fmt.Sprintf("%%%s", value))
+	return exprTypedLike(column, value, "%", "", false)
 }
 
 func ExprNotEndWith(column string, value string) *Expr {
-	return ExprNotLike(column, fmt.Sprintf("%%%s", value))
+	return exprTypedLike(column, value, "%", "", true)
+}
+
+func exprTypedLike(column, original, prefix, suffix string, negative bool) *Expr {
+	binding := prefix + original + suffix
+	expr := ExprLike(column, binding)
+	if negative {
+		expr.Op = OpNotLike
+	}
+	expr.likeOperand = logprivacy.NewIntentSource(likeOperandSource{original, binding})
+	return expr
 }
 
 func ExprCompareColumns(leftColumn string, op BinaryOp, rightColumn string) *Expr {

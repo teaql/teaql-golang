@@ -7,6 +7,7 @@ import (
 	"unicode/utf8"
 
 	"github.com/teaql/teaql-golang/core"
+	"github.com/teaql/teaql-golang/internal/logprivacy"
 )
 
 type RawAuditEventKind int
@@ -38,9 +39,12 @@ type RawAuditEvent struct {
 	NewValues          *core.Record
 	Changes            []*EntityPropertyChange
 	TraceChain         []*core.TraceNode
+	AuditReason        *string
 	Actor              string
 	Category           string
 	MutationGovernance *MutationGovernanceSnapshot
+	inheritedIntent    logprivacy.IntentSource
+	governanceCaptured bool
 }
 
 func Created(entity string, values core.Record) *RawAuditEvent {
@@ -460,27 +464,44 @@ func (e *RawAuditEvent) BuildSafeEvent(auditMaskFields []string, auditValueMaxLe
 		safeFields = append(safeFields, field)
 	}
 	intentValues := append([]string(nil), secrets...)
+	intentValues = append(intentValues, inheritedIntentSecrets(e.inheritedIntent, allow)...)
 	if e.TargetID != nil {
 		intentValues = append(intentValues, logValueStrings(*e.TargetID)...)
 	} else if id, ok := e.Values["id"]; ok {
 		intentValues = append(intentValues, logValueStrings(id)...)
 	}
 	sort.Slice(intentValues, func(i, j int) bool { return len(intentValues[i]) > len(intentValues[j]) })
-	trace := make([]*core.TraceNode, len(e.TraceChain))
-	for i, node := range e.TraceChain {
+	trace := core.CloneTraceNodes(e.TraceChain)
+	for _, node := range trace {
 		if node != nil {
-			clone := *node
-			clone.Comment = scrubWith(node.Comment, intentValues)
-			clone.Name = scrubWith(node.Name, intentValues)
-			trace[i] = &clone
+			node.Comment = scrubWith(node.Comment, intentValues)
+			node.Name = scrubWith(node.Name, intentValues)
 		}
 	}
 
+	var auditReason *string
+	if e.AuditReason != nil {
+		text := scrubWith(*e.AuditReason, intentValues)
+		auditReason = &text
+	}
+	// Identity is audit metadata, not a property change. An update may not
+	// change id, and a delete has no new field values at all. Preserve the
+	// authoritative target separately while owning its snapshot.
+	var targetID *core.Value
+	if e.TargetID != nil {
+		value := core.CloneValue(*e.TargetID)
+		targetID = &value
+	} else if id, present := e.Values["id"]; present {
+		value := core.CloneValue(id)
+		targetID = &value
+	}
 	return &SafeAuditEvent{
 		Kind:               e.Kind,
 		Entity:             e.Entity,
+		TargetID:           targetID,
 		Fields:             safeFields,
 		TraceChain:         trace,
+		AuditReason:        auditReason,
 		Actor:              scrubWith(e.Actor, intentValues),
 		Category:           e.Category,
 		MutationGovernance: cloneMutationGovernance(e.MutationGovernance),
@@ -499,10 +520,16 @@ type SafeAuditField struct {
 }
 
 type SafeAuditEvent struct {
-	Kind               RawAuditEventKind
-	Entity             string
+	Kind   RawAuditEventKind
+	Entity string
+	// TargetID identifies the affected entity with Entity. It is not inferred
+	// from the responsibility lineage or included among changed Fields.
+	// Schema events have no target. Like typed IDs in trace nodes, it is
+	// structured identity metadata; free-form intent remains safely projected.
+	TargetID           *core.Value
 	Fields             []*SafeAuditField
 	TraceChain         []*core.TraceNode
+	AuditReason        *string
 	Actor              string
 	Category           string
 	MutationGovernance *MutationGovernanceSnapshot

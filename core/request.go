@@ -57,7 +57,7 @@ func NewQuerySelection(query *SelectQuery) *QuerySelection {
 }
 
 func (q *QuerySelection) IntoQuery() *SelectQuery {
-	query := ApplyRelationSelections(q.Query, q.RelationSelections)
+	query := ApplyRelationSelections(q.Query.Clone(), q.RelationSelections)
 	return ApplyRuntimeMetadata(query, q.QueryOptions, q.ChildEnhancements)
 }
 

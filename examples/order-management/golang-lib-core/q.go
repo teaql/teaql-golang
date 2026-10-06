@@ -69,6 +69,7 @@ func (q *QType) OrderSearchPresetsMinimal() *order_search_preset.OrderSearchPres
 	return order_search_preset.NewOrderSearchPresetMinimalRequest()
 }
 
+
 func (q *QType) CustomerCommercePlatform(entity *customer.Customer) (*commerce_platform.CommercePlatform, bool) {
 	value, ok := entity.RelationEntity("commercePlatformEntity")
 	if !ok { return nil, false }

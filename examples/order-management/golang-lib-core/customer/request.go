@@ -4,7 +4,6 @@ package customer
 
 import (
 	"fmt"
-	"strings"
 	"time"
 
 	"github.com/shopspring/decimal"
@@ -56,7 +55,7 @@ func (r *CustomerRequest) GetEntityDescriptor() *core.EntityDescriptor {
 }
 
 func (r *CustomerRequest) NewRelationEntity() core.Entity {
-	return NewCustomer()
+	return newLoadedCustomer()
 }
 
 func (r *CustomerRequest) Comment(comment string) *CustomerRequest {
@@ -693,7 +692,7 @@ func (r *CustomerRequest) SelectCommercePlatformWith(child interface {
 	GetQuery() *core.SelectQuery
 	NewRelationEntity() core.Entity
 }) *CustomerRequest {
-	r.Query.Project("commerce_platform_id")
+	runtime.EnsureRelationProjection(r.Query, "commerce_platform_id")
 	r.Query.RelationQuery("commercePlatformEntity", child.GetQuery())
 	r.relationFactories["commercePlatformEntity"] = child.NewRelationEntity
 	return r
@@ -870,9 +869,7 @@ func (r *CustomerRequest) WithoutCustomerOrderListMatching(child *customer_order
 
 func (e *ExecutableCustomerRequest) NewEntity(context *runtime.UserContext) *Customer {
 	r := e.request
-	if strings.TrimSpace(r.purposeText) == "" || strings.TrimSpace(r.commentText) == "" {
-		panic("security audit failure: non-empty Comment() and Purpose() are required before NewEntity()")
-	}
+	if _, err := core.NewQueryIntent(&r.commentText, &r.purposeText); err != nil { panic(err) }
 	entity := NewCustomer()
 	initialized := context.InitializeEntity("Customer", entity)
 	typed, ok := initialized.(*Customer)
@@ -883,7 +880,12 @@ func (e *ExecutableCustomerRequest) NewEntity(context *runtime.UserContext) *Cus
 }
 
 func (e *ExecutableCustomerRequest) ExecuteForOne(context *runtime.UserContext) (*Customer, error) {
-	list, err := e.ExecuteForList(context)
+	request := *e.request
+	request.Query = e.request.Query.Clone()
+	request.Query.Limit(1)
+	executable := *e
+	executable.request = &request
+	list, err := executable.ExecuteForList(context)
 	if err != nil {
 		return nil, err
 	}
@@ -894,16 +896,14 @@ func (e *ExecutableCustomerRequest) ExecuteForOne(context *runtime.UserContext) 
 }
 
 func (e *ExecutableCustomerRequest) ExecuteForList(context *runtime.UserContext) (*core.SmartList[*Customer], error) {
-	rows, err := e.ExecuteRecords(context)
+	rows, authorized, err := e.executeRecords(context, true)
 	if err != nil {
 		return nil, err
 	}
 
 	var results []*Customer
-	queryRoot := core.NewEntityRoot()
 	for _, rec := range rows {
-		entity := NewCustomer()
-		entity.AttachEntityRoot(queryRoot)
+		entity := newLoadedCustomer()
 		if err := entity.FromRecord(rec); err != nil {
 			return nil, err
 		}
@@ -912,7 +912,6 @@ func (e *ExecutableCustomerRequest) ExecuteForList(context *runtime.UserContext)
 			if childRecord, ok := relationValue.V.(core.Record); ok {
 				if factory := e.request.relationFactories["commercePlatformEntity"]; factory != nil {
 					childEntity := factory()
-					if attachable, ok := childEntity.(interface { AttachEntityRoot(*core.EntityRoot) }); ok { attachable.AttachEntityRoot(entity.EntityRoot()) }
 					if err := childEntity.FromRecord(childRecord); err != nil { return nil, err }
 					entity.setRelationEntity("commercePlatformEntity", childEntity)
 				}
@@ -923,6 +922,7 @@ func (e *ExecutableCustomerRequest) ExecuteForList(context *runtime.UserContext)
 				if !ok { return nil, fmt.Errorf("relation customerOrderList has unexpected runtime type %T", relationValue.V) }
 				for _, childRecord := range childRecords {
 					childEntity := customer_order.NewCustomerOrder()
+					childEntity.EntityRoot().ClearEntity(childEntity.EntityKey())
 					childEntity.AttachEntityRoot(entity.EntityRoot())
 					if err := childEntity.FromRecord(childRecord); err != nil { return nil, err }
 					entity.CustomerOrderList().Add(childEntity)
@@ -936,7 +936,7 @@ func (e *ExecutableCustomerRequest) ExecuteForList(context *runtime.UserContext)
 		if !ok { return nil, fmt.Errorf("dataService does not implement data_service.QueryExecutor") }
 		facets, err := runtime.ExecuteFacets(
 			context, runtime.NewRuntimeDataService(context.Metadata, ds),
-			e.request.Query, e.request.queryOptions)
+			authorized, e.request.queryOptions)
 		if err != nil { return nil, err }
 		core.AttachFacets(list, facets)
 	}
@@ -947,14 +947,13 @@ func (e *ExecutableCustomerRequest) ExecuteForList(context *runtime.UserContext)
 // queries from that same authorized snapshot.
 func (e *ExecutableCustomerRequest) ExecuteForPage(context *runtime.UserContext, offset uint64, size uint64) (*core.SmartList[*Customer], error) {
 	r := e.request
-	if strings.TrimSpace(r.purposeText) == "" || strings.TrimSpace(r.commentText) == "" {
-		return nil, fmt.Errorf("security audit failure: Comment() and Purpose() must be called before ExecuteForPage()")
-	}
+	if _, err := core.NewQueryIntent(&r.commentText, &r.purposeText); err != nil { return nil, err }
 	if size == 0 {
 		return nil, fmt.Errorf("QUERY_INVALID_LIMIT: size must be positive")
 	}
-	r.Query.Page(offset, size).Comment(r.commentText).Purpose(r.purposeText)
-	authorized, err := context.PrepareQuery(r.Query)
+	query := r.Query.Clone()
+	query.Page(offset, size).Comment(r.commentText).Purpose(r.purposeText)
+	authorized, err := context.PrepareEntityQuery(query)
 	if err != nil { return nil, err }
 	dsRaw := context.GetResource("dataService")
 	ds, ok := dsRaw.(data_service.QueryExecutor)
@@ -987,17 +986,14 @@ func (e *ExecutableCustomerRequest) ExecuteForPage(context *runtime.UserContext,
 		if err != nil { return nil, err }
 	}
 	results := make([]*Customer, 0, len(rows))
-	queryRoot := core.NewEntityRoot()
 	for _, rec := range rows {
-		entity := NewCustomer()
-		entity.AttachEntityRoot(queryRoot)
+		entity := newLoadedCustomer()
 		if err := entity.FromRecord(rec); err != nil { return nil, err }
 		if relationValue, selected := rec["commercePlatformEntity"]; selected {
 			entity.markRelationLoaded("commercePlatformEntity")
 			if childRecord, ok := relationValue.V.(core.Record); ok {
 				if factory := e.request.relationFactories["commercePlatformEntity"]; factory != nil {
 					childEntity := factory()
-					if attachable, ok := childEntity.(interface { AttachEntityRoot(*core.EntityRoot) }); ok { attachable.AttachEntityRoot(entity.EntityRoot()) }
 					if err := childEntity.FromRecord(childRecord); err != nil { return nil, err }
 					entity.setRelationEntity("commercePlatformEntity", childEntity)
 				}
@@ -1008,6 +1004,7 @@ func (e *ExecutableCustomerRequest) ExecuteForPage(context *runtime.UserContext,
 				if !ok { return nil, fmt.Errorf("relation customerOrderList has unexpected runtime type %T", relationValue.V) }
 				for _, childRecord := range childRecords {
 					childEntity := customer_order.NewCustomerOrder()
+					childEntity.EntityRoot().ClearEntity(childEntity.EntityKey())
 					childEntity.AttachEntityRoot(entity.EntityRoot())
 					if err := childEntity.FromRecord(childRecord); err != nil { return nil, err }
 					entity.CustomerOrderList().Add(childEntity)
@@ -1021,27 +1018,24 @@ func (e *ExecutableCustomerRequest) ExecuteForPage(context *runtime.UserContext,
 // an error from yield cancels iteration and releases the database resources.
 func (e *ExecutableCustomerRequest) ExecuteForStream(context *runtime.UserContext, chunkSize int, yield func(*Customer) error) error {
 	r := e.request
-	if strings.TrimSpace(r.purposeText) == "" || strings.TrimSpace(r.commentText) == "" {
-		return fmt.Errorf("security audit failure: Comment() and Purpose() must be called before ExecuteForStream()")
-	}
+	if _, err := core.NewQueryIntent(&r.commentText, &r.purposeText); err != nil { return err }
 	if yield == nil {
 		return fmt.Errorf("stream consumer must not be nil")
 	}
-	r.Query.Comment(r.commentText).Purpose(r.purposeText)
+	query := r.Query.Clone()
+	query.Comment(r.commentText).Purpose(r.purposeText)
+	authorized, err := context.PrepareEntityQuery(query)
+	if err != nil { return err }
 	dsRaw := context.GetResource("dataService")
 	ds, ok := dsRaw.(data_service.StreamQueryExecutor)
 	if !ok {
 		return fmt.Errorf("dataService does not implement data_service.StreamQueryExecutor")
 	}
-	req := &data_service.QueryRequest{
-		Query: r.Query, TraceChain: r.Query.TraceChain,
-		Comment: r.Query.CommentText, Purpose: r.Query.PurposeText,
-	}
-	queryRoot := core.NewEntityRoot()
+	req, err := data_service.NewQueryRequest(authorized)
+	if err != nil { return err }
 	return ds.QueryStream(context, req, chunkSize, func(chunk *data_service.StreamChunk) error {
 		for _, rec := range chunk.Rows {
-			entity := NewCustomer()
-			entity.AttachEntityRoot(queryRoot)
+			entity := newLoadedCustomer()
 			if err := entity.FromRecord(rec); err != nil {
 				return err
 			}
@@ -1054,27 +1048,37 @@ func (e *ExecutableCustomerRequest) ExecuteForStream(context *runtime.UserContex
 }
 
 func (e *ExecutableCustomerRequest) ExecuteRecords(context *runtime.UserContext) ([]core.Record, error) {
+	rows, _, err := e.executeRecords(context, false)
+	return rows, err
+}
+
+// executeRecords returns the same authorized snapshot used for row execution
+// so facets can derive their membership query without reapplying root policy.
+func (e *ExecutableCustomerRequest) executeRecords(context *runtime.UserContext, entityProjection bool) ([]core.Record, *core.SelectQuery, error) {
 	r := e.request
-	if strings.TrimSpace(r.purposeText) == "" || strings.TrimSpace(r.commentText) == "" {
-		return nil, fmt.Errorf("security audit failure: Comment() and Purpose() must be called before ExecuteForList()")
-	}
-	r.Query.Comment(r.commentText).Purpose(r.purposeText)
+	if _, err := core.NewQueryIntent(&r.commentText, &r.purposeText); err != nil { return nil, nil, err }
+	query := r.Query.Clone()
+	query.Comment(r.commentText).Purpose(r.purposeText)
+	prepare := context.PrepareQuery
+	if entityProjection { prepare = context.PrepareEntityQuery }
+	authorized, err := prepare(query)
+	if err != nil { return nil, nil, err }
 
 	dsRaw := context.GetResource("dataService")
 	if dsRaw == nil {
-		return nil, fmt.Errorf("dataService not found in UserContext")
+		return nil, nil, fmt.Errorf("dataService not found in UserContext")
 	}
 
 	ds, ok := dsRaw.(data_service.QueryExecutor)
 	if !ok {
-		return nil, fmt.Errorf("dataService does not implement data_service.QueryExecutor")
+		return nil, nil, fmt.Errorf("dataService does not implement data_service.QueryExecutor")
 	}
 
-	rows, err := runtime.NewRuntimeDataService(context.Metadata, ds).FetchAll(context, r.Query)
+	rows, err := runtime.NewRuntimeDataService(context.Metadata, ds).FetchAll(context, authorized)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
-	return rows, nil
+	return rows, authorized, nil
 }
 
 // ExecuteForRows preserves aggregate/group projections as records while keeping
