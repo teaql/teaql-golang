@@ -21,6 +21,15 @@ import (
 // actually waiting at the Context gate, rather than treating a pre-call ready
 // channel as proof that the save requests overlap. This does not change the
 // runtime or claim simultaneous SQLite writers.
+func blockedGeneratedSaveStack(stack string) bool {
+	// Go versions differ in the goroutine wait-state label. Require the real
+	// mutex slow path and both invocation frames, not a version-specific label
+	// or a goroutine merely scheduled to call Save.
+	return strings.Contains(stack, "(*Mutex).lockSlow(") &&
+		strings.Contains(stack, "(*UserContext).ExecutePreparedGraphSave(") &&
+		strings.Contains(stack, "(*CustomerOrder).Save(")
+}
+
 func awaitBlockedGeneratedSave(t *testing.T) {
 	t.Helper()
 	timer := time.NewTimer(5 * time.Second)
@@ -29,9 +38,7 @@ func awaitBlockedGeneratedSave(t *testing.T) {
 	for {
 		length := goruntime.Stack(buffer, true)
 		for _, stack := range strings.Split(string(buffer[:length]), "\n\n") {
-			if strings.Contains(stack, "[semacquire]") &&
-				strings.Contains(stack, "(*UserContext).ExecutePreparedGraphSave(") &&
-				strings.Contains(stack, "(*CustomerOrder).Save(") {
+			if blockedGeneratedSaveStack(stack) {
 				t.Log("second generated Save observed waiting at the same Context graph gate before first COMMIT")
 				return
 			}
