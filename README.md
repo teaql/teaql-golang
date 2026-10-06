@@ -81,8 +81,9 @@ same database paths and checks that all generated library bytes remain unchanged
 Affected native packages and the generated graph also pass race checks.
 
 Native relation loading retains scalar attachment keys before any nested
-hydration or aggregate output can overwrite them. A filtered forward reference
-stays null without removing its child from an enclosing list; later sibling
+hydration or aggregate output can overwrite them. A non-null FK whose forward
+detail is filtered out retains an identity-only reference with NotLoaded detail;
+a real SQL NULL remains null. Neither removes its child from an enclosing list; later sibling
 relations and counts still use the original key. These snapshots are private to
 one execution, not entity properties, mutation data, or shared Context state.
 The example verifier also runs 32 real-SQLite regression cases through both SQL
