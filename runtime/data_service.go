@@ -657,12 +657,23 @@ func (s *RuntimeDataService) enhanceRelations(context stdcontext.Context, parent
 }
 
 func ensureStableIDOrder(query *core.SelectQuery) {
-	for _, order := range query.OrderBy {
-		if order.Field == "id" {
-			return
+	fields := []string{"id"}
+	if len(query.GroupBy) > 0 {
+		// Grouped rows have group identities, not individual entity IDs.
+		fields = query.GroupBy
+	}
+	for _, field := range fields {
+		found := false
+		for _, order := range query.OrderBy {
+			if order.Field == field {
+				found = true
+				break
+			}
+		}
+		if !found {
+			query.OrderAsc(field)
 		}
 	}
-	query.OrderAsc("id")
 }
 
 func cloneSelectQuery(source *core.SelectQuery, entity string) *core.SelectQuery {

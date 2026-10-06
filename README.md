@@ -89,6 +89,15 @@ The example verifier also runs 32 real-SQLite regression cases through both SQL
 executors, with text keys, nested relations, empty lists and logging on/off. The
 same tests fail 24 cases on the prior runtime while eight scalar controls pass.
 
+Numeric grouping and window pagination retain `GROUP BY` and `HAVING` inside
+the ranked query, including bounded loaded relations. Grouped relation results
+use their group keys for default stable ordering, not an ungrouped entity ID.
+The two-entity SQLite regression checks root groups, numeric windows and
+loaded-relation groups/HAVING in both logging modes, actual SQL paths and
+privacy, unchanged caller input and an independent subsequent query. Run
+`go test -race ./provider/sqlite -run TestNumericRootAndLoadedGroupingKeepOnlyActualRelationEdges`.
+This fix references [Trace Chain issue #41](https://github.com/teaql/teaql-golang/issues/41).
+
 This remains a partial local checkpoint, not full Trace Chain completion.
 Same-type prepared batches, detached deleted children, complete privacy and
 execution-entry-point coverage, legacy allocation paths and immutable

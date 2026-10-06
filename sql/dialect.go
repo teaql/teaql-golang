@@ -291,15 +291,6 @@ func (d *DefaultSqlDialect) compileSelectSql(entity *core.EntityDescriptor, quer
 		sqlBuilder.WriteString(strings.Join(whereParts, " AND "))
 	}
 
-	if partitioned {
-		rank := d.Dialect.QuoteIdent("__teaql_partition_rank")
-		predicates := []string{fmt.Sprintf("%s > %d", rank, query.Slice.Offset)}
-		if query.Slice.Limit != nil {
-			predicates = append(predicates, fmt.Sprintf("%s <= %d", rank, query.Slice.Offset+*query.Slice.Limit))
-		}
-		return fmt.Sprintf("SELECT * FROM (%s) AS %s WHERE %s ORDER BY %s", sqlBuilder.String(), d.Dialect.QuoteIdent("__teaql_partitioned"), strings.Join(predicates, " AND "), rank), nil
-	}
-
 	if len(query.GroupBy) > 0 {
 		var groupByParts []string
 		for _, field := range query.GroupBy {
@@ -320,6 +311,17 @@ func (d *DefaultSqlDialect) compileSelectSql(entity *core.EntityDescriptor, quer
 		}
 		sqlBuilder.WriteString(" HAVING ")
 		sqlBuilder.WriteString(havingSql)
+	}
+
+	// Rank the grouped/HAVING-filtered rows, not the pre-aggregation input.
+	// Bounded relation loading also uses this path for grouped child queries.
+	if partitioned {
+		rank := d.Dialect.QuoteIdent("__teaql_partition_rank")
+		predicates := []string{fmt.Sprintf("%s > %d", rank, query.Slice.Offset)}
+		if query.Slice.Limit != nil {
+			predicates = append(predicates, fmt.Sprintf("%s <= %d", rank, query.Slice.Offset+*query.Slice.Limit))
+		}
+		return fmt.Sprintf("SELECT * FROM (%s) AS %s WHERE %s ORDER BY %s", sqlBuilder.String(), d.Dialect.QuoteIdent("__teaql_partitioned"), strings.Join(predicates, " AND "), rank), nil
 	}
 
 	if len(query.OrderBy) > 0 {
