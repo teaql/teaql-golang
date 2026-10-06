@@ -2,6 +2,8 @@ package tracechain_test
 
 import (
 	"encoding/json"
+	"fmt"
+	"reflect"
 	"strings"
 	"testing"
 
@@ -155,50 +157,91 @@ func TestGeneratedFacetTraceRetainsFilteredRoot(t *testing.T) {
 }
 
 func TestGeneratedNestedFacetsRetainAncestorPath(t *testing.T) {
-	e := openEnvironment(t)
-	root := newOrder(t, e, "nested facet fixture")
-	child := lib.Q.Payments().Comment("create facet payment").Purpose("prepare nested facet fixture").NewEntity(e.context)
-	child.UpdateReferenceCode("FACET-PAYMENT")
-	root.PaymentList().Add(child)
-	if _, err := root.AuditAs("seed nested facet graph").Save(e.context); err != nil {
-		t.Fatal(err)
+	for _, logging := range []bool{false, true} {
+		t.Run(fmt.Sprintf("logging=%t", logging), func(t *testing.T) {
+			e := openEnvironment(t)
+			if !logging {
+				e.context.DisableSqlLog()
+			}
+			root := newOrder(t, e, "nested facet fixture")
+			child := lib.Q.Payments().Comment("create facet payment").Purpose("prepare nested facet fixture").NewEntity(e.context)
+			child.UpdateReferenceCode("FACET-PAYMENT")
+			root.PaymentList().Add(child)
+			if _, err := root.AuditAs("seed nested facet graph").Save(e.context); err != nil {
+				t.Fatal(err)
+			}
+			id, _ := payment.NewPaymentExpression(child).Id().Eval()
+			e.reset()
+			result, err := lib.Q.Payments().WithIdIs(id).Limit(1).
+				FacetByCustomerOrderAs("orders", lib.Q.CustomerOrders().Limit(5).
+					FacetByPlatformAs("platforms", lib.Q.Platforms().Limit(5), false), false).
+				Comment("inspect nested payment facets").Purpose("retain original query ancestry").ExecuteForList(e.context)
+			if err != nil {
+				t.Fatal(err)
+			}
+			orders, present := result.Facet("orders")
+			if !present || len(orders.Data) != 1 {
+				t.Fatal("missing order facet")
+			}
+			platforms, present := orders.Facet("platforms")
+			if !present || len(platforms.Data) != 1 {
+				t.Fatal("nested platform facet was silently discarded")
+			}
+			orderCount, orderCountValid := orders.Data[0]["count"].TryU64()
+			platformCount, platformCountValid := platforms.Data[0]["count"].TryU64()
+			if !orderCountValid || !platformCountValid || orderCount != 1 || platformCount != 1 {
+				t.Fatal("nested facet escaped active membership")
+			}
+			const comment = "inspect nested payment facets"
+			const purpose = "retain original query ancestry"
+			routes := [][]string{{}, {}, {"customerOrderEntity"}, {"customerOrderEntity"}, {"customerOrderEntity", "platformEntity"}}
+			raw := e.observer.queryFacts
+			if len(raw) != len(routes) {
+				t.Fatalf("expected five physical facet statements, got %d", len(raw))
+			}
+			for index, fact := range raw {
+				if fact.comment != comment || fact.purpose != purpose || fact.metadata.Comment == nil || *fact.metadata.Comment != comment ||
+					fact.metadata.Purpose == nil || *fact.metadata.Purpose != purpose || fact.metadata.ExecutionOutcome != "success" {
+					t.Fatalf("nested physical statement %d lost originating intent or outcome", index)
+				}
+				assertNestedFacetRoute(t, fact.metadata.TraceChain, routes[index])
+				if (index == 1 || index == 3) != strings.Contains(strings.ToUpper(fact.metadata.ParameterizedSQL), "COUNT(") {
+					t.Fatalf("nested statement %d has wrong count/materialization role", index)
+				}
+			}
+			facts := e.sqlEvidence.Snapshot()
+			if logging && len(facts) != len(raw) || !logging && len(facts) != 0 {
+				t.Fatal("nested diagnostic switch changed physical work")
+			}
+			for index, fact := range facts {
+				assertNestedFacetRoute(t, fact.TraceChain, routes[index])
+				if fact.Purpose == nil || *fact.Purpose != purpose || fact.Comment == nil || *fact.Comment != comment {
+					t.Fatal("nested safe projection lost originating intent")
+				}
+			}
+			if len(e.observer.snapshot()) != 0 || len(e.sink.snapshot()) != 0 {
+				t.Fatal("read-only nested Facets produced writes or audit")
+			}
+			encoded, err := json.Marshal(map[string]any{"logging": logging, "orderCount": orderCount, "platformCount": platformCount,
+				"raw": rawMetadata(raw), "safe": facts, "mutationCommands": len(e.observer.snapshot()), "committedAudits": len(e.sink.snapshot())})
+			if err != nil {
+				t.Fatal(err)
+			}
+			t.Log("GO_NESTED_FACET_PATHS " + string(encoded))
+		})
 	}
-	id, _ := payment.NewPaymentExpression(child).Id().Eval()
-	e.reset()
-	result, err := lib.Q.Payments().WithIdIs(id).Limit(1).
-		FacetByCustomerOrderAs("orders", lib.Q.CustomerOrders().Limit(5).
-			FacetByPlatformAs("platforms", lib.Q.Platforms().Limit(5), false), false).
-		Comment("inspect nested payment facets").Purpose("retain original query ancestry").ExecuteForList(e.context)
-	if err != nil {
-		t.Fatal(err)
+}
+
+func assertNestedFacetRoute(t *testing.T, actual []*core.TraceNode, relations []string) {
+	t.Helper()
+	wanted := []*core.TraceNode{core.NewTypedTraceNode("operation", "Payment", "query"), core.NewTypedTraceNode("request", "Payment", "")}
+	owner := "Payment"
+	for _, relation := range relations {
+		wanted = append(wanted, core.NewTypedTraceNode("relation", relation, owner+"."+relation))
+		owner = "Customer Order"
 	}
-	orders, present := result.Facet("orders")
-	if !present || len(orders.Data) != 1 {
-		t.Fatal("missing order facet")
-	}
-	platforms, present := orders.Facet("platforms")
-	if !present || len(platforms.Data) != 1 {
-		t.Fatal("nested platform facet was silently discarded")
-	}
-	orderCount, orderCountValid := orders.Data[0]["count"].TryU64()
-	platformCount, platformCountValid := platforms.Data[0]["count"].TryU64()
-	if !orderCountValid || !platformCountValid || orderCount != 1 || platformCount != 1 {
-		t.Fatal("nested facet escaped active membership")
-	}
-	facts := e.sqlEvidence.Snapshot()
-	if len(facts) != 5 {
-		t.Fatalf("expected five physical facet statements, got %d", len(facts))
-	}
-	for index, fact := range facts {
-		if fact.TraceChain[0].Name != "Payment" || fact.TraceChain[1].Name != "Payment" {
-			t.Fatalf("statement %d lost payment root", index)
-		}
-		if fact.Comment == nil || *fact.Comment != "inspect nested payment facets" {
-			t.Fatal("nested facet lost caller intent")
-		}
-	}
-	last := facts[4].TraceChain
-	if len(last) != 6 || last[2].Name != "customerOrderEntity" || last[3].Name != "platformEntity" {
-		t.Fatalf("nested facet lost ancestors: %+v", last)
+	wanted = append(wanted, core.NewTypedTraceNode("provider", "sqlite", ""), core.NewTypedTraceNode("sql", "select", ""))
+	if !reflect.DeepEqual(actual, wanted) {
+		t.Fatalf("nested physical facet route differs: got=%+v want=%+v", actual, wanted)
 	}
 }
