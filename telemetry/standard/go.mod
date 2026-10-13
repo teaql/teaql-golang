@@ -3,7 +3,7 @@ module github.com/teaql/teaql-golang/telemetry/standard
 go 1.25.0
 
 require (
-	github.com/teaql/teaql-golang v0.3.0
+	github.com/teaql/teaql-golang v0.3.1
 	go.opentelemetry.io/otel v1.45.0
 	go.opentelemetry.io/otel/exporters/otlp/otlplog/otlploghttp v0.21.0
 	go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetrichttp v1.45.0
