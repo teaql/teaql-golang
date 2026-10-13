@@ -209,7 +209,14 @@ func verifyMaskingLifecycle() {
 	}()
 	relationEntries := relationEvidence.Snapshot()
 	require(len(relationEntries) == 2 && relationEntries[0].ExecutionOutcome == "success" && relationEntries[1].ExecutionOutcome == "failure", "incorrect relation statement evidence")
-	require(!strings.Contains(*relationEntries[1].Comment, "Riverside") && strings.Contains(*relationEntries[1].Comment, "what: load"), "inherited relation intent leaked or lost")
+	childEntry := relationEntries[1]
+	require(childEntry.Comment != nil && *childEntry.Comment == "load MaskChild", "relation request lost its local default comment")
+	require(childEntry.Purpose != nil && *childEntry.Purpose == "why: verify relation masking", "relation request lost the root purpose")
+	chain := childEntry.RequestTraceChain
+	require(len(chain) == 4, "relation request must retain purpose, root, operation and local comment")
+	require(chain[0].Comment == "why: verify relation masking" &&
+		strings.Contains(chain[1].Comment, "what: load") && !strings.Contains(chain[1].Comment, "Riverside") &&
+		chain[2].Comment == "select relation children" && chain[3].Comment == "load MaskChild", "relation request ancestry leaked or lost")
 	relationContents, err := os.ReadFile(relationFile.Name())
 	if err != nil {
 		panic(err)

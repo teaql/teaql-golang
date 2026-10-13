@@ -127,6 +127,9 @@ func NormalizeDynamicSearch(source []byte, entity string, models map[string]Sear
 				missing(path, "FILTER")
 				continue
 			}
+			if kind == "unsupported" {
+				return nil, searchError("unsupported known-field type")
+			}
 			if operator == "$contains" && kind != "string" {
 				return nil, searchError("string operator on non-string field")
 			}
@@ -165,6 +168,9 @@ func NormalizeDynamicSearch(source []byte, entity string, models map[string]Sear
 		if kind == "" {
 			missing(path, "ORDER_BY")
 			continue
+		}
+		if kind == "unsupported" {
+			return nil, searchError("unsupported known-field type")
 		}
 		result.OrderBy = append(result.OrderBy, DynamicSearchOrder{path, direction})
 	}

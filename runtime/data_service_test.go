@@ -308,6 +308,7 @@ func TestRuntimeDataServiceIDSetPagination(t *testing.T) {
 		}}
 		context := runtime.NewUserContext()
 		context.SetUserIdentifier("tenant-1:user-1")
+		context.SetIDSetStore(runtime.NewInMemoryIDSetStore())
 		svc := runtime.NewRuntimeDataService(runtime.NewInMemoryMetadataStore(), executor)
 
 		jumped := core.NewSelectQuery("Order").Comment("verify query fixture").Purpose("preserve the query regression contract").WithOrderBy(core.OrderDesc("id")).Page(2, 2).
@@ -373,6 +374,7 @@ func TestRuntimeDataServiceIDSetPagination(t *testing.T) {
 	t.Run("retains empty results and adds an ID tie breaker", func(t *testing.T) {
 		executor := &capturingExecutor{rows: [][]core.Record{{}}}
 		context := runtime.NewUserContext()
+		context.SetIDSetStore(runtime.NewInMemoryIDSetStore())
 		svc := runtime.NewRuntimeDataService(runtime.NewInMemoryMetadataStore(), executor)
 		query := core.NewSelectQuery("Order").Comment("verify query fixture").Purpose("preserve the query regression contract").WithOrderBy(core.OrderAsc("status")).Page(0, 2).
 			OptimizePaginationWithIDSetConfig("empty", 60, 10)

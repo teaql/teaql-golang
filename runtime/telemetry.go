@@ -3,6 +3,7 @@ package runtime
 import (
 	stdcontext "context"
 	"fmt"
+	"github.com/teaql/teaql-golang/data_service"
 	"strings"
 	"sync"
 )
@@ -56,6 +57,22 @@ type RuntimeTelemetryScope interface {
 	Failure(errorType string)
 }
 
+// Optional completion detail preserves the original adapter SPI. Standard
+// modules can record cancellation and partial delivery without error text.
+type RuntimeTelemetryCompletionScope interface {
+	CompleteRuntimeOperation(string, map[string]RuntimeAttributeValue, string)
+}
+
+func CompleteRuntimeOperation(scope RuntimeTelemetryScope, outcome string, attributes map[string]RuntimeAttributeValue, kind string) {
+	if detailed, ok := scope.(RuntimeTelemetryCompletionScope); ok {
+		detailed.CompleteRuntimeOperation(outcome, attributes, kind)
+	} else if outcome == "success" {
+		scope.Success(attributes)
+	} else {
+		scope.Failure(kind)
+	}
+}
+
 type RuntimeTelemetry interface {
 	Start(stdcontext.Context, RuntimeOperation) (stdcontext.Context, RuntimeTelemetryScope)
 	Flush(stdcontext.Context) error
@@ -80,12 +97,24 @@ type failOpenRuntimeTelemetryScope struct {
 	delegate RuntimeTelemetryScope
 }
 
+func (s *failOpenRuntimeTelemetryScope) Correlation() (identity *data_service.SQLExecutionCorrelation) {
+	defer func() { _ = recover() }()
+	if correlated, ok := s.delegate.(correlatedTelemetryScope); ok {
+		return correlated.Correlation()
+	}
+	return nil
+}
+
 func (s *failOpenRuntimeTelemetryScope) Success(attributes map[string]RuntimeAttributeValue) {
 	s.finish(func() { s.delegate.Success(attributes) })
 }
 
 func (s *failOpenRuntimeTelemetryScope) Failure(errorType string) {
 	s.finish(func() { s.delegate.Failure(errorType) })
+}
+
+func (s *failOpenRuntimeTelemetryScope) CompleteRuntimeOperation(outcome string, attributes map[string]RuntimeAttributeValue, kind string) {
+	s.finish(func() { CompleteRuntimeOperation(s.delegate, outcome, attributes, kind) })
 }
 
 func (s *failOpenRuntimeTelemetryScope) finish(action func()) {
@@ -100,6 +129,7 @@ func StartRuntimeOperation(
 	telemetry RuntimeTelemetry,
 	operation RuntimeOperation,
 ) (operationContext stdcontext.Context, scope RuntimeTelemetryScope) {
+	context = preserveRuntimeContextServices(context)
 	if telemetry == nil {
 		telemetry = NoopRuntimeTelemetry{}
 	}

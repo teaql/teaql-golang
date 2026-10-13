@@ -200,7 +200,11 @@ func TestTypedLikeOriginalIntentSQLite(t *testing.T) {
 								t.Fatal("missing policy invocation")
 							}
 							for _, seen := range f.policy.queries {
-								if seen.CommentText == nil || *seen.CommentText != comment || seen.PurposeText == nil || *seen.PurposeText != purpose {
+								localComment := comment
+								if future && seen.Entity == "LikeChild" {
+									localComment = "load LikeChild"
+								}
+								if seen.CommentText == nil || *seen.CommentText != localComment || seen.PurposeText == nil || *seen.PurposeText != purpose {
 									t.Fatal("policy intent changed")
 								}
 							}
@@ -227,14 +231,18 @@ func TestTypedLikeOriginalIntentSQLite(t *testing.T) {
 								if relations != depth {
 									t.Fatal("incorrect relation depth")
 								}
-								if entry.Comment == nil || entry.Purpose == nil || !strings.Contains(*entry.Comment, "PLAIN-CONTROL") || !strings.Contains(*entry.Purpose, "PLAIN-CONTROL") {
+								if len(entry.RequestTraceChain) < 2 || entry.Comment == nil || entry.Purpose == nil || !strings.Contains(entry.RequestTraceChain[1].Comment, "PLAIN-CONTROL") || !strings.Contains(*entry.Purpose, "PLAIN-CONTROL") {
 									t.Fatal("ordinary intent discarded")
 								}
 								encoded, _ := json.Marshal(entry)
 								if masked && (strings.Contains(string(encoded), operand) || strings.Contains(*entry.Comment, operand) || strings.Contains(*entry.Purpose, operand)) {
 									t.Errorf("safe sink leaked original operand at depth %d", depth)
 								}
-								if !masked && (*entry.Comment != comment || *entry.Purpose != purpose) {
+								localComment := comment
+								if future && depth > 0 {
+									localComment = "load LikeChild"
+								}
+								if !masked && (*entry.Comment != localComment || entry.RequestTraceChain[1].Comment != comment || *entry.Purpose != purpose) {
 									t.Fatal("plain field over-redacted")
 								}
 							}

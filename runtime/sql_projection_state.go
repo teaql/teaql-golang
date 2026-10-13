@@ -92,6 +92,7 @@ func cloneSQLProjection(metadata ds.ExecutionMetadata) ds.ExecutionMetadata {
 		metadata.MaskedParameters = flags
 	}
 	metadata.TraceChain = core.CloneTraceNodes(metadata.TraceChain)
+	metadata.RequestTraceChain = core.CloneTraceNodes(metadata.RequestTraceChain)
 	metadata.MutationLineage = core.CloneTraceNodes(metadata.MutationLineage)
 	metadata.InheritedIntent = logprivacy.IntentSource{}
 	metadata.LogProjection = logprivacy.ProjectionState{}

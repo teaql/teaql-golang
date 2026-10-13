@@ -11,6 +11,7 @@ import (
 	"github.com/teaql/teaql-golang/core"
 	ds "github.com/teaql/teaql-golang/data_service"
 	"github.com/teaql/teaql-golang/internal/mutationaudit"
+	"github.com/teaql/teaql-golang/internal/streamdelivery"
 )
 
 type SqlExecutorError struct {
@@ -120,8 +121,12 @@ func (e *SqlDataServiceExecutor) Query(context stdcontext.Context, request *ds.Q
 		return nil, &SqlExecutorError{CompileError: err}
 	}
 
+	context, statement := ds.StartSQLStatement(context, e.Dialect.Kind().String(), ds.OpQuery)
+	completed := false
+	defer func() { ds.FinishSQLStatement(statement, err, completed) }()
 	start := time.Now()
 	rows, err := e.Transport.FetchAllSql(context, compiled)
+	completed = true
 	end := time.Now()
 
 	count := len(rows)
@@ -129,6 +134,7 @@ func (e *SqlDataServiceExecutor) Query(context stdcontext.Context, request *ds.Q
 
 	provider := e.Dialect.Kind().String()
 	metadata := ds.ExecutionMetadata{
+		SQLCorrelation:       statement.Correlation(),
 		Backend:              provider,
 		Operation:            ds.OpQuery,
 		ParameterizedSQL:     compiled.Sql,
@@ -230,12 +236,15 @@ func (e *SqlDataServiceExecutor) resolveSubqueryDescriptors(query *core.SelectQu
 	return nil
 }
 
-func (e *SqlDataServiceExecutor) Mutate(context stdcontext.Context, request ds.MutationRequest) (*ds.MutationResult, error) {
+func (e *SqlDataServiceExecutor) Mutate(context stdcontext.Context, request ds.MutationRequest) (result *ds.MutationResult, err error) {
 	captured, captureErr := ds.CaptureMutationRequest(request)
 	if captureErr != nil {
 		return nil, captureErr
 	}
 	request = captured
+	context, mutation := ds.StartMutationOperation(context)
+	completed := false
+	defer func() { ds.FinishSQLStatement(mutation, err, completed) }()
 	plan, err := e.prepareMutation(request)
 	if err != nil {
 		return nil, err
@@ -245,7 +254,9 @@ func (e *SqlDataServiceExecutor) Mutate(context stdcontext.Context, request ds.M
 			return nil, fmt.Errorf("transaction-bound SQL transport requires the data-service Begin/Commit boundary")
 		}
 	}
-	return e.mutatePrepared(context, request, plan, nil)
+	result, err = e.mutatePrepared(context, request, plan, nil)
+	completed = true
+	return result, err
 }
 
 func (e *SqlDataServiceExecutor) mutatePrepared(context stdcontext.Context, request ds.MutationRequest, plan *sqlMutationPlan, audits *transactionAudits) (*ds.MutationResult, error) {
@@ -312,8 +323,14 @@ func (e *SqlDataServiceExecutor) mutatePrepared(context stdcontext.Context, requ
 	defaultDialect := &DefaultSqlDialect{Dialect: e.Dialect}
 	compiled := leaf.query
 
+	statementParent := context
+	context, statement := ds.StartSQLStatement(context, e.Dialect.Kind().String(), leaf.operation)
+	var err error
+	completed := false
+	defer func() { ds.FinishSQLStatement(statement, err, completed) }()
 	start := time.Now()
 	affectedRows, err := e.Transport.ExecuteSql(context, compiled)
+	completed = true
 	end := time.Now()
 
 	debugQuery := "" // Safety projection renders before any log sink sees values.
@@ -326,6 +343,7 @@ func (e *SqlDataServiceExecutor) mutatePrepared(context stdcontext.Context, requ
 
 	provider := e.Dialect.Kind().String()
 	metadata := ds.ExecutionMetadata{
+		SQLCorrelation:       statement.Correlation(),
 		Backend:              provider,
 		Operation:            leaf.operation,
 		ParameterizedSQL:     compiled.Sql,
@@ -352,6 +370,8 @@ func (e *SqlDataServiceExecutor) mutatePrepared(context stdcontext.Context, requ
 	if recorder, ok := mutationaudit.Owner(context).(interface{ RecordExecutionMetadata(ds.ExecutionMetadata) }); ok {
 		recorder.RecordExecutionMetadata(metadata)
 	}
+	ds.FinishSQLStatement(statement, err, completed)
+	context = statementParent
 	if err != nil {
 		return nil, &SqlExecutorError{TransportError: err}
 	}
@@ -381,8 +401,18 @@ func (e *SqlDataServiceExecutor) mutatePrepared(context stdcontext.Context, requ
 			return nil, &SqlExecutorError{CompileError: compileErr}
 		}
 		readStart := time.Now()
-		rows, fetchErr := e.Transport.FetchAllSql(context, readback)
-		recordMutationReadback(context, readback, metadata, readStart, len(rows), fetchErr)
+		readContext, readScope := ds.StartSQLStatement(context, e.Dialect.Kind().String(), ds.OpQuery)
+		readSource := metadata
+		readSource.SQLCorrelation = readScope.Correlation()
+		var rows []core.Record
+		var fetchErr error
+		func() {
+			complete := false
+			defer func() { ds.FinishSQLStatement(readScope, fetchErr, complete) }()
+			rows, fetchErr = e.Transport.FetchAllSql(readContext, readback)
+			complete = true
+			recordMutationReadback(readContext, readback, readSource, readStart, len(rows), fetchErr)
+		}()
 		if fetchErr != nil {
 			return nil, &SqlExecutorError{TransportError: fetchErr}
 		}
@@ -443,8 +473,10 @@ func (e *SqlDataServiceExecutor) QueryStream(context stdcontext.Context, request
 	if err != nil {
 		return err
 	}
+	context, statement := ds.StartSQLStatement(context, e.Dialect.Kind().String(), ds.OpQuery)
 	startedAt := time.Now()
 	delivered := 0
+	acknowledged := streamdelivery.For(context, request.Scope().Root())
 	consumerStopped := false
 	terminated := false
 	defer func() {
@@ -452,11 +484,15 @@ func (e *SqlDataServiceExecutor) QueryStream(context stdcontext.Context, request
 		if streamErr != nil || !terminated {
 			outcome = "failure"
 		}
-		if consumerStopped || errors.Is(streamErr, stdcontext.Canceled) || errors.Is(streamErr, stdcontext.DeadlineExceeded) {
+		if (consumerStopped && acknowledged == nil) || streamdelivery.Cancelled(streamErr) {
 			outcome = "cancelled"
+		}
+		if acknowledged != nil {
+			delivered = acknowledged.Count()
 		}
 		provider := e.Dialect.Kind().String()
 		metadata := ds.ExecutionMetadata{
+			SQLCorrelation:   statement.Correlation(),
 			ExecutionOutcome: outcome, Backend: provider, Operation: ds.OpQuery,
 			ParameterizedSQL: compiled.Sql, Parameters: append([]core.Value(nil), compiled.Params...),
 			ParameterLogPolicies: append([]string(nil), compiled.ParameterLogPolicies...), GeneratedSQL: compiled.GeneratedSQL,
@@ -468,6 +504,7 @@ func (e *SqlDataServiceExecutor) QueryStream(context stdcontext.Context, request
 		if recorder, ok := mutationaudit.Owner(context).(interface{ RecordExecutionMetadata(ds.ExecutionMetadata) }); ok {
 			recorder.RecordExecutionMetadata(metadata)
 		}
+		ds.FinishSQLStream(statement, outcome, delivered, streamErr)
 	}()
 	deliver := func(chunk *ds.StreamChunk) error {
 		delivered += len(chunk.Rows)
@@ -552,7 +589,7 @@ func (t *SqlDataServiceTransaction) Query(context stdcontext.Context, request *d
 	return executor.Query(context, request)
 }
 
-func (t *SqlDataServiceTransaction) Mutate(context stdcontext.Context, request ds.MutationRequest) (*ds.MutationResult, error) {
+func (t *SqlDataServiceTransaction) Mutate(context stdcontext.Context, request ds.MutationRequest) (result *ds.MutationResult, err error) {
 	t.mu.Lock()
 	defer t.mu.Unlock()
 	if t.closed {
@@ -582,7 +619,11 @@ func (t *SqlDataServiceTransaction) Mutate(context stdcontext.Context, request d
 	if err != nil {
 		return nil, err
 	}
-	result, err := executor.mutatePrepared(context, captured, plan, &t.audits)
+	context, mutation := ds.StartMutationOperation(context)
+	completed := false
+	defer func() { ds.FinishSQLStatement(mutation, err, completed) }()
+	result, err = executor.mutatePrepared(context, captured, plan, &t.audits)
+	completed = true
 	if err != nil {
 		t.rollbackOnly = err
 		t.audits.deliveries = nil

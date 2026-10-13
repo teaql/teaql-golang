@@ -146,7 +146,7 @@ func (f *facetExecutor) Query(context stdcontext.Context, request *data_service.
 		if len(request.Query.Aggregates) > 0 {
 			f.sawOuterFilter = request.Query.Filter != nil
 			return &data_service.QueryResult{Rows: []core.Record{
-				{"schoolType": core.ValU64(1001), "__teaql_facet_count": core.ValU64(2)},
+				{"schoolType": core.ValU64(1001), request.Query.Aggregates[0].Alias: core.ValU64(2)},
 			}}, nil
 		}
 		return &data_service.QueryResult{Rows: []core.Record{

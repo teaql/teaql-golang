@@ -179,46 +179,74 @@ func TestQueryCountLogOffRetainsRequiredIntent(t *testing.T) {
 
 func TestQueryCountStreamRetainsOriginAtTermination(t *testing.T) {
 	t.Setenv("TEAQL_ALLOW_SENSITIVE_PLAINTEXT_LOGS", "")
-	for _, outcome := range []string{"success", "cancelled", "failure"} {
-		t.Run(outcome, func(t *testing.T) {
-			e := nativeBatchEnvironment(t)
-			query := core.NewSelectQuery("Customer").Comment("stream " + batchPrivate).Purpose("count stream diagnostic")
-			query.ChildEnhancements = []*core.SelectQuery{core.NewSelectQuery("Customer").WithFilter(core.ExprEq("display_name", core.ValText(batchPrivate)))}
-			request, err := ds.NewQueryRequest(query.ForExactCount("n"))
-			if err != nil {
-				t.Fatal(err)
-			}
-			if outcome == "failure" {
-				if _, err := e.db.Exec("DROP TABLE customer_data"); err != nil {
+	for _, logging := range []bool{true, false} {
+		for _, outcome := range []string{"success", "cancelled", "failure"} {
+			t.Run(fmt.Sprintf("%s/logging=%v", outcome, logging), func(t *testing.T) {
+				e := nativeBatchEnvironment(t)
+				if !logging {
+					e.ctx.DisableSelectSqlLog()
+				}
+				query := core.NewSelectQuery("Customer").Comment("stream " + batchPrivate).Purpose("count stream diagnostic")
+				query.ChildEnhancements = []*core.SelectQuery{core.NewSelectQuery("Customer").WithFilter(core.ExprEq("display_name", core.ValText(batchPrivate)))}
+				root, err := ds.NewQueryRequest(query)
+				if err != nil {
 					t.Fatal(err)
 				}
-			}
-			stop := errors.New("consumer stopped")
-			calls := 0
-			err = e.executor.QueryStream(e.ctx, request, 1, func(chunk *ds.StreamChunk) error {
-				calls++
-				if len(chunk.Rows) != 1 {
-					t.Fatal("count stream has unexpected shape")
+				alias := "n"
+				scope, err := root.Scope().Operation(core.QueryOperation{Kind: "count", Method: "CountAs", Alias: &alias})
+				if err != nil {
+					t.Fatal(err)
 				}
-				if outcome == "cancelled" {
-					return stop
+				count, err := root.Query.ForExactCount(alias).WithQueryRequestScope(scope)
+				if err != nil {
+					t.Fatal(err)
 				}
-				return nil
+				request, err := ds.NewQueryRequest(count)
+				if err != nil {
+					t.Fatal(err)
+				}
+				if outcome == "failure" {
+					if _, err := e.db.Exec("DROP TABLE customer_data"); err != nil {
+						t.Fatal(err)
+					}
+				}
+				stop := errors.New("consumer stopped")
+				calls := 0
+				err = e.executor.QueryStream(e.ctx, request, 1, func(chunk *ds.StreamChunk) error {
+					calls++
+					if len(chunk.Rows) != 1 {
+						t.Fatal("count stream has unexpected shape")
+					}
+					if outcome == "cancelled" {
+						return stop
+					}
+					return nil
+				})
+				if (err == nil) != (outcome == "success") || (outcome == "cancelled" && !errors.Is(err, stop)) {
+					t.Fatalf("incorrect terminal error: %v", err)
+				}
+				if (calls == 0) != (outcome == "failure") {
+					t.Fatal("unexpected consumer calls")
+				}
+				if !logging {
+					if len(e.logs.entries) != 0 || len(request.Scope().Recover()) != 3 {
+						t.Fatal("logging flag changed logical ownership or emitted a disabled diagnostic")
+					}
+					return
+				}
+				if len(e.logs.entries) != 1 || e.logs.entries[0].ExecutionOutcome != outcome {
+					t.Fatal("missing or duplicate terminal SQL diagnostic")
+				}
+				payload, _ := json.Marshal(e.logs.entries[0])
+				if strings.Contains(string(payload), batchPrivate) {
+					t.Fatal("count stream terminal leaked removed source binding")
+				}
+				chain := e.logs.entries[0].RequestTraceChain
+				if len(chain) != 3 || chain[1].Comment != "stream [REDACTED]" || chain[2].Comment != "CountAs(\"n\")" {
+					t.Fatalf("stream lost its count operation owner: %+v", chain)
+				}
 			})
-			if (err == nil) != (outcome == "success") || (outcome == "cancelled" && !errors.Is(err, stop)) {
-				t.Fatalf("incorrect terminal error: %v", err)
-			}
-			if (calls == 0) != (outcome == "failure") {
-				t.Fatal("unexpected consumer calls")
-			}
-			if len(e.logs.entries) != 1 || e.logs.entries[0].ExecutionOutcome != outcome {
-				t.Fatal("missing or duplicate terminal SQL diagnostic")
-			}
-			payload, _ := json.Marshal(e.logs.entries[0])
-			if strings.Contains(string(payload), batchPrivate) {
-				t.Fatal("count stream terminal leaked removed source binding")
-			}
-		})
+		}
 	}
 }
 

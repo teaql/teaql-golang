@@ -15,7 +15,7 @@ cd "$repo"
 # can therefore resolve differently from its application. Bind every module in
 # one explicit temporary workspace; do not rely on an ambient parent go.work,
 # rewrite generated go.mod files, or silently download an older runtime.
-mapfile -t module_files < <(find "$repo/examples" -name go.mod -type f | sort)
+mapfile -t module_files < <(find "$repo/examples" -name go.mod -type f ! -path '*/standard-telemetry/*' ! -path '*/standard-order/*' ! -path '*/standard-graph/*' ! -path '*/standard-stream/*' | sort)
 module_dirs=("$repo")
 for module_file in "${module_files[@]}"; do
   module_dirs+=("$(dirname "$module_file")")
@@ -45,4 +45,8 @@ bash scripts/verify-school-bootstrap-example.sh
 go run ./examples/security-foundations
 (cd examples/task_board && go test ./... -count=1 && go run .)
 bash examples/trace-chain/verify.sh
+bash examples/trace-chain/verify-standard-telemetry.sh
+bash examples/trace-chain/verify-standard-order.sh
+bash examples/trace-chain/verify-standard-graph.sh
+bash examples/trace-chain/verify-standard-stream.sh
 echo "PASS: all Go examples"

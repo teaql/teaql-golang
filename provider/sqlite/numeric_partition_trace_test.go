@@ -161,7 +161,11 @@ func TestNumericRootAndLoadedGroupingKeepOnlyActualRelationEdges(t *testing.T) {
 							t.Fatal("numeric partition fabricated a relation")
 						}
 					}
-					if !reflect.DeepEqual(actual, names) || fact.Comment == nil || *fact.Comment != comment || fact.Purpose == nil || *fact.Purpose != purpose ||
+					localComment := comment
+					if loaded && index == 1 {
+						localComment = "load NumericItem"
+					}
+					if !reflect.DeepEqual(actual, names) || len(fact.RequestTraceChain) < 2 || fact.RequestTraceChain[1].Comment != comment || fact.Comment == nil || *fact.Comment != localComment || fact.Purpose == nil || *fact.Purpose != purpose ||
 						fact.ExecutionOutcome != "success" || fact.ParameterizedSQL != transport.reads[index].Sql {
 						t.Fatal("numeric physical ancestry or owned intent differs")
 					}

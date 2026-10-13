@@ -146,8 +146,9 @@ type Slice struct {
 }
 
 type RelationLoad struct {
-	Name  string
-	Query *SelectQuery
+	Operation *QueryOperation `json:"-"`
+	Name      string
+	Query     *SelectQuery
 	// Selection is builder input only. Runtime capture resolves and removes it
 	// before policy/provider callbacks; it is not an external query option.
 	Selection *QuerySelection `json:"-"`
@@ -167,6 +168,7 @@ func NewRelationLoadWithQuery(name string, query *SelectQuery) *RelationLoad {
 }
 
 type RelationAggregate struct {
+	Operation    *QueryOperation `json:"-"`
 	RelationName string
 	Alias        string
 	Query        *SelectQuery
@@ -241,6 +243,7 @@ func DefaultStreamConfig() *StreamConfig {
 }
 
 type SelectQuery struct {
+	requestScope         *QueryRequestScope
 	diagnosticOrigin     logprivacy.IntentSource
 	Entity               string
 	Projection           []string
@@ -258,7 +261,7 @@ type SelectQuery struct {
 	AggregationCache     *AggregationCacheOptions
 	CommentText          *string
 	PurposeText          *string
-	TraceChain           []*TraceNode
+	TraceChain           []*TraceNode `json:"-"`
 	RawSql               *string
 	RawSqlSearchCriteria []string
 	DynamicProperties    []*RawSqlProjection
@@ -496,6 +499,7 @@ func (q *SelectQuery) Clone() *SelectQuery {
 			continue
 		}
 		copied := *aggregate
+		copied.Operation = aggregate.Operation.Clone()
 		copied.Query = aggregate.Query.Clone()
 		clone.RelationAggregates = append(clone.RelationAggregates, &copied)
 	}
@@ -506,6 +510,7 @@ func (q *SelectQuery) Clone() *SelectQuery {
 	clone.Relations = make([]*RelationLoad, 0, len(q.Relations))
 	for _, relation := range q.Relations {
 		copied := *relation
+		copied.Operation = relation.Operation.Clone()
 		if relation.Query != nil {
 			copied.Query = relation.Query.Clone()
 		}

@@ -20,12 +20,13 @@ type DataServiceCapabilities struct {
 
 type QueryRequest struct {
 	Query      *core.SelectQuery
-	TraceChain []*core.TraceNode
+	TraceChain []*core.TraceNode `json:"-"`
 	Comment    *string
 	Purpose    *string
 	// Compatibility inputs are captured before execution. Intent is the
 	// authoritative immutable owner once constructed, never a Context default.
 	intent *core.QueryIntent
+	scope  *core.QueryRequestScope
 	// Internal invocation provenance, never serialized into a request or log.
 	InheritedIntent logprivacy.IntentSource `json:"-"`
 }
@@ -118,19 +119,22 @@ const (
 )
 
 type ExecutionMetadata struct {
+	// Statement-owned identity captured before transport execution, not wire data.
+	SQLCorrelation *SQLExecutionCorrelation `json:"-"`
 	// ExecutionOutcome describes statement/cursor termination, not transaction commit.
 	// Empty means the producer has not supplied an outcome.
-	ExecutionOutcome string
-	Backend          string
-	Operation        DataServiceOperation
-	ParameterizedSQL string
-	Parameters       []core.Value
-	ParameterCount   int
-	StartedAt        time.Time
-	EndedAt          time.Time
-	AffectedRows     *uint64
-	ResultCount      *int
-	TraceChain       []*core.TraceNode
+	ExecutionOutcome  string
+	Backend           string
+	Operation         DataServiceOperation
+	ParameterizedSQL  string
+	Parameters        []core.Value
+	ParameterCount    int
+	StartedAt         time.Time
+	EndedAt           time.Time
+	AffectedRows      *uint64
+	ResultCount       *int
+	TraceChain        []*core.TraceNode `json:"tracePath,omitempty"`
+	RequestTraceChain []*core.TraceNode `json:"traceChain,omitempty"`
 	// Graph responsibility is distinct from the canonical physical SQL path.
 	MutationLineage      []*core.TraceNode
 	Comment              *string

@@ -47,6 +47,11 @@ func TestRequestIntentGatesBeforePolicyOrProvider(t *testing.T) {
 						code = "QUERY_PURPOSE_REQUIRED"
 					}
 					query.TraceChain = append(query.TraceChain, core.NewTypedTraceNode("comment", "CustomerOrder", "trace-only substitute"))
+					child := core.NewSelectQuery("CustomerOrder").Comment("load related orders").Purpose("render related orders")
+					query.RelationQuery("children", child)
+					if *child.CommentText != "load related orders" || *child.PurposeText != "render related orders" {
+						t.Fatal("annotated child fixture lost its declared intent")
+					}
 					_, err := ctx.PrepareQuery(query)
 					assertIntentGate(t, err, code, field, "query")
 					_, err = service.FetchAll(ctx, query)
@@ -60,6 +65,15 @@ func TestRequestIntentGatesBeforePolicyOrProvider(t *testing.T) {
 			if policy.calls != 0 || provider.queries != 0 || registryCalls != 0 {
 				t.Fatal("missing intent reached policy/provider")
 			}
+			control, err := ctx.PrepareQuery(core.NewSelectQuery("CustomerOrder").Comment("load validation control").Purpose("verify live provider probes"))
+			if err != nil {
+				t.Fatal(err)
+			}
+			_, err = service.FetchAll(ctx, control)
+			if err != nil || policy.calls == 0 || provider.queries != 1 {
+				t.Fatalf("positive provider control did not execute: %v", err)
+			}
+			t.Logf("RTC_COM_01_PASS logging=%t fields=comment,purpose invalid_provider=0 invalid_policy=0 annotated_child=true live_control=true", logging)
 		})
 	}
 }

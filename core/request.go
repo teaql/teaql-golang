@@ -107,6 +107,7 @@ func NewRelationFilter(name string, selection *QuerySelection) *RelationFilter {
 }
 
 type QueryOptions struct {
+	PageCountOperation   *QueryOperation `json:"-"`
 	Comment              *string
 	RawSql               *string
 	RawSqlSearchCriteria []string
@@ -126,6 +127,15 @@ func NewQueryOptions() *QueryOptions {
 		ObjectGroupBys:       make([]*ObjectGroupByBuilder, 0),
 		Facets:               make([]*FacetRequest, 0),
 	}
+}
+
+// QuerySelectionFor preserves generated nested options without requiring a
+// runtime-specific type or reimplementing selection capture in every library.
+func QuerySelectionFor(source interface{ GetQuery() *SelectQuery }) *QuerySelection {
+	if provider, ok := source.(interface{ GetQuerySelection() *QuerySelection }); ok {
+		return provider.GetQuerySelection()
+	}
+	return NewQuerySelection(source.GetQuery())
 }
 
 type UnsafeRawSqlSegment struct {
@@ -171,6 +181,7 @@ func NewRelationAggregateBuilder(relationName, alias string, query *QuerySelecti
 }
 
 type FacetRequest struct {
+	Operation        *QueryOperation `json:"-"`
 	FacetName        string
 	RelationName     string
 	Query            *QuerySelection

@@ -3,6 +3,7 @@ package sqlite
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"fmt"
 	"reflect"
 	"strings"
@@ -75,6 +76,14 @@ func (c *queryStatementCapture) snapshot() []ds.ExecutionMetadata {
 // TC-REQ-06: unlike simultaneous starts on different Contexts, both real root
 // SQL results are held while two queries on the SAME Context remain in flight.
 func TestSharedContextLiveQueryGraphs(t *testing.T) {
+	verifySharedContextLiveQueryGraphs(t, false)
+}
+
+func TestSharedTemplateConcurrentParents(t *testing.T) {
+	verifySharedContextLiveQueryGraphs(t, true)
+}
+
+func verifySharedContextLiveQueryGraphs(t *testing.T, shared bool) {
 	for _, wrapper := range []bool{false, true} {
 		for _, logging := range []bool{false, true} {
 			t.Run(fmt.Sprintf("runtimeExecutor=%v/logging=%v", wrapper, logging), func(t *testing.T) {
@@ -144,11 +153,36 @@ func TestSharedContextLiveQueryGraphs(t *testing.T) {
 					err  error
 				}
 				results := make(chan outcome, 2)
+				childTemplate := func() *core.SelectQuery {
+					return core.NewSelectQuery("GraphChild").Limit(1).
+						RelationQuery("children", core.NewSelectQuery("GraphDetail").Limit(1).
+							RelationQuery("children", core.NewSelectQuery("GraphLeaf").Limit(1)))
+				}
+				sharedChild := childTemplate()
+				beforeTemplate, _ := json.Marshal(sharedChild)
+				assertTemplateUnchanged := func() {
+					t.Helper()
+					after, _ := json.Marshal(sharedChild)
+					if string(after) != string(beforeTemplate) {
+						t.Fatal("shared template contents mutated")
+					}
+					for query := sharedChild; query != nil; {
+						if query.QueryRequestScope() != nil || query.PurposeText != nil || query.CommentText != nil {
+							t.Fatal("shared template acquired request ownership or intent")
+						}
+						if len(query.Relations) == 0 {
+							break
+						}
+						query = query.Relations[0].Query
+					}
+				}
 				for _, label := range []string{"alpha", "beta"} {
+					child := sharedChild
+					if !shared {
+						child = childTemplate()
+					}
 					query := core.NewSelectQuery("GraphRoot").Limit(1).Comment("load "+label+" graph").Purpose("render "+label+" graph").
-						RelationQuery("children", core.NewSelectQuery("GraphChild").Limit(1).
-							RelationQuery("children", core.NewSelectQuery("GraphDetail").Limit(1).
-								RelationQuery("children", core.NewSelectQuery("GraphLeaf").Limit(1))))
+						RelationQuery("children", child)
 					group.Add(1)
 					go func(q *core.SelectQuery) {
 						defer group.Done()
@@ -169,6 +203,7 @@ func TestSharedContextLiveQueryGraphs(t *testing.T) {
 					t.Fatal("query completed before root barrier release")
 				}
 				assertContextUnchanged()
+				assertTemplateUnchanged()
 				release()
 				for i := 0; i < 2; i++ {
 					select {
@@ -191,6 +226,7 @@ func TestSharedContextLiveQueryGraphs(t *testing.T) {
 					}
 				}
 				assertContextUnchanged()
+				assertTemplateUnchanged()
 				for index, entries := range [][]ds.ExecutionMetadata{capture.snapshot(), logs.Snapshot()} {
 					want := 8
 					if index == 1 && !logging {
@@ -202,11 +238,18 @@ func TestSharedContextLiveQueryGraphs(t *testing.T) {
 					for _, label := range []string{"alpha", "beta"} {
 						depth := 0
 						for _, entry := range entries {
-							if entry.Comment == nil || *entry.Comment != "load "+label+" graph" {
+							if len(entry.RequestTraceChain) < 2 || entry.RequestTraceChain[1].Comment != "load "+label+" graph" {
 								continue
 							}
 							if entry.Purpose == nil || *entry.Purpose != "render "+label+" graph" || entry.ExecutionOutcome != "success" {
 								t.Fatal("intent/outcome contamination")
+							}
+							localComment := "load " + label + " graph"
+							if depth > 0 {
+								localComment = "load " + []string{"GraphRoot", "GraphChild", "GraphDetail", "GraphLeaf"}[depth]
+							}
+							if entry.Comment == nil || *entry.Comment != localComment || len(entry.RequestTraceChain) != 2+2*depth {
+								t.Fatal("child request comment or business ancestry differs")
 							}
 							kinds, names := []string{}, []string{}
 							for _, node := range entry.TraceChain {

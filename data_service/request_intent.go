@@ -27,6 +27,13 @@ func (r *QueryRequest) Intent() (core.QueryIntent, error) {
 	if r == nil {
 		return core.NewQueryIntent(nil, nil)
 	}
+	if scope := r.Scope(); scope != nil {
+		if err := scope.Validate(); err != nil {
+			return core.QueryIntent{}, err
+		}
+		comment, purpose := scope.Comment(), scope.Purpose()
+		return core.NewQueryIntent(&comment, &purpose)
+	}
 	if r.intent != nil {
 		return *r.intent, r.intent.Validate()
 	}
@@ -46,12 +53,97 @@ func CaptureQueryRequest(input *QueryRequest) (*QueryRequest, error) {
 	}
 	copyRequest := *input
 	copyRequest.intent = &intent
+	scope := input.Scope()
+	if previous := input.Query.QueryRequestScope(); previous != nil && scope != nil && previous.Root() != scope.Root() {
+		return nil, fmt.Errorf("QUERY_SCOPE_OWNER_MISMATCH: replacement belongs to another query invocation")
+	}
+	if scope == nil {
+		scope, err = core.NewQueryRequestScope(input.Query.Entity, intent)
+		if err != nil {
+			return nil, err
+		}
+	}
+	copyRequest.scope = scope
 	comment, purpose := intent.Comment(), intent.Purpose()
 	copyRequest.Comment, copyRequest.Purpose = &comment, &purpose
-	copyRequest.Query = input.Query.Clone()
-	copyRequest.Query.CommentText, copyRequest.Query.PurposeText = &comment, &purpose
+	copyRequest.Query, err = input.Query.WithQueryRequestScope(scope)
+	if err != nil {
+		return nil, err
+	}
 	copyRequest.TraceChain = core.CloneTraceNodes(input.TraceChain)
 	return &copyRequest, nil
+}
+
+func (r *QueryRequest) Scope() *core.QueryRequestScope {
+	if r == nil {
+		return nil
+	}
+	if r.scope != nil {
+		return r.scope
+	}
+	if r.Query != nil {
+		return r.Query.QueryRequestScope()
+	}
+	return nil
+}
+
+// Derive retains the native operation parent and a distinct nested comment.
+func (r *QueryRequest) Derive(query *core.SelectQuery, operation *core.QueryOperation) (*QueryRequest, error) {
+	if query == nil {
+		return nil, fmt.Errorf("derived request requires a query")
+	}
+	parent := r.Scope()
+	if err := parent.Validate(); err != nil {
+		return nil, err
+	}
+	var err error
+	if operation != nil {
+		parent, err = parent.Operation(*operation)
+		if err != nil {
+			return nil, err
+		}
+	}
+	scope, err := parent.Child(query.Entity, query.CommentText)
+	if err != nil {
+		return nil, err
+	}
+	bound, err := query.WithQueryRequestScope(scope)
+	if err != nil {
+		return nil, err
+	}
+	return NewQueryRequest(bound)
+}
+
+// DeriveAggregate does not invent an anonymous child value load. Facet
+// membership and reverse aggregates share the facet operation parent.
+func (r *QueryRequest) DeriveAggregate(query *core.SelectQuery, operation *core.QueryOperation) (*QueryRequest, error) {
+	if query == nil || operation == nil {
+		return nil, fmt.Errorf("aggregate request requires query and operation")
+	}
+	parent := r.Scope()
+	if err := parent.Validate(); err != nil {
+		return nil, err
+	}
+	var err error
+	if parent.Parent().IsFacetOperation() {
+		parent, err = parent.Parent().Helper(query.Entity, "aggregate "+parent.Parent().Relation())
+	} else {
+		parent, err = parent.Operation(*operation)
+	}
+	if err != nil {
+		return nil, err
+	}
+	if query.CommentText != nil {
+		parent, err = parent.Child(query.Entity, query.CommentText)
+		if err != nil {
+			return nil, err
+		}
+	}
+	bound, err := query.WithQueryRequestScope(parent)
+	if err != nil {
+		return nil, err
+	}
+	return NewQueryRequest(bound)
 }
 
 func mutationComment(intent *core.MutationIntent, input *string) *string {

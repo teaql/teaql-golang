@@ -215,7 +215,7 @@ func (e *SqliteMutationExecutor) FetchAllSql(context stdcontext.Context, query *
 	return records, nil
 }
 
-func (e *SqliteMutationExecutor) StreamSql(context stdcontext.Context, query *teaql_sql.CompiledQuery, chunkSize int, yield func([]core.Record) error) error {
+func (e *SqliteMutationExecutor) StreamSql(context stdcontext.Context, query *teaql_sql.CompiledQuery, chunkSize int, yield func([]core.Record) error) (streamErr error) {
 	params, err := bindValues(query.Params)
 	if err != nil {
 		return err
@@ -224,7 +224,11 @@ func (e *SqliteMutationExecutor) StreamSql(context stdcontext.Context, query *te
 	if err != nil {
 		return err
 	}
-	defer rows.Close()
+	defer func() {
+		if closeErr := rows.Close(); closeErr != nil && streamErr == nil {
+			streamErr = closeErr
+		}
+	}()
 	cols, err := rows.Columns()
 	if err != nil {
 		return err
