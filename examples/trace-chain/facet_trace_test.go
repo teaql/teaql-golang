@@ -83,9 +83,10 @@ func TestGeneratedFutureFacetPrivacyAndSnapshot(t *testing.T) {
 				if strings.Contains(string(encoded), secret) {
 					t.Errorf("statement %d leaked future facet binding", i)
 				}
-				if fact.Comment == nil || !strings.Contains(*fact.Comment, "inspect") {
+				if len(fact.RequestTraceChain) < 2 || !strings.Contains(fact.RequestTraceChain[1].Comment, "inspect") {
 					t.Error("caller intent was discarded")
 				}
+				assertQueryBusinessIntent(t, fact, "inspect [REDACTED]", "protect future facet bindings")
 				if len(fact.TraceChain) < 4 || fact.TraceChain[0].Name != "Payment" {
 					t.Error("future facet lost root")
 				}
@@ -200,7 +201,8 @@ func TestGeneratedNestedFacetsRetainAncestorPath(t *testing.T) {
 				t.Fatalf("expected five physical facet statements, got %d", len(raw))
 			}
 			for index, fact := range raw {
-				if fact.comment != comment || fact.purpose != purpose || fact.metadata.Comment == nil || *fact.metadata.Comment != comment ||
+				assertQueryBusinessIntent(t, fact.metadata, comment, purpose)
+				if fact.rootComment != comment || fact.rootPurpose != purpose || fact.metadata.Comment == nil || *fact.metadata.Comment != fact.comment ||
 					fact.metadata.Purpose == nil || *fact.metadata.Purpose != purpose || fact.metadata.ExecutionOutcome != "success" {
 					t.Fatalf("nested physical statement %d lost originating intent or outcome", index)
 				}
@@ -215,9 +217,7 @@ func TestGeneratedNestedFacetsRetainAncestorPath(t *testing.T) {
 			}
 			for index, fact := range facts {
 				assertNestedFacetRoute(t, fact.TraceChain, routes[index])
-				if fact.Purpose == nil || *fact.Purpose != purpose || fact.Comment == nil || *fact.Comment != comment {
-					t.Fatal("nested safe projection lost originating intent")
-				}
+				assertQueryBusinessIntent(t, fact, comment, purpose)
 			}
 			if len(e.observer.snapshot()) != 0 || len(e.sink.snapshot()) != 0 {
 				t.Fatal("read-only nested Facets produced writes or audit")

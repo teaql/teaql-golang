@@ -181,10 +181,12 @@ func TestDerivedRelationMasking(t *testing.T) {
 						if entry.ExecutionOutcome != outcome {
 							t.Fatal("wrong outcome")
 						}
-						if entry.Comment == nil || !strings.HasPrefix(*entry.Comment, "what: load") || entry.Purpose == nil || *entry.Purpose != "why: verify relation intent" {
+						// Local derived comments describe the child work; the original
+						// business reason remains in the root request's chain frame.
+						if entry.Comment == nil || len(entry.RequestTraceChain) < 2 || !strings.HasPrefix(entry.RequestTraceChain[1].Comment, "what: load") || entry.Purpose == nil || *entry.Purpose != "why: verify relation intent" {
 							t.Fatal("intent lost")
 						}
-						if strings.Contains(*entry.Comment, "Riverside") != debug {
+						if strings.Contains(entry.RequestTraceChain[1].Comment, "Riverside") != debug {
 							t.Fatal("ancestor business value leaked or debug lost")
 						}
 						if strings.Contains(output.String()+fmt.Sprint(capture.entries), "PASSWORD-CANARY") {

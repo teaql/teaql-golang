@@ -55,14 +55,19 @@ func (e *SqlDataServiceExecutor) Query(context stdcontext.Context, request *data
 		return nil, err
 	}
 
+	context, statement := data_service.StartSQLStatement(context, e.dialect.Dialect.Kind().String(), data_service.OpQuery)
+	completed := false
+	defer func() { data_service.FinishSQLStatement(statement, err, completed) }()
 	startedAt := time.Now()
 	records, err := e.transport.FetchAllSql(context, compiled)
+	completed = true
 
 	resultCount := len(records)
 	debugQuery := "" // Safety projection, not the executor, renders log literals.
 	provider := strings.ToLower(fmt.Sprint(e.dialect.Dialect.Kind()))
 	metadata := data_service.ExecutionMetadata{
-		Backend: provider, Operation: data_service.OpQuery,
+		SQLCorrelation: statement.Correlation(),
+		Backend:        provider, Operation: data_service.OpQuery,
 		ParameterizedSQL: compiled.Sql, Parameters: append([]core.Value(nil), compiled.Params...),
 		ParameterLogPolicies: append([]string(nil), compiled.ParameterLogPolicies...), GeneratedSQL: compiled.GeneratedSQL,
 		StartedAt: startedAt, EndedAt: time.Now(), ResultCount: &resultCount,
@@ -135,14 +140,6 @@ func (e *SqlDataServiceExecutor) Mutate(context stdcontext.Context, request data
 	}
 
 	context, providerScope := StartRuntimeOperation(context, telemetry, NewRuntimeOperation("provider", "sql.execute", nil))
-	startedAt := time.Now()
-	affected, err := e.transport.ExecuteSql(context, compiled)
-	if err != nil {
-		providerScope.Failure(RuntimeErrorType(err))
-	} else {
-		providerScope.Success(map[string]RuntimeAttributeValue{"teaql.result.cardinality": affected})
-	}
-
 	operation := data_service.OpInsert
 	switch request.(type) {
 	case *data_service.UpdateMutation:
@@ -150,6 +147,18 @@ func (e *SqlDataServiceExecutor) Mutate(context stdcontext.Context, request data
 	case *data_service.DeleteMutation:
 		operation = data_service.OpDelete
 	}
+	context, statement := data_service.StartSQLStatement(context, e.dialect.Dialect.Kind().String(), operation)
+	completed := false
+	defer func() { data_service.FinishSQLStatement(statement, err, completed) }()
+	startedAt := time.Now()
+	affected, err := e.transport.ExecuteSql(context, compiled)
+	completed = true
+	if err != nil {
+		providerScope.Failure(RuntimeErrorType(err))
+	} else {
+		providerScope.Success(map[string]RuntimeAttributeValue{"teaql.result.cardinality": affected})
+	}
+
 	debugQuery := "" // Safety projection, not the executor, renders log literals.
 	entityName := "unknown"
 	switch req := request.(type) {
@@ -162,7 +171,8 @@ func (e *SqlDataServiceExecutor) Mutate(context stdcontext.Context, request data
 	}
 	provider := strings.ToLower(fmt.Sprint(e.dialect.Dialect.Kind()))
 	metadata := data_service.ExecutionMetadata{
-		Backend: provider, Operation: operation,
+		SQLCorrelation: statement.Correlation(),
+		Backend:        provider, Operation: operation,
 		ParameterizedSQL: compiled.Sql, Parameters: append([]core.Value(nil), compiled.Params...),
 		ParameterLogPolicies: append([]string(nil), compiled.ParameterLogPolicies...), GeneratedSQL: compiled.GeneratedSQL,
 		StartedAt: startedAt, EndedAt: time.Now(), AffectedRows: &affected,

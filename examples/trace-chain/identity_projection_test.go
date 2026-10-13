@@ -176,7 +176,8 @@ func TestGeneratedNarrowEntityProjectionProtectsIdentityWithoutPermittingPartial
 			}
 			countQueries := 0
 			for _, statement := range statements {
-				if statement.Comment == nil || *statement.Comment != comment || len(statement.TraceChain) < 4 || statement.TraceChain[0].Name != "Customer Order" {
+				assertQueryBusinessIntent(t, statement, comment, "verify mandatory identity and fail-closed partial mutation")
+				if len(statement.TraceChain) < 4 || statement.TraceChain[0].Name != "Customer Order" {
 					t.Fatal("projection preparation lost request-owned query intent/path")
 				}
 				if strings.Contains(statement.ParameterizedSQL, "__teaql_total") {

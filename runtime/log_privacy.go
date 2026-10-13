@@ -330,6 +330,7 @@ func projectedSQLMetadata(metadata data_service.ExecutionMetadata, allow bool) d
 		return trace
 	}
 	metadata.TraceChain = projectTrace(metadata.TraceChain)
+	metadata.RequestTraceChain = projectTrace(metadata.RequestTraceChain)
 	metadata.MutationLineage = projectTrace(metadata.MutationLineage)
 	metadata.ParameterCount = len(metadata.Parameters)
 	metadata.Parameters = values

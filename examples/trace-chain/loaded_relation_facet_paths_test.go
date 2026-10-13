@@ -102,7 +102,8 @@ func TestGeneratedLoadedFacetPhysicalPathsAndFullMembership(t *testing.T) {
 					t.Fatalf("physical query inventory: got %d want %d", len(raw), len(routes))
 				}
 				for index, fact := range raw {
-					if fact.comment != comment || fact.purpose != purpose || fact.metadata.Comment == nil || *fact.metadata.Comment != comment ||
+					assertQueryBusinessIntent(t, fact.metadata, comment, purpose)
+					if fact.rootComment != comment || fact.rootPurpose != purpose || fact.metadata.Comment == nil || *fact.metadata.Comment != fact.comment ||
 						fact.metadata.Purpose == nil || *fact.metadata.Purpose != purpose || fact.metadata.ExecutionOutcome != "success" {
 						t.Fatalf("physical statement %d lost owned intent or outcome", index)
 					}
@@ -117,9 +118,7 @@ func TestGeneratedLoadedFacetPhysicalPathsAndFullMembership(t *testing.T) {
 				}
 				for index, fact := range safe {
 					assertLoadedFacetRoute(t, fact.TraceChain, routes[index])
-					if fact.Comment == nil || *fact.Comment != comment || fact.Purpose == nil || *fact.Purpose != purpose {
-						t.Fatal("safe projection lost intent")
-					}
+					assertQueryBusinessIntent(t, fact, comment, purpose)
 				}
 				if len(e.observer.snapshot()) != 0 || len(e.sink.snapshot()) != 0 {
 					t.Fatal("query-only Facet metadata produced mutations or committed audit")

@@ -262,6 +262,61 @@ repository's local runtime. No external database server or generator is needed
 to run the retained generated example. Use only the example's test database;
 reset/repeated-run behavior is documented in its README.
 
+## Optional standard OpenTelemetry module
+
+The local, unreleased `telemetry/standard` module needs Go 1.25 or newer; the
+root runtime retains Go 1.18 compatibility. Import the module once in application
+startup to register its factory:
+
+```go
+import _ "github.com/teaql/teaql-golang/telemetry/standard"
+```
+
+Enable it through trusted process configuration:
+
+```bash
+export TEAQL_TELEMETRY_ENABLED=true
+export TEAQL_TELEMETRY_SERVICE_NAME=my-application
+export TEAQL_TELEMETRY_OTLP_ENDPOINT=http://localhost:4318
+```
+
+Without enablement, startup announces support and prints these three variable
+names. When enabled, the module records supported operations without percentage
+sampling, using owned SDK providers rather than replacing customer globals.
+Existing masking applies to expanded SQL parameters. Ordinary SQL logging is
+independent: switching it off does not disable telemetry or committed audit.
+Export is bounded and failures do not fail business operations.
+
+The [standard Order example](examples/trace-chain/standard-order/main.go)
+loads forward detail, reverse previews and facets through generated Q, then
+checks them through E. Explicit count and ordinary lists use the same terminal;
+each invocation remains one trace through typed hydration. It replays twice on
+one retained SQLite database, including audited seed and repeated-seed checks.
+The [standard graph example](examples/trace-chain/standard-graph/main.go) saves
+one order and two items using the generated audited mutation API. It verifies
+explicit and inherited child comments, injects a commit failure into a real
+SQLite transaction, checks rollback, then saves a recovery graph. Each save
+owns one telemetry root through commit, committed audit and cleanup. Queries
+and writes need no application-level spans. Both examples replay twice without
+database cleanup; the generated library stays unchanged.
+
+The [standard Stream example](examples/trace-chain/standard-stream/main.go)
+consumes generated typed entities with chunk size two. It checks full completion,
+intentional early stop with `runtime.ErrStopStream`, cancellation, callback error
+and callback panic. Root spans and SQL diagnostics count only entities delivered
+to the callback, not prefetched rows. An independent query inside that callback
+does not inherit the stream root. Count, facets and relationship enhancement are
+explicitly unsupported in typed streams and rejected before SQL; use a list for
+those result shapes.
+
+The repository-wide gate includes Order, graph, Stream and startup examples:
+
+```bash
+TEAQL_TELEMETRY_GO_BINARY=/path/to/go-1.25-or-newer/bin/go bash scripts/verify-examples.sh
+```
+
+This is local source qualification, not a published optional-module release.
+
 ## Use the published runtime
 
 Current documented runtime: **v0.3.0**. Keep domain-library and runtime

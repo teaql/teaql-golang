@@ -17,8 +17,9 @@ import (
 
 // Observe real requests/results only. No expected trace is injected into them.
 type bootstrapQueryFact struct {
-	comment, purpose string
-	metadata         data_service.ExecutionMetadata
+	comment, purpose         string
+	rootComment, rootPurpose string
+	metadata                 data_service.ExecutionMetadata
 }
 
 func (p *graphObserver) observeBootstrapQuery(request *data_service.QueryRequest, result *data_service.QueryResult) {
@@ -26,7 +27,11 @@ func (p *graphObserver) observeBootstrapQuery(request *data_service.QueryRequest
 		panic("bootstrap query omitted request-owned intent")
 	}
 	p.mu.Lock()
-	p.queryFacts = append(p.queryFacts, bootstrapQueryFact{*request.Comment, *request.Purpose, result.Metadata})
+	root := request.Scope().Root()
+	p.queryFacts = append(p.queryFacts, bootstrapQueryFact{
+		comment: *request.Comment, purpose: *request.Purpose,
+		rootComment: root.Comment(), rootPurpose: root.Purpose(), metadata: result.Metadata,
+	})
 	p.mu.Unlock()
 }
 

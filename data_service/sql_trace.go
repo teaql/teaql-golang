@@ -10,6 +10,11 @@ func ApplyQuerySQLTrace(metadata *ExecutionMetadata, request *QueryRequest) {
 	source := core.QueryTraceSource(request.Query.Entity, request.TraceChain, *request.Comment, *request.Purpose)
 	path := core.CanonicalSQLTracePath(source, metadata.Backend, "select")
 	metadata.TraceChain, metadata.Comment, metadata.Purpose = path.TraceChain, path.Comment, path.Purpose
+	if scope := request.Scope(); scope != nil {
+		metadata.RequestTraceChain = scope.Recover()
+		comment, purpose := scope.Comment(), scope.Purpose()
+		metadata.Comment, metadata.Purpose = &comment, &purpose
+	}
 	metadata.AuditReason = path.AuditReason
 }
 

@@ -239,7 +239,8 @@ func assertAggregateRaw(t *testing.T, e *environment, root string, routes [][]st
 		if !reflect.DeepEqual(fact.metadata.TraceChain, want) {
 			t.Fatalf("aggregate raw path mismatch: got %v want %v", fact.metadata.TraceChain, want)
 		}
-		if fact.comment != comment || fact.purpose != purpose || fact.metadata.Comment == nil || *fact.metadata.Comment != comment ||
+		assertQueryBusinessIntent(t, fact.metadata, comment, purpose)
+		if fact.rootComment != comment || fact.rootPurpose != purpose || fact.metadata.Comment == nil || *fact.metadata.Comment != fact.comment ||
 			fact.metadata.Purpose == nil || *fact.metadata.Purpose != purpose || fact.metadata.ExecutionOutcome != "success" {
 			t.Fatal("aggregate raw intent or physical outcome mismatch")
 		}

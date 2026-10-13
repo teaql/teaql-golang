@@ -31,8 +31,9 @@ func ExecuteFacets(
 // FacetPlan owns an invocation's selections. Capture before policy or provider
 // callbacks; never reread the caller's QueryOptions after row execution begins.
 type FacetPlan struct {
-	facets    []capturedFacet
-	relations map[string]*FacetPlan
+	countOperation *core.QueryOperation
+	facets         []capturedFacet
+	relations      map[string]*FacetPlan
 }
 
 func CaptureFacetPlan(options *core.QueryOptions) (*FacetPlan, error) {
@@ -73,7 +74,9 @@ func captureQueryPlan(query *core.SelectQuery, options *core.QueryOptions, queri
 			return nil, nil, fmt.Errorf("nil relation selection")
 		}
 		if load.Query == nil && load.Selection == nil {
-			captured.Relations = append(captured.Relations, core.NewRelationLoad(load.Name))
+			owned := core.NewRelationLoad(load.Name)
+			owned.Operation = load.Operation.Clone()
+			captured.Relations = append(captured.Relations, owned)
 			continue
 		}
 		var childQuery *core.SelectQuery
@@ -88,9 +91,11 @@ func captureQueryPlan(query *core.SelectQuery, options *core.QueryOptions, queri
 			return nil, nil, err
 		}
 		captured.RelationQuery(load.Name, childQuery)
+		captured.Relations[len(captured.Relations)-1].Operation = load.Operation.Clone()
 		plan.relations[load.Name] = childPlan
 	}
 	if options != nil {
+		plan.countOperation = options.PageCountOperation.Clone()
 		for _, facet := range options.Facets {
 			if facet == nil || facet.Query == nil || facet.Query.Query == nil {
 				return nil, nil, fmt.Errorf("facet requires a nested query")
@@ -100,7 +105,7 @@ func captureQueryPlan(query *core.SelectQuery, options *core.QueryOptions, queri
 				return nil, nil, err
 			}
 			plan.facets = append(plan.facets, capturedFacet{name: facet.FacetName, relation: facet.RelationName,
-				query: child, includeAll: facet.IncludeAllFacets, children: childPlan.facets, plan: childPlan})
+				query: child, includeAll: facet.IncludeAllFacets, children: childPlan.facets, plan: childPlan, operation: facet.Operation.Clone()})
 		}
 	}
 	return captured, plan, nil
@@ -196,6 +201,7 @@ func (p *FacetPlan) Execute(context stdcontext.Context, service *RuntimeDataServ
 }
 
 type capturedFacet struct {
+	operation      *core.QueryOperation
 	name, relation string
 	query          *core.SelectQuery
 	includeAll     bool
@@ -215,8 +221,48 @@ func executeCapturedFacets(context stdcontext.Context, service *RuntimeDataServi
 	facets []capturedFacet, inherited logprivacy.IntentSource) (map[string]*core.SmartList[core.Record], error) {
 	results := make(map[string]*core.SmartList[core.Record])
 	for _, facet := range facets {
-		membership := outer.ForExactCount("__teaql_facet_count")
+		rootRequest, err := data_service.NewQueryRequest(outer)
+		if err != nil {
+			return nil, err
+		}
+		operation := facet.operation
+		if operation == nil {
+			operation = &core.QueryOperation{Kind: "facet", Relation: facet.relation,
+				RuntimeComment: "facet " + facet.relation + " as " + facet.name}
+		}
+		parent, err := rootRequest.Scope().Operation(*operation)
+		if err != nil {
+			return nil, err
+		}
+		relationLabel := parent.Relation()
+		if relationLabel == "" {
+			relationLabel = facet.relation
+		}
+		aggregateScope, err := parent.Helper(outer.Entity, "aggregate "+relationLabel)
+		if err != nil {
+			return nil, err
+		}
+		countAliases := make([]string, 0)
+		for _, aggregate := range facet.query.Aggregates {
+			if aggregate != nil && aggregate.Function == core.AggCount {
+				countAliases = append(countAliases, aggregate.Alias)
+			}
+		}
+		countAlias := "__teaql_facet_count"
+		if len(countAliases) > 0 {
+			countAlias = countAliases[0]
+		}
+		membership := outer.ForExactCount(countAlias)
+		if len(countAliases) > 1 {
+			for _, alias := range countAliases[1:] {
+				membership.Aggregates = append(membership.Aggregates, core.AggCountField("id", alias))
+			}
+		}
 		membership.GroupBy = []string{facet.relation}
+		membership, err = membership.WithQueryRequestScope(aggregateScope)
+		if err != nil {
+			return nil, err
+		}
 		intent := inherited
 		rows, err := service.fetchAllWithIntent(context, membership, &intent)
 		if err != nil {
@@ -240,7 +286,7 @@ func executeCapturedFacets(context stdcontext.Context, service *RuntimeDataServi
 				value, ok = row[membershipKey]
 			}
 			if ok && value.V != nil {
-				count, valid := row["__teaql_facet_count"].TryU64()
+				count, valid := row[countAlias].TryU64()
 				if valid {
 					counts[fmt.Sprint(value.V)] = count
 					membershipIDs = append(membershipIDs, core.CloneValue(value))
@@ -253,19 +299,32 @@ func executeCapturedFacets(context stdcontext.Context, service *RuntimeDataServi
 		}
 
 		nested := facet.query.Clone()
-		nested.CommentText, nested.PurposeText = outer.CommentText, outer.PurposeText
+		valueScope, err := parent.Child(nested.Entity, nested.CommentText)
+		if err != nil {
+			return nil, err
+		}
+		nested, err = nested.WithQueryRequestScope(valueScope)
+		if err != nil {
+			return nil, err
+		}
 		nested.TraceChain = core.QueryTraceSource(outer.Entity, outer.TraceChain, *outer.CommentText, *outer.PurposeText)
 		if relation := facetRelation(descriptor, facet.relation, nested.Entity); relation != nil {
 			nested.TraceChain = append(nested.TraceChain, core.NewTypedTraceNode("relation", relation.Name, outer.Entity+"."+relation.Name))
 		}
-		countAliases := make([]string, 0)
-		for _, aggregate := range nested.Aggregates {
-			if aggregate.Function == core.AggCount {
-				countAliases = append(countAliases, aggregate.Alias)
-			}
-		}
 		nested.Aggregates = nil
 		nested.GroupBy = nil
+		// Reverse sums are over the complete filtered outer membership, not
+		// the page slice and not every order with the same status.
+		for _, aggregate := range nested.RelationAggregates {
+			if aggregate == nil || aggregate.Query == nil || aggregate.Query.Entity != outer.Entity || descriptor == nil {
+				continue
+			}
+			source := outer.ForExactCount("__teaql_facet_source")
+			source.Aggregates = nil
+			child := aggregate.Query.Clone()
+			child.AndFilter(core.ExprInSubQuery("id", descriptor, source, "id"))
+			aggregate.Query = child
+		}
 		if !facet.includeAll {
 			nested.AndFilter(core.ExprInList("id", membershipIDs))
 		}

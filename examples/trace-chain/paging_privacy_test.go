@@ -74,9 +74,10 @@ func TestGeneratedPageCountPrivacyAndIndependentGraphSaves(t *testing.T) {
 		if strings.Contains(string(payload), privateName) {
 			t.Fatal("page/count/relation safe metadata leaked child secret")
 		}
-		if statement.Comment == nil || statement.Purpose == nil || !strings.Contains(*statement.Comment, group) || !strings.Contains(*statement.Purpose, group) {
+		if len(statement.RequestTraceChain) < 2 || statement.Purpose == nil || !strings.Contains(statement.RequestTraceChain[1].Comment, group) || !strings.Contains(*statement.Purpose, group) {
 			t.Fatal("ordinary intent was lost")
 		}
+		assertQueryBusinessIntent(t, statement, statement.RequestTraceChain[1].Comment, *statement.Purpose)
 		path := statement.TraceChain
 		if len(path) < 4 || path[0].Name != "Customer Order" || path[len(path)-2].Kind != "provider" || path[len(path)-1].Kind != "sql" {
 			t.Fatal("derived SQL lost canonical request path")

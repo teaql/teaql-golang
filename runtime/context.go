@@ -387,6 +387,28 @@ func UserContextFrom(context stdcontext.Context) (*UserContext, bool) {
 	return value, ok
 }
 
+// Preserve service access before deriving a native operation context. In
+// particular, replacing UserContext.Context with a deadline must not detach
+// ordinary SQL logging, statement observation or committed audit delivery.
+// These keys carry services only: invocation scopes and mutation ledgers remain
+// owned by each request/graph. Explicit service overrides are left intact.
+func preserveRuntimeContextServices(context stdcontext.Context) stdcontext.Context {
+	user, ok := UserContextFrom(context)
+	if !ok {
+		return context
+	}
+	if context.Value(userContextKey{}) == nil {
+		context = stdcontext.WithValue(context, userContextKey{}, user)
+	}
+	if context.Value(mutationaudit.ContextKey{}) == nil {
+		context = stdcontext.WithValue(context, mutationaudit.ContextKey{}, user)
+	}
+	if context.Value(data_service.SQLStatementObserverKey{}) == nil {
+		context = stdcontext.WithValue(context, data_service.SQLStatementObserverKey{}, user)
+	}
+	return context
+}
+
 type RuntimeTelemetrySink interface {
 	RecordExecutionMetadata(data_service.ExecutionMetadata)
 }
@@ -428,9 +450,9 @@ func (s *TextDiagnosticSQLLogSink) WriteSQLLog(metadata data_service.ExecutionMe
 	} else if metadata.AffectedRows != nil {
 		summary = fmt.Sprintf("%d rows affected", *metadata.AffectedRows)
 	}
-	fmt.Fprintf(s.writer, "[TeaQL SQL][%s][%dus] %s outcome=%s comment=%q purpose=%q auditReason=%q tracePath=%v mutationLineage=%v\nSQL omission reason: %s\nDebug SQL: %s\n",
+	fmt.Fprintf(s.writer, "[TeaQL SQL][%s][%dus] %s outcome=%s comment=%q purpose=%q auditReason=%q traceChain=%v tracePath=%v mutationLineage=%v\nSQL omission reason: %s\nDebug SQL: %s\n",
 		strings.ToLower(string(metadata.Operation)), duration, summary, metadata.ExecutionOutcome,
-		sqlLogText(metadata.Comment), sqlLogText(metadata.Purpose), sqlLogText(metadata.AuditReason), metadata.TraceChain,
+		sqlLogText(metadata.Comment), sqlLogText(metadata.Purpose), sqlLogText(metadata.AuditReason), metadata.RequestTraceChain, metadata.TraceChain,
 		metadata.MutationLineage,
 		metadata.OmissionReason, sqlLogText(metadata.DebugQuery))
 }
@@ -462,9 +484,9 @@ func (s *SensitiveDiagnosticSQLLogSink) WriteSQLLog(metadata data_service.Execut
 	} else if metadata.AffectedRows != nil {
 		summary = fmt.Sprintf("%d rows affected", *metadata.AffectedRows)
 	}
-	fmt.Fprintf(s.writer, "[TeaQL SENSITIVE SQL][%s][%dus] %s outcome=%s comment=%q purpose=%q auditReason=%q tracePath=%v mutationLineage=%v\nSQL omission reason: %s\nDebug SQL: %s\n",
+	fmt.Fprintf(s.writer, "[TeaQL SENSITIVE SQL][%s][%dus] %s outcome=%s comment=%q purpose=%q auditReason=%q traceChain=%v tracePath=%v mutationLineage=%v\nSQL omission reason: %s\nDebug SQL: %s\n",
 		strings.ToLower(string(metadata.Operation)), duration, summary, metadata.ExecutionOutcome,
-		sqlLogText(metadata.Comment), sqlLogText(metadata.Purpose), sqlLogText(metadata.AuditReason), metadata.TraceChain,
+		sqlLogText(metadata.Comment), sqlLogText(metadata.Purpose), sqlLogText(metadata.AuditReason), metadata.RequestTraceChain, metadata.TraceChain,
 		metadata.MutationLineage,
 		metadata.OmissionReason, sqlLogText(metadata.DebugQuery))
 }
@@ -562,13 +584,25 @@ func emitDiagnosticSafely(deliver func()) {
 }
 
 func (c *UserContext) RecordExecutionMetadata(metadata data_service.ExecutionMetadata) {
+	// Optional/custom telemetry is diagnostic and must remain fail-open, including capability checks.
+	defer func() { _ = recover() }()
 	isQuery := metadata.Operation == data_service.OpQuery
-	if (isQuery && !c.querySQLLogEnabled) || (!isQuery && !c.mutationSQLLogEnabled) {
+	logging := (isQuery && c.querySQLLogEnabled) || (!isQuery && c.mutationSQLLogEnabled)
+	diagnostics, export := c.RuntimeTelemetry().(SQLRuntimeTelemetry)
+	if export {
+		export = diagnostics.RecordsSQLDiagnostics()
+	}
+	if !logging && !export {
 		return
 	}
 	// Projection is also part of diagnostics, not the business operation.
-	defer func() { _ = recover() }()
 	redacted := redactedExecutionMetadata(metadata)
+	if export && metadata.SQLCorrelation != nil {
+		emitDiagnosticSafely(func() { diagnostics.RecordDiagnostic(sqlDiagnosticEvent(redacted, *metadata.SQLCorrelation)) })
+	}
+	if !logging {
+		return
+	}
 	if c.runtimeTelemetrySink != nil {
 		emitDiagnosticSafely(func() { c.runtimeTelemetrySink.RecordExecutionMetadata(redacted) })
 	}
@@ -607,7 +641,7 @@ func NewUserContext() *UserContext {
 		idSetCountAccuracy:                "UNKNOWN",
 		continuousPagePlan:                "DISABLED",
 		userIdentifier:                    "main",
-		runtimeTelemetry:                  NoopRuntimeTelemetry{},
+		runtimeTelemetry:                  defaultRuntimeTelemetry(),
 		diagnosticSQLLogSink:              NewTextDiagnosticSQLLogSink(os.Stderr),
 		querySQLLogEnabled:                true,
 		mutationSQLLogEnabled:             true,
@@ -616,6 +650,7 @@ func NewUserContext() *UserContext {
 	}
 	context.Context = stdcontext.WithValue(context.Context, userContextKey{}, context)
 	context.Context = stdcontext.WithValue(context.Context, mutationaudit.ContextKey{}, context)
+	context.Context = stdcontext.WithValue(context.Context, data_service.SQLStatementObserverKey{}, context)
 	return context
 }
 
@@ -724,7 +759,7 @@ func (c *UserContext) ExecuteGraphSave(intent core.MutationIntent, work func() e
 	// from joining whichever transaction happens to be active on this context.
 	c.graphSaveGate.Lock()
 	defer c.graphSaveGate.Unlock()
-	return c.executeGraphSave(work, false)
+	return c.observeGraphSave(func(ctx stdcontext.Context) error { return c.executeGraphSave(ctx, work, false) })
 }
 
 // ExecutePlannedGraphSave reviews the immutable, complete graph mutation plan
@@ -733,6 +768,10 @@ func (c *UserContext) ExecuteGraphSave(intent core.MutationIntent, work func() e
 func (c *UserContext) ExecutePlannedGraphSave(plan *MutationPlan, work func() error) error {
 	c.graphSaveGate.Lock()
 	defer c.graphSaveGate.Unlock()
+	return c.observeGraphSave(func(ctx stdcontext.Context) error { return c.executePlannedGraphSave(ctx, plan, work) })
+}
+
+func (c *UserContext) executePlannedGraphSave(ctx stdcontext.Context, plan *MutationPlan, work func() error) error {
 	snapshot, err := c.ReviewMutationPlan(plan)
 	if err != nil {
 		return err
@@ -745,7 +784,7 @@ func (c *UserContext) ExecutePlannedGraphSave(plan *MutationPlan, work func() er
 		c.activeMutationGovernance = nil
 		c.graphSaveMu.Unlock()
 	}()
-	return c.executeGraphSave(work, false)
+	return c.executeGraphSave(ctx, work, false)
 }
 
 // ExecutePreparedGraphSave gives generated root Save methods one governed
@@ -765,8 +804,19 @@ func (c *UserContext) ExecutePreparedGraphSave(
 	}
 	c.graphSaveGate.Lock()
 	defer c.graphSaveGate.Unlock()
+	return c.observeGraphSave(func(ctx stdcontext.Context) error { return c.executePreparedGraphSave(ctx, intent, prepare, work) })
+}
+
+func (c *UserContext) executePreparedGraphSave(ctx stdcontext.Context, intent core.MutationIntent,
+	prepare func() (*MutationPlan, error), work func() error) error {
 
 	c.startGraphPreparation()
+	transferred := false
+	defer func() {
+		if !transferred {
+			c.finishGraphPreparation()
+		}
+	}()
 	plan, err := prepare()
 	if err != nil {
 		c.finishGraphPreparation()
@@ -789,7 +839,8 @@ func (c *UserContext) ExecutePreparedGraphSave(
 		c.activeMutationGovernance = nil
 		c.graphSaveMu.Unlock()
 	}()
-	return c.executeGraphSave(work, true)
+	transferred = true
+	return c.executeGraphSave(ctx, work, true)
 }
 
 func (c *UserContext) startGraphPreparation() {
@@ -807,26 +858,47 @@ func (c *UserContext) finishGraphPreparation() {
 	c.graphSaveMu.Unlock()
 }
 
-func (c *UserContext) executeGraphSave(work func() error, preparationStarted bool) error {
+func (c *UserContext) observeGraphSave(work func(stdcontext.Context) error) (err error) {
+	operationContext, operation := StartRuntimeOperation(c, c.RuntimeTelemetry(), NewRuntimeOperation("mutation", "graph.save", nil))
+	completed := false
+	defer func() {
+		if err != nil {
+			operation.Failure(RuntimeErrorType(err))
+		} else if !completed {
+			operation.Failure("graph_interrupted")
+		} else {
+			operation.Success(nil)
+		}
+	}()
+	err = work(operationContext)
+	completed = true
+	return err
+}
+
+func (c *UserContext) executeGraphSave(operationContext stdcontext.Context, work func() error, preparationStarted bool) (err error) {
+	transactionOwnsPreparation := false
+	defer func() {
+		// Begin may return an error or panic before the transaction cleanup is
+		// installed. Preparation still belongs to this invocation in either case.
+		if preparationStarted && !transactionOwnsPreparation {
+			c.finishGraphPreparation()
+		}
+	}()
 	c.graphSaveMu.Lock()
 	provider := c.resources["dataService"]
 	originalIDGenerator, hadIDGenerator := c.resources["idGenerator"]
+	c.graphSaveMu.Unlock()
 	executor, ok := provider.(data_service.TransactionExecutor)
 	if !ok {
-		c.graphSaveMu.Unlock()
-		if preparationStarted {
-			c.finishGraphPreparation()
-		}
 		return fmt.Errorf("configured dataService does not support graph transactions")
 	}
-	transaction, err := executor.Begin(c)
+	transaction, err := executor.Begin(operationContext)
 	if err != nil {
-		c.graphSaveMu.Unlock()
-		if preparationStarted {
-			c.finishGraphPreparation()
-		}
 		return err
 	}
+	// The carrier follows the actual transaction instead of rewriting c.Context.
+	transaction = bindGraphTelemetryTransaction(transaction, operationContext)
+	c.graphSaveMu.Lock()
 	c.graphSaveActive = true
 	c.graphCommitActions = nil
 	c.graphRollbackActions = nil
@@ -839,16 +911,46 @@ func (c *UserContext) executeGraphSave(work func() error, preparationStarted boo
 		c.resources["idGenerator"] = transaction
 	}
 	c.graphSaveMu.Unlock()
+	transactionOwnsPreparation = true
+	transactionFinished := false
+	defer func() {
+		if !transactionFinished {
+			// A business/provider panic must roll back and release the shared save
+			// gate without a cleanup panic replacing the original panic.
+			func() {
+				defer func() { _ = recover() }()
+				_ = transaction.Rollback(operationContext)
+				for index := len(c.graphRollbackActions) - 1; index >= 0; index-- {
+					c.graphRollbackActions[index]()
+				}
+			}()
+		}
+		c.graphSaveMu.Lock()
+		c.resources["dataService"] = provider
+		if hadIDGenerator {
+			c.resources["idGenerator"] = originalIDGenerator
+		} else {
+			delete(c.resources, "idGenerator")
+		}
+		c.graphSaveActive = false
+		c.graphCommitActions = nil
+		c.graphRollbackActions = nil
+		c.graphFixTime = time.Time{}
+		c.lastFixEvidence = append([]FixEvidence(nil), c.currentFixEvidence...)
+		c.currentFixEvidence = nil
+		c.graphSaveMu.Unlock()
+	}()
 
 	err = work()
 	committed := false
 	if err == nil {
-		err = transaction.Commit(c)
+		err = transaction.Commit(operationContext)
 		var afterCommit *data_service.MutationCommittedError
 		committed = err == nil || errors.As(err, &afterCommit)
 	}
 	if !committed {
-		rollbackErr := transaction.Rollback(c)
+		rollbackErr := transaction.Rollback(operationContext)
+		transactionFinished = true
 		for index := len(c.graphRollbackActions) - 1; index >= 0; index-- {
 			c.graphRollbackActions[index]()
 		}
@@ -856,6 +958,7 @@ func (c *UserContext) executeGraphSave(work func() error, preparationStarted boo
 			err = fmt.Errorf("graph save failed: %w; rollback failed: %v", err, rollbackErr)
 		}
 	} else {
+		transactionFinished = true
 		for _, action := range c.graphCommitActions {
 			if actionErr := action(); actionErr != nil && err == nil {
 				err = &GraphCommittedError{Cause: actionErr}
@@ -863,20 +966,6 @@ func (c *UserContext) executeGraphSave(work func() error, preparationStarted boo
 		}
 	}
 
-	c.graphSaveMu.Lock()
-	c.resources["dataService"] = provider
-	if hadIDGenerator {
-		c.resources["idGenerator"] = originalIDGenerator
-	} else {
-		delete(c.resources, "idGenerator")
-	}
-	c.graphSaveActive = false
-	c.graphCommitActions = nil
-	c.graphRollbackActions = nil
-	c.graphFixTime = time.Time{}
-	c.lastFixEvidence = append([]FixEvidence(nil), c.currentFixEvidence...)
-	c.currentFixEvidence = nil
-	c.graphSaveMu.Unlock()
 	return err
 }
 

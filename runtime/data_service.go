@@ -59,6 +59,31 @@ type RuntimeDataService struct {
 	executor data_service.DataServiceExecutor
 }
 
+// Explicit context-local ownership of one query invocation. Root identity and
+// service identity both matter; unrelated nested/concurrent queries never reuse
+// this operation merely because a parent span happens to be active.
+type listOperationKey struct{}
+type listOperationOwner struct {
+	service *RuntimeDataService
+	root    *core.QueryRequestScope
+}
+
+func (s *RuntimeDataService) ownsListOperation(ctx stdcontext.Context, root *core.QueryRequestScope) bool {
+	owner, ok := ctx.Value(listOperationKey{}).(listOperationOwner)
+	return ok && owner.service == s && owner.root == root
+}
+
+func (s *RuntimeDataService) startListOperation(ctx stdcontext.Context, query *core.SelectQuery, root *core.QueryRequestScope) (stdcontext.Context, RuntimeTelemetryScope) {
+	telemetry := RuntimeTelemetry(NoopRuntimeTelemetry{})
+	if user, ok := UserContextFrom(ctx); ok {
+		telemetry = user.RuntimeTelemetry()
+	}
+	child, scope := StartRuntimeOperation(ctx, telemetry, NewRuntimeOperation("query", query.Entity+".list", map[string]RuntimeAttributeValue{
+		"teaql.entity.type": query.Entity,
+	}))
+	return stdcontext.WithValue(child, listOperationKey{}, listOperationOwner{service: s, root: root}), scope
+}
+
 func NewRuntimeDataService(metadata MetadataStore, executor data_service.DataServiceExecutor) *RuntimeDataService {
 	return &RuntimeDataService{
 		metadata: metadata,
@@ -99,21 +124,17 @@ func (s *RuntimeDataService) fetchAllWithIntent(context stdcontext.Context, quer
 		return nil, err
 	}
 	query = request.Query
-	userCtx, _ := UserContextFrom(context)
-	telemetry := RuntimeTelemetry(NoopRuntimeTelemetry{})
-	if userCtx != nil {
-		telemetry = userCtx.RuntimeTelemetry()
+	if !s.ownsListOperation(context, request.Scope().Root()) {
+		var scope RuntimeTelemetryScope
+		context, scope = s.startListOperation(context, query, request.Scope().Root())
+		defer func() {
+			if err != nil {
+				scope.Failure(RuntimeErrorType(err))
+			} else {
+				scope.Success(map[string]RuntimeAttributeValue{"teaql.result.cardinality": len(rows)})
+			}
+		}()
 	}
-	context, scope := StartRuntimeOperation(context, telemetry, NewRuntimeOperation("query", query.Entity+".list", map[string]RuntimeAttributeValue{
-		"teaql.entity.type": query.Entity,
-	}))
-	defer func() {
-		if err != nil {
-			scope.Failure(RuntimeErrorType(err))
-		} else {
-			scope.Success(map[string]RuntimeAttributeValue{"teaql.result.cardinality": len(rows)})
-		}
-	}()
 	prepared := cloneSelectQuery(query, query.Entity)
 	if s.metadata != nil {
 		if descriptor := s.metadata.Entity(query.Entity); descriptor != nil {
@@ -211,6 +232,16 @@ func (s *RuntimeDataService) prepareIDSetPage(context stdcontext.Context, query 
 			idQuery.Slice = nil
 			idQuery.Limit(options.MaxIDs + 1)
 			idQuery.IDSetPagination = nil
+			helper, scopeErr := query.QueryRequestScope().Helper(query.Entity, "collect "+query.Entity+" IDs for pagination")
+			if scopeErr != nil {
+				userCtx.ObserveIDSet("ID_SET_FALLBACK_UNSUPPORTED_SHAPE", "UNKNOWN", 0)
+				return query, nil, false
+			}
+			idQuery, scopeErr = idQuery.WithQueryRequestScope(helper)
+			if scopeErr != nil {
+				userCtx.ObserveIDSet("ID_SET_FALLBACK_UNSUPPORTED_SHAPE", "UNKNOWN", 0)
+				return query, nil, false
+			}
 			idRows, fetchErr := s.fetchRows(context, idQuery)
 			if fetchErr != nil {
 				userCtx.ObserveIDSet("ID_SET_FALLBACK_STORE_UNAVAILABLE", "UNKNOWN", 0)
@@ -540,8 +571,15 @@ func (s *RuntimeDataService) enhanceRelations(context stdcontext.Context, parent
 			}
 		}
 		childQuery := cloneSelectQuery(load.Query, relation.TargetEntity)
-		childQuery.CommentText = query.CommentText
-		childQuery.PurposeText = query.PurposeText
+		operation := load.Operation
+		if operation == nil {
+			operation = &core.QueryOperation{Kind: "relation", Relation: load.Name, RuntimeComment: "select relation " + load.Name}
+		}
+		childRequest, bindErr := (&data_service.QueryRequest{Query: query}).Derive(childQuery, operation)
+		if bindErr != nil {
+			return bindErr
+		}
+		childQuery = childRequest.Query
 		childQuery.TraceChain = append(core.QueryTraceSource(query.Entity, query.TraceChain, *query.CommentText, *query.PurposeText),
 			core.NewTypedTraceNode("relation", load.Name, query.Entity+"."+load.Name))
 		EnsureRelationProjection(childQuery, relation.ForKey)
@@ -720,8 +758,16 @@ func (s *RuntimeDataService) enhanceRelationAggregates(context stdcontext.Contex
 			continue
 		}
 		childQuery := cloneSelectQuery(aggregate.Query, relation.TargetEntity)
-		childQuery.CommentText = query.CommentText
-		childQuery.PurposeText = query.PurposeText
+		operation := aggregate.Operation
+		if operation == nil {
+			operation = &core.QueryOperation{Kind: "aggregate", Relation: aggregate.RelationName,
+				RuntimeComment: "aggregate " + aggregate.RelationName + " as " + aggregate.Alias}
+		}
+		childRequest, bindErr := (&data_service.QueryRequest{Query: query}).DeriveAggregate(childQuery, operation)
+		if bindErr != nil {
+			return bindErr
+		}
+		childQuery = childRequest.Query
 		childQuery.TraceChain = append(core.QueryTraceSource(query.Entity, query.TraceChain, *query.CommentText, *query.PurposeText),
 			core.NewTypedTraceNode("relation", aggregate.RelationName, query.Entity+"."+aggregate.RelationName))
 		childQuery.Projection = nil

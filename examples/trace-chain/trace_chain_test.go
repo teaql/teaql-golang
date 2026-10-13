@@ -738,9 +738,14 @@ func TestGeneratedThreeLevelQueryTrace(t *testing.T) {
 	}
 	wantRelations := []string{"paymentEntity", "customerOrderEntity", "platformEntity"}
 	wantOwners := []string{"Payment Attempt", "Payment", "Customer Order"}
+	wantLocalComments := []string{"load three relation levels", "load Payment", "load Customer Order", "load Platform"}
 	for index, statement := range metadata {
-		if statement.Operation != data_service.OpQuery || statement.Comment == nil || *statement.Comment != "load three relation levels" || statement.Purpose == nil || *statement.Purpose != "verify physical query provenance" {
+		if statement.Operation != data_service.OpQuery || statement.Comment == nil || *statement.Comment != wantLocalComments[index] || statement.Purpose == nil || *statement.Purpose != "verify physical query provenance" {
 			t.Fatal("derived request lost root intent")
+		}
+		assertQueryBusinessIntent(t, statement, "load three relation levels", "verify physical query provenance")
+		if len(statement.RequestTraceChain) != 2+2*index {
+			t.Fatal("derived request lost operation/local-comment nodes")
 		}
 		frames := statement.TraceChain
 		if len(frames) != 4+index || frames[0].Name != "Payment Attempt" || frames[0].Kind != "operation" || frames[1].Kind != "request" || frames[len(frames)-2].Kind != "provider" || frames[len(frames)-1].Name != "select" {
@@ -760,6 +765,26 @@ func TestGeneratedThreeLevelQueryTrace(t *testing.T) {
 	}
 	if len(e.sink.snapshot()) != 0 {
 		t.Fatal("read-only query emitted mutation audit")
+	}
+}
+
+// Business ancestry is distinct from the existing physical-path oracle. A
+// descendant owns its local comment; the root comment remains the second node.
+func assertQueryBusinessIntent(t *testing.T, statement data_service.ExecutionMetadata, rootComment, purpose string) {
+	t.Helper()
+	chain := statement.RequestTraceChain
+	if len(chain) < 2 || chain[0] == nil || chain[1] == nil || chain[0].Kind != "purpose" ||
+		chain[0].Comment != purpose || chain[1].Kind != "comment" || chain[1].Comment != rootComment {
+		t.Fatalf("query lost root business ancestry: %+v", chain)
+	}
+	for _, node := range chain {
+		if node == nil || strings.TrimSpace(node.Comment) == "" {
+			t.Fatal("query ancestry contains an empty request comment")
+		}
+	}
+	if statement.Purpose == nil || *statement.Purpose != purpose || statement.Comment == nil ||
+		*statement.Comment != chain[len(chain)-1].Comment {
+		t.Fatal("query diagnostic fields do not match the owning request")
 	}
 }
 
