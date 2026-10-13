@@ -4,7 +4,7 @@ go 1.25.0
 
 require (
 	github.com/shopspring/decimal v1.4.0
-	github.com/teaql/teaql-golang v0.3.0
+	github.com/teaql/teaql-golang v0.3.1
 	github.com/teaql/teaql-golang/telemetry/standard v0.0.0
 	request-tree-order-service-core-workspace/lib v0.0.0
 )
