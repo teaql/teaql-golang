@@ -1490,6 +1490,7 @@ func (c *UserContext) SetTimezone(val any) {
 
 func (c *UserContext) SetTraceId(val any) {
 	c.resources["set_trace_id"] = val
+	c.resources["trace_id"] = val
 }
 
 func (c *UserContext) SetUserIdentifier(val any) {
@@ -1518,7 +1519,7 @@ func (c *UserContext) Timezone(args ...any) any {
 }
 
 func (c *UserContext) TraceId(args ...any) any {
-	return nil
+	return c.resources["trace_id"]
 }
 
 func (c *UserContext) TranslateCheckResults(args ...any) {
@@ -1716,6 +1717,7 @@ func (c *UserContext) WithTimezone(val any) *UserContext {
 
 func (c *UserContext) WithTraceId(val any) *UserContext {
 	c.resources["with_trace_id"] = val
+	c.SetTraceId(val)
 	return c
 }
 

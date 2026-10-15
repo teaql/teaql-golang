@@ -2,7 +2,7 @@
 set -euo pipefail
 
 repo="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-expected=(basic business-id conformance mutation-policy order-management school-management security-foundations task_board trace-chain)
+expected=(basic business-id conformance mutation-policy object-storage order-management school-management security-foundations task_board trace-chain)
 mapfile -t actual < <(find "$repo/examples" -mindepth 1 -maxdepth 1 -type d -printf '%f\n' | sort)
 if [[ "${actual[*]}" != "${expected[*]}" ]]; then
   echo "example inventory changed; update scripts/verify-examples.sh: ${actual[*]}" >&2
@@ -10,6 +10,7 @@ if [[ "${actual[*]}" != "${expected[*]}" ]]; then
 fi
 
 cd "$repo"
+bash examples/object-storage/verify.sh
 # An example must test this checkout, never an older published runtime. Go
 # ignores dependency-module replace directives. A library's standalone go.mod
 # can therefore resolve differently from its application. Bind every module in
