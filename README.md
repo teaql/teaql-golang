@@ -370,6 +370,7 @@ Request JSON is not allowed to replace those trusted capabilities.
 - [Mutation Policy example](examples/mutation-policy)
 - [Business ID example](examples/business-id)
 - [Trace Chain example](examples/trace-chain/README.md)
+- [Binary object storage and temporary S3 URLs](examples/object-storage/README.md)
 
 ## Safe troubleshooting
 
