@@ -43,6 +43,14 @@ func EnsureSoundex(db *sql.DB) error {
 		if err := sqliteConnection.RegisterCollation("TEAQL_DECIMAL", compareExactDecimal); err != nil {
 			return err
 		}
+		if err := sqliteConnection.RegisterFunc("teaql_decimal_valid", func(text string) int {
+			if _, err := decimal.NewFromString(text); err != nil {
+				return 0
+			}
+			return 1
+		}, true); err != nil {
+			return err
+		}
 		return sqliteConnection.RegisterAggregator("TEAQL_DECIMAL_SUM", func() *exactDecimalSum { return &exactDecimalSum{} }, true)
 	})
 }
@@ -202,8 +210,14 @@ func (d *SqliteDialect) SchemaTypeSql(dataType core.DataType, property *core.Pro
 		return "REAL", nil
 	case core.TypeDecimal:
 		// TEXT affinity preserves all base-10 digits; the collation keeps range
-		// predicates and ORDER BY numeric instead of lexical.
-		return "TEAQL_DECIMAL_TEXT COLLATE TEAQL_DECIMAL", nil
+		// predicates and ORDER BY numeric instead of lexical. Generated columns
+		// also reject malformed or non-TEXT values written outside TeaQL.
+		definition := "TEAQL_DECIMAL_TEXT COLLATE TEAQL_DECIMAL"
+		if property != nil {
+			column := d.QuoteIdent(property.ColName)
+			definition += " CHECK (" + column + " IS NULL OR (typeof(" + column + ") = 'text' AND teaql_decimal_valid(" + column + ")))"
+		}
+		return definition, nil
 	case core.TypeText:
 		return "VARCHAR(255)", nil
 	case core.TypeLargeText:
@@ -282,6 +296,11 @@ func VerifyExactDecimalSchema(db *sql.DB, entity *core.EntityDescriptor) error {
 		definition := `(?i)(?:^|[\s,(])` + regexp.QuoteMeta(quoteIdent(property.ColName)) + `\s+TEAQL_DECIMAL_TEXT\s+COLLATE\s+TEAQL_DECIMAL\b`
 		if !regexp.MustCompile(definition).MatchString(createSQL) {
 			return fmt.Errorf("SQLite Decimal column %s.%s must declare COLLATE TEAQL_DECIMAL; rebuild the table with the generated Decimal definition", entity.TabName, property.ColName)
+		}
+		column := regexp.QuoteMeta(quoteIdent(property.ColName))
+		valueCheck := `(?i)\bCHECK\s*\(\s*` + column + `\s+IS\s+NULL\s+OR\s*\(\s*typeof\(\s*` + column + `\s*\)\s*=\s*'text'\s+AND\s+teaql_decimal_valid\(\s*` + column + `\s*\)\s*\)\s*\)`
+		if !regexp.MustCompile(valueCheck).MatchString(createSQL) {
+			return fmt.Errorf("SQLite Decimal column %s.%s lacks the generated exact-value check; rebuild the table with the Decimal value check", entity.TabName, property.ColName)
 		}
 	}
 	return nil

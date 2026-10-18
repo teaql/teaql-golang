@@ -153,10 +153,18 @@ func TestExactDecimalSqliteStorageOrderingAndRoundTrip(t *testing.T) {
 	if err := EnsureSoundex(db); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := db.Exec("CREATE TABLE decimal_fixture (id INTEGER PRIMARY KEY, amount TEAQL_DECIMAL_TEXT COLLATE TEAQL_DECIMAL)"); err != nil {
+	entity := &core.EntityDescriptor{TabName: "decimal_fixture", Properties: []*core.PropertyDescriptor{
+		{Name: "id", ColName: "id", DataType: core.TypeI64, IsId: true},
+		{Name: "amount", ColName: "amount", DataType: core.TypeDecimal},
+	}}
+	dialect := &teaql_sql.DefaultSqlDialect{Dialect: &SqliteDialect{}}
+	ddl, err := dialect.CompileCreateTable(entity)
+	if err != nil {
 		t.Fatal(err)
 	}
-	entity := &core.EntityDescriptor{TabName: "decimal_fixture", Properties: []*core.PropertyDescriptor{{Name: "amount", ColName: "amount", DataType: core.TypeDecimal}}}
+	if _, err := db.Exec(ddl); err != nil {
+		t.Fatal(err)
+	}
 	if err := VerifyExactDecimalSchema(db, entity); err != nil {
 		t.Fatal(err)
 	}
@@ -223,6 +231,57 @@ func TestVerifyExactDecimalSchemaRejectsMissingNumericCollation(t *testing.T) {
 	entity := &core.EntityDescriptor{TabName: "decimal_without_collation", Properties: []*core.PropertyDescriptor{{Name: "amount", ColName: "amount", DataType: core.TypeDecimal}}}
 	if err := VerifyExactDecimalSchema(db, entity); err == nil || !strings.Contains(err.Error(), "COLLATE TEAQL_DECIMAL") {
 		t.Fatalf("expected missing Decimal collation error, got %v", err)
+	}
+}
+
+func TestExactDecimalSchemaRejectsMalformedDirectWrite(t *testing.T) {
+	db, err := sql.Open("sqlite3", ":memory:")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer db.Close()
+	if err := EnsureSoundex(db); err != nil {
+		t.Fatal(err)
+	}
+	entity := &core.EntityDescriptor{TabName: "decimal_fixture", Properties: []*core.PropertyDescriptor{
+		{Name: "amount", ColName: "amount", DataType: core.TypeDecimal},
+	}}
+	dialect := &teaql_sql.DefaultSqlDialect{Dialect: &SqliteDialect{}}
+	ddl, err := dialect.CompileCreateTable(entity)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := db.Exec(ddl); err != nil {
+		t.Fatal(err)
+	}
+	if err := VerifyExactDecimalSchema(db, entity); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := db.Exec("INSERT INTO decimal_fixture (amount) VALUES (?)", "1abc"); err == nil {
+		t.Fatal("generated exact Decimal schema accepted malformed direct write")
+	}
+	if _, err := db.Exec("INSERT INTO decimal_fixture (amount) VALUES (x'31')"); err == nil {
+		t.Fatal("generated exact Decimal schema accepted a BLOB value")
+	}
+}
+
+func TestVerifyExactDecimalSchemaRejectsMissingValueCheck(t *testing.T) {
+	db, err := sql.Open("sqlite3", ":memory:")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer db.Close()
+	if err := EnsureSoundex(db); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := db.Exec("CREATE TABLE unchecked_decimal (amount TEAQL_DECIMAL_TEXT COLLATE TEAQL_DECIMAL)"); err != nil {
+		t.Fatal(err)
+	}
+	entity := &core.EntityDescriptor{TabName: "unchecked_decimal", Properties: []*core.PropertyDescriptor{
+		{Name: "amount", ColName: "amount", DataType: core.TypeDecimal},
+	}}
+	if err := VerifyExactDecimalSchema(db, entity); err == nil || !strings.Contains(err.Error(), "value check") {
+		t.Fatalf("expected missing Decimal value check error, got %v", err)
 	}
 }
 
