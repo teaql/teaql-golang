@@ -4,6 +4,7 @@ import (
 	stdcontext "context"
 	"database/sql"
 	"fmt"
+	"regexp"
 	"strings"
 	"time"
 
@@ -15,11 +16,10 @@ import (
 )
 
 const DefaultIdSpaceTable = "teaql_id_space"
-const SqliteDecimalPrefix = "__teaql_decimal__:"
 
-// EnsureSoundex installs a deterministic SQLite-compatible soundex function
-// on the connection retained by this SQLite pool. It is intended to be called
-// by the generated EnsureSchema boundary.
+// EnsureSoundex installs the SQLite functions and collations required by the
+// generated schema, including soundex and exact Decimal ordering. The name is
+// retained for generated workspaces that already call it from EnsureSchema.
 func EnsureSoundex(db *sql.DB) error {
 	if db == nil {
 		return fmt.Errorf("sqlite database is nil")
@@ -37,8 +37,66 @@ func EnsureSoundex(db *sql.DB) error {
 		if !ok {
 			return fmt.Errorf("unexpected SQLite driver connection %T", driverConnection)
 		}
-		return sqliteConnection.RegisterFunc("soundex", sqliteCompatibleSoundex, true)
+		if err := sqliteConnection.RegisterFunc("soundex", sqliteCompatibleSoundex, true); err != nil {
+			return err
+		}
+		if err := sqliteConnection.RegisterCollation("TEAQL_DECIMAL", compareExactDecimal); err != nil {
+			return err
+		}
+		return sqliteConnection.RegisterAggregator("TEAQL_DECIMAL_SUM", func() *exactDecimalSum { return &exactDecimalSum{} }, true)
 	})
+}
+
+type exactDecimalSum struct {
+	total decimal.Decimal
+	seen  bool
+}
+
+func (aggregate *exactDecimalSum) Step(value any) error {
+	if value == nil {
+		return nil
+	}
+	var text string
+	switch typed := value.(type) {
+	case string:
+		text = typed
+	case []byte:
+		text = string(typed)
+	default:
+		return fmt.Errorf("exact Decimal SUM expected text, got %T", value)
+	}
+	parsed, err := decimal.NewFromString(text)
+	if err != nil {
+		return fmt.Errorf("invalid Decimal in SUM: %w", err)
+	}
+	aggregate.total = aggregate.total.Add(parsed)
+	aggregate.seen = true
+	return nil
+}
+
+func (aggregate *exactDecimalSum) Done() (any, error) {
+	if !aggregate.seen {
+		return nil, nil
+	}
+	return exactDecimalText(aggregate.total), nil
+}
+
+func compareExactDecimal(left, right string) int {
+	leftValue, leftErr := decimal.NewFromString(left)
+	rightValue, rightErr := decimal.NewFromString(right)
+	if leftErr != nil || rightErr != nil {
+		// Malformed externally written values fail when decoded as Decimal. The
+		// SQLite callback cannot return an error, so keep its ordering stable.
+		return strings.Compare(left, right)
+	}
+	return leftValue.Cmp(rightValue)
+}
+
+func exactDecimalText(value decimal.Decimal) string {
+	if value.Exponent() < 0 {
+		return value.StringFixed(-value.Exponent())
+	}
+	return value.String()
 }
 
 func sqliteCompatibleSoundex(value any) string {
@@ -113,6 +171,19 @@ func (d *SqliteDialect) Placeholder(index int) string {
 	return "?"
 }
 
+func (d *SqliteDialect) CompileExactDecimalAggregate(function core.AggregateFunction, field string) (string, error) {
+	switch function {
+	case core.AggSum:
+		return "TEAQL_DECIMAL_SUM(" + field + ")", nil
+	case core.AggMin:
+		return "MIN(" + field + ")", nil
+	case core.AggMax:
+		return "MAX(" + field + ")", nil
+	default:
+		return "", fmt.Errorf("SQLite exact Decimal aggregate %v requires an explicit precision policy or is unsupported", function)
+	}
+}
+
 func (d *SqliteDialect) CompileGbkFunction(entity *core.EntityDescriptor, args []*core.Expr, params *[]core.Value) (string, error) {
 	return "", fmt.Errorf("GBK function is not supported in sqlite")
 }
@@ -130,7 +201,9 @@ func (d *SqliteDialect) SchemaTypeSql(dataType core.DataType, property *core.Pro
 	case core.TypeF64:
 		return "REAL", nil
 	case core.TypeDecimal:
-		return "NUMERIC", nil
+		// TEXT affinity preserves all base-10 digits; the collation keeps range
+		// predicates and ORDER BY numeric instead of lexical.
+		return "TEAQL_DECIMAL_TEXT COLLATE TEAQL_DECIMAL", nil
 	case core.TypeText:
 		return "VARCHAR(255)", nil
 	case core.TypeLargeText:
@@ -154,6 +227,64 @@ func (d *SqliteDialect) CompileAddColumn(entity *core.EntityDescriptor, property
 	defWithoutNotNull := strings.Replace(def, " NOT NULL", "", -1)
 
 	return fmt.Sprintf("ALTER TABLE %s ADD COLUMN %s", d.QuoteIdent(entity.TabName), defWithoutNotNull), nil
+}
+
+// VerifyExactDecimalSchema rejects an existing NUMERIC table before generated
+// bootstrap or application writes can silently round modeled Decimal values.
+// Call this after CREATE TABLE IF NOT EXISTS in the generated EnsureSchema path.
+func VerifyExactDecimalSchema(db *sql.DB, entity *core.EntityDescriptor) error {
+	if db == nil || entity == nil {
+		return fmt.Errorf("SQLite Decimal schema verification requires a database and entity")
+	}
+	decimals := make([]*core.PropertyDescriptor, 0)
+	for _, property := range entity.Properties {
+		if property.DataType == core.TypeDecimal {
+			decimals = append(decimals, property)
+		}
+	}
+	if len(decimals) == 0 {
+		return nil
+	}
+	rows, err := db.Query("PRAGMA table_info(" + quoteIdent(entity.TabName) + ")")
+	if err != nil {
+		return err
+	}
+	defer rows.Close()
+	types := make(map[string]string)
+	for rows.Next() {
+		var cid, notNull, primaryKey int
+		var name, declaredType string
+		var defaultValue any
+		if err := rows.Scan(&cid, &name, &declaredType, &notNull, &defaultValue, &primaryKey); err != nil {
+			return err
+		}
+		types[strings.ToLower(name)] = declaredType
+	}
+	if err := rows.Err(); err != nil {
+		return err
+	}
+	if err := rows.Close(); err != nil {
+		return err
+	}
+	var createSQL string
+	if err := db.QueryRow("SELECT sql FROM sqlite_schema WHERE type='table' AND name=?", entity.TabName).Scan(&createSQL); err != nil {
+		return fmt.Errorf("read SQLite schema for %s: %w", entity.TabName, err)
+	}
+	for _, property := range decimals {
+		actual, exists := types[strings.ToLower(property.ColName)]
+		if !exists || !strings.EqualFold(actual, "TEAQL_DECIMAL_TEXT") {
+			if !exists {
+				actual = "<missing>"
+			}
+			return fmt.Errorf("SQLite Decimal column %s.%s has type %s; migrate to TEAQL_DECIMAL_TEXT before continuing (previously rounded NUMERIC/REAL values cannot be recovered automatically)",
+				entity.TabName, property.ColName, actual)
+		}
+		definition := `(?i)(?:^|[\s,(])` + regexp.QuoteMeta(quoteIdent(property.ColName)) + `\s+TEAQL_DECIMAL_TEXT\s+COLLATE\s+TEAQL_DECIMAL\b`
+		if !regexp.MustCompile(definition).MatchString(createSQL) {
+			return fmt.Errorf("SQLite Decimal column %s.%s must declare COLLATE TEAQL_DECIMAL; rebuild the table with the generated Decimal definition", entity.TabName, property.ColName)
+		}
+	}
+	return nil
 }
 
 type SqliteMutationExecutor struct {
@@ -206,7 +337,7 @@ func (e *SqliteMutationExecutor) FetchAllSql(context stdcontext.Context, query *
 		if err := rows.Scan(valPtrs...); err != nil {
 			return nil, err
 		}
-		record, err := decodeSqliteRow(cols, colTypes, vals)
+		record, err := decodeSqliteRowWithDecimalAliases(cols, colTypes, vals, query.ExactDecimalResultAliases)
 		if err != nil {
 			return nil, err
 		}
@@ -247,7 +378,7 @@ func (e *SqliteMutationExecutor) StreamSql(context stdcontext.Context, query *te
 		if err := rows.Scan(ptrs...); err != nil {
 			return err
 		}
-		record, err := decodeSqliteRow(cols, colTypes, vals)
+		record, err := decodeSqliteRowWithDecimalAliases(cols, colTypes, vals, query.ExactDecimalResultAliases)
 		if err != nil {
 			return err
 		}
@@ -326,7 +457,7 @@ func (e *SqliteTransactionExecutor) FetchAllSql(context stdcontext.Context, quer
 		if err := rows.Scan(valPtrs...); err != nil {
 			return nil, err
 		}
-		record, err := decodeSqliteRow(cols, colTypes, vals)
+		record, err := decodeSqliteRowWithDecimalAliases(cols, colTypes, vals, query.ExactDecimalResultAliases)
 		if err != nil {
 			return nil, err
 		}
@@ -394,9 +525,7 @@ func bindSqliteValue(value core.Value) (interface{}, error) {
 	case float64:
 		return v, nil
 	case decimal.Decimal:
-		// SQLite NUMERIC affinity coerces a canonical numeric string while the
-		// driver cannot bind Decimal structs directly.
-		return v.String(), nil
+		return exactDecimalText(v), nil
 	case time.Time:
 		// TeaQL time.Time values are dates (timestamps use epoch milliseconds).
 		// Match SQLite DATE text storage so inclusive bounds include the day.
@@ -410,30 +539,47 @@ func bindSqliteValue(value core.Value) (interface{}, error) {
 }
 
 func decodeSqliteRow(cols []string, colTypes []*sql.ColumnType, vals []interface{}) (core.Record, error) {
+	return decodeSqliteRowWithDecimalAliases(cols, colTypes, vals, nil)
+}
+
+func decodeSqliteRowWithDecimalAliases(cols []string, colTypes []*sql.ColumnType, vals []interface{}, exactAliases map[string]bool) (core.Record, error) {
 	record := make(core.Record)
 	for i, colName := range cols {
 		val := vals[i]
+		dbType := ""
+		if i < len(colTypes) {
+			dbType = strings.ToUpper(colTypes[i].DatabaseTypeName())
+		}
 		if val == nil {
 			record[colName] = core.ValNull()
 			continue
 		}
 		switch v := val.(type) {
 		case int64:
-			dbType := ""
-			if i < len(colTypes) {
-				dbType = colTypes[i].DatabaseTypeName()
-			}
 			if dbType == "BOOLEAN" || dbType == "BOOL" {
 				record[colName] = core.ValBool(v != 0)
+			} else if dbType == "NUMERIC" || dbType == "DECIMAL" {
+				return nil, fmt.Errorf("legacy SQLite NUMERIC Decimal column %s may have lost precision; migrate to TEAQL_DECIMAL_TEXT", colName)
 			} else {
 				record[colName] = core.ValI64(v)
 			}
 		case float64:
+			if dbType == "NUMERIC" || dbType == "DECIMAL" {
+				return nil, fmt.Errorf("legacy SQLite NUMERIC Decimal column %s may have lost precision; migrate to TEAQL_DECIMAL_TEXT", colName)
+			}
 			record[colName] = core.ValF64(v)
 		case []byte:
-			record[colName] = core.ValText(string(v))
+			decoded, err := decodeSqliteText(colName, dbType, string(v), exactAliases[colName])
+			if err != nil {
+				return nil, err
+			}
+			record[colName] = decoded
 		case string:
-			record[colName] = core.ValText(v)
+			decoded, err := decodeSqliteText(colName, dbType, v, exactAliases[colName])
+			if err != nil {
+				return nil, err
+			}
+			record[colName] = decoded
 		case time.Time:
 			// go-sqlite3 decodes DATE/TIMESTAMP columns as time.Time. Preserve the
 			// value so generated date and timestamp accessors can convert it.
@@ -441,4 +587,18 @@ func decodeSqliteRow(cols []string, colTypes []*sql.ColumnType, vals []interface
 		}
 	}
 	return record, nil
+}
+
+func decodeSqliteText(column, dbType, value string, exactAlias bool) (core.Value, error) {
+	if dbType == "NUMERIC" || dbType == "DECIMAL" {
+		return core.Value{}, fmt.Errorf("legacy SQLite NUMERIC Decimal column %s may have lost precision; migrate to TEAQL_DECIMAL_TEXT", column)
+	}
+	if dbType != "TEAQL_DECIMAL_TEXT" && !exactAlias {
+		return core.ValText(value), nil
+	}
+	parsed, err := decimal.NewFromString(value)
+	if err != nil {
+		return core.Value{}, fmt.Errorf("invalid SQLite Decimal in column %s: %w", column, err)
+	}
+	return core.ValDecimal(parsed), nil
 }
