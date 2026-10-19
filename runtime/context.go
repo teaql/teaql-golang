@@ -329,6 +329,8 @@ type UserContext struct {
 	businessIDProfileFactory          BusinessIDProfileFactory
 	businessIDKeyProvider             BusinessIDKeyProvider
 	businessIDService                 BusinessIDService
+	schemaExecutor                    SchemaExecutor
+	internalIDGenerator               InternalIdGenerator
 }
 
 type FixEvidenceSource string
@@ -736,15 +738,33 @@ func (c *UserContext) Entity(name string) *core.EntityDescriptor {
 	return nil
 }
 
-func (c *UserContext) SetSchemaProvider(provider data_service.SchemaProvider) {
-	// For compatibility with old interface, though MetadataStore replaces it
-}
-
 func (c *UserContext) InsertResource(name string, resource interface{}) {
+	if name == "idGenerator" {
+		if resource != nil {
+			if missingSPI(resource) {
+				panic("idGenerator resource must not be a typed nil")
+			}
+			if _, ok := resource.(InternalIdGenerator); !ok {
+				panic("idGenerator resource must implement InternalIdGenerator")
+			}
+		}
+		c.graphSaveMu.Lock()
+		c.resources[name] = resource
+		c.graphSaveMu.Unlock()
+		return
+	}
 	c.resources[name] = resource
 }
 
 func (c *UserContext) GetResource(name string) interface{} {
+	if name == "idGenerator" {
+		c.graphSaveMu.Lock()
+		defer c.graphSaveMu.Unlock()
+		if c.internalIDGenerator != nil {
+			return c.internalIDGenerator
+		}
+		return c.resources[name]
+	}
 	return c.resources[name]
 }
 
@@ -1315,10 +1335,6 @@ func (c *UserContext) EntityDataServiceBehavior(args ...any) any {
 	return nil
 }
 
-func (c *UserContext) GenerateId(args ...any) any {
-	return nil
-}
-
 func (c *UserContext) GetInStore(val any) any {
 	return c.resources["get_in_store"]
 }
@@ -1420,10 +1436,6 @@ func (c *UserContext) SetEventSink(val any) {
 	if sink, ok := val.(AppAuditEventSink); ok {
 		c.SetAppAuditEventSink(sink)
 	}
-}
-
-func (c *UserContext) SetInternalIdGenerator(val any) {
-	c.resources["set_internal_id_generator"] = val
 }
 
 func (c *UserContext) SetLanguage(val any) {
@@ -1611,11 +1623,6 @@ func (c *UserContext) WithEventSink(val any) *UserContext {
 	return c
 }
 
-func (c *UserContext) WithInternalIdGenerator(val any) *UserContext {
-	c.resources["with_internal_id_generator"] = val
-	return c
-}
-
 func (c *UserContext) WithLanguage(val any) *UserContext {
 	c.SetLanguage(val)
 	return c
@@ -1698,11 +1705,6 @@ func (c *UserContext) PrepareQuery(query *core.SelectQuery) (*core.SelectQuery, 
 	comment, purpose := intent.Comment(), intent.Purpose()
 	prepared.CommentText, prepared.PurposeText = &comment, &purpose
 	return prepared, nil
-}
-
-func (c *UserContext) WithSchemaProvider(val any) *UserContext {
-	c.resources["with_schema_provider"] = val
-	return c
 }
 
 func (c *UserContext) WithSqlLogOptions(val any) *UserContext {

@@ -1,6 +1,7 @@
 package runtime
 
 import (
+	"context"
 	"fmt"
 	"sync"
 	"sync/atomic"
@@ -9,6 +10,71 @@ import (
 
 type InternalIdGenerator interface {
 	GenerateId(entity string) (uint64, error)
+}
+
+type InternalIdFloorReserver interface {
+	EnsureIdFloor(context.Context, string, uint64) error
+}
+
+// InstallDefaultInternalIdGenerator is called by generated runtime wiring.
+// An application-owned generator installed later always has precedence.
+func (c *UserContext) InstallDefaultInternalIdGenerator(generator InternalIdGenerator) {
+	if missingSPI(generator) {
+		panic("default internal ID generator must not be nil")
+	}
+	c.graphSaveMu.Lock()
+	c.resources["idGenerator"] = generator
+	c.graphSaveMu.Unlock()
+}
+
+// SetInternalIdGenerator installs an application-owned ID provider. It has
+// precedence over the generated default and graph transaction capabilities.
+func (c *UserContext) SetInternalIdGenerator(generator InternalIdGenerator) {
+	if missingSPI(generator) {
+		panic("internal ID generator must not be nil")
+	}
+	c.graphSaveMu.Lock()
+	c.internalIDGenerator = generator
+	c.graphSaveMu.Unlock()
+}
+
+func (c *UserContext) WithInternalIdGenerator(generator InternalIdGenerator) *UserContext {
+	c.SetInternalIdGenerator(generator)
+	return c
+}
+
+func (c *UserContext) InternalIdGenerator() InternalIdGenerator {
+	if configured := c.GetResource("idGenerator"); configured != nil {
+		if generator, ok := configured.(InternalIdGenerator); ok {
+			return generator
+		}
+		panic("idGenerator resource does not implement InternalIdGenerator")
+	}
+	return LocalIdGenerator()
+}
+
+func (c *UserContext) GenerateInternalId(entity string) (uint64, error) {
+	if entity == "" {
+		return 0, fmt.Errorf("internal ID entity must not be empty")
+	}
+	id, err := c.InternalIdGenerator().GenerateId(entity)
+	if err != nil {
+		return 0, err
+	}
+	if id == 0 {
+		return 0, fmt.Errorf("internal ID generator returned zero for %s", entity)
+	}
+	return id, nil
+}
+
+func (c *UserContext) EnsureInternalIdFloor(ctx context.Context, entity string, floor uint64) error {
+	if entity == "" {
+		return fmt.Errorf("internal ID entity must not be empty")
+	}
+	if reserver, ok := c.InternalIdGenerator().(InternalIdFloorReserver); ok {
+		return reserver.EnsureIdFloor(ctx, entity, floor)
+	}
+	return fmt.Errorf("internal ID generator cannot reserve explicit ID floor for %s", entity)
 }
 
 // ---------------------------------------------------------------------------
@@ -30,7 +96,27 @@ func DefaultAtomicCounterIdGenerator() *AtomicCounterIdGenerator {
 }
 
 func (g *AtomicCounterIdGenerator) GenerateId(entity string) (uint64, error) {
-	return atomic.AddUint64(&g.counter, 1), nil
+	for {
+		current := atomic.LoadUint64(&g.counter)
+		if current == ^uint64(0) {
+			return 0, fmt.Errorf("internal ID space exhausted for %s", entity)
+		}
+		if atomic.CompareAndSwapUint64(&g.counter, current, current+1) {
+			return current + 1, nil
+		}
+	}
+}
+
+func (g *AtomicCounterIdGenerator) EnsureIdFloor(_ context.Context, _ string, floor uint64) error {
+	for {
+		current := atomic.LoadUint64(&g.counter)
+		if current >= floor {
+			return nil
+		}
+		if atomic.CompareAndSwapUint64(&g.counter, current, floor) {
+			return nil
+		}
+	}
 }
 
 // ---------------------------------------------------------------------------
@@ -58,11 +144,11 @@ type snowflakeState struct {
 }
 
 type SnowflakeIdGenerator struct {
-	epochMillis   uint64
-	workerId      uint64
-	datacenterId  uint64
-	state         *snowflakeState
-	mu            sync.Mutex
+	epochMillis  uint64
+	workerId     uint64
+	datacenterId uint64
+	state        *snowflakeState
+	mu           sync.Mutex
 }
 
 func NewSnowflakeIdGenerator(workerId, datacenterId uint64) *SnowflakeIdGenerator {

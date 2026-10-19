@@ -369,6 +369,7 @@ Request JSON is not allowed to replace those trusted capabilities.
 - [Modules and extension points](RUNTIME_GUIDE.md#3-available-modules)
 - [Mutation Policy example](examples/mutation-policy)
 - [Business ID example](examples/business-id)
+- [Typed Schema and Internal ID example](examples/typed-runtime-spi)
 - [Trace Chain example](examples/trace-chain/README.md)
 - [Binary object storage and temporary S3 URLs](examples/object-storage/README.md)
 
