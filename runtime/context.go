@@ -1154,7 +1154,14 @@ func (c *UserContext) sendEvent(context stdcontext.Context, event *RawAuditEvent
 		var maskFields []string
 		var maxLen *int
 		if descriptor != nil {
-			maskFields = descriptor.AuditMaskFlds
+			maskFields = make([]string, 0, len(descriptor.AuditMaskFlds))
+			for _, field := range descriptor.AuditMaskFlds {
+				canonical, mapErr := core.CanonicalLedgerField(descriptor, field)
+				if mapErr != nil {
+					return mapErr
+				}
+				maskFields = append(maskFields, canonical)
+			}
 			maxLen = descriptor.AuditValueMaxL
 		}
 		return c.appAuditSink.OnSafeEvent(c, event.BuildSafeEvent(maskFields, maxLen))
@@ -1245,6 +1252,9 @@ func (c *UserContext) captureMutationAudit(request data_service.MutationRequest,
 	event.governanceCaptured = true
 	if category, ok := c.GetResource("bootstrapCategory").(string); ok {
 		event.Category = category
+	}
+	if err := c.canonicalizeAuditFields(event); err != nil {
+		return nil, err
 	}
 	return event, nil
 }

@@ -44,12 +44,20 @@ func (p *PropertyDescriptor) Version() *PropertyDescriptor {
 
 type RelationDescriptor struct {
 	Name            string
+	CanonicalName   string
 	TargetEntity    string
 	LocKey          string
 	ForKey          string
 	IsMany          bool
 	IsAttach        bool
 	IsDeleteMissing bool
+}
+
+// CanonicalKey identifies the KSML relation independently of its generated
+// accessor name and the local FK storage member.
+func (r *RelationDescriptor) CanonicalKey(name string) *RelationDescriptor {
+	r.CanonicalName = name
+	return r
 }
 
 func NewRelationDescriptor(name, targetEntity string) *RelationDescriptor {
