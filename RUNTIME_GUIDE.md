@@ -216,6 +216,21 @@ exact development-only raw-reference acknowledgement live in the canonical
 Opaque references remain subject to normal authorization and optimistic-lock
 checks.
 
+## Typed Schema and Internal ID SPI
+
+The generated Go library calls `lib.EnsureSchema(ctx)`; that function routes
+schema execution through `ctx.ExecuteSchema`. Application startup may install
+an independent `runtime.SchemaExecutor` with `ctx.WithSchemaExecutor(...)`.
+Successful schema execution is followed by the generated bootstrap; failure
+stops before bootstrap. `ctx.WithInternalIdGenerator(...)` installs a typed,
+application-owned generator that takes precedence over the generated default
+and the active graph transaction. Generated entity saves use
+`ctx.GenerateInternalId` and `ctx.EnsureInternalIdFloor`; custom allocation
+failure never falls through to the default. See the
+[focused example](examples/typed-runtime-spi) and the generator's school-model
+SQLite integration test. These hooks are trusted startup configuration, not
+request-supplied capabilities.
+
 ## Business ID V1 Foundation
 
 The runtime exposes the deterministic six-character permutation used by the
