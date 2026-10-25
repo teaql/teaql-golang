@@ -1599,13 +1599,16 @@ func (c *UserContext) CheckAndFix(input *CheckAndFixInput) error {
 }
 
 func (c *UserContext) checkAndFix(input *CheckAndFixInput) error {
-	if c.checkerRegistry == nil {
-		return nil
+	var results []CheckResult
+	if c.checkerRegistry != nil {
+		if input.Now.IsZero() {
+			input.Now = c.FixTime()
+		}
+		results = c.checkerRegistry.CheckAndFix(c, input)
 	}
-	if input.Now.IsZero() {
-		input.Now = c.FixTime()
-	}
-	results := c.checkerRegistry.CheckAndFix(c, input)
+	// A configured Fix may repair inputs. Validate its final values, even when
+	// the application intentionally supplies no model checker.
+	results = append(results, c.checkFiniteFloatingValues(input)...)
 	c.TranslateCheckResults(results)
 	if len(results) != 0 {
 		return &RuntimeError{Type: "Check", CheckResults: results}

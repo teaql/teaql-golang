@@ -4,6 +4,7 @@ import (
 	stdcontext "context"
 	"database/sql"
 	"fmt"
+	"math"
 	"regexp"
 	"strings"
 	"time"
@@ -356,7 +357,7 @@ func (e *SqliteMutationExecutor) FetchAllSql(context stdcontext.Context, query *
 		if err := rows.Scan(valPtrs...); err != nil {
 			return nil, err
 		}
-		record, err := decodeSqliteRowWithDecimalAliases(cols, colTypes, vals, query.ExactDecimalResultAliases)
+		record, err := decodeSqliteRowWithResultTypes(cols, colTypes, vals, query.ExactDecimalResultAliases, query.BooleanResultAliases)
 		if err != nil {
 			return nil, err
 		}
@@ -397,7 +398,7 @@ func (e *SqliteMutationExecutor) StreamSql(context stdcontext.Context, query *te
 		if err := rows.Scan(ptrs...); err != nil {
 			return err
 		}
-		record, err := decodeSqliteRowWithDecimalAliases(cols, colTypes, vals, query.ExactDecimalResultAliases)
+		record, err := decodeSqliteRowWithResultTypes(cols, colTypes, vals, query.ExactDecimalResultAliases, query.BooleanResultAliases)
 		if err != nil {
 			return err
 		}
@@ -476,7 +477,7 @@ func (e *SqliteTransactionExecutor) FetchAllSql(context stdcontext.Context, quer
 		if err := rows.Scan(valPtrs...); err != nil {
 			return nil, err
 		}
-		record, err := decodeSqliteRowWithDecimalAliases(cols, colTypes, vals, query.ExactDecimalResultAliases)
+		record, err := decodeSqliteRowWithResultTypes(cols, colTypes, vals, query.ExactDecimalResultAliases, query.BooleanResultAliases)
 		if err != nil {
 			return nil, err
 		}
@@ -542,6 +543,9 @@ func bindSqliteValue(value core.Value) (interface{}, error) {
 	case uint64:
 		return int64(v), nil
 	case float64:
+		if math.IsNaN(v) || math.IsInf(v, 0) {
+			return nil, fmt.Errorf("SQLite bind requires a finite floating-point value")
+		}
 		return v, nil
 	case decimal.Decimal:
 		return exactDecimalText(v), nil
@@ -562,6 +566,10 @@ func decodeSqliteRow(cols []string, colTypes []*sql.ColumnType, vals []interface
 }
 
 func decodeSqliteRowWithDecimalAliases(cols []string, colTypes []*sql.ColumnType, vals []interface{}, exactAliases map[string]bool) (core.Record, error) {
+	return decodeSqliteRowWithResultTypes(cols, colTypes, vals, exactAliases, nil)
+}
+
+func decodeSqliteRowWithResultTypes(cols []string, colTypes []*sql.ColumnType, vals []interface{}, exactAliases, booleanAliases map[string]bool) (core.Record, error) {
 	record := make(core.Record)
 	for i, colName := range cols {
 		val := vals[i]
@@ -573,16 +581,33 @@ func decodeSqliteRowWithDecimalAliases(cols []string, colTypes []*sql.ColumnType
 			record[colName] = core.ValNull()
 			continue
 		}
+		if booleanAliases[colName] || dbType == "BOOLEAN" || dbType == "BOOL" {
+			switch value := val.(type) {
+			case bool:
+				record[colName] = core.ValBool(value)
+			case int64:
+				if value != 0 && value != 1 {
+					return nil, fmt.Errorf("invalid SQLite Boolean in column %s", colName)
+				}
+				record[colName] = core.ValBool(value == 1)
+			default:
+				return nil, fmt.Errorf("invalid SQLite Boolean type in column %s", colName)
+			}
+			continue
+		}
 		switch v := val.(type) {
+		case bool:
+			record[colName] = core.ValBool(v)
 		case int64:
-			if dbType == "BOOLEAN" || dbType == "BOOL" {
-				record[colName] = core.ValBool(v != 0)
-			} else if dbType == "NUMERIC" || dbType == "DECIMAL" {
+			if dbType == "NUMERIC" || dbType == "DECIMAL" {
 				return nil, fmt.Errorf("legacy SQLite NUMERIC Decimal column %s may have lost precision; migrate to TEAQL_DECIMAL_TEXT", colName)
 			} else {
 				record[colName] = core.ValI64(v)
 			}
 		case float64:
+			if math.IsNaN(v) || math.IsInf(v, 0) {
+				return nil, fmt.Errorf("non-finite SQLite result in column %s", colName)
+			}
 			if dbType == "NUMERIC" || dbType == "DECIMAL" {
 				return nil, fmt.Errorf("legacy SQLite NUMERIC Decimal column %s may have lost precision; migrate to TEAQL_DECIMAL_TEXT", colName)
 			}

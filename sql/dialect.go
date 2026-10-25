@@ -228,6 +228,7 @@ func (d *DefaultSqlDialect) CompileSelect(entity *core.EntityDescriptor, query *
 		Sql:                       resultSql,
 		Params:                    params,
 		ExactDecimalResultAliases: d.exactDecimalResultAliases(entity, query),
+		BooleanResultAliases:      booleanResultAliases(entity, query),
 		ParameterLogPolicies:      d.parameterPolicies(params), GeneratedSQL: d.generatedSQL,
 		Comment:        query.CommentText,
 		intentOperands: d.intentOperands(params),

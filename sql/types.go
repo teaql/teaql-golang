@@ -38,6 +38,9 @@ type CompiledQuery struct {
 	// Decimal result aliases are compiler-owned type hints for SQLite aggregate
 	// expressions, whose driver metadata does not retain the source column type.
 	ExactDecimalResultAliases map[string]bool
+	// SQLite stores model booleans as INTEGER. These compiler-owned hints
+	// restore only typed results, never an arbitrary integer/count alias.
+	BooleanResultAliases map[string]bool
 	// Compilation-owned intent provenance, not execution params or wire data.
 	intentOperands []intentOperand
 }
