@@ -10,6 +10,12 @@ if [[ "${actual[*]}" != "${expected[*]}" ]]; then
 fi
 
 cd "$repo"
+# One explicit compiler must govern both the core and optional submodules.
+# In particular the S3 SDK may require a newer Go than the core minimum.
+go_binary="$(command -v "${GO:-go}")"
+export GO="$go_binary"
+export PATH="$(dirname "$go_binary"):$PATH"
+"$GO" version
 node examples/fix-e-alignment/verify-local.cjs
 bash examples/object-storage/verify.sh
 # An example must test this checkout, never an older published runtime. Go
@@ -23,9 +29,17 @@ for module_file in "${module_files[@]}"; do
   module_dirs+=("$(dirname "$module_file")")
 done
 workspace="$(mktemp -d -t teaql-go-examples-work.XXXXXXXX)"
+trap 'result=$?; trap - EXIT; rm -rf -- "$workspace"; exit "$result"' EXIT
 (cd "$workspace" && GOWORK=off go work init "${module_dirs[@]}")
 export GOWORK="$workspace/go.work"
-echo "Local Go example workspace retained: $GOWORK"
+# The frozen consumer declares this deliberately unpublished v0.0.0 edge.
+# A version-qualified workspace replacement also resolves pruned module-graph
+# loading; a use entry alone still attempts to look up that version remotely.
+go work edit "-replace=checker-fix-advanced-core-workspace/lib@v0.0.0=$repo/examples/fix-e-alignment/generated"
+inventory_evidence="${TEAQL_EXAMPLES_EVIDENCE_DIR:-$(mktemp -d -t teaql-go-examples-evidence.XXXXXXXX)}"
+mkdir -p "$inventory_evidence"
+cp "$workspace/go.work" "$inventory_evidence/go.work"
+echo "Local Go example workspace (removed on exit): $GOWORK"
 for module_file in "${module_files[@]}"; do
   module_dir="$(dirname "$module_file")"
   resolved_runtime="$(cd "$module_dir" && go list -m -f '{{.Dir}}' github.com/teaql/teaql-golang)"
