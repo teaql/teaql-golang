@@ -21,6 +21,8 @@ if (requested) { assert(path.isAbsolute(requested) && !fs.existsSync(evidence));
 const scratch = fs.mkdtempSync(path.join(os.tmpdir(), 'teaql-go-fix-e-build-'));
 const report = {schema: 'teaql.go-fix-e-example/v1', passed: false, commands: [], sameDatabase: true,
   localRuntime: repo, databaseRetained: true, sharedCacheRemoved: false};
+const {createOwnedRunner, ownedBytes} = require('./owned-command.cjs'), runner = createOwnedRunner();
+async function main() {
 try {
   const disk = fs.statfsSync(scratch); assert(disk.bavail * disk.bsize > 4 * 1024 ** 3);
   const m = fingerprint(); report.modelSha256 = m.modelSha256;
@@ -32,21 +34,22 @@ try {
   const env = {...process.env, GOWORK: 'off', GOCACHE: path.join(scratch, 'cache'), GOTMPDIR: path.join(scratch, 'tmp'),
     GOMAXPROCS: '2', TEAQL_FIX_E_DB: path.join(evidence, 'fixture.sqlite')};
   fs.mkdirSync(env.GOTMPDIR);
-  function run(command, log, timeout) {
+  async function run(command, log, timeout) {
     const file = path.join(evidence, log), fd = fs.openSync(file, 'w'); let result;
-    try { result = cp.spawnSync(command[0], command.slice(1), {cwd: scratch, env, timeout, stdio: ['ignore', fd, fd]}); }
+    try { result = await runner.run(command, {cwd: scratch, env, timeout, stdio: ['ignore', fd, fd]}); }
     finally { fs.closeSync(fd); }
     const bytes = fs.readFileSync(file);
     report.commands.push({command, exitCode: result.status, signal: result.signal, logSha256: sha(bytes)});
+    if (result.status !== 0) process.exitCode = result.status || 1;
     assert.equal(result.status, 0, bytes.toString().slice(-12000)); return bytes.toString();
   }
   const binary = path.join(scratch, 'verify.test');
-  run(['go', 'test', '-mod=mod', '-c', '-o', binary, '.'], 'build.log', 300000);
+  await run(['go', 'test', '-mod=mod', '-c', '-o', binary, '.'], 'build.log', 300000);
   report.binarySha256 = sha(fs.readFileSync(binary));
   fs.copyFileSync(path.join(scratch, 'go.mod'), path.join(evidence, 'resolved-go.mod'));
   if (fs.existsSync(path.join(scratch, 'go.sum'))) fs.copyFileSync(path.join(scratch, 'go.sum'), path.join(evidence, 'consumer-go.sum'));
   for (const round of [1, 2]) {
-    const log = run([binary, '-test.v', '-test.count=1', '-test.run', '^TestGenerated'], 'round-' + round + '.log', 90000);
+    const log = await run([binary, '-test.v', '-test.count=1', '-test.run', '^TestGenerated'], 'round-' + round + '.log', 90000);
     for (const marker of ['FIX_E_EXAMPLE=', 'CORE_LOAD_EXAMPLE=', 'CORE_MUTATION_OWNERSHIP=', 'CORE_MUTATION_PAGING=']) {
       const values = log.split(/\r?\n/).filter(line => line.startsWith(marker)).map(line => JSON.parse(line.slice(marker.length)));
       assert.equal(values.length, 1, marker); assert.equal(values[0].passed, true, marker);
@@ -55,10 +58,14 @@ try {
   }
   report.databaseSha256 = sha(fs.readFileSync(path.join(evidence, 'fixture.sqlite'))); report.passed = true;
   console.log('PASS Go retained Fix/E/loading/ownership example twice on one database');
-} catch (error) { console.error(error.stack); process.exitCode = 1; }
+} catch (error) { console.error(error.stack); process.exitCode ||= 1; }
 finally {
-  report.disposedOwnedBytes = Number(cp.execFileSync('du', ['-sb', scratch], {encoding: 'utf8'}).split(/\s/)[0]);
-  fs.rmSync(scratch, {recursive: true}); report.scratchRemoved = !fs.existsSync(scratch);
+  report.disposedOwnedBytes = runner.safeToClean ? ownedBytes(scratch) : 0;
+  if (runner.safeToClean) fs.rmSync(scratch, {recursive: true});
+  else report.unsafeBuildRetention = {path: scratch, processGroup: runner.unsafeGroup};
+  report.scratchRemoved = !fs.existsSync(scratch); runner.dispose();
   fs.writeFileSync(path.join(evidence, 'receipt.json'), JSON.stringify(report, null, 2) + '\n');
   console.log('Retained compact example evidence: ' + evidence);
 }
+}
+main().catch(error => { console.error(error.stack); process.exitCode ||= 1; });
