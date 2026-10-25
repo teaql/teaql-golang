@@ -8,10 +8,15 @@ import (
 	"testing"
 
 	lib "checker-fix-advanced-core-workspace/lib"
+	"checker-fix-advanced-core-workspace/lib/purchase_order"
 )
 
 func TestGeneratedIndependentNewAndBatchRoots(t *testing.T) {
-	t.Setenv("CHECKER_FIX_ADVANCED_CORE_DATABASE_URL", fmt.Sprintf("file:teaql-ownership-%d?mode=memory&cache=shared", os.Getpid()))
+	database := os.Getenv("TEAQL_FIX_E_DB")
+	if database == "" {
+		database = fmt.Sprintf("file:teaql-ownership-%d?mode=memory&cache=shared", os.Getpid())
+	}
+	t.Setenv("CHECKER_FIX_ADVANCED_CORE_DATABASE_URL", database)
 	context, err := lib.ServiceRuntimeFromEnv()
 	if err != nil {
 		t.Fatal(err)
@@ -25,6 +30,11 @@ func TestGeneratedIndependentNewAndBatchRoots(t *testing.T) {
 	if err := lib.EnsureSchema(context); err != nil {
 		t.Fatal(err)
 	}
+	before, err := lib.Q.PurchaseOrders().Limit(20).Comment("Inspect existing ownership fixture roots").
+		Purpose("Repeat generated ownership without deleting prior data").ExecuteForList(context)
+	if err != nil {
+		t.Fatal(err)
+	}
 	a := lib.Q.PurchaseOrders().Comment("Prepare the first independent owner").
 		Purpose("Verify a shared context is not a shared mutation boundary").NewEntity(context)
 	a.UpdateContactPhone("5550300").UpdateInternalNote(nil)
@@ -35,23 +45,38 @@ func TestGeneratedIndependentNewAndBatchRoots(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	initial, err := lib.Q.PurchaseOrders().Limit(10).Comment("Inspect the first independent save").
+	initial, err := lib.Q.PurchaseOrders().Limit(20).Comment("Inspect the first independent save").
 		Purpose("Verify the unsaved new owner did not leak into persistence").ExecuteForList(context)
-	if err != nil || len(initial.Data) != 1 || initial.Data[0].Id() != savedA.Id() {
+	if err != nil || len(initial.Data) != len(before.Data)+1 {
 		t.Fatalf("saving A must not persist new B: %v", err)
+	}
+	foundA := false
+	for _, row := range initial.Data {
+		foundA = foundA || row.Id() == savedA.Id()
+	}
+	if !foundA {
+		t.Fatal("saving A must persist A, not merely increase the row count")
 	}
 	savedB, err := b.AuditAs("Explicitly save the second new owner").Save(context)
 	if err != nil {
 		t.Fatal(err)
 	}
-	batch, err := lib.Q.PurchaseOrders().Limit(10).Comment("Load both owners in one bounded batch").
+	batch, err := lib.Q.PurchaseOrders().Limit(20).Comment("Load both owners in one bounded batch").
 		Purpose("Verify independently saveable list roots retain distinct mutation boundaries").ExecuteForList(context)
-	if err != nil || len(batch.Data) != 2 {
+	if err != nil || len(batch.Data) != len(before.Data)+2 {
 		t.Fatalf("missing independent batch owners: %v", err)
 	}
-	var ownerA, ownerB = batch.Data[0], batch.Data[1]
-	if ownerA.Id() != savedA.Id() {
-		ownerA, ownerB = ownerB, ownerA
+	var ownerA, ownerB *purchase_order.PurchaseOrder
+	for _, row := range batch.Data {
+		if row.Id() == savedA.Id() {
+			ownerA = row
+		}
+		if row.Id() == savedB.Id() {
+			ownerB = row
+		}
+	}
+	if ownerA == nil || ownerB == nil {
+		t.Fatal("the two newly saved roots are missing from the batch")
 	}
 	if ownerA.Id() != savedA.Id() || ownerB.Id() != savedB.Id() {
 		t.Fatal("batch identity changed")

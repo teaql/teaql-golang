@@ -13,7 +13,11 @@ import (
 )
 
 func TestGeneratedFilteredForwardAndPartialMutation(t *testing.T) {
-	t.Setenv("CHECKER_FIX_ADVANCED_CORE_DATABASE_URL", fmt.Sprintf("file:teaql-loading-%d?mode=memory&cache=shared", os.Getpid()))
+	database := os.Getenv("TEAQL_FIX_E_DB")
+	if database == "" {
+		database = fmt.Sprintf("file:teaql-loading-%d?mode=memory&cache=shared", os.Getpid())
+	}
+	t.Setenv("CHECKER_FIX_ADVANCED_CORE_DATABASE_URL", database)
 	context, err := lib.ServiceRuntimeFromEnv()
 	if err != nil {
 		t.Fatal(err)

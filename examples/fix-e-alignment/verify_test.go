@@ -17,7 +17,11 @@ import (
 func TestGeneratedFixAndExpressionExample(t *testing.T) {
 	first := time.Date(2032, time.February, 29, 10, 15, 30, 0, time.UTC)
 	second := first.Add(25 * time.Hour)
-	t.Setenv("CHECKER_FIX_ADVANCED_CORE_DATABASE_URL", fmt.Sprintf("file:teaql-fix-e-%d?mode=memory&cache=shared", os.Getpid()))
+	database := os.Getenv("TEAQL_FIX_E_DB")
+	if database == "" {
+		database = fmt.Sprintf("file:teaql-fix-e-%d?mode=memory&cache=shared", os.Getpid())
+	}
+	t.Setenv("CHECKER_FIX_ADVANCED_CORE_DATABASE_URL", database)
 	context, err := lib.ServiceRuntimeFromEnv()
 	if err != nil {
 		t.Fatal(err)

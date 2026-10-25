@@ -1,0 +1,39 @@
+{
+  "schema": "teaql.generated-example-fixture/v1",
+  "language": "go",
+  "modelSha256": "a2cf4c907cb084cb0946e993eeba586c8c0701a89fdc4a849808aa743be033b7",
+  "generatedManifestSha256": "081388d2161626c267428c473a3d61ab448e1acf161a7b8b164234556ee399ba",
+  "producerReceiptSha256": "d96c2ac416faaf65064f24c5a50900a30e6788dae1c58636b3d1e28d38b4dc7b",
+  "producerSource": {
+    "commit": "e8924609aa88e88a1ca2af91289de025659205cd",
+    "diff": "966e5e6af31d096935302fc14fab18a5472d33bacdf3ef3247bc766a446cbb3c",
+    "status": "ac3d44d1d8bb7fb1aec308f4a03e418be8ca527822ec188020771b96e2234502",
+    "sourceContentsSha256": "ced56ce22cfc75928b56b3eb890a2ab470c74ab2f065ce79d07f9c6012574e0d"
+  },
+  "evaluatedScope": "golang-lib-core",
+  "evaluationErrors": 0,
+  "evaluationWarnings": 4,
+  "files": {
+    "go.mod": "d5f72fdb4142475205e0d2a03582b43127bdb4abe291bbd9f984f8d2cb07848d",
+    "tenant/checker.go": "78409224822eecf82ae5617141b0116f808a6d1bab0b483789b6496a49c013e8",
+    "purchase_order/checker.go": "1c2bb40949d6a04e92ac1dba63c681727447a2b7027c7b7c50b83609eef39b90",
+    "order_item/checker.go": "02e151227137a4eb1df8824d4ba83bcd08057bc88c57beb33f63096a0b0434af",
+    "lib.go": "72bf51dda2b3dc6e6aa5563a70ec68d27cf5ab641ff47790c465427026e5fc83",
+    "runtime.go": "be23e44a1e3c94b6fe2513203f194edc55677b10003d0ceff4a6c3bd0257180a",
+    "internal/generatedsearch/search_models.go": "684ab28a36b174cf143210391ca062178ad7997454d7f0fc49656f58cd45f730",
+    "tenant/expression.go": "d91ddbf92b7e77c82c9832c219c4cf7e3348d16e87d858f761b68496f36301fb",
+    "purchase_order/expression.go": "90ae8b24065e1085696f9955d0782cfe2014b96ef96676653859b840cd9bb975",
+    "order_item/expression.go": "d0f74889c1e0d7765b1a8a44663088704edeb8f9a90ace070ae457dadafab1cf",
+    "tenant/entity.go": "cd0112c66dd830d68ad0947197084f308b22904f13e7690f58f5d51a29fe3a23",
+    "purchase_order/entity.go": "30fe5f7dc79c3baae28a775b95cf31a096110000b86511e41eb2ecf2bd32399e",
+    "order_item/entity.go": "6881a2bdae45312ba2505163f9e0a98c342ef32c15323d378ee6acf89adafdda",
+    "tenant/behavior.go": "a5320eac18f5b810aab79a1acff3ee45117e7e0a5abb5896592cd00a8ebd095c",
+    "purchase_order/behavior.go": "7f70d05c8f7879720a1a76ccd405684fedefae895aba6e9fbf1371137968a8f7",
+    "order_item/behavior.go": "0d1c08bf44cc8f2268b5b5c998fae61e24b6a6c07589bb0b49337e5882d9dc6a",
+    "e.go": "7910bee58509d2c72ff7aafccddd372fe5b617d1bfefe19ffbefe415d59546f4",
+    "tenant/request.go": "ac00a8d1ce6923ef9d7abfc20c45a06e37642f505d656166d6408009ecae4395",
+    "purchase_order/request.go": "7dcdf503db290dcfa1f4c9f9013edbda5a4570515c63012a246c3ed346158fcf",
+    "order_item/request.go": "20e307abb6e5152c466eb49c2eba1680113d26352b7569987ccba8d158b80a77",
+    "q.go": "ac0053a2dfbd9a1f823df07e928220ceaa5ffda25d4c44037f4524c53e51b384"
+  }
+}
