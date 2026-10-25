@@ -227,6 +227,8 @@ func (d *SqliteDialect) SchemaTypeSql(dataType core.DataType, property *core.Pro
 		return "JSON", nil
 	case core.TypeDate:
 		return "DATE", nil
+	case core.TypeTime:
+		return "TIME", nil
 	case core.TypeTimestamp:
 		return "TIMESTAMP", nil
 	}
@@ -555,6 +557,8 @@ func bindSqliteValue(value core.Value) (interface{}, error) {
 		return v.Format("2006-01-02"), nil
 	case core.Timestamp:
 		return int64(v), nil
+	case core.TimeOfDay:
+		return v.String(), nil
 	case string:
 		return v, nil
 	}

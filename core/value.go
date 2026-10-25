@@ -20,6 +20,7 @@ const (
 	TypeJson
 	TypeDate
 	TypeTimestamp
+	TypeTime // Appended so existing DataType numeric identities remain stable.
 )
 
 // Value represents a dynamic database value.
@@ -153,6 +154,8 @@ func (v Value) TryDate() (time.Time, bool) {
 
 func (v Value) TryTime() (time.Time, bool) {
 	switch val := v.V.(type) {
+	case Timestamp:
+		return val.ToTime(), true
 	case time.Time:
 		return val, true
 	case string:

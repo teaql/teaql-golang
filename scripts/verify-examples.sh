@@ -2,7 +2,7 @@
 set -euo pipefail
 
 repo="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-expected=(basic business-id conformance fix-e-alignment mutation-policy object-storage order-management school-management security-foundations task_board trace-chain typed-runtime-spi)
+expected=(basic business-id conformance fix-e-alignment mutation-policy object-storage order-management scalar-type-probe school-management security-foundations task_board trace-chain typed-runtime-spi)
 mapfile -t actual < <(find "$repo/examples" -mindepth 1 -maxdepth 1 -type d -printf '%f\n' | sort)
 if [[ "${actual[*]}" != "${expected[*]}" ]]; then
   echo "example inventory changed; update scripts/verify-examples.sh: ${actual[*]}" >&2
@@ -18,6 +18,7 @@ export PATH="$(dirname "$go_binary"):$PATH"
 "$GO" version
 node examples/fix-e-alignment/verify-local.cjs
 bash examples/object-storage/verify.sh
+bash examples/scalar-type-probe/verify.sh
 # An example must test this checkout, never an older published runtime. Go
 # ignores dependency-module replace directives. A library's standalone go.mod
 # can therefore resolve differently from its application. Bind every module in
@@ -32,10 +33,11 @@ workspace="$(mktemp -d -t teaql-go-examples-work.XXXXXXXX)"
 trap 'result=$?; trap - EXIT; rm -rf -- "$workspace"; exit "$result"' EXIT
 (cd "$workspace" && GOWORK=off go work init "${module_dirs[@]}")
 export GOWORK="$workspace/go.work"
-# The frozen consumer declares this deliberately unpublished v0.0.0 edge.
+# Frozen consumers declare these deliberately unpublished v0.0.0 edges.
 # A version-qualified workspace replacement also resolves pruned module-graph
 # loading; a use entry alone still attempts to look up that version remotely.
 go work edit "-replace=checker-fix-advanced-core-workspace/lib@v0.0.0=$repo/examples/fix-e-alignment/generated"
+go work edit "-replace=scalar-type-conformance-service-core-workspace/lib@v0.0.0=$repo/examples/scalar-type-probe/generated"
 inventory_evidence="${TEAQL_EXAMPLES_EVIDENCE_DIR:-$(mktemp -d -t teaql-go-examples-evidence.XXXXXXXX)}"
 mkdir -p "$inventory_evidence"
 cp "$workspace/go.work" "$inventory_evidence/go.work"

@@ -104,6 +104,8 @@ func (d *DefaultSqlDialect) SchemaTypeSql(dataType core.DataType, property *core
 		return "NUMERIC", nil
 	case core.TypeText:
 		return "VARCHAR(255)", nil
+	case core.TypeTime:
+		return "TIME", nil
 	case core.TypeLargeText, core.TypeJson, core.TypeDate, core.TypeTimestamp:
 		return "TEXT", nil
 	}
@@ -200,6 +202,8 @@ func (d *DefaultSqlDialect) FallbackDefaultValueSql(dataType core.DataType) stri
 		return "'{}'"
 	case core.TypeDate:
 		return "'1970-01-01'"
+	case core.TypeTime:
+		return "'00:00:00'"
 	case core.TypeTimestamp:
 		return "'1970-01-01 00:00:00Z'"
 	}

@@ -112,6 +112,8 @@ func (d *PostgresDialect) SchemaTypeSql(dataType core.DataType, property *core.P
 		return "JSONB", nil
 	case core.TypeDate:
 		return "DATE", nil
+	case core.TypeTime:
+		return "TIME", nil
 	case core.TypeTimestamp:
 		return "TIMESTAMPTZ", nil
 	}
@@ -365,6 +367,11 @@ func bindPgValue(value core.Value) (interface{}, error) {
 		return v, nil
 	case core.Timestamp:
 		return v.ToTime(), nil
+	case core.TimeOfDay:
+		if v.Nanoseconds()%1000 != 0 {
+			return nil, fmt.Errorf("PostgreSQL TIME cannot preserve sub-microsecond precision")
+		}
+		return v.String(), nil
 	case string:
 		return v, nil
 	}

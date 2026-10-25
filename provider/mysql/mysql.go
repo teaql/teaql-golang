@@ -56,6 +56,8 @@ func (d *MysqlDialect) SchemaTypeSql(dataType core.DataType, property *core.Prop
 		return "JSON", nil
 	case core.TypeDate:
 		return "DATE", nil
+	case core.TypeTime:
+		return "TIME(6)", nil
 	case core.TypeTimestamp:
 		return "DATETIME(6)", nil
 	}
@@ -307,6 +309,11 @@ func bindMysqlValue(value core.Value) (interface{}, error) {
 		return v, nil
 	case core.Timestamp:
 		return v.ToTime(), nil
+	case core.TimeOfDay:
+		if v.Nanoseconds()%1000 != 0 {
+			return nil, fmt.Errorf("MySQL TIME(6) cannot preserve sub-microsecond precision")
+		}
+		return v.String(), nil
 	case string:
 		return v, nil
 	}

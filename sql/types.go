@@ -347,6 +347,15 @@ func sqlLiteral(value core.Value, kind DatabaseKind) string {
 			return "TIMESTAMPTZ " + quotedSqlString(instant.Format("2006-01-02 15:04:05.000Z"))
 		}
 		return "CAST(" + quotedSqlString(instant.Format("2006-01-02 15:04:05.000")) + " AS DATETIME(3))"
+	case core.TimeOfDay:
+		text := quotedSqlString(v.String())
+		if kind == DatabaseKindPostgreSQL {
+			return "TIME " + text
+		}
+		if kind == DatabaseKindMySQL {
+			return "CAST(" + text + " AS TIME(6))"
+		}
+		return text
 	case []core.Value:
 		var strs []string
 		for _, item := range v {
