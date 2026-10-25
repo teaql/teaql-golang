@@ -74,7 +74,7 @@ func TestSqliteDialect(t *testing.T) {
 		{core.TypeI64, "INTEGER"},
 		{core.TypeU64, "INTEGER"},
 		{core.TypeF64, "REAL"},
-		{core.TypeDecimal, "NUMERIC"},
+		{core.TypeDecimal, "TEAQL_DECIMAL_TEXT COLLATE TEAQL_DECIMAL"},
 		{core.TypeText, "VARCHAR(255)"},
 		{core.TypeLargeText, "TEXT"},
 		{core.TypeJson, "JSON"},
@@ -132,7 +132,7 @@ func TestBindSqliteValueSupportsTypedNullDecimalAndTime(t *testing.T) {
 	if value, err := bindSqliteValue(core.ValTypedNull(core.TypeDecimal)); err != nil || value != nil {
 		t.Fatalf("typed null binding = %#v, %v", value, err)
 	}
-	if value, err := bindSqliteValue(core.ValDecimal(decimal.RequireFromString("123.450"))); err != nil || value != "123.45" {
+	if value, err := bindSqliteValue(core.ValDecimal(decimal.RequireFromString("123.450"))); err != nil || value != "123.450" {
 		t.Fatalf("decimal binding = %#v, %v", value, err)
 	}
 	want := time.Date(2026, 1, 2, 3, 4, 5, 0, time.UTC)
@@ -141,6 +141,203 @@ func TestBindSqliteValueSupportsTypedNullDecimalAndTime(t *testing.T) {
 	}
 	if value, err := bindSqliteValue(core.ValTimestamp(1787110200123)); err != nil || value != int64(1787110200123) {
 		t.Fatalf("timestamp binding = %#v, %v", value, err)
+	}
+}
+
+func TestExactDecimalSqliteStorageOrderingAndRoundTrip(t *testing.T) {
+	db, err := sql.Open("sqlite3", ":memory:")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer db.Close()
+	if err := EnsureSoundex(db); err != nil {
+		t.Fatal(err)
+	}
+	entity := &core.EntityDescriptor{TabName: "decimal_fixture", Properties: []*core.PropertyDescriptor{
+		{Name: "id", ColName: "id", DataType: core.TypeI64, IsId: true},
+		{Name: "amount", ColName: "amount", DataType: core.TypeDecimal},
+	}}
+	dialect := &teaql_sql.DefaultSqlDialect{Dialect: &SqliteDialect{}}
+	ddl, err := dialect.CompileCreateTable(entity)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := db.Exec(ddl); err != nil {
+		t.Fatal(err)
+	}
+	if err := VerifyExactDecimalSchema(db, entity); err != nil {
+		t.Fatal(err)
+	}
+	executor := NewSqliteMutationExecutor(db)
+	for id, text := range []string{"123456789012.3456789", "3.50", "-10.01", "11.00"} {
+		_, err := executor.ExecuteSql(stdcontext.Background(), &teaql_sql.CompiledQuery{
+			Sql:    "INSERT INTO decimal_fixture (id, amount) VALUES (?, ?)",
+			Params: []core.Value{core.ValI64(int64(id + 1)), core.ValDecimal(decimal.RequireFromString(text))},
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
+	}
+	rows, err := executor.FetchAllSql(stdcontext.Background(), &teaql_sql.CompiledQuery{
+		Sql:    "SELECT amount FROM decimal_fixture WHERE amount > ? ORDER BY amount ASC",
+		Params: []core.Value{core.ValDecimal(decimal.RequireFromString("3.49"))},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := []string{"3.50", "11.00", "123456789012.3456789"}
+	if len(rows) != len(want) {
+		t.Fatalf("rows=%d want=%d", len(rows), len(want))
+	}
+	for i, row := range rows {
+		got, ok := row["amount"].TryDecimal()
+		if !ok || exactDecimalText(got) != want[i] {
+			t.Fatalf("row %d amount=%v loaded=%v want=%s", i, got, ok, want[i])
+		}
+	}
+	var storageType, storedText string
+	if err := db.QueryRow("SELECT typeof(amount), amount FROM decimal_fixture WHERE id=1").Scan(&storageType, &storedText); err != nil {
+		t.Fatal(err)
+	}
+	if storageType != "text" || storedText != want[2] {
+		t.Fatalf("storage=%s value=%s", storageType, storedText)
+	}
+}
+
+func TestVerifyExactDecimalSchemaRejectsLegacyNumeric(t *testing.T) {
+	db, err := sql.Open("sqlite3", ":memory:")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer db.Close()
+	if _, err := db.Exec("CREATE TABLE legacy_decimal (amount NUMERIC)"); err != nil {
+		t.Fatal(err)
+	}
+	entity := &core.EntityDescriptor{TabName: "legacy_decimal", Properties: []*core.PropertyDescriptor{{Name: "amount", ColName: "amount", DataType: core.TypeDecimal}}}
+	if err := VerifyExactDecimalSchema(db, entity); err == nil || !strings.Contains(err.Error(), "migrate to TEAQL_DECIMAL_TEXT") {
+		t.Fatalf("expected actionable legacy schema error, got %v", err)
+	}
+}
+
+func TestVerifyExactDecimalSchemaRejectsMissingNumericCollation(t *testing.T) {
+	db, err := sql.Open("sqlite3", ":memory:")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer db.Close()
+	if _, err := db.Exec("CREATE TABLE decimal_without_collation (amount TEAQL_DECIMAL_TEXT)"); err != nil {
+		t.Fatal(err)
+	}
+	entity := &core.EntityDescriptor{TabName: "decimal_without_collation", Properties: []*core.PropertyDescriptor{{Name: "amount", ColName: "amount", DataType: core.TypeDecimal}}}
+	if err := VerifyExactDecimalSchema(db, entity); err == nil || !strings.Contains(err.Error(), "COLLATE TEAQL_DECIMAL") {
+		t.Fatalf("expected missing Decimal collation error, got %v", err)
+	}
+}
+
+func TestExactDecimalSchemaRejectsMalformedDirectWrite(t *testing.T) {
+	db, err := sql.Open("sqlite3", ":memory:")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer db.Close()
+	if err := EnsureSoundex(db); err != nil {
+		t.Fatal(err)
+	}
+	entity := &core.EntityDescriptor{TabName: "decimal_fixture", Properties: []*core.PropertyDescriptor{
+		{Name: "amount", ColName: "amount", DataType: core.TypeDecimal},
+	}}
+	dialect := &teaql_sql.DefaultSqlDialect{Dialect: &SqliteDialect{}}
+	ddl, err := dialect.CompileCreateTable(entity)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := db.Exec(ddl); err != nil {
+		t.Fatal(err)
+	}
+	if err := VerifyExactDecimalSchema(db, entity); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := db.Exec("INSERT INTO decimal_fixture (amount) VALUES (?)", "1abc"); err == nil {
+		t.Fatal("generated exact Decimal schema accepted malformed direct write")
+	}
+	if _, err := db.Exec("INSERT INTO decimal_fixture (amount) VALUES (x'31')"); err == nil {
+		t.Fatal("generated exact Decimal schema accepted a BLOB value")
+	}
+}
+
+func TestVerifyExactDecimalSchemaRejectsMissingValueCheck(t *testing.T) {
+	db, err := sql.Open("sqlite3", ":memory:")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer db.Close()
+	if err := EnsureSoundex(db); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := db.Exec("CREATE TABLE unchecked_decimal (amount TEAQL_DECIMAL_TEXT COLLATE TEAQL_DECIMAL)"); err != nil {
+		t.Fatal(err)
+	}
+	entity := &core.EntityDescriptor{TabName: "unchecked_decimal", Properties: []*core.PropertyDescriptor{
+		{Name: "amount", ColName: "amount", DataType: core.TypeDecimal},
+	}}
+	if err := VerifyExactDecimalSchema(db, entity); err == nil || !strings.Contains(err.Error(), "value check") {
+		t.Fatalf("expected missing Decimal value check error, got %v", err)
+	}
+}
+
+func TestOrdinaryTextIsNotInferredAsDecimalFromContent(t *testing.T) {
+	record, err := decodeSqliteRow([]string{"note"}, nil, []any{"__teaql_decimal__:123.45"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	got, ok := record["note"].TryText()
+	if !ok || got != "__teaql_decimal__:123.45" {
+		t.Fatalf("ordinary text changed type: %v, %v", got, ok)
+	}
+}
+
+func TestExactDecimalAggregatesPreservePrecisionOrFailClosed(t *testing.T) {
+	db, err := sql.Open("sqlite3", ":memory:")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer db.Close()
+	if err := EnsureSoundex(db); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := db.Exec("CREATE TABLE decimal_fixture (amount TEAQL_DECIMAL_TEXT COLLATE TEAQL_DECIMAL)"); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := db.Exec("INSERT INTO decimal_fixture VALUES ('123456789012.3456789'), ('0.0000001'), ('-2.00')"); err != nil {
+		t.Fatal(err)
+	}
+	entity := &core.EntityDescriptor{TabName: "decimal_fixture", Properties: []*core.PropertyDescriptor{{Name: "amount", ColName: "amount", DataType: core.TypeDecimal}}}
+	dialect := &teaql_sql.DefaultSqlDialect{Dialect: &SqliteDialect{}}
+	query := core.NewSelectQuery("DecimalFixture").Sum("amount", "sum").Min("amount", "min").Max("amount", "max")
+	compiled, err := dialect.CompileSelect(entity, query)
+	if err != nil {
+		t.Fatal(err)
+	}
+	rows, err := NewSqliteMutationExecutor(db).FetchAllSql(stdcontext.Background(), compiled)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(rows) != 1 {
+		t.Fatalf("rows=%d", len(rows))
+	}
+	for field, want := range map[string]string{"sum": "123456789010.3456790", "min": "-2.00", "max": "123456789012.3456789"} {
+		got, ok := rows[0][field].TryDecimal()
+		if !ok || exactDecimalText(got) != want {
+			t.Fatalf("%s=%v loaded=%v want=%s", field, got, ok, want)
+		}
+	}
+	for _, query := range []*core.SelectQuery{
+		core.NewSelectQuery("DecimalFixture").Avg("amount", "average"),
+		core.NewSelectQuery("DecimalFixture").ProjectExpr("average", core.ExprFunctionNode(core.FuncAvg, core.ExprColumnNode("amount"))),
+	} {
+		if _, err := dialect.CompileSelect(entity, query); err == nil || !strings.Contains(err.Error(), "exact Decimal aggregate") {
+			t.Fatalf("expected exact Decimal AVG rejection, got %v", err)
+		}
 	}
 }
 

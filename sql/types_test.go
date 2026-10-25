@@ -66,6 +66,14 @@ func TestSqliteDebugSqlPreservesCommentsAndTemporalStorageLiterals(t *testing.T)
 		query.DebugSql(DatabaseKindSQLite))
 }
 
+func TestSqliteDebugSqlQuotesExactDecimalWithoutRounding(t *testing.T) {
+	query := CompiledQuery{
+		Sql:    "SELECT ? AS precise, ? AS scaled",
+		Params: []core.Value{core.ValDecimal(decimal.RequireFromString("123456789012.3456789")), core.ValDecimal(decimal.RequireFromString("3.50"))},
+	}
+	assert.Equal(t, "SELECT '123456789012.3456789' AS precise, '3.50' AS scaled", query.DebugSql(DatabaseKindSQLite))
+}
+
 func TestPostgresAndMysqlDebugSqlUseTypedTemporalLiterals(t *testing.T) {
 	params := []core.Value{core.ValDate(time.Date(2024, 2, 29, 0, 0, 0, 0, time.UTC)), core.ValTimestamp(-315521754322)}
 	pg := (&CompiledQuery{Sql: "-- ignored $1\nSELECT $1, $2 /* ignored $2 */", Params: params}).DebugSql(DatabaseKindPostgreSQL)

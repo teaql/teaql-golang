@@ -1,7 +1,6 @@
 package runtime
 
 import (
-	"encoding/json"
 	"fmt"
 	"strings"
 )
@@ -118,9 +117,15 @@ func (e *NotLoadedError) Terminal(call string) *NotLoadedError {
 }
 func (e *NotLoadedError) ToWire() NotLoadedDiagnostic { return e.path.Diagnostic(e.breakPoint) }
 func (e *NotLoadedError) Error() string {
-	var value strings.Builder
-	encoder := json.NewEncoder(&value)
-	encoder.SetEscapeHTML(false)   // Native source and <broken> remain readable in logs.
-	_ = encoder.Encode(e.ToWire()) // all fields are closed scalar/location types
-	return strings.TrimSuffix(value.String(), "\n")
+	wire := e.ToWire()
+	location := Location()
+	for _, segment := range wire.Location {
+		if segment.Kind == "index" {
+			location = location.At(*segment.Index)
+		} else {
+			location = location.Property(segment.Name)
+		}
+	}
+	return fmt.Sprintf("TeaQLNotLoadedError: access_path=%s break_point=%s — select the missing field or relation expression=%s",
+		location.NativePath(), wire.BreakPoint, wire.ExpressionWithBrokenPoint)
 }

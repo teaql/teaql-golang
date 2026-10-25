@@ -35,6 +35,9 @@ type CompiledQuery struct {
 	Comment              *string
 	ParameterLogPolicies []string
 	GeneratedSQL         bool
+	// Decimal result aliases are compiler-owned type hints for SQLite aggregate
+	// expressions, whose driver metadata does not retain the source column type.
+	ExactDecimalResultAliases map[string]bool
 	// Compilation-owned intent provenance, not execution params or wire data.
 	intentOperands []intentOperand
 }
@@ -314,6 +317,12 @@ func sqlLiteral(value core.Value, kind DatabaseKind) string {
 	case float64:
 		return fmt.Sprintf("%f", v)
 	case decimal.Decimal:
+		if kind == DatabaseKindSQLite {
+			if v.Exponent() < 0 {
+				return quotedSqlString(v.StringFixed(-v.Exponent()))
+			}
+			return quotedSqlString(v.String())
+		}
 		return v.String()
 	case string:
 		return quotedSqlString(v)

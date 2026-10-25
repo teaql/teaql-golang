@@ -73,6 +73,13 @@ type SqlDialect interface {
 	CompileGbkFunction(entity *core.EntityDescriptor, args []*core.Expr, params *[]core.Value) (string, error)
 }
 
+// ExactDecimalAggregateDialect keeps provider-specific Decimal aggregation
+// out of the generic SQL compiler. Providers that store Decimal as text must
+// implement this rather than silently delegating to floating-point SQL math.
+type ExactDecimalAggregateDialect interface {
+	CompileExactDecimalAggregate(function core.AggregateFunction, field string) (string, error)
+}
+
 type DefaultSqlDialect struct {
 	Dialect SqlDialect
 	// Fresh per top-level compilation, never shared across requests.
@@ -218,12 +225,44 @@ func (d *DefaultSqlDialect) CompileSelect(entity *core.EntityDescriptor, query *
 		return nil, err
 	}
 	return &CompiledQuery{
-		Sql:                  resultSql,
-		Params:               params,
-		ParameterLogPolicies: d.parameterPolicies(params), GeneratedSQL: d.generatedSQL,
+		Sql:                       resultSql,
+		Params:                    params,
+		ExactDecimalResultAliases: d.exactDecimalResultAliases(entity, query),
+		ParameterLogPolicies:      d.parameterPolicies(params), GeneratedSQL: d.generatedSQL,
 		Comment:        query.CommentText,
 		intentOperands: d.intentOperands(params),
 	}, nil
+}
+
+func (d *DefaultSqlDialect) exactDecimalResultAliases(entity *core.EntityDescriptor, query *core.SelectQuery) map[string]bool {
+	if _, ok := d.Dialect.(ExactDecimalAggregateDialect); !ok {
+		return nil
+	}
+	aliases := make(map[string]bool)
+	for _, aggregate := range query.Aggregates {
+		if property := entity.PropertyByName(aggregate.Field); property != nil && property.DataType == core.TypeDecimal && aggregate.Function != core.AggCount {
+			aliases[aggregate.Alias] = true
+		}
+	}
+	for _, projection := range query.ExprProjection {
+		if projection == nil || projection.Expr == nil || projection.Expr.Type != core.ExprTypeFunctionCall || len(projection.Expr.Args) != 1 {
+			continue
+		}
+		arg := projection.Expr.Args[0]
+		if arg == nil || arg.Type != core.ExprTypeColumn {
+			continue
+		}
+		if property := entity.PropertyByName(arg.Column); property != nil && property.DataType == core.TypeDecimal {
+			switch projection.Expr.Function {
+			case core.FuncSum, core.FuncMin, core.FuncMax:
+				aliases[projection.Alias] = true
+			}
+		}
+	}
+	if len(aliases) == 0 {
+		return nil
+	}
+	return aliases
 }
 
 func (d *DefaultSqlDialect) compileSelectSql(entity *core.EntityDescriptor, query *core.SelectQuery, params *[]core.Value) (string, error) {
@@ -852,6 +891,14 @@ func (d *DefaultSqlDialect) aggregateProjection(entity *core.EntityDescriptor, q
 			return "", err
 		}
 		call := d.aggregateCallSql(aggregate.Function, field)
+		if property := entity.PropertyByName(aggregate.Field); property != nil && property.DataType == core.TypeDecimal && aggregate.Function != core.AggCount {
+			if exact, ok := d.Dialect.(ExactDecimalAggregateDialect); ok {
+				call, err = exact.CompileExactDecimalAggregate(aggregate.Function, field)
+				if err != nil {
+					return "", err
+				}
+			}
+		}
 		parts = append(parts, fmt.Sprintf("%s AS %s", call, d.Dialect.QuoteIdent(aggregate.Alias)))
 	}
 
@@ -1043,6 +1090,28 @@ func (d *DefaultSqlDialect) compileSingleArgFunction(entity *core.EntityDescript
 	arg, err := d.compileExpr(entity, args[0], params)
 	if err != nil {
 		return "", err
+	}
+	if args[0] != nil && args[0].Type == core.ExprTypeColumn {
+		if property := entity.PropertyByName(args[0].Column); property != nil && property.DataType == core.TypeDecimal {
+			if exact, ok := d.Dialect.(ExactDecimalAggregateDialect); ok {
+				var aggregate core.AggregateFunction
+				switch function {
+				case "COUNT":
+					return fmt.Sprintf("COUNT(%s)", arg), nil
+				case "SUM":
+					aggregate = core.AggSum
+				case "AVG":
+					aggregate = core.AggAvg
+				case "MIN":
+					aggregate = core.AggMin
+				case "MAX":
+					aggregate = core.AggMax
+				default:
+					return "", fmt.Errorf("exact Decimal %s is not supported by %v", function, d.Dialect.Kind())
+				}
+				return exact.CompileExactDecimalAggregate(aggregate, arg)
+			}
+		}
 	}
 	return fmt.Sprintf("%s(%s)", function, arg), nil
 }

@@ -11,6 +11,9 @@ func TestExpressionEarlyRepeatedRelationPreservesOneBreakpoint(t *testing.T) {
 	leaf := parent.Member("parent", "Parent").Member("user_url", "UserUrl")
 	err := NewNotLoadedError(parent, "parent").WithPath(leaf).Terminal("Eval()")
 	wire := err.ToWire()
+	if err.Error() != "TeaQLNotLoadedError: access_path=Parent break_point=parent — select the missing field or relation expression="+wire.ExpressionWithBrokenPoint {
+		t.Fatal("default errors must be human-readable, not JSON", err.Error())
+	}
 	if !strings.Contains(err.Error(), "<broken>") {
 		t.Fatal("native errors must render a readable breakpoint")
 	}

@@ -64,6 +64,7 @@ func TestGeneratedFixAndExpressionExample(t *testing.T) {
 	}
 	partial := rows.Data[0]
 	diagnostics := []runtime.NotLoadedDiagnostic{}
+	humanMessages := []string{}
 	_, _, err = lib.E.PurchaseOrder(partial).Tenant().Name().TryEval()
 	var missing *runtime.NotLoadedError
 	if !errors.As(err, &missing) {
@@ -77,6 +78,7 @@ func TestGeneratedFixAndExpressionExample(t *testing.T) {
 		t.Fatal(wire)
 	}
 	diagnostics = append(diagnostics, wire)
+	humanMessages = append(humanMessages, missing.Error())
 	// Go's forward wrapper intentionally exposes target scalars, not another reverse traversal.
 	// Exercise the supported cross-package list -> forward -> scalar suffix instead.
 	tenants, err := lib.Q.Tenants().WithIdIs(1).Limit(1).
@@ -94,6 +96,7 @@ func TestGeneratedFixAndExpressionExample(t *testing.T) {
 		t.Fatal(wire)
 	}
 	diagnostics = append(diagnostics, wire)
+	humanMessages = append(humanMessages, missing.Error())
 	_, _, err = lib.E.PurchaseOrder(partial).OrderItemList().Get(2).ProductName().TryEval()
 	if !errors.As(err, &missing) {
 		t.Fatalf("expected list NotLoaded, got %T", err)
@@ -106,6 +109,7 @@ func TestGeneratedFixAndExpressionExample(t *testing.T) {
 		t.Fatal(wire)
 	}
 	diagnostics = append(diagnostics, wire)
+	humanMessages = append(humanMessages, missing.Error())
 	func() {
 		defer func() {
 			value := recover()
@@ -118,6 +122,7 @@ func TestGeneratedFixAndExpressionExample(t *testing.T) {
 				t.Fatal(wire)
 			}
 			diagnostics = append(diagnostics, wire)
+			humanMessages = append(humanMessages, failure.Error())
 		}()
 		lib.E.PurchaseOrder(partial).ContactPhone().OrElse("PRIVATE-FALLBACK")
 		t.Fatal("NotLoaded must not return a fallback")
@@ -154,7 +159,8 @@ func TestGeneratedFixAndExpressionExample(t *testing.T) {
 		t.Fatal("update time did not advance to T1")
 	}
 	data, err := json.Marshal(map[string]any{"language": "go", "passed": true, "normalGeneratedSave": true,
-		"createTimePreserved": true, "updateTimeAdvanced": true, "declaredContextRootInjected": true, "diagnostics": diagnostics})
+		"createTimePreserved": true, "updateTimeAdvanced": true, "declaredContextRootInjected": true,
+		"diagnostics": diagnostics, "humanMessages": humanMessages})
 	if err != nil {
 		t.Fatal(err)
 	}
