@@ -33,6 +33,30 @@ func ExecuteTypedList[T any](context stdcontext.Context, service *RuntimeDataSer
 	if err != nil {
 		return nil, err
 	}
+	if len(query.GroupBy) > 0 || len(query.ObjectGroupBys) > 0 {
+		return nil, fmt.Errorf("grouped projections require the record query terminal")
+	}
+	// The named page count is metadata for an entity list. Remaining scalar
+	// aggregates are metadata-only results and must never enter entity hydration.
+	aggregateOnly := false
+	for _, aggregate := range query.Aggregates {
+		if aggregate == nil {
+			continue
+		}
+		if plan != nil && plan.countOperation != nil && plan.countOperation.Alias != nil &&
+			aggregate.Function == core.AggCount && aggregate.Alias == *plan.countOperation.Alias {
+			continue
+		}
+		aggregateOnly = true
+	}
+	if aggregateOnly {
+		if len(rows.Data) > 0 {
+			for alias, value := range rows.Data[0] {
+				rows.Aggregations[alias] = value
+			}
+		}
+		rows.Data = nil
+	}
 	entities := make([]T, 0, len(rows.Data))
 	for _, row := range rows.Data {
 		entity, hydrationError := hydrate(row)
@@ -160,8 +184,12 @@ func (s *RuntimeDataService) FetchPageWithFacetPlan(context stdcontext.Context, 
 		if len(countRows) != 1 {
 			return fmt.Errorf("exact count returned %d rows", len(countRows))
 		}
+		value := countRows[0][alias]
+		if exact, ok := value.TryDecimal(); ok && !exact.Equal(exact.Truncate(0)) {
+			return fmt.Errorf("exact count must not be fractional")
+		}
 		var ok bool
-		total, ok = countRows[0][alias].TryU64()
+		total, ok = value.TryU64()
 		if !ok {
 			return fmt.Errorf("exact count did not return an unsigned integer")
 		}
