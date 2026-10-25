@@ -30,7 +30,28 @@ claims of live PostgreSQL/MySQL integration acceptance.
 The example verifies typed setter → SQLite → time predicate/projection → E,
 null/NotLoaded, and immediate E access to an unsaved native Timestamp. A native
 clock value also round-trips through its text JSON representation without I/O.
-This is **not typed entity JSON** or a query/facet response envelope.
+The separate entity JSON test now also exercises the actual generated codec.
+
+## Typed entity JSON
+
+`entity.ToJSON()` and `encoding/json.Marshal(entity)` use model-owned metadata.
+`lib.ScalarTypeProbeFromJSON(payload)` returns the actual generated entity, with
+independent clean mutation ownership. A default camelCase model can explicitly
+use `runtime.JsonFieldSnakeCase` or `runtime.JsonFieldPascalCase` in both calls.
+The metadata is in an internal leaf package; concrete factories belong to the
+library facade, avoiding parent/child package import cycles and global registries.
+
+Each execution verifies three profiles, all 21 business scalar fields, selected
+forward and reverse relations, exact Long/Decimal and nanosecond Time, omitted
+versus explicit null, zero-I/O JSON/E, rejection of partial decoded mutations,
+save of a complete decoded entity and rejection of an independently decoded
+stale version. The two executions keep the same database and preserve six
+distinct JSON entity IDs. Native provider and codec tests additionally cover
+typed SQL NULL, identity nulls, duplicate keys, aliases, UTF text, cycles and bounds.
+
+JSON is a loaded snapshot, not a create command or authorization decision.
+Audited save and Checker still apply. This is not a query/facet response envelope
+or a context-bound external-reference transport adapter.
 
 One clearly labelled raw-SQL fault injection corrupts a separate test row.
 Generated Q hydration must reject it at `required_time`, never silently return

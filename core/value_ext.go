@@ -11,7 +11,7 @@ func (v Value) TryList() ([]Value, bool) {
 }
 
 func (v Value) TryJson() (any, bool) {
-	if v.V == nil {
+	if v.IsNull() {
 		return nil, false
 	}
 	// Depending on how JSON is stored, it might be map[string]any, []any, etc.
@@ -27,5 +27,9 @@ func (v Value) TryObject() (Record, bool) {
 }
 
 func (v Value) IsNull() bool {
-	return v.V == nil
+	if v.V == nil {
+		return true
+	}
+	_, typedNull := v.V.(DataType)
+	return typedNull
 }

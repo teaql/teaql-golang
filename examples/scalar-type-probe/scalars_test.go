@@ -271,7 +271,7 @@ func TestGeneratedPortableScalars(t *testing.T) {
 	if !t.Failed() {
 		fmt.Printf("CORE_SCALAR_NATIVE language=go fields=21 fk=true exactLong=true exactDecimal=true nullVsNotLoaded=true timeProfile=TimeOfDay calibrated=%+v\n", counts)
 	}
-	fmt.Println("MISSING_ASSIST language=go operation=typed_entity_json claim=false")
+	fmt.Println("SCALAR_NATIVE_SCOPE language=go typed_entity_json=false")
 }
 
 func TestGeneratedTypedTimeIntegrity(t *testing.T) {

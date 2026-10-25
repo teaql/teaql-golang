@@ -13,6 +13,7 @@ import (
 	"github.com/teaql/teaql-golang/core"
 	"github.com/teaql/teaql-golang/data_service"
 	"github.com/teaql/teaql-golang/runtime"
+	"scalar-type-conformance-service-core-workspace/lib/internal/generatedjson"
 	"scalar-type-conformance-service-core-workspace/lib/scalar_type_probe"
 )
 
@@ -264,7 +265,47 @@ func (e *TypePlatform) OnLoaded(context any) {
 }
 
 func (e *TypePlatform) IntoJson() any {
-	return e.base.ToRecord()
+	return e // encoding/json dispatches MarshalJSON and preserves any error.
+}
+
+func (e *TypePlatform) ToJSON(profile ...runtime.JsonFieldNamingProfile) ([]byte, error) {
+	return generatedjson.Model.Serialize(e.EntityName(), e, profile...)
+}
+
+func (e *TypePlatform) MarshalJSON() ([]byte, error) { return e.ToJSON() }
+
+// Only shallow loaded values escape. Related documents are visited lazily by
+// the runtime codec under its depth, byte and cycle guards.
+func (e *TypePlatform) LoadedJSONFields() core.Record {
+	all := e.IntoRecord()
+	selected := make(core.Record)
+	if e.IsLoaded("id") { if value, present := all["id"]; present { selected["id"] = value } }
+	if e.IsLoaded("name") { if value, present := all["name"]; present { selected["name"] = value } }
+	if e.IsLoaded("version") { if value, present := all["version"]; present { selected["version"] = value } }
+	if e.IsLoaded("scalarTypeProbeList") {
+		items := make([]core.Value, 0, len(e.ScalarTypeProbeList().Items()))
+		for _, child := range e.ScalarTypeProbeList().Items() { items = append(items, core.Value{V: child}) }
+		selected["scalarTypeProbeList"] = core.ValList(items)
+	}
+	return selected
+}
+
+// Generated infrastructure used by the facade's typed factories. It never
+// replaces an existing caller-owned entity or imports a parent entity package.
+func TeaqlTypePlatformFromJSONRecord(record core.Record, factory func(string, core.Record) (core.Entity, error)) (*TypePlatform, error) {
+	entity := newLoadedTypePlatform()
+	if err := entity.FromRecord(record); err != nil { return nil, err }
+	if value, selected := record["scalarTypeProbeList"]; selected {
+		items, ok := value.TryList(); if !ok { return nil, fmt.Errorf("invalid generated JSON collection record") }
+		for _, item := range items {
+			childRecord, ok := item.TryObject(); if !ok { return nil, fmt.Errorf("invalid generated JSON child record") }
+			child, err := factory("Scalar Type Probe", childRecord); if err != nil { return nil, err }
+			typed, ok := child.(*scalar_type_probe.ScalarTypeProbe); if !ok { return nil, fmt.Errorf("unexpected generated JSON child type") }
+			typed.AttachEntityRoot(entity.root)
+			entity.ScalarTypeProbeList().Add(typed)
+		}
+	}
+	return entity, nil
 }
 
 func (e *TypePlatform) Save(context *runtime.UserContext) (*TypePlatform, error) {

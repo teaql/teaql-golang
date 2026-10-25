@@ -13,6 +13,7 @@ import (
 	"github.com/teaql/teaql-golang/core"
 	"github.com/teaql/teaql-golang/data_service"
 	"github.com/teaql/teaql-golang/runtime"
+	"scalar-type-conformance-service-core-workspace/lib/internal/generatedjson"
 )
 
 var (
@@ -259,7 +260,64 @@ func (e *ScalarTypeProbe) OnLoaded(context any) {
 }
 
 func (e *ScalarTypeProbe) IntoJson() any {
-	return e.base.ToRecord()
+	return e // encoding/json dispatches MarshalJSON and preserves any error.
+}
+
+func (e *ScalarTypeProbe) ToJSON(profile ...runtime.JsonFieldNamingProfile) ([]byte, error) {
+	return generatedjson.Model.Serialize(e.EntityName(), e, profile...)
+}
+
+func (e *ScalarTypeProbe) MarshalJSON() ([]byte, error) { return e.ToJSON() }
+
+// Only shallow loaded values escape. Related documents are visited lazily by
+// the runtime codec under its depth, byte and cycle guards.
+func (e *ScalarTypeProbe) LoadedJSONFields() core.Record {
+	all := e.IntoRecord()
+	selected := make(core.Record)
+	if e.IsLoaded("id") { if value, present := all["id"]; present { selected["id"] = value } }
+	if e.IsLoaded("type_platform_id") { if value, present := all["type_platform_id"]; present { selected["type_platform_id"] = value } }
+	if e.IsLoaded("required_string") { if value, present := all["required_string"]; present { selected["required_string"] = value } }
+	if e.IsLoaded("optional_string") { if value, present := all["optional_string"]; present { selected["optional_string"] = value } }
+	if e.IsLoaded("large_text") { if value, present := all["large_text"]; present { selected["large_text"] = value } }
+	if e.IsLoaded("required_boolean") { if value, present := all["required_boolean"]; present { selected["required_boolean"] = value } }
+	if e.IsLoaded("optional_boolean") { if value, present := all["optional_boolean"]; present { selected["optional_boolean"] = value } }
+	if e.IsLoaded("required_integer") { if value, present := all["required_integer"]; present { selected["required_integer"] = value } }
+	if e.IsLoaded("optional_integer") { if value, present := all["optional_integer"]; present { selected["optional_integer"] = value } }
+	if e.IsLoaded("required_long") { if value, present := all["required_long"]; present { selected["required_long"] = value } }
+	if e.IsLoaded("optional_long") { if value, present := all["optional_long"]; present { selected["optional_long"] = value } }
+	if e.IsLoaded("required_decimal") { if value, present := all["required_decimal"]; present { selected["required_decimal"] = value } }
+	if e.IsLoaded("optional_decimal") { if value, present := all["optional_decimal"]; present { selected["optional_decimal"] = value } }
+	if e.IsLoaded("required_float") { if value, present := all["required_float"]; present { selected["required_float"] = value } }
+	if e.IsLoaded("optional_float") { if value, present := all["optional_float"]; present { selected["optional_float"] = value } }
+	if e.IsLoaded("required_double") { if value, present := all["required_double"]; present { selected["required_double"] = value } }
+	if e.IsLoaded("optional_double") { if value, present := all["optional_double"]; present { selected["optional_double"] = value } }
+	if e.IsLoaded("required_date") { if value, present := all["required_date"]; present { selected["required_date"] = value } }
+	if e.IsLoaded("optional_date") { if value, present := all["optional_date"]; present { selected["optional_date"] = value } }
+	if e.IsLoaded("required_time") { if value, present := all["required_time"]; present { selected["required_time"] = value } }
+	if e.IsLoaded("optional_time") { if value, present := all["optional_time"]; present { selected["optional_time"] = value } }
+	if e.IsLoaded("required_datetime") { if value, present := all["required_datetime"]; present { selected["required_datetime"] = value } }
+	if e.IsLoaded("optional_datetime") { if value, present := all["optional_datetime"]; present { selected["optional_datetime"] = value } }
+	if e.IsLoaded("create_time") { if value, present := all["create_time"]; present { selected["create_time"] = value } }
+	if e.IsLoaded("update_time") { if value, present := all["update_time"]; present { selected["update_time"] = value } }
+	if e.IsLoaded("version") { if value, present := all["version"]; present { selected["version"] = value } }
+	if e.isRelationLoaded("typePlatformEntity") { if target, present := e.relations["typePlatformEntity"]; present && target != nil { selected["typePlatformEntity"] = core.Value{V: target} } }
+	return selected
+}
+
+// Generated infrastructure used by the facade's typed factories. It never
+// replaces an existing caller-owned entity or imports a parent entity package.
+func TeaqlScalarTypeProbeFromJSONRecord(record core.Record, factory func(string, core.Record) (core.Entity, error)) (*ScalarTypeProbe, error) {
+	entity := newLoadedScalarTypeProbe()
+	if err := entity.FromRecord(record); err != nil { return nil, err }
+	if value, selected := record["typePlatformEntity"]; selected {
+		entity.markRelationLoaded("typePlatformEntity")
+		if !value.IsNull() {
+			targetRecord, ok := value.TryObject(); if !ok { return nil, fmt.Errorf("invalid generated JSON relation record") }
+			target, err := factory("Type Platform", targetRecord); if err != nil { return nil, err }
+			entity.setRelationEntity("typePlatformEntity", target)
+		}
+	}
+	return entity, nil
 }
 
 func (e *ScalarTypeProbe) Save(context *runtime.UserContext) (*ScalarTypeProbe, error) {

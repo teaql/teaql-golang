@@ -223,7 +223,7 @@ func (v Value) Object() (map[string]any, bool) {
 }
 
 func (v Value) TeaqlIsEmpty() bool {
-	if v.V == nil {
+	if v.IsNull() {
 		return true
 	}
 	switch val := v.V.(type) {
@@ -238,5 +238,8 @@ func (v Value) TeaqlIsEmpty() bool {
 }
 
 func (v Value) ToJsonValue() any {
+	if v.IsNull() {
+		return nil
+	}
 	return v.V
 }

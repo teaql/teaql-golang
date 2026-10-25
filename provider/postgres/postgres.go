@@ -343,7 +343,7 @@ func bindValues(values []core.Value) ([]interface{}, error) {
 }
 
 func bindPgValue(value core.Value) (interface{}, error) {
-	if value.V == nil {
+	if value.IsNull() {
 		return nil, nil
 	}
 	switch v := value.V.(type) {

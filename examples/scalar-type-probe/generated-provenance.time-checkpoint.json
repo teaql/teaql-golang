@@ -1,0 +1,27 @@
+{
+  "schema": "teaql.generated-example-fixture/v1",
+  "generatorCommit": "dadfe62e4d3ddaff5f2ff0d453938b38a65b6e07",
+  "generatorSourceContentsSha256": "20c38d4b0ab51187874b06498804ba4665d05dd1eb16c92712fd9ea55b79cb38",
+  "producerReceiptSha256": "a2ef8ae10103413a3a74fa34db4bb7ead4f01027d15c5258a6beff83d1249e87",
+  "producerManifestSha256": "eb9d751e4588f557b99c2a744c3d182de32eb3ce4f2161c1a79d28299f85ac98",
+  "modelSha256": "8d3017392ffd00abbc06be2555ced27ac6360e2d05fabc4299e27a5ef8f1c762",
+  "evaluationErrors": 0,
+  "files": {
+    "type_platform/expression.go": "190e4dd5aae95dede622b198ae6daa7c3a20acf52be5de52ee5182c7b6129bd9",
+    "scalar_type_probe/expression.go": "96f8f9ecb617aff80e9101390a78635353a9b2736060fcae783cf77427ee0083",
+    "lib.go": "d7039265d1181b84bb56e0309647d1f330f8940625ad90f3a0d211b0bf80ccf8",
+    "type_platform/checker.go": "d34524d9ccc3e9f7161924149af5e32c7ad204deca31e1d86f1561877c78135e",
+    "scalar_type_probe/checker.go": "355e35a675df34683b3c7cfb85abe12a77f2dde6ab027c11c6a1574b2e8c51be",
+    "type_platform/request.go": "a52202566553601a51104a2c3b2709941811b8d9b878a8a598e0bbe966bb6813",
+    "scalar_type_probe/request.go": "eafe08f3a96b7d63727ab586b01f80113979295d22a63d175a6ac6b30fe705d1",
+    "e.go": "1de7aa459178b21fe4111088a83803597d26f2741ae0d19086098b29d3d483a9",
+    "type_platform/entity.go": "7762414f3775b313f398e00528399d1c505d978bd64599ae079a5bb368e93104",
+    "scalar_type_probe/entity.go": "4384cbce6e963f8dd9001f67be31625304cb1089e996dd0fe16b2b9edb5feaf1",
+    "q.go": "eac483ed0f763a27a99172533b08b93b6fdf022d12cf2d7e8b4a9d5106f29fb3",
+    "runtime.go": "784addf67ae0393120d148d5785e9a4b9178e1d6760046a794e489f8a269f360",
+    "internal/generatedsearch/search_models.go": "642072512c33620ab83d5a5d33094236ba20a8b5bad6fff9dc5223efe1296dac",
+    "go.mod": "af54910f916f60617f8863067cad5b0f4103e077ffa00c9cb2afca19af5fce1e",
+    "type_platform/behavior.go": "3b3c8f0323c769d67db34b8421e21a02fc0a93ee87b27ea150d33a8495894899",
+    "scalar_type_probe/behavior.go": "3e0dbce0c8cb32e56783928a3c6e304ede947e332bc946a19e6f42534947da94"
+  }
+}
