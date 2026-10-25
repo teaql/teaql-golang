@@ -20,6 +20,27 @@ fields and projection NotLoaded remain distinct. Twelve nonfinite mutation cases
 must fail before query, mutation, transaction begin or ID allocation. Successful
 provider operations calibrate those counters.
 
+## Exact integral admission after custom Fix
+
+```bash
+node examples/scalar-type-probe/verify-integral.cjs
+```
+
+This focused companion compiles once with the race detector and runs twice on
+one SQLite database without reset. Eleven invalid signed-integer/reference
+values are tested on both create and update. A custom Fix injects fractional
+Decimals, overflow, negative unsigned references, floats, text and booleans.
+Each rejection must identify the field with `invalid_type` before query,
+mutation, transaction begin or ID allocation. One successful generated save
+and Q reload calibrate all observers; E and read-only SQLite confirm unchanged
+Long, FK and optimistic version. Decimal-to-integer conversion must be exact,
+including extreme exponent rejection without allocating a huge power of ten.
+
+The fixture reuses this example's unchanged evaluated model and generated
+library. These are 64-bit storage-boundary checks, not qualification of the
+modeled Integer's narrower I32 range, business ID positivity, full canonical
+relation naming, live external databases or an installed-package release.
+
 Time is `core.TimeOfDay`, or `*core.TimeOfDay` when optional. It is neither a
 timestamp nor a duration; zero means midnight. `core.ParseTimeOfDay` validates
 `HH:mm:ss` with up to nine fractional digits and no timezone/date. SQLite stores

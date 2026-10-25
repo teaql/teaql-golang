@@ -2,8 +2,11 @@ package tracechain_test
 
 import (
 	"encoding/json"
+	"errors"
 	"strings"
 	"testing"
+
+	"github.com/teaql/teaql-golang/runtime"
 
 	lib "trace-chain-service-core-workspace/lib"
 	"trace-chain-service-core-workspace/lib/customer_order"
@@ -18,6 +21,10 @@ func TestGeneratedUnchangedPrivateChildProtectsParentIntent(t *testing.T) {
 	child := newItem(e, secret)
 	root.OrderItemList().Add(child)
 	if _, err := root.AuditAs("seed unchanged child graph").Save(e.context); err != nil {
+		var checked *runtime.RuntimeError
+		if errors.As(err, &checked) {
+			t.Fatalf("seed graph rejected: %+v", checked.CheckResults)
+		}
 		t.Fatal(err)
 	}
 	id, _ := customer_order.NewCustomerOrderExpression(root).Id().Eval()

@@ -2,6 +2,8 @@ package core
 
 import (
 	"math"
+	"strconv"
+	"strings"
 	"time"
 
 	"github.com/shopspring/decimal"
@@ -54,8 +56,11 @@ func (v Value) TryI64() (int64, bool) {
 			return int64(val), true
 		}
 	case decimal.Decimal:
-		if val.GreaterThanOrEqual(decimal.NewFromInt(math.MinInt64)) && val.LessThanOrEqual(decimal.NewFromInt(math.MaxInt64)) {
-			return val.BigInt().Int64(), true
+		if text, exact := decimalIntegerText(val); exact {
+			number, err := strconv.ParseInt(text, 10, 64)
+			if err == nil {
+				return number, true
+			}
 		}
 	}
 	return 0, false
@@ -70,15 +75,45 @@ func (v Value) TryU64() (uint64, bool) {
 			return uint64(val), true
 		}
 	case decimal.Decimal:
-		if val.GreaterThanOrEqual(decimal.Zero) {
-			// Check if it fits in uint64. decimal.NewFromUint64 exists.
-			uMax := decimal.NewFromUint64(math.MaxUint64)
-			if val.LessThanOrEqual(uMax) {
-				return val.BigInt().Uint64(), true
+		if text, exact := decimalIntegerText(val); exact {
+			number, err := strconv.ParseUint(text, 10, 64)
+			if err == nil {
+				return number, true
 			}
 		}
 	}
 	return 0, false
+}
+
+// Produce at most 21 characters, without rescaling or allocating 10^exponent.
+// Decimal comparison/rescaling can otherwise expand extreme exponents merely
+// to discover that a number is fractional or outside the 64-bit range.
+func decimalIntegerText(value decimal.Decimal) (string, bool) {
+	if value.IsZero() {
+		return "0", true
+	}
+	exponent := int64(value.Exponent())
+	if exponent > 20 {
+		return "", false
+	}
+	digits := value.Coefficient().String()
+	if exponent < 0 {
+		places := -exponent
+		if places >= int64(len(digits)) {
+			return "", false
+		}
+		for index := int64(len(digits)) - places; index < int64(len(digits)); index++ {
+			if digits[index] != '0' {
+				return "", false
+			}
+		}
+		digits = digits[:int64(len(digits))-places]
+		exponent = 0
+	}
+	if int64(len(digits))+exponent > 21 {
+		return "", false
+	}
+	return digits + strings.Repeat("0", int(exponent)), true
 }
 
 func (v Value) TryDecimal() (decimal.Decimal, bool) {

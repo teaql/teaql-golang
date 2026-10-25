@@ -19,6 +19,7 @@ export PATH="$(dirname "$go_binary"):$PATH"
 node examples/fix-e-alignment/verify-local.cjs
 bash examples/object-storage/verify.sh
 bash examples/scalar-type-probe/verify.sh
+node examples/scalar-type-probe/verify-integral.cjs
 # An example must test this checkout, never an older published runtime. Go
 # ignores dependency-module replace directives. A library's standalone go.mod
 # can therefore resolve differently from its application. Bind every module in

@@ -1609,6 +1609,7 @@ func (c *UserContext) checkAndFix(input *CheckAndFixInput) error {
 	// A configured Fix may repair inputs. Validate its final values, even when
 	// the application intentionally supplies no model checker.
 	results = append(results, c.checkFiniteFloatingValues(input)...)
+	results = append(results, c.checkIntegralValues(input)...)
 	c.TranslateCheckResults(results)
 	if len(results) != 0 {
 		return &RuntimeError{Type: "Check", CheckResults: results}
