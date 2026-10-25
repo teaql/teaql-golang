@@ -13,6 +13,7 @@ import (
 	"github.com/teaql/teaql-golang/core"
 	"github.com/teaql/teaql-golang/data_service"
 	"github.com/teaql/teaql-golang/runtime"
+	"trace-chain-service-core-workspace/lib/internal/generatedjson"
 )
 
 var (
@@ -150,7 +151,7 @@ func (e *PaymentAttempt) teaqlFromRecord(record core.Record, captureLoaded bool)
 	e.loadState = make(map[string]bool, len(record))
 	e.restrictLoadState = true
 	for field := range record { e.loadState[field] = true }
-	if captureLoaded { e.loadedSnapshot = e.teaqlScalarSnapshot(record) }
+	if captureLoaded { e.loadedSnapshot = e.teaqlScalarSnapshot(e.IntoRecord()) }
 	return nil
 }
 
@@ -242,7 +243,42 @@ func (e *PaymentAttempt) OnLoaded(context any) {
 }
 
 func (e *PaymentAttempt) IntoJson() any {
-	return e.base.ToRecord()
+	return e // encoding/json dispatches MarshalJSON and preserves any error.
+}
+
+func (e *PaymentAttempt) ToJSON(profile ...runtime.JsonFieldNamingProfile) ([]byte, error) {
+	return generatedjson.Model.Serialize(e.EntityName(), e, profile...)
+}
+
+func (e *PaymentAttempt) MarshalJSON() ([]byte, error) { return e.ToJSON() }
+
+// Only shallow loaded values escape. Related documents are visited lazily by
+// the runtime codec under its depth, byte and cycle guards.
+func (e *PaymentAttempt) LoadedJSONFields() core.Record {
+	all := e.IntoRecord()
+	selected := make(core.Record)
+	if e.IsLoaded("id") { if value, present := all["id"]; present { selected["id"] = value } }
+	if e.IsLoaded("payment_id") { if value, present := all["payment_id"]; present { selected["payment_id"] = value } }
+	if e.IsLoaded("reference_code") { if value, present := all["reference_code"]; present { selected["reference_code"] = value } }
+	if e.IsLoaded("version") { if value, present := all["version"]; present { selected["version"] = value } }
+	if e.isRelationLoaded("paymentEntity") { if target, present := e.relations["paymentEntity"]; present && target != nil { selected["paymentEntity"] = core.Value{V: target} } }
+	return selected
+}
+
+// Generated infrastructure used by the facade's typed factories. It never
+// replaces an existing caller-owned entity or imports a parent entity package.
+func TeaqlPaymentAttemptFromJSONRecord(record core.Record, factory func(string, core.Record) (core.Entity, error)) (*PaymentAttempt, error) {
+	entity := newLoadedPaymentAttempt()
+	if err := entity.FromRecord(record); err != nil { return nil, err }
+	if value, selected := record["paymentEntity"]; selected {
+		entity.markRelationLoaded("paymentEntity")
+		if !value.IsNull() {
+			targetRecord, ok := value.TryObject(); if !ok { return nil, fmt.Errorf("invalid generated JSON relation record") }
+			target, err := factory("Payment", targetRecord); if err != nil { return nil, err }
+			entity.setRelationEntity("paymentEntity", target)
+		}
+	}
+	return entity, nil
 }
 
 func (e *PaymentAttempt) Save(context *runtime.UserContext) (*PaymentAttempt, error) {
@@ -267,7 +303,7 @@ func (e *PaymentAttempt) Save(context *runtime.UserContext) (*PaymentAttempt, er
 // first provider mutation. It is generated infrastructure, not application API.
 func (e *PaymentAttempt) TeaqlPreflightGraph(context *runtime.UserContext, intent core.MutationIntent) error {
 	if err := intent.Validate(); err != nil { return err }
-	if !e.markedAsDelete {
+	if !e.markedAsDelete && (e.isNew || len(e.root.Change(e.EntityKey())) > 0) {
 		if e.isNew {
 		}
 		operation := core.MutationUpdate
@@ -292,7 +328,7 @@ func (e *PaymentAttempt) TeaqlPreflightGraph(context *runtime.UserContext, inten
 		}
 		checkedValues := e.IntoRecord()
 		valuesBeforeCheck := e.IntoRecord()
-		checkErr := context.CheckAndFix(&runtime.CheckAndFixInput{Entity: "Payment Attempt", Operation: operation, Values: checkedValues})
+		checkErr := runtime.CheckAndFixGraphEntity(context, &runtime.CheckAndFixInput{Entity: "Payment Attempt", Operation: operation, Values: checkedValues}, e.root, e.EntityKey())
 		for field, value := range checkedValues {
 			if before, exists := valuesBeforeCheck[field]; !exists || !reflect.DeepEqual(before, value) {
 				e.base.PutDynamic(field, value)
@@ -346,6 +382,14 @@ func (e *PaymentAttempt) teaqlRegisterGraphOutcome(context *runtime.UserContext,
 // packages after the public root Save has opened the graph transaction.
 func (e *PaymentAttempt) TeaqlSaveWithinGraph(context *runtime.UserContext, intent core.MutationIntent, parentScope *core.MutationTraceScope, privacy *data_service.MutationPrivacy) (*PaymentAttempt, error) {
 	if err := intent.Validate(); err != nil { return nil, err }
+	// Reached but unchanged entities are ancestry, not writes. Their changed
+	// descendants still participate without requiring a complete parent projection.
+	if !e.isNew && !e.markedAsDelete && len(e.root.Change(e.EntityKey())) == 0 {
+		scope, err := core.MutationScopeForEntity(parentScope, e.EntityKey(), intent, e.comment)
+		if err != nil { return nil, err }
+		if err := e.saveCascade(context, intent, scope, privacy); err != nil { return nil, err }
+		return e, nil
+	}
 	snapshot := e.teaqlSaveSnapshot()
 	e.teaqlRegisterGraphOutcome(context, snapshot)
 	dsRaw := context.GetResource("dataService")
@@ -361,10 +405,11 @@ func (e *PaymentAttempt) TeaqlSaveWithinGraph(context *runtime.UserContext, inte
 		return nil, fmt.Errorf("dataService does not implement Mutator")
 	}
 
+
 	if e.isNew {
 		checkedValues := e.IntoRecord()
 		valuesBeforeCheck := e.IntoRecord()
-		checkErr := context.CheckAndFix(&runtime.CheckAndFixInput{Entity: "Payment Attempt", Operation: core.MutationInsert, Values: checkedValues})
+		checkErr := runtime.CheckAndFixGraphEntity(context, &runtime.CheckAndFixInput{Entity: "Payment Attempt", Operation: core.MutationInsert, Values: checkedValues}, e.root, e.EntityKey())
 		for field, value := range checkedValues {
 			if before, exists := valuesBeforeCheck[field]; !exists || !reflect.DeepEqual(before, value) {
 				e.root.Set(e.EntityKey(), field, value)
@@ -372,26 +417,15 @@ func (e *PaymentAttempt) TeaqlSaveWithinGraph(context *runtime.UserContext, inte
 		}
 		if checkErr != nil { return nil, checkErr }
 		if err := e.teaqlFromRecord(checkedValues, false); err != nil { return nil, err }
-		type idGenerator interface {
-			GenerateId(entity string) (uint64, error)
-		}
-		generator := idGenerator(runtime.LocalIdGenerator())
-		if configured := context.GetResource("idGenerator"); configured != nil {
-			if typed, ok := configured.(idGenerator); ok {
-				generator = typed
-			}
-		}
 		if e.base.Id == 0 {
-			id, err := generator.GenerateId(e.EntityName())
+			id, err := context.GenerateInternalId(e.EntityName())
 			if err != nil {
 				return nil, fmt.Errorf("generate id for %s: %w", e.EntityName(), err)
 			}
 			e.base.Id = id
 			e.root.Rekey(core.NewEntityKey(e.EntityName(), e.ledgerID), e.EntityKey())
-		} else if floor, ok := generator.(interface {
-			EnsureIdFloor(stdcontext.Context, string, uint64) error
-		}); ok {
-			if err := floor.EnsureIdFloor(stdcontext.Background(), e.EntityName(), e.base.Id); err != nil {
+		} else {
+			if err := context.EnsureInternalIdFloor(context.Context, e.EntityName(), e.base.Id); err != nil {
 				return nil, fmt.Errorf("synchronize id floor for %s: %w", e.EntityName(), err)
 			}
 		}
@@ -459,7 +493,7 @@ func (e *PaymentAttempt) TeaqlSaveWithinGraph(context *runtime.UserContext, inte
 	} else {
 		checkedValues := e.IntoRecord()
 		valuesBeforeCheck := e.IntoRecord()
-		checkErr := context.CheckAndFix(&runtime.CheckAndFixInput{Entity: "Payment Attempt", Operation: core.MutationUpdate, Values: checkedValues})
+		checkErr := runtime.CheckAndFixGraphEntity(context, &runtime.CheckAndFixInput{Entity: "Payment Attempt", Operation: core.MutationUpdate, Values: checkedValues}, e.root, e.EntityKey())
 		for field, value := range checkedValues {
 			if before, exists := valuesBeforeCheck[field]; !exists || !reflect.DeepEqual(before, value) {
 				e.root.Set(e.EntityKey(), field, value)

@@ -9,6 +9,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/teaql/teaql-golang/runtime"
+
 	lib "trace-chain-service-core-workspace/lib"
 	"trace-chain-service-core-workspace/lib/customer_order"
 	"trace-chain-service-core-workspace/lib/order_item"
@@ -156,7 +158,7 @@ func TestGeneratedStreamsOverlapWithIndependentSavesAndSafeTermination(t *testin
 		}
 	}
 	e.reset()
-	stop := errors.New("consumer stops after one entity")
+	stop := runtime.ErrStopStream
 	callbacks := 0
 	err = lib.Q.OrderItems().WithNameIs(names[1]).OrderByIdAsc().Limit(10).
 		Comment("cancel "+names[1]).Purpose("cancel intent "+names[1]).ExecuteForStream(e.context, 1, func(*order_item.OrderItem) error { callbacks++; return stop })

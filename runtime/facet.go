@@ -31,9 +31,10 @@ func ExecuteFacets(
 // FacetPlan owns an invocation's selections. Capture before policy or provider
 // callbacks; never reread the caller's QueryOptions after row execution begins.
 type FacetPlan struct {
-	countOperation *core.QueryOperation
-	facets         []capturedFacet
-	relations      map[string]*FacetPlan
+	countOperation  *core.QueryOperation
+	typedEntityRows bool
+	facets          []capturedFacet
+	relations       map[string]*FacetPlan
 }
 
 func CaptureFacetPlan(options *core.QueryOptions) (*FacetPlan, error) {

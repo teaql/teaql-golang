@@ -13,6 +13,7 @@ import (
 	"github.com/teaql/teaql-golang/core"
 	"github.com/teaql/teaql-golang/data_service"
 	"github.com/teaql/teaql-golang/runtime"
+	"checker-fix-advanced-core-workspace/lib/internal/generatedjson"
 )
 
 var (
@@ -28,6 +29,7 @@ var teaqlTemporaryEntityID int64
 
 type OrderItem struct {
 	base        *core.BaseEntityData
+	loadedSnapshot core.LoadedScalarSnapshot
 	dirtyFields map[string]bool
 	isNew       bool
 	markedAsDelete bool
@@ -41,6 +43,15 @@ type OrderItem struct {
 	loadedRelations map[string]bool
 }
 
+// PurchaseOrderFacet reads metadata of the selected relation; it never queries the database.
+func (e *OrderItem) PurchaseOrderFacet(name string) (*core.SmartList[core.Record], bool) {
+	return e.base.RelationFacet("purchaseOrderEntity", name)
+}
+
+// TenantFacet reads metadata of the selected relation; it never queries the database.
+func (e *OrderItem) TenantFacet(name string) (*core.SmartList[core.Record], bool) {
+	return e.base.RelationFacet("tenantEntity", name)
+}
 
 func NewOrderItem() *OrderItem {
 	temporaryID := -atomic.AddInt64(&teaqlTemporaryEntityID, 1)
@@ -55,6 +66,15 @@ func NewOrderItem() *OrderItem {
 		loadedRelations: make(map[string]bool),
 	}
 	entity.root.MarkAsNew(entity.EntityKey())
+	return entity
+}
+
+// Hydration is not a create request. Keep this constructor private so public
+// NewEntity still records new-object intent, while a loaded snapshot starts
+// with independent mutation ownership and no pending insert.
+func newLoadedOrderItem() *OrderItem {
+	entity := NewOrderItem()
+	entity.root.ClearEntity(entity.EntityKey())
 	return entity
 }
 
@@ -119,6 +139,10 @@ func (e *OrderItem) IdValue() core.Value {
 
 
 func (e *OrderItem) FromRecord(record core.Record) error {
+	return e.teaqlFromRecord(record, true)
+}
+
+func (e *OrderItem) teaqlFromRecord(record core.Record, captureLoaded bool) error {
 	oldKey := e.EntityKey()
 	base, err := core.BaseEntityDataFromRecord(record)
 	if err != nil {
@@ -132,7 +156,28 @@ func (e *OrderItem) FromRecord(record core.Record) error {
 	e.loadState = make(map[string]bool, len(record))
 	e.restrictLoadState = true
 	for field := range record { e.loadState[field] = true }
+	if captureLoaded { e.loadedSnapshot = e.teaqlScalarSnapshot(e.IntoRecord()) }
 	return nil
+}
+
+func (e *OrderItem) teaqlScalarSnapshot(record core.Record) core.LoadedScalarSnapshot {
+	return core.NewLoadedScalarSnapshot(record, "id", "purchase_order_id", "tenant_id", "product_name", "unit_price", "create_time", "update_time", "version")
+}
+
+func (e *OrderItem) teaqlAcceptPersisted(context *runtime.UserContext, record core.Record) error {
+	if err := e.teaqlFromRecord(record, false); err != nil { return err }
+	committed := e.teaqlScalarSnapshot(record)
+	context.AfterGraphCommit(func() { e.loadedSnapshot = committed })
+	return nil
+}
+
+// Capture only the explicitly composed owned graph; no shared Context state.
+func (e *OrderItem) TeaqlPrivacyEntries() []data_service.MutationPrivacyEntry {
+	entries := []data_service.MutationPrivacyEntry{
+		data_service.NewMutationPrivacyEntry(e.EntityName(), e.loadedSnapshot.Values()),
+		data_service.NewMutationPrivacyEntry(e.EntityName(), e.teaqlScalarSnapshot(e.IntoRecord()).Values()),
+	}
+	return entries
 }
 
 func (e *OrderItem) IntoRecord() core.Record {
@@ -180,9 +225,7 @@ func (e *OrderItem) SetComment(comment string) {
 }
 
 func (e *OrderItem) AuditAs(comment string) *OrderItem {
-	if strings.TrimSpace(comment) == "" {
-		panic("Security audit failure: AuditAs() requires a non-empty reason")
-	}
+	if _, err := core.NewMutationIntent(&comment); err != nil { panic(err) }
 	e.comment = &comment
 	return e
 }
@@ -205,21 +248,70 @@ func (e *OrderItem) OnLoaded(context any) {
 }
 
 func (e *OrderItem) IntoJson() any {
-	return e.base.ToRecord()
+	return e // encoding/json dispatches MarshalJSON and preserves any error.
+}
+
+func (e *OrderItem) ToJSON(profile ...runtime.JsonFieldNamingProfile) ([]byte, error) {
+	return generatedjson.Model.Serialize(e.EntityName(), e, profile...)
+}
+
+func (e *OrderItem) MarshalJSON() ([]byte, error) { return e.ToJSON() }
+
+// Only shallow loaded values escape. Related documents are visited lazily by
+// the runtime codec under its depth, byte and cycle guards.
+func (e *OrderItem) LoadedJSONFields() core.Record {
+	all := e.IntoRecord()
+	selected := make(core.Record)
+	if e.IsLoaded("id") { if value, present := all["id"]; present { selected["id"] = value } }
+	if e.IsLoaded("purchase_order_id") { if value, present := all["purchase_order_id"]; present { selected["purchase_order_id"] = value } }
+	if e.IsLoaded("tenant_id") { if value, present := all["tenant_id"]; present { selected["tenant_id"] = value } }
+	if e.IsLoaded("product_name") { if value, present := all["product_name"]; present { selected["product_name"] = value } }
+	if e.IsLoaded("unit_price") { if value, present := all["unit_price"]; present { selected["unit_price"] = value } }
+	if e.IsLoaded("create_time") { if value, present := all["create_time"]; present { selected["create_time"] = value } }
+	if e.IsLoaded("update_time") { if value, present := all["update_time"]; present { selected["update_time"] = value } }
+	if e.IsLoaded("version") { if value, present := all["version"]; present { selected["version"] = value } }
+	if e.isRelationLoaded("purchaseOrderEntity") { if target, present := e.relations["purchaseOrderEntity"]; present && target != nil { selected["purchaseOrderEntity"] = core.Value{V: target} } }
+	if e.isRelationLoaded("tenantEntity") { if target, present := e.relations["tenantEntity"]; present && target != nil { selected["tenantEntity"] = core.Value{V: target} } }
+	return selected
+}
+
+// Generated infrastructure used by the facade's typed factories. It never
+// replaces an existing caller-owned entity or imports a parent entity package.
+func TeaqlOrderItemFromJSONRecord(record core.Record, factory func(string, core.Record) (core.Entity, error)) (*OrderItem, error) {
+	entity := newLoadedOrderItem()
+	if err := entity.FromRecord(record); err != nil { return nil, err }
+	if value, selected := record["purchaseOrderEntity"]; selected {
+		entity.markRelationLoaded("purchaseOrderEntity")
+		if !value.IsNull() {
+			targetRecord, ok := value.TryObject(); if !ok { return nil, fmt.Errorf("invalid generated JSON relation record") }
+			target, err := factory("purchase_order", targetRecord); if err != nil { return nil, err }
+			entity.setRelationEntity("purchaseOrderEntity", target)
+		}
+	}
+	if value, selected := record["tenantEntity"]; selected {
+		entity.markRelationLoaded("tenantEntity")
+		if !value.IsNull() {
+			targetRecord, ok := value.TryObject(); if !ok { return nil, fmt.Errorf("invalid generated JSON relation record") }
+			target, err := factory("tenant", targetRecord); if err != nil { return nil, err }
+			entity.setRelationEntity("tenantEntity", target)
+		}
+	}
+	return entity, nil
 }
 
 func (e *OrderItem) Save(context *runtime.UserContext) (*OrderItem, error) {
-	intent, err := core.NewMutationIntent(e.comment)
-	if err != nil { return nil, err }
+	intent, intentErr := core.NewMutationIntent(e.comment)
+	if intentErr != nil { return nil, intentErr }
 	var saved *OrderItem
-	err = context.ExecutePreparedGraphSave(intent, func() (*runtime.MutationPlan, error) {
-		if preflightErr := e.TeaqlPreflightGraph(context); preflightErr != nil { return nil, preflightErr }
-		auditReason := ""
-		if e.comment != nil { auditReason = *e.comment }
+	var privacy *data_service.MutationPrivacy
+	err := context.ExecutePreparedGraphSave(intent, func() (*runtime.MutationPlan, error) {
+		if preflightErr := e.TeaqlPreflightGraph(context, intent); preflightErr != nil { return nil, preflightErr }
+		privacy = data_service.NewMutationPrivacy(e.TeaqlPrivacyEntries()...)
+		auditReason := intent.AuditReason()
 		return runtime.MutationPlanFromEntityRoot(e.root, e.EntityName(), auditReason), nil
 	}, func() error {
 		var innerErr error
-		saved, innerErr = e.TeaqlSaveWithinGraph(context)
+		saved, innerErr = e.TeaqlSaveWithinGraph(context, intent, nil, privacy)
 		return innerErr
 	})
 	return saved, err
@@ -227,13 +319,7 @@ func (e *OrderItem) Save(context *runtime.UserContext) (*OrderItem, error) {
 
 // TeaqlPreflightGraph runs Checker/Fix for the complete aggregate before the
 // first provider mutation. It is generated infrastructure, not application API.
-func (e *OrderItem) TeaqlPreflightGraph(context *runtime.UserContext) error {
-	intent, err := core.NewMutationIntent(e.comment)
-	if err != nil { return err }
-	return e.TeaqlPreflightGraphWithIntent(context, intent)
-}
-
-func (e *OrderItem) TeaqlPreflightGraphWithIntent(context *runtime.UserContext, intent core.MutationIntent) error {
+func (e *OrderItem) TeaqlPreflightGraph(context *runtime.UserContext, intent core.MutationIntent) error {
 	if err := intent.Validate(); err != nil { return err }
 	if !e.markedAsDelete && (e.isNew || len(e.root.Change(e.EntityKey())) > 0) {
 		if e.isNew {
@@ -276,7 +362,7 @@ func (e *OrderItem) TeaqlPreflightGraphWithIntent(context *runtime.UserContext, 
 		}
 		checkedValues := e.IntoRecord()
 		valuesBeforeCheck := e.IntoRecord()
-		checkErr := context.CheckAndFix(&runtime.CheckAndFixInput{Entity: "order_item", Operation: operation, Values: checkedValues})
+		checkErr := runtime.CheckAndFixGraphEntity(context, &runtime.CheckAndFixInput{Entity: "order_item", Operation: operation, Values: checkedValues}, e.root, e.EntityKey())
 		for field, value := range checkedValues {
 			if before, exists := valuesBeforeCheck[field]; !exists || !reflect.DeepEqual(before, value) {
 				e.base.PutDynamic(field, value)
@@ -289,6 +375,7 @@ func (e *OrderItem) TeaqlPreflightGraphWithIntent(context *runtime.UserContext, 
 }
 
 type teaqlOrderItemSaveSnapshot struct {
+	loadedSnapshot core.LoadedScalarSnapshot
 	record core.Record
 	dirtyFields map[string]bool
 	isNew bool
@@ -304,6 +391,7 @@ func (e *OrderItem) teaqlSaveSnapshot() teaqlOrderItemSaveSnapshot {
 	loaded := make(map[string]bool, len(e.loadState))
 	for field, value := range e.loadState { loaded[field] = value }
 	return teaqlOrderItemSaveSnapshot{
+		loadedSnapshot: e.loadedSnapshot,
 		record: e.IntoRecord(), dirtyFields: dirty, isNew: e.isNew,
 		markedAsDelete: e.markedAsDelete, loadState: loaded,
 		restrictLoadState: e.restrictLoadState, ledgerID: e.ledgerID,
@@ -313,6 +401,7 @@ func (e *OrderItem) teaqlSaveSnapshot() teaqlOrderItemSaveSnapshot {
 func (e *OrderItem) teaqlRegisterGraphOutcome(context *runtime.UserContext, snapshot teaqlOrderItemSaveSnapshot) {
 	context.AfterGraphRollback(func() {
 		if err := e.FromRecord(snapshot.record); err != nil { panic(err) }
+		e.loadedSnapshot = snapshot.loadedSnapshot
 		e.dirtyFields = snapshot.dirtyFields
 		e.isNew = snapshot.isNew
 		e.markedAsDelete = snapshot.markedAsDelete
@@ -325,19 +414,14 @@ func (e *OrderItem) teaqlRegisterGraphOutcome(context *runtime.UserContext, snap
 
 // TeaqlSaveWithinGraph is generated infrastructure used by related entity
 // packages after the public root Save has opened the graph transaction.
-func (e *OrderItem) TeaqlSaveWithinGraph(context *runtime.UserContext) (*OrderItem, error) {
-	intent, err := core.NewMutationIntent(e.comment)
-	if err != nil { return nil, err }
-	return e.TeaqlSaveWithinGraphWithScope(context, nil, intent)
-}
-
-func (e *OrderItem) TeaqlSaveWithinGraphWithScope(context *runtime.UserContext, parent *core.MutationTraceScope, intent core.MutationIntent) (*OrderItem, error) {
-	scope, scopeErr := core.MutationScopeForEntity(parent, e.EntityKey(), intent, e.comment)
-	if scopeErr != nil { return nil, scopeErr }
-	// Reachability is not a write. Still visit the graph so a changed child
-	// can be saved without rewriting an unchanged (possibly partial) parent.
+func (e *OrderItem) TeaqlSaveWithinGraph(context *runtime.UserContext, intent core.MutationIntent, parentScope *core.MutationTraceScope, privacy *data_service.MutationPrivacy) (*OrderItem, error) {
+	if err := intent.Validate(); err != nil { return nil, err }
+	// Reached but unchanged entities are ancestry, not writes. Their changed
+	// descendants still participate without requiring a complete parent projection.
 	if !e.isNew && !e.markedAsDelete && len(e.root.Change(e.EntityKey())) == 0 {
-		if err := e.saveCascade(context, scope, intent); err != nil { return nil, err }
+		scope, err := core.MutationScopeForEntity(parentScope, e.EntityKey(), intent, e.comment)
+		if err != nil { return nil, err }
+		if err := e.saveCascade(context, intent, scope, privacy); err != nil { return nil, err }
 		return e, nil
 	}
 	snapshot := e.teaqlSaveSnapshot()
@@ -354,19 +438,19 @@ func (e *OrderItem) TeaqlSaveWithinGraphWithScope(context *runtime.UserContext, 
 	if !ok {
 		return nil, fmt.Errorf("dataService does not implement Mutator")
 	}
-	if err := intent.Validate(); err != nil { return nil, err }
+
 
 	if e.isNew {
 		checkedValues := e.IntoRecord()
 		valuesBeforeCheck := e.IntoRecord()
-		checkErr := context.CheckAndFix(&runtime.CheckAndFixInput{Entity: "order_item", Operation: core.MutationInsert, Values: checkedValues})
+		checkErr := runtime.CheckAndFixGraphEntity(context, &runtime.CheckAndFixInput{Entity: "order_item", Operation: core.MutationInsert, Values: checkedValues}, e.root, e.EntityKey())
 		for field, value := range checkedValues {
 			if before, exists := valuesBeforeCheck[field]; !exists || !reflect.DeepEqual(before, value) {
 				e.root.Set(e.EntityKey(), field, value)
 			}
 		}
 		if checkErr != nil { return nil, checkErr }
-		if err := e.FromRecord(checkedValues); err != nil { return nil, err }
+		if err := e.teaqlFromRecord(checkedValues, false); err != nil { return nil, err }
 		if e.base.Id == 0 {
 			id, err := context.GenerateInternalId(e.EntityName())
 			if err != nil {
@@ -382,13 +466,14 @@ func (e *OrderItem) TeaqlSaveWithinGraphWithScope(context *runtime.UserContext, 
 		if e.base.Version == 0 {
 			e.base.Version = 1
 		}
-		scope, scopeErr = core.MutationScopeForEntity(parent, e.EntityKey(), intent, e.comment)
-		if scopeErr != nil { return nil, scopeErr }
+		scope, err := core.MutationScopeForEntity(parentScope, e.EntityKey(), intent, e.comment)
+		if err != nil { return nil, err }
 		cmd := core.NewInsertCommand("order_item")
 		cmd.Values = e.IntoRecord()
 		cmd.TraceChain = core.MutationTraceForEntity(e.root, e.EntityKey(), scope)
-		reason := cmd.TraceChain[len(cmd.TraceChain)-1].Comment
-		request, err := data_service.NewMutationRequest(&data_service.InsertMutation{Cmd: cmd}, reason)
+		request, err := data_service.NewMutationRequest(&data_service.InsertMutation{Cmd: cmd}, intent.Comment())
+		if err != nil { return nil, err }
+		request, err = data_service.WithMutationPrivacy(request, privacy)
 		if err != nil { return nil, err }
 		res, err := ds.Mutate(context, request)
 		if err == nil {
@@ -410,18 +495,21 @@ func (e *OrderItem) TeaqlSaveWithinGraphWithScope(context *runtime.UserContext, 
 		if res.PersistedRecord == nil {
 			return nil, fmt.Errorf("mutation did not return the authoritative persisted record")
 		}
-		if err := e.FromRecord(res.PersistedRecord); err != nil {
+		if err := e.teaqlAcceptPersisted(context, res.PersistedRecord); err != nil {
 			return nil, err
 		}
-		if err := e.saveCascade(context, scope, intent); err != nil { return nil, err }
+		if err := e.saveCascade(context, intent, scope, privacy); err != nil { return nil, err }
 		return e, nil
 	} else if e.markedAsDelete {
+		scope, err := core.MutationScopeForEntity(parentScope, e.EntityKey(), intent, e.comment)
+		if err != nil { return nil, err }
 		expectedVersion := e.base.Version
 		cmd := core.NewDeleteCommand("order_item", core.ValU64(e.base.Id)).
 			WithExpectedVersion(expectedVersion)
 		cmd.TraceChain = core.MutationTraceForEntity(e.root, e.EntityKey(), scope)
-		reason := cmd.TraceChain[len(cmd.TraceChain)-1].Comment
-		request, err := data_service.NewMutationRequest(&data_service.DeleteMutation{Cmd: cmd}, reason)
+		request, err := data_service.NewMutationRequest(&data_service.DeleteMutation{Cmd: cmd}, intent.Comment())
+		if err != nil { return nil, err }
+		request, err = data_service.WithMutationPrivacy(request, privacy)
 		if err != nil { return nil, err }
 		res, err := ds.Mutate(context, request)
 		if err != nil { return nil, err }
@@ -434,26 +522,35 @@ func (e *OrderItem) TeaqlSaveWithinGraphWithScope(context *runtime.UserContext, 
 		if res.PersistedRecord == nil {
 			return nil, fmt.Errorf("mutation did not return the authoritative persisted record")
 		}
-		if err := e.FromRecord(res.PersistedRecord); err != nil { return nil, err }
+		if err := e.teaqlAcceptPersisted(context, res.PersistedRecord); err != nil { return nil, err }
 		return e, nil
 	} else {
 		checkedValues := e.IntoRecord()
 		valuesBeforeCheck := e.IntoRecord()
-		checkErr := context.CheckAndFix(&runtime.CheckAndFixInput{Entity: "order_item", Operation: core.MutationUpdate, Values: checkedValues})
+		checkErr := runtime.CheckAndFixGraphEntity(context, &runtime.CheckAndFixInput{Entity: "order_item", Operation: core.MutationUpdate, Values: checkedValues}, e.root, e.EntityKey())
 		for field, value := range checkedValues {
 			if before, exists := valuesBeforeCheck[field]; !exists || !reflect.DeepEqual(before, value) {
 				e.root.Set(e.EntityKey(), field, value)
 			}
 		}
 		if checkErr != nil { return nil, checkErr }
-		if err := e.FromRecord(checkedValues); err != nil { return nil, err }
+		if err := e.teaqlFromRecord(checkedValues, false); err != nil { return nil, err }
+		scope, err := core.MutationScopeForEntity(parentScope, e.EntityKey(), intent, e.comment)
+		if err != nil { return nil, err }
 		cmd := core.NewUpdateCommand("order_item", core.ValU64(e.base.Id))
 		cmd.Values = e.root.Change(e.EntityKey())
+		// A clean parent still carries the scope for changed descendants, but
+		// must not emit an empty UPDATE or bump its optimistic version.
+		if len(cmd.Values) == 0 {
+			if err := e.saveCascade(context, intent, scope, privacy); err != nil { return nil, err }
+			return e, nil
+		}
 		expectedVersion := e.base.Version
 		cmd.ExpectedVersion = &expectedVersion
 		cmd.TraceChain = core.MutationTraceForEntity(e.root, e.EntityKey(), scope)
-		reason := cmd.TraceChain[len(cmd.TraceChain)-1].Comment
-		request, err := data_service.NewMutationRequest(&data_service.UpdateMutation{Cmd: cmd}, reason)
+		request, err := data_service.NewMutationRequest(&data_service.UpdateMutation{Cmd: cmd}, intent.Comment())
+		if err != nil { return nil, err }
+		request, err = data_service.WithMutationPrivacy(request, privacy)
 		if err != nil { return nil, err }
 		res, err := ds.Mutate(context, request)
 		if err == nil {
@@ -469,13 +566,13 @@ func (e *OrderItem) TeaqlSaveWithinGraphWithScope(context *runtime.UserContext, 
 		if res.PersistedRecord == nil {
 			return nil, fmt.Errorf("mutation did not return the authoritative persisted record")
 		}
-		if err := e.FromRecord(res.PersistedRecord); err != nil { return nil, err }
-		if err := e.saveCascade(context, scope, intent); err != nil { return nil, err }
+		if err := e.teaqlAcceptPersisted(context, res.PersistedRecord); err != nil { return nil, err }
+		if err := e.saveCascade(context, intent, scope, privacy); err != nil { return nil, err }
 		return e, nil
 	}
 }
 
-func (e *OrderItem) saveCascade(context *runtime.UserContext, scope *core.MutationTraceScope, intent core.MutationIntent) error {
+func (e *OrderItem) saveCascade(context *runtime.UserContext, intent core.MutationIntent, scope *core.MutationTraceScope, privacy *data_service.MutationPrivacy) error {
 	return nil
 }
 

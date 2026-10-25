@@ -9,6 +9,7 @@ import (
 
 var _ = time.Time{}
 var _ = decimal.Decimal{}
+var _ = core.ValNull
 
 type TeaQLNotLoadedError = runtime.NotLoadedError
 

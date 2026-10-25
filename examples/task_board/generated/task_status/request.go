@@ -10,6 +10,7 @@ import (
 	"github.com/teaql/teaql-golang/core"
 	"github.com/teaql/teaql-golang/data_service"
 	"github.com/teaql/teaql-golang/runtime"
+	"robot-kanban-service-core-workspace/lib/internal/generatedsearch"
 	"robot-kanban-service-core-workspace/lib/task"
 )
 
@@ -24,6 +25,7 @@ type TaskStatusRequest struct {
 	purposeText string
 	commentText string
 	relationFactories map[string]func() core.Entity
+	dynamicSearchWarnings []core.DynamicSearchWarning
 }
 
 type ExecutableTaskStatusRequest struct {
@@ -50,6 +52,25 @@ func (r *TaskStatusRequest) GetQuery() *core.SelectQuery {
 	return r.Query
 }
 
+// FilterByJson validates all clauses before changing this request.
+func (r *TaskStatusRequest) FilterByJson(source []byte) (*TaskStatusRequest, error) {
+	query, warnings, err := generatedsearch.Apply(r.Query, source, nil)
+	if err != nil { return nil, err }
+	r.Query = query
+	r.dynamicSearchWarnings = append(r.dynamicSearchWarnings, warnings...)
+	return r, nil
+}
+
+func (r *TaskStatusRequest) DynamicSearchWarnings() []core.DynamicSearchWarning {
+	return append([]core.DynamicSearchWarning(nil), r.dynamicSearchWarnings...)
+}
+
+func (r *TaskStatusRequest) GetQuerySelection() *core.QuerySelection {
+	selection := core.NewQuerySelection(r.Query)
+	selection.QueryOptions = r.queryOptions
+	return selection
+}
+
 func (r *TaskStatusRequest) GetEntityDescriptor() *core.EntityDescriptor {
 	return NewTaskStatus().EntityDescriptor()
 }
@@ -60,6 +81,7 @@ func (r *TaskStatusRequest) NewRelationEntity() core.Entity {
 
 func (r *TaskStatusRequest) Comment(comment string) *TaskStatusRequest {
 	r.commentText = comment
+	r.Query.Comment(comment)
 	return r
 }
 
@@ -70,6 +92,7 @@ func (r *TaskStatusRequest) Purpose(purpose string) *ExecutableTaskStatusRequest
 
 func (r *ExecutableTaskStatusRequest) Comment(comment string) *ExecutableTaskStatusRequest {
 	r.request.commentText = comment
+	r.request.Query.Comment(comment)
 	return r
 }
 
@@ -703,8 +726,9 @@ func (r *TaskStatusRequest) FacetByPlatformAs(
 ) *TaskStatusRequest {
 	includeAll := true
 	if len(includeAllFacets) > 0 { includeAll = includeAllFacets[0] }
-	r.queryOptions.Facets = append(r.queryOptions.Facets, core.NewFacetRequest(
-		name, "platform_id", core.NewQuerySelection(nestedReq.GetQuery()), includeAll))
+	facet := core.NewFacetRequest(name, "platform_id", core.QuerySelectionFor(nestedReq), includeAll)
+	facet.Operation = &core.QueryOperation{Kind: "facet", Method: "FacetByPlatformAs", Alias: &name, Relation: "platform"}
+	r.queryOptions.Facets = append(r.queryOptions.Facets, facet)
 	return r
 }
 func (r *TaskStatusRequest) OrderByPlatformAsc() *TaskStatusRequest {
@@ -790,7 +814,8 @@ func (r *TaskStatusRequest) SelectPlatformWith(child interface {
 	NewRelationEntity() core.Entity
 }) *TaskStatusRequest {
 	runtime.EnsureRelationProjection(r.Query, "platform_id")
-	r.Query.RelationQuery("platformEntity", child.GetQuery())
+	r.Query.RelationQuerySelection("platformEntity", core.QuerySelectionFor(child))
+	r.Query.Relations[len(r.Query.Relations)-1].Operation = &core.QueryOperation{Kind: "relation", Method: "SelectPlatformWith", Relation: "platformEntity"}
 	r.relationFactories["platformEntity"] = child.NewRelationEntity
 	return r
 }
@@ -816,11 +841,17 @@ func (r *TaskStatusRequest) CountTasks() *TaskStatusRequest {
 
 }
 func (r *TaskStatusRequest) CountTasksAs(alias string) *TaskStatusRequest {
-	return r.CountTasksWith(alias, task.NewTaskRequest())
+	r.CountTasksWith(alias, task.NewTaskRequest())
+	r.Query.RelationAggregates[len(r.Query.RelationAggregates)-1].Operation = &core.QueryOperation{Kind: "count", Method: "CountTasksAs", Alias: &alias, Relation: "taskList"}
+	return r
 }
 func (r *TaskStatusRequest) CountTasksWith(alias string, child *task.TaskRequest) *TaskStatusRequest {
-	child.Query.Count(alias)
-	r.Query.RelationAggregates = append(r.Query.RelationAggregates, core.NewRelationAggregate("taskList", alias, child.Query, true))
+	query := child.GetQuery().Clone()
+	query.Aggregates = nil
+	query.Count(alias)
+	aggregate := core.NewRelationAggregate("taskList", alias, query, true)
+	aggregate.Operation = &core.QueryOperation{Kind: "count", Method: "CountTasksWith", Alias: &alias, Relation: "taskList"}
+	r.Query.RelationAggregates = append(r.Query.RelationAggregates, aggregate)
 	return r
 }
 
@@ -831,7 +862,8 @@ func (r *TaskStatusRequest) SelectTaskList() *TaskStatusRequest {
 }
 
 func (r *TaskStatusRequest) SelectTaskListWith(child *task.TaskRequest) *TaskStatusRequest {
-	r.Query.RelationQuery("taskList", child.Query)
+	r.Query.RelationQuerySelection("taskList", child.GetQuerySelection())
+	r.Query.Relations[len(r.Query.Relations)-1].Operation = &core.QueryOperation{Kind: "relation", Method: "SelectTaskListWith", Relation: "taskList"}
 	return r
 }
 
@@ -882,97 +914,22 @@ func (e *ExecutableTaskStatusRequest) ExecuteForOne(context *runtime.UserContext
 }
 
 func (e *ExecutableTaskStatusRequest) ExecuteForList(context *runtime.UserContext) (*core.SmartList[*TaskStatus], error) {
-	rows, authorized, err := e.executeRecords(context, true)
-	if err != nil {
-		return nil, err
-	}
-
-	var results []*TaskStatus
-	for _, rec := range rows {
-		entity := newLoadedTaskStatus()
-		if err := entity.FromRecord(rec); err != nil {
-			return nil, err
-		}
-		if relationValue, selected := rec["platformEntity"]; selected {
-			entity.markRelationLoaded("platformEntity")
-			if childRecord, ok := relationValue.V.(core.Record); ok {
-				if factory := e.request.relationFactories["platformEntity"]; factory != nil {
-					childEntity := factory()
-					if err := childEntity.FromRecord(childRecord); err != nil { return nil, err }
-					entity.setRelationEntity("platformEntity", childEntity)
-				}
-			}
-		}
-		if relationValue, selected := rec["taskList"]; selected {
-			childRecords, ok := relationValue.V.([]core.Record)
-				if !ok { return nil, fmt.Errorf("relation taskList has unexpected runtime type %T", relationValue.V) }
-				for _, childRecord := range childRecords {
-					childEntity := task.NewTask()
-					childEntity.EntityRoot().ClearEntity(childEntity.EntityKey())
-					childEntity.AttachEntityRoot(entity.EntityRoot())
-					if err := childEntity.FromRecord(childRecord); err != nil { return nil, err }
-					entity.TaskList().Add(childEntity)
-				}}
-		results = append(results, entity)
-	}
-	list := core.NewSmartList(results)
-	if len(e.request.queryOptions.Facets) > 0 {
-		dsRaw := context.GetResource("dataService")
-		ds, ok := dsRaw.(data_service.QueryExecutor)
-		if !ok { return nil, fmt.Errorf("dataService does not implement data_service.QueryExecutor") }
-		facets, err := runtime.ExecuteFacets(
-			context, runtime.NewRuntimeDataService(context.Metadata, ds),
-			authorized, e.request.queryOptions)
-		if err != nil { return nil, err }
-		core.AttachFacets(list, facets)
-	}
-	return list, nil
-}
-
-// ExecuteForPage applies trusted policy once, then derives exact-count and row
-// queries from that same authorized snapshot.
-func (e *ExecutableTaskStatusRequest) ExecuteForPage(context *runtime.UserContext, offset uint64, size uint64) (*core.SmartList[*TaskStatus], error) {
+	// Apply trusted policy once. The runtime owns the entire typed list lifecycle,
+	// including optional exact count, facets and hydration failures.
 	r := e.request
 	if _, err := core.NewQueryIntent(&r.commentText, &r.purposeText); err != nil { return nil, err }
-	if size == 0 {
-		return nil, fmt.Errorf("QUERY_INVALID_LIMIT: size must be positive")
-	}
 	query := r.Query.Clone()
-	query.Page(offset, size).Comment(r.commentText).Purpose(r.purposeText)
+	query.Comment(r.commentText).Purpose(r.purposeText)
+	query, plan, err := runtime.CaptureQueryPlan(query, r.queryOptions)
+	if err != nil { return nil, err }
+	query = plan.WithQueryDiagnostics(query)
 	authorized, err := context.PrepareEntityQuery(query)
 	if err != nil { return nil, err }
 	dsRaw := context.GetResource("dataService")
 	ds, ok := dsRaw.(data_service.QueryExecutor)
 	if !ok { return nil, fmt.Errorf("dataService does not implement data_service.QueryExecutor") }
 	service := runtime.NewRuntimeDataService(context.Metadata, ds)
-	const countAlias = "__teaql_total"
-	var rows []core.Record
-	var total uint64
-	if authorized.IDSetPagination != nil {
-		rows, err = service.FetchAll(context, authorized)
-		if err != nil { return nil, err }
-		if retainedCount, accuracy := context.IDSetCount(); accuracy == "EXACT" {
-			total = retainedCount
-		} else {
-			countRows, countErr := service.FetchAll(context, authorized.ForExactCount(countAlias))
-			if countErr != nil { return nil, countErr }
-			if len(countRows) != 1 { return nil, fmt.Errorf("exact count returned %d rows", len(countRows)) }
-			var ok bool
-			total, ok = countRows[0][countAlias].TryU64()
-			if !ok { return nil, fmt.Errorf("exact count did not return an unsigned integer") }
-		}
-	} else {
-		countRows, countErr := service.FetchAll(context, authorized.ForExactCount(countAlias))
-		if countErr != nil { return nil, countErr }
-		if len(countRows) != 1 { return nil, fmt.Errorf("exact count returned %d rows", len(countRows)) }
-		var ok bool
-		total, ok = countRows[0][countAlias].TryU64()
-		if !ok { return nil, fmt.Errorf("exact count did not return an unsigned integer") }
-		rows, err = service.FetchAll(context, authorized)
-		if err != nil { return nil, err }
-	}
-	results := make([]*TaskStatus, 0, len(rows))
-	for _, rec := range rows {
+	return runtime.ExecuteTypedList(context, service, authorized, plan, func(rec core.Record) (*TaskStatus, error) {
 		entity := newLoadedTaskStatus()
 		if err := entity.FromRecord(rec); err != nil { return nil, err }
 		if relationValue, selected := rec["platformEntity"]; selected {
@@ -995,13 +952,13 @@ func (e *ExecutableTaskStatusRequest) ExecuteForPage(context *runtime.UserContex
 					if err := childEntity.FromRecord(childRecord); err != nil { return nil, err }
 					entity.TaskList().Add(childEntity)
 				}}
-		results = append(results, entity)
-	}
-	return core.NewSmartList(results).WithTotalCount(total), nil
+		return entity, nil
+	})
 }
 
 // ExecuteForStream consumes a provider cursor one chunk at a time. Returning
-// an error from yield cancels iteration and releases the database resources.
+// an error from yield releases the database resources. runtime.ErrStopStream
+// records an intentional early stop; other callback errors remain failures.
 func (e *ExecutableTaskStatusRequest) ExecuteForStream(context *runtime.UserContext, chunkSize int, yield func(*TaskStatus) error) error {
 	r := e.request
 	if _, err := core.NewQueryIntent(&r.commentText, &r.purposeText); err != nil { return err }
@@ -1010,6 +967,8 @@ func (e *ExecutableTaskStatusRequest) ExecuteForStream(context *runtime.UserCont
 	}
 	query := r.Query.Clone()
 	query.Comment(r.commentText).Purpose(r.purposeText)
+	query, err := runtime.CaptureStreamQuery(query, r.queryOptions)
+	if err != nil { return err }
 	authorized, err := context.PrepareEntityQuery(query)
 	if err != nil { return err }
 	dsRaw := context.GetResource("dataService")
@@ -1017,54 +976,46 @@ func (e *ExecutableTaskStatusRequest) ExecuteForStream(context *runtime.UserCont
 	if !ok {
 		return fmt.Errorf("dataService does not implement data_service.StreamQueryExecutor")
 	}
-	req, err := data_service.NewQueryRequest(authorized)
-	if err != nil { return err }
-	return ds.QueryStream(context, req, chunkSize, func(chunk *data_service.StreamChunk) error {
-		for _, rec := range chunk.Rows {
-			entity := newLoadedTaskStatus()
-			if err := entity.FromRecord(rec); err != nil {
-				return err
-			}
-			if err := yield(entity); err != nil {
-				return err
-			}
-		}
-		return nil
-	})
+	return runtime.ExecuteTypedStream(context, ds, authorized, chunkSize, func(rec core.Record) (*TaskStatus, error) {
+		entity := newLoadedTaskStatus()
+		if err := entity.FromRecord(rec); err != nil { return nil, err }
+		return entity, nil
+	}, yield)
 }
 
 func (e *ExecutableTaskStatusRequest) ExecuteRecords(context *runtime.UserContext) ([]core.Record, error) {
-	rows, _, err := e.executeRecords(context, false)
+	rows, _, _, err := e.executeRecords(context)
 	return rows, err
 }
 
 // executeRecords returns the same authorized snapshot used for row execution
 // so facets can derive their membership query without reapplying root policy.
-func (e *ExecutableTaskStatusRequest) executeRecords(context *runtime.UserContext, entityProjection bool) ([]core.Record, *core.SelectQuery, error) {
+func (e *ExecutableTaskStatusRequest) executeRecords(context *runtime.UserContext) ([]core.Record, *core.SelectQuery, *runtime.FacetPlan, error) {
 	r := e.request
-	if _, err := core.NewQueryIntent(&r.commentText, &r.purposeText); err != nil { return nil, nil, err }
+	if _, err := core.NewQueryIntent(&r.commentText, &r.purposeText); err != nil { return nil, nil, nil, err }
 	query := r.Query.Clone()
 	query.Comment(r.commentText).Purpose(r.purposeText)
-	prepare := context.PrepareQuery
-	if entityProjection { prepare = context.PrepareEntityQuery }
-	authorized, err := prepare(query)
-	if err != nil { return nil, nil, err }
+	query, plan, err := runtime.CaptureQueryPlan(query, r.queryOptions)
+	if err != nil { return nil, nil, nil, err }
+	query = plan.WithQueryDiagnostics(query)
+	authorized, err := context.PrepareQuery(query)
+	if err != nil { return nil, nil, nil, err }
 
 	dsRaw := context.GetResource("dataService")
 	if dsRaw == nil {
-		return nil, nil, fmt.Errorf("dataService not found in UserContext")
+		return nil, nil, nil, fmt.Errorf("dataService not found in UserContext")
 	}
 
 	ds, ok := dsRaw.(data_service.QueryExecutor)
 	if !ok {
-		return nil, nil, fmt.Errorf("dataService does not implement data_service.QueryExecutor")
+		return nil, nil, nil, fmt.Errorf("dataService does not implement data_service.QueryExecutor")
 	}
 
-	rows, err := runtime.NewRuntimeDataService(context.Metadata, ds).FetchAll(context, authorized)
+	rows, err := runtime.NewRuntimeDataService(context.Metadata, ds).FetchAllWithFacetPlan(context, authorized, plan)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
-	return rows, authorized, nil
+	return rows, authorized, plan, nil
 }
 
 // ExecuteForRows preserves aggregate/group projections as records while keeping
@@ -1081,6 +1032,7 @@ func (r *TaskStatusRequest) Count() *TaskStatusRequest {
 
 func (r *TaskStatusRequest) CountAs(alias string) *TaskStatusRequest {
 	r.Query.CountField("id", alias)
+	r.queryOptions.PageCountOperation = &core.QueryOperation{Kind: "count", Method: "CountAs", Alias: &alias}
 	return r
 }
 

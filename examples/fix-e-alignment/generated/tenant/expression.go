@@ -4,12 +4,14 @@ import (
 	"time"
 	"github.com/shopspring/decimal"
 	"github.com/teaql/teaql-golang/runtime"
+	"github.com/teaql/teaql-golang/core"
 	"checker-fix-advanced-core-workspace/lib/purchase_order"
 	"checker-fix-advanced-core-workspace/lib/order_item"
 )
 
 var _ = time.Time{}
 var _ = decimal.Decimal{}
+var _ = core.ValNull
 
 type TeaQLNotLoadedError = runtime.NotLoadedError
 

@@ -13,6 +13,7 @@ import (
 	"github.com/teaql/teaql-golang/core"
 	"github.com/teaql/teaql-golang/data_service"
 	"github.com/teaql/teaql-golang/runtime"
+	"robot-kanban-service-core-workspace/lib/internal/generatedjson"
 )
 
 var (
@@ -28,6 +29,7 @@ var teaqlTemporaryEntityID int64
 
 type TaskExecutionLog struct {
 	base        *core.BaseEntityData
+	loadedSnapshot core.LoadedScalarSnapshot
 	dirtyFields map[string]bool
 	isNew       bool
 	markedAsDelete bool
@@ -41,6 +43,10 @@ type TaskExecutionLog struct {
 	loadedRelations map[string]bool
 }
 
+// TaskFacet reads metadata of the selected relation; it never queries the database.
+func (e *TaskExecutionLog) TaskFacet(name string) (*core.SmartList[core.Record], bool) {
+	return e.base.RelationFacet("taskEntity", name)
+}
 
 func NewTaskExecutionLog() *TaskExecutionLog {
 	temporaryID := -atomic.AddInt64(&teaqlTemporaryEntityID, 1)
@@ -128,6 +134,10 @@ func (e *TaskExecutionLog) IdValue() core.Value {
 
 
 func (e *TaskExecutionLog) FromRecord(record core.Record) error {
+	return e.teaqlFromRecord(record, true)
+}
+
+func (e *TaskExecutionLog) teaqlFromRecord(record core.Record, captureLoaded bool) error {
 	oldKey := e.EntityKey()
 	base, err := core.BaseEntityDataFromRecord(record)
 	if err != nil {
@@ -141,7 +151,28 @@ func (e *TaskExecutionLog) FromRecord(record core.Record) error {
 	e.loadState = make(map[string]bool, len(record))
 	e.restrictLoadState = true
 	for field := range record { e.loadState[field] = true }
+	if captureLoaded { e.loadedSnapshot = e.teaqlScalarSnapshot(e.IntoRecord()) }
 	return nil
+}
+
+func (e *TaskExecutionLog) teaqlScalarSnapshot(record core.Record) core.LoadedScalarSnapshot {
+	return core.NewLoadedScalarSnapshot(record, "id", "task_id", "action", "detail", "version")
+}
+
+func (e *TaskExecutionLog) teaqlAcceptPersisted(context *runtime.UserContext, record core.Record) error {
+	if err := e.teaqlFromRecord(record, false); err != nil { return err }
+	committed := e.teaqlScalarSnapshot(record)
+	context.AfterGraphCommit(func() { e.loadedSnapshot = committed })
+	return nil
+}
+
+// Capture only the explicitly composed owned graph; no shared Context state.
+func (e *TaskExecutionLog) TeaqlPrivacyEntries() []data_service.MutationPrivacyEntry {
+	entries := []data_service.MutationPrivacyEntry{
+		data_service.NewMutationPrivacyEntry(e.EntityName(), e.loadedSnapshot.Values()),
+		data_service.NewMutationPrivacyEntry(e.EntityName(), e.teaqlScalarSnapshot(e.IntoRecord()).Values()),
+	}
+	return entries
 }
 
 func (e *TaskExecutionLog) IntoRecord() core.Record {
@@ -212,20 +243,58 @@ func (e *TaskExecutionLog) OnLoaded(context any) {
 }
 
 func (e *TaskExecutionLog) IntoJson() any {
-	return e.base.ToRecord()
+	return e // encoding/json dispatches MarshalJSON and preserves any error.
+}
+
+func (e *TaskExecutionLog) ToJSON(profile ...runtime.JsonFieldNamingProfile) ([]byte, error) {
+	return generatedjson.Model.Serialize(e.EntityName(), e, profile...)
+}
+
+func (e *TaskExecutionLog) MarshalJSON() ([]byte, error) { return e.ToJSON() }
+
+// Only shallow loaded values escape. Related documents are visited lazily by
+// the runtime codec under its depth, byte and cycle guards.
+func (e *TaskExecutionLog) LoadedJSONFields() core.Record {
+	all := e.IntoRecord()
+	selected := make(core.Record)
+	if e.IsLoaded("id") { if value, present := all["id"]; present { selected["id"] = value } }
+	if e.IsLoaded("task_id") { if value, present := all["task_id"]; present { selected["task_id"] = value } }
+	if e.IsLoaded("action") { if value, present := all["action"]; present { selected["action"] = value } }
+	if e.IsLoaded("detail") { if value, present := all["detail"]; present { selected["detail"] = value } }
+	if e.IsLoaded("version") { if value, present := all["version"]; present { selected["version"] = value } }
+	if e.isRelationLoaded("taskEntity") { if target, present := e.relations["taskEntity"]; present && target != nil { selected["taskEntity"] = core.Value{V: target} } }
+	return selected
+}
+
+// Generated infrastructure used by the facade's typed factories. It never
+// replaces an existing caller-owned entity or imports a parent entity package.
+func TeaqlTaskExecutionLogFromJSONRecord(record core.Record, factory func(string, core.Record) (core.Entity, error)) (*TaskExecutionLog, error) {
+	entity := newLoadedTaskExecutionLog()
+	if err := entity.FromRecord(record); err != nil { return nil, err }
+	if value, selected := record["taskEntity"]; selected {
+		entity.markRelationLoaded("taskEntity")
+		if !value.IsNull() {
+			targetRecord, ok := value.TryObject(); if !ok { return nil, fmt.Errorf("invalid generated JSON relation record") }
+			target, err := factory("Task", targetRecord); if err != nil { return nil, err }
+			entity.setRelationEntity("taskEntity", target)
+		}
+	}
+	return entity, nil
 }
 
 func (e *TaskExecutionLog) Save(context *runtime.UserContext) (*TaskExecutionLog, error) {
 	intent, intentErr := core.NewMutationIntent(e.comment)
 	if intentErr != nil { return nil, intentErr }
 	var saved *TaskExecutionLog
+	var privacy *data_service.MutationPrivacy
 	err := context.ExecutePreparedGraphSave(intent, func() (*runtime.MutationPlan, error) {
 		if preflightErr := e.TeaqlPreflightGraph(context, intent); preflightErr != nil { return nil, preflightErr }
+		privacy = data_service.NewMutationPrivacy(e.TeaqlPrivacyEntries()...)
 		auditReason := intent.AuditReason()
 		return runtime.MutationPlanFromEntityRoot(e.root, e.EntityName(), auditReason), nil
 	}, func() error {
 		var innerErr error
-		saved, innerErr = e.TeaqlSaveWithinGraph(context, intent, nil)
+		saved, innerErr = e.TeaqlSaveWithinGraph(context, intent, nil, privacy)
 		return innerErr
 	})
 	return saved, err
@@ -235,7 +304,7 @@ func (e *TaskExecutionLog) Save(context *runtime.UserContext) (*TaskExecutionLog
 // first provider mutation. It is generated infrastructure, not application API.
 func (e *TaskExecutionLog) TeaqlPreflightGraph(context *runtime.UserContext, intent core.MutationIntent) error {
 	if err := intent.Validate(); err != nil { return err }
-	if !e.markedAsDelete {
+	if !e.markedAsDelete && (e.isNew || len(e.root.Change(e.EntityKey())) > 0) {
 		if e.isNew {
 		}
 		operation := core.MutationUpdate
@@ -264,7 +333,7 @@ func (e *TaskExecutionLog) TeaqlPreflightGraph(context *runtime.UserContext, int
 		}
 		checkedValues := e.IntoRecord()
 		valuesBeforeCheck := e.IntoRecord()
-		checkErr := context.CheckAndFix(&runtime.CheckAndFixInput{Entity: "Task Execution Log", Operation: operation, Values: checkedValues})
+		checkErr := runtime.CheckAndFixGraphEntity(context, &runtime.CheckAndFixInput{Entity: "Task Execution Log", Operation: operation, Values: checkedValues}, e.root, e.EntityKey())
 		for field, value := range checkedValues {
 			if before, exists := valuesBeforeCheck[field]; !exists || !reflect.DeepEqual(before, value) {
 				e.base.PutDynamic(field, value)
@@ -277,6 +346,7 @@ func (e *TaskExecutionLog) TeaqlPreflightGraph(context *runtime.UserContext, int
 }
 
 type teaqlTaskExecutionLogSaveSnapshot struct {
+	loadedSnapshot core.LoadedScalarSnapshot
 	record core.Record
 	dirtyFields map[string]bool
 	isNew bool
@@ -292,6 +362,7 @@ func (e *TaskExecutionLog) teaqlSaveSnapshot() teaqlTaskExecutionLogSaveSnapshot
 	loaded := make(map[string]bool, len(e.loadState))
 	for field, value := range e.loadState { loaded[field] = value }
 	return teaqlTaskExecutionLogSaveSnapshot{
+		loadedSnapshot: e.loadedSnapshot,
 		record: e.IntoRecord(), dirtyFields: dirty, isNew: e.isNew,
 		markedAsDelete: e.markedAsDelete, loadState: loaded,
 		restrictLoadState: e.restrictLoadState, ledgerID: e.ledgerID,
@@ -301,6 +372,7 @@ func (e *TaskExecutionLog) teaqlSaveSnapshot() teaqlTaskExecutionLogSaveSnapshot
 func (e *TaskExecutionLog) teaqlRegisterGraphOutcome(context *runtime.UserContext, snapshot teaqlTaskExecutionLogSaveSnapshot) {
 	context.AfterGraphRollback(func() {
 		if err := e.FromRecord(snapshot.record); err != nil { panic(err) }
+		e.loadedSnapshot = snapshot.loadedSnapshot
 		e.dirtyFields = snapshot.dirtyFields
 		e.isNew = snapshot.isNew
 		e.markedAsDelete = snapshot.markedAsDelete
@@ -313,8 +385,16 @@ func (e *TaskExecutionLog) teaqlRegisterGraphOutcome(context *runtime.UserContex
 
 // TeaqlSaveWithinGraph is generated infrastructure used by related entity
 // packages after the public root Save has opened the graph transaction.
-func (e *TaskExecutionLog) TeaqlSaveWithinGraph(context *runtime.UserContext, intent core.MutationIntent, parentScope *core.MutationTraceScope) (*TaskExecutionLog, error) {
+func (e *TaskExecutionLog) TeaqlSaveWithinGraph(context *runtime.UserContext, intent core.MutationIntent, parentScope *core.MutationTraceScope, privacy *data_service.MutationPrivacy) (*TaskExecutionLog, error) {
 	if err := intent.Validate(); err != nil { return nil, err }
+	// Reached but unchanged entities are ancestry, not writes. Their changed
+	// descendants still participate without requiring a complete parent projection.
+	if !e.isNew && !e.markedAsDelete && len(e.root.Change(e.EntityKey())) == 0 {
+		scope, err := core.MutationScopeForEntity(parentScope, e.EntityKey(), intent, e.comment)
+		if err != nil { return nil, err }
+		if err := e.saveCascade(context, intent, scope, privacy); err != nil { return nil, err }
+		return e, nil
+	}
 	snapshot := e.teaqlSaveSnapshot()
 	e.teaqlRegisterGraphOutcome(context, snapshot)
 	dsRaw := context.GetResource("dataService")
@@ -330,37 +410,27 @@ func (e *TaskExecutionLog) TeaqlSaveWithinGraph(context *runtime.UserContext, in
 		return nil, fmt.Errorf("dataService does not implement Mutator")
 	}
 
+
 	if e.isNew {
 		checkedValues := e.IntoRecord()
 		valuesBeforeCheck := e.IntoRecord()
-		checkErr := context.CheckAndFix(&runtime.CheckAndFixInput{Entity: "Task Execution Log", Operation: core.MutationInsert, Values: checkedValues})
+		checkErr := runtime.CheckAndFixGraphEntity(context, &runtime.CheckAndFixInput{Entity: "Task Execution Log", Operation: core.MutationInsert, Values: checkedValues}, e.root, e.EntityKey())
 		for field, value := range checkedValues {
 			if before, exists := valuesBeforeCheck[field]; !exists || !reflect.DeepEqual(before, value) {
 				e.root.Set(e.EntityKey(), field, value)
 			}
 		}
 		if checkErr != nil { return nil, checkErr }
-		if err := e.FromRecord(checkedValues); err != nil { return nil, err }
-		type idGenerator interface {
-			GenerateId(entity string) (uint64, error)
-		}
-		generator := idGenerator(runtime.LocalIdGenerator())
-		if configured := context.GetResource("idGenerator"); configured != nil {
-			if typed, ok := configured.(idGenerator); ok {
-				generator = typed
-			}
-		}
+		if err := e.teaqlFromRecord(checkedValues, false); err != nil { return nil, err }
 		if e.base.Id == 0 {
-			id, err := generator.GenerateId(e.EntityName())
+			id, err := context.GenerateInternalId(e.EntityName())
 			if err != nil {
 				return nil, fmt.Errorf("generate id for %s: %w", e.EntityName(), err)
 			}
 			e.base.Id = id
 			e.root.Rekey(core.NewEntityKey(e.EntityName(), e.ledgerID), e.EntityKey())
-		} else if floor, ok := generator.(interface {
-			EnsureIdFloor(stdcontext.Context, string, uint64) error
-		}); ok {
-			if err := floor.EnsureIdFloor(stdcontext.Background(), e.EntityName(), e.base.Id); err != nil {
+		} else {
+			if err := context.EnsureInternalIdFloor(context.Context, e.EntityName(), e.base.Id); err != nil {
 				return nil, fmt.Errorf("synchronize id floor for %s: %w", e.EntityName(), err)
 			}
 		}
@@ -373,6 +443,8 @@ func (e *TaskExecutionLog) TeaqlSaveWithinGraph(context *runtime.UserContext, in
 		cmd.Values = e.IntoRecord()
 		cmd.TraceChain = core.MutationTraceForEntity(e.root, e.EntityKey(), scope)
 		request, err := data_service.NewMutationRequest(&data_service.InsertMutation{Cmd: cmd}, intent.Comment())
+		if err != nil { return nil, err }
+		request, err = data_service.WithMutationPrivacy(request, privacy)
 		if err != nil { return nil, err }
 		res, err := ds.Mutate(context, request)
 		if err == nil {
@@ -394,10 +466,10 @@ func (e *TaskExecutionLog) TeaqlSaveWithinGraph(context *runtime.UserContext, in
 		if res.PersistedRecord == nil {
 			return nil, fmt.Errorf("mutation did not return the authoritative persisted record")
 		}
-		if err := e.FromRecord(res.PersistedRecord); err != nil {
+		if err := e.teaqlAcceptPersisted(context, res.PersistedRecord); err != nil {
 			return nil, err
 		}
-		if err := e.saveCascade(context, intent, scope); err != nil { return nil, err }
+		if err := e.saveCascade(context, intent, scope, privacy); err != nil { return nil, err }
 		return e, nil
 	} else if e.markedAsDelete {
 		scope, err := core.MutationScopeForEntity(parentScope, e.EntityKey(), intent, e.comment)
@@ -407,6 +479,8 @@ func (e *TaskExecutionLog) TeaqlSaveWithinGraph(context *runtime.UserContext, in
 			WithExpectedVersion(expectedVersion)
 		cmd.TraceChain = core.MutationTraceForEntity(e.root, e.EntityKey(), scope)
 		request, err := data_service.NewMutationRequest(&data_service.DeleteMutation{Cmd: cmd}, intent.Comment())
+		if err != nil { return nil, err }
+		request, err = data_service.WithMutationPrivacy(request, privacy)
 		if err != nil { return nil, err }
 		res, err := ds.Mutate(context, request)
 		if err != nil { return nil, err }
@@ -419,19 +493,19 @@ func (e *TaskExecutionLog) TeaqlSaveWithinGraph(context *runtime.UserContext, in
 		if res.PersistedRecord == nil {
 			return nil, fmt.Errorf("mutation did not return the authoritative persisted record")
 		}
-		if err := e.FromRecord(res.PersistedRecord); err != nil { return nil, err }
+		if err := e.teaqlAcceptPersisted(context, res.PersistedRecord); err != nil { return nil, err }
 		return e, nil
 	} else {
 		checkedValues := e.IntoRecord()
 		valuesBeforeCheck := e.IntoRecord()
-		checkErr := context.CheckAndFix(&runtime.CheckAndFixInput{Entity: "Task Execution Log", Operation: core.MutationUpdate, Values: checkedValues})
+		checkErr := runtime.CheckAndFixGraphEntity(context, &runtime.CheckAndFixInput{Entity: "Task Execution Log", Operation: core.MutationUpdate, Values: checkedValues}, e.root, e.EntityKey())
 		for field, value := range checkedValues {
 			if before, exists := valuesBeforeCheck[field]; !exists || !reflect.DeepEqual(before, value) {
 				e.root.Set(e.EntityKey(), field, value)
 			}
 		}
 		if checkErr != nil { return nil, checkErr }
-		if err := e.FromRecord(checkedValues); err != nil { return nil, err }
+		if err := e.teaqlFromRecord(checkedValues, false); err != nil { return nil, err }
 		scope, err := core.MutationScopeForEntity(parentScope, e.EntityKey(), intent, e.comment)
 		if err != nil { return nil, err }
 		cmd := core.NewUpdateCommand("Task Execution Log", core.ValU64(e.base.Id))
@@ -439,13 +513,15 @@ func (e *TaskExecutionLog) TeaqlSaveWithinGraph(context *runtime.UserContext, in
 		// A clean parent still carries the scope for changed descendants, but
 		// must not emit an empty UPDATE or bump its optimistic version.
 		if len(cmd.Values) == 0 {
-			if err := e.saveCascade(context, intent, scope); err != nil { return nil, err }
+			if err := e.saveCascade(context, intent, scope, privacy); err != nil { return nil, err }
 			return e, nil
 		}
 		expectedVersion := e.base.Version
 		cmd.ExpectedVersion = &expectedVersion
 		cmd.TraceChain = core.MutationTraceForEntity(e.root, e.EntityKey(), scope)
 		request, err := data_service.NewMutationRequest(&data_service.UpdateMutation{Cmd: cmd}, intent.Comment())
+		if err != nil { return nil, err }
+		request, err = data_service.WithMutationPrivacy(request, privacy)
 		if err != nil { return nil, err }
 		res, err := ds.Mutate(context, request)
 		if err == nil {
@@ -461,13 +537,13 @@ func (e *TaskExecutionLog) TeaqlSaveWithinGraph(context *runtime.UserContext, in
 		if res.PersistedRecord == nil {
 			return nil, fmt.Errorf("mutation did not return the authoritative persisted record")
 		}
-		if err := e.FromRecord(res.PersistedRecord); err != nil { return nil, err }
-		if err := e.saveCascade(context, intent, scope); err != nil { return nil, err }
+		if err := e.teaqlAcceptPersisted(context, res.PersistedRecord); err != nil { return nil, err }
+		if err := e.saveCascade(context, intent, scope, privacy); err != nil { return nil, err }
 		return e, nil
 	}
 }
 
-func (e *TaskExecutionLog) saveCascade(context *runtime.UserContext, intent core.MutationIntent, scope *core.MutationTraceScope) error {
+func (e *TaskExecutionLog) saveCascade(context *runtime.UserContext, intent core.MutationIntent, scope *core.MutationTraceScope, privacy *data_service.MutationPrivacy) error {
 	return nil
 }
 

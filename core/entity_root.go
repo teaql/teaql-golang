@@ -211,6 +211,36 @@ func (r *EntityRoot) IsNew(key EntityKey) bool {
 	return ok
 }
 
+// NewReferenceSnapshot checks a bounded set of prospective references under
+// one lock. Only an owner belonging to this ledger may reference its new,
+// non-deleted targets. The returned flags are independent of mutable ledger
+// storage; no provider identity or context-wide state is allocated here.
+func (r *EntityRoot) NewReferenceSnapshot(owner EntityKey, targets []EntityKey) []bool {
+	if r == nil {
+		return nil
+	}
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+	ownerID := owner.mapKey()
+	if _, deleted := r.deletedKeys[ownerID]; deleted {
+		return nil
+	}
+	_, changed := r.changes[ownerID]
+	_, loaded := r.originalKeys[ownerID]
+	_, created := r.newKeys[ownerID]
+	if !changed && !loaded && !created {
+		return nil
+	}
+	flags := make([]bool, len(targets))
+	for index, target := range targets {
+		key := target.mapKey()
+		_, fresh := r.newKeys[key]
+		_, deleted := r.deletedKeys[key]
+		flags[index] = fresh && !deleted
+	}
+	return flags
+}
+
 func (r *EntityRoot) IsDeleted(key EntityKey) bool {
 	r.mu.RLock()
 	defer r.mu.RUnlock()

@@ -10,6 +10,7 @@ import (
 	"github.com/teaql/teaql-golang/core"
 	"github.com/teaql/teaql-golang/data_service"
 	"github.com/teaql/teaql-golang/runtime"
+	"robot-kanban-service-core-workspace/lib/internal/generatedsearch"
 	"robot-kanban-service-core-workspace/lib/task_status"
 	"robot-kanban-service-core-workspace/lib/task"
 )
@@ -25,6 +26,7 @@ type PlatformRequest struct {
 	purposeText string
 	commentText string
 	relationFactories map[string]func() core.Entity
+	dynamicSearchWarnings []core.DynamicSearchWarning
 }
 
 type ExecutablePlatformRequest struct {
@@ -51,6 +53,25 @@ func (r *PlatformRequest) GetQuery() *core.SelectQuery {
 	return r.Query
 }
 
+// FilterByJson validates all clauses before changing this request.
+func (r *PlatformRequest) FilterByJson(source []byte) (*PlatformRequest, error) {
+	query, warnings, err := generatedsearch.Apply(r.Query, source, nil)
+	if err != nil { return nil, err }
+	r.Query = query
+	r.dynamicSearchWarnings = append(r.dynamicSearchWarnings, warnings...)
+	return r, nil
+}
+
+func (r *PlatformRequest) DynamicSearchWarnings() []core.DynamicSearchWarning {
+	return append([]core.DynamicSearchWarning(nil), r.dynamicSearchWarnings...)
+}
+
+func (r *PlatformRequest) GetQuerySelection() *core.QuerySelection {
+	selection := core.NewQuerySelection(r.Query)
+	selection.QueryOptions = r.queryOptions
+	return selection
+}
+
 func (r *PlatformRequest) GetEntityDescriptor() *core.EntityDescriptor {
 	return NewPlatform().EntityDescriptor()
 }
@@ -61,6 +82,7 @@ func (r *PlatformRequest) NewRelationEntity() core.Entity {
 
 func (r *PlatformRequest) Comment(comment string) *PlatformRequest {
 	r.commentText = comment
+	r.Query.Comment(comment)
 	return r
 }
 
@@ -71,6 +93,7 @@ func (r *PlatformRequest) Purpose(purpose string) *ExecutablePlatformRequest {
 
 func (r *ExecutablePlatformRequest) Comment(comment string) *ExecutablePlatformRequest {
 	r.request.commentText = comment
+	r.request.Query.Comment(comment)
 	return r
 }
 
@@ -547,11 +570,17 @@ func (r *PlatformRequest) CountTaskStatuses() *PlatformRequest {
 
 }
 func (r *PlatformRequest) CountTaskStatusesAs(alias string) *PlatformRequest {
-	return r.CountTaskStatusesWith(alias, task_status.NewTaskStatusRequest())
+	r.CountTaskStatusesWith(alias, task_status.NewTaskStatusRequest())
+	r.Query.RelationAggregates[len(r.Query.RelationAggregates)-1].Operation = &core.QueryOperation{Kind: "count", Method: "CountTaskStatusesAs", Alias: &alias, Relation: "taskStatusList"}
+	return r
 }
 func (r *PlatformRequest) CountTaskStatusesWith(alias string, child *task_status.TaskStatusRequest) *PlatformRequest {
-	child.Query.Count(alias)
-	r.Query.RelationAggregates = append(r.Query.RelationAggregates, core.NewRelationAggregate("taskStatusList", alias, child.Query, true))
+	query := child.GetQuery().Clone()
+	query.Aggregates = nil
+	query.Count(alias)
+	aggregate := core.NewRelationAggregate("taskStatusList", alias, query, true)
+	aggregate.Operation = &core.QueryOperation{Kind: "count", Method: "CountTaskStatusesWith", Alias: &alias, Relation: "taskStatusList"}
+	r.Query.RelationAggregates = append(r.Query.RelationAggregates, aggregate)
 	return r
 }
 
@@ -559,128 +588,192 @@ func (r *PlatformRequest) SumDisplayOrderOfTaskStatuses() *PlatformRequest {
 	return r.SumDisplayOrderOfTaskStatusesAs("sumDisplayOrderOfTaskStatuses", task_status.NewTaskStatusRequest())
 }
 func (r *PlatformRequest) SumDisplayOrderOfTaskStatusesAs(alias string, child *task_status.TaskStatusRequest) *PlatformRequest {
-	child.Query.Sum("display_order", "sum_displayOrder")
-	r.Query.RelationAggregates = append(r.Query.RelationAggregates, core.NewRelationAggregate("taskStatusList", alias, child.Query, true))
+	query := child.GetQuery().Clone()
+	query.Aggregates = nil
+	query.Sum("display_order", alias)
+	aggregate := core.NewRelationAggregate("taskStatusList", alias, query, true)
+	aggregate.Operation = &core.QueryOperation{Kind: "aggregate", Method: "SumDisplayOrderOfTaskStatusesAs", Alias: &alias, Relation: "taskStatusList"}
+	r.Query.RelationAggregates = append(r.Query.RelationAggregates, aggregate)
 	return r
 }
 func (r *PlatformRequest) MinDisplayOrderOfTaskStatuses() *PlatformRequest {
 	return r.MinDisplayOrderOfTaskStatusesAs("minDisplayOrderOfTaskStatuses", task_status.NewTaskStatusRequest())
 }
 func (r *PlatformRequest) MinDisplayOrderOfTaskStatusesAs(alias string, child *task_status.TaskStatusRequest) *PlatformRequest {
-	child.Query.Min("display_order", "min_displayOrder")
-	r.Query.RelationAggregates = append(r.Query.RelationAggregates, core.NewRelationAggregate("taskStatusList", alias, child.Query, true))
+	query := child.GetQuery().Clone()
+	query.Aggregates = nil
+	query.Min("display_order", alias)
+	aggregate := core.NewRelationAggregate("taskStatusList", alias, query, true)
+	aggregate.Operation = &core.QueryOperation{Kind: "aggregate", Method: "MinDisplayOrderOfTaskStatusesAs", Alias: &alias, Relation: "taskStatusList"}
+	r.Query.RelationAggregates = append(r.Query.RelationAggregates, aggregate)
 	return r
 }
 func (r *PlatformRequest) MaxDisplayOrderOfTaskStatuses() *PlatformRequest {
 	return r.MaxDisplayOrderOfTaskStatusesAs("maxDisplayOrderOfTaskStatuses", task_status.NewTaskStatusRequest())
 }
 func (r *PlatformRequest) MaxDisplayOrderOfTaskStatusesAs(alias string, child *task_status.TaskStatusRequest) *PlatformRequest {
-	child.Query.Max("display_order", "max_displayOrder")
-	r.Query.RelationAggregates = append(r.Query.RelationAggregates, core.NewRelationAggregate("taskStatusList", alias, child.Query, true))
+	query := child.GetQuery().Clone()
+	query.Aggregates = nil
+	query.Max("display_order", alias)
+	aggregate := core.NewRelationAggregate("taskStatusList", alias, query, true)
+	aggregate.Operation = &core.QueryOperation{Kind: "aggregate", Method: "MaxDisplayOrderOfTaskStatusesAs", Alias: &alias, Relation: "taskStatusList"}
+	r.Query.RelationAggregates = append(r.Query.RelationAggregates, aggregate)
 	return r
 }
 func (r *PlatformRequest) AvgDisplayOrderOfTaskStatuses() *PlatformRequest {
 	return r.AvgDisplayOrderOfTaskStatusesAs("avgDisplayOrderOfTaskStatuses", task_status.NewTaskStatusRequest())
 }
 func (r *PlatformRequest) AvgDisplayOrderOfTaskStatusesAs(alias string, child *task_status.TaskStatusRequest) *PlatformRequest {
-	child.Query.Avg("display_order", "avg_displayOrder")
-	r.Query.RelationAggregates = append(r.Query.RelationAggregates, core.NewRelationAggregate("taskStatusList", alias, child.Query, true))
+	query := child.GetQuery().Clone()
+	query.Aggregates = nil
+	query.Avg("display_order", alias)
+	aggregate := core.NewRelationAggregate("taskStatusList", alias, query, true)
+	aggregate.Operation = &core.QueryOperation{Kind: "aggregate", Method: "AvgDisplayOrderOfTaskStatusesAs", Alias: &alias, Relation: "taskStatusList"}
+	r.Query.RelationAggregates = append(r.Query.RelationAggregates, aggregate)
 	return r
 }
 func (r *PlatformRequest) StandardDeviationDisplayOrderOfTaskStatuses() *PlatformRequest {
 	return r.StandardDeviationDisplayOrderOfTaskStatusesAs("standardDeviationDisplayOrderOfTaskStatuses", task_status.NewTaskStatusRequest())
 }
 func (r *PlatformRequest) StandardDeviationDisplayOrderOfTaskStatusesAs(alias string, child *task_status.TaskStatusRequest) *PlatformRequest {
-	child.Query.Stddev("display_order", "stdDev_displayOrder")
-	r.Query.RelationAggregates = append(r.Query.RelationAggregates, core.NewRelationAggregate("taskStatusList", alias, child.Query, true))
+	query := child.GetQuery().Clone()
+	query.Aggregates = nil
+	query.Stddev("display_order", alias)
+	aggregate := core.NewRelationAggregate("taskStatusList", alias, query, true)
+	aggregate.Operation = &core.QueryOperation{Kind: "aggregate", Method: "StandardDeviationDisplayOrderOfTaskStatusesAs", Alias: &alias, Relation: "taskStatusList"}
+	r.Query.RelationAggregates = append(r.Query.RelationAggregates, aggregate)
 	return r
 }
 func (r *PlatformRequest) SquareRootOfPopulationStandardDeviationDisplayOrderOfTaskStatuses() *PlatformRequest {
 	return r.SquareRootOfPopulationStandardDeviationDisplayOrderOfTaskStatusesAs("squareRootOfPopulationStandardDeviationDisplayOrderOfTaskStatuses", task_status.NewTaskStatusRequest())
 }
 func (r *PlatformRequest) SquareRootOfPopulationStandardDeviationDisplayOrderOfTaskStatusesAs(alias string, child *task_status.TaskStatusRequest) *PlatformRequest {
-	child.Query.StddevPop("display_order", "stdDevPop_displayOrder")
-	r.Query.RelationAggregates = append(r.Query.RelationAggregates, core.NewRelationAggregate("taskStatusList", alias, child.Query, true))
+	query := child.GetQuery().Clone()
+	query.Aggregates = nil
+	query.StddevPop("display_order", alias)
+	aggregate := core.NewRelationAggregate("taskStatusList", alias, query, true)
+	aggregate.Operation = &core.QueryOperation{Kind: "aggregate", Method: "SquareRootOfPopulationStandardDeviationDisplayOrderOfTaskStatusesAs", Alias: &alias, Relation: "taskStatusList"}
+	r.Query.RelationAggregates = append(r.Query.RelationAggregates, aggregate)
 	return r
 }
 func (r *PlatformRequest) SampleVarianceDisplayOrderOfTaskStatuses() *PlatformRequest {
 	return r.SampleVarianceDisplayOrderOfTaskStatusesAs("sampleVarianceDisplayOrderOfTaskStatuses", task_status.NewTaskStatusRequest())
 }
 func (r *PlatformRequest) SampleVarianceDisplayOrderOfTaskStatusesAs(alias string, child *task_status.TaskStatusRequest) *PlatformRequest {
-	child.Query.VarSamp("display_order", "varSamp_displayOrder")
-	r.Query.RelationAggregates = append(r.Query.RelationAggregates, core.NewRelationAggregate("taskStatusList", alias, child.Query, true))
+	query := child.GetQuery().Clone()
+	query.Aggregates = nil
+	query.VarSamp("display_order", alias)
+	aggregate := core.NewRelationAggregate("taskStatusList", alias, query, true)
+	aggregate.Operation = &core.QueryOperation{Kind: "aggregate", Method: "SampleVarianceDisplayOrderOfTaskStatusesAs", Alias: &alias, Relation: "taskStatusList"}
+	r.Query.RelationAggregates = append(r.Query.RelationAggregates, aggregate)
 	return r
 }
 func (r *PlatformRequest) SamplePopulationVarianceDisplayOrderOfTaskStatuses() *PlatformRequest {
 	return r.SamplePopulationVarianceDisplayOrderOfTaskStatusesAs("samplePopulationVarianceDisplayOrderOfTaskStatuses", task_status.NewTaskStatusRequest())
 }
 func (r *PlatformRequest) SamplePopulationVarianceDisplayOrderOfTaskStatusesAs(alias string, child *task_status.TaskStatusRequest) *PlatformRequest {
-	child.Query.VarPop("display_order", "varPop_displayOrder")
-	r.Query.RelationAggregates = append(r.Query.RelationAggregates, core.NewRelationAggregate("taskStatusList", alias, child.Query, true))
+	query := child.GetQuery().Clone()
+	query.Aggregates = nil
+	query.VarPop("display_order", alias)
+	aggregate := core.NewRelationAggregate("taskStatusList", alias, query, true)
+	aggregate.Operation = &core.QueryOperation{Kind: "aggregate", Method: "SamplePopulationVarianceDisplayOrderOfTaskStatusesAs", Alias: &alias, Relation: "taskStatusList"}
+	r.Query.RelationAggregates = append(r.Query.RelationAggregates, aggregate)
 	return r
 }
 func (r *PlatformRequest) SumProgressOfTaskStatuses() *PlatformRequest {
 	return r.SumProgressOfTaskStatusesAs("sumProgressOfTaskStatuses", task_status.NewTaskStatusRequest())
 }
 func (r *PlatformRequest) SumProgressOfTaskStatusesAs(alias string, child *task_status.TaskStatusRequest) *PlatformRequest {
-	child.Query.Sum("progress", "sum_progress")
-	r.Query.RelationAggregates = append(r.Query.RelationAggregates, core.NewRelationAggregate("taskStatusList", alias, child.Query, true))
+	query := child.GetQuery().Clone()
+	query.Aggregates = nil
+	query.Sum("progress", alias)
+	aggregate := core.NewRelationAggregate("taskStatusList", alias, query, true)
+	aggregate.Operation = &core.QueryOperation{Kind: "aggregate", Method: "SumProgressOfTaskStatusesAs", Alias: &alias, Relation: "taskStatusList"}
+	r.Query.RelationAggregates = append(r.Query.RelationAggregates, aggregate)
 	return r
 }
 func (r *PlatformRequest) MinProgressOfTaskStatuses() *PlatformRequest {
 	return r.MinProgressOfTaskStatusesAs("minProgressOfTaskStatuses", task_status.NewTaskStatusRequest())
 }
 func (r *PlatformRequest) MinProgressOfTaskStatusesAs(alias string, child *task_status.TaskStatusRequest) *PlatformRequest {
-	child.Query.Min("progress", "min_progress")
-	r.Query.RelationAggregates = append(r.Query.RelationAggregates, core.NewRelationAggregate("taskStatusList", alias, child.Query, true))
+	query := child.GetQuery().Clone()
+	query.Aggregates = nil
+	query.Min("progress", alias)
+	aggregate := core.NewRelationAggregate("taskStatusList", alias, query, true)
+	aggregate.Operation = &core.QueryOperation{Kind: "aggregate", Method: "MinProgressOfTaskStatusesAs", Alias: &alias, Relation: "taskStatusList"}
+	r.Query.RelationAggregates = append(r.Query.RelationAggregates, aggregate)
 	return r
 }
 func (r *PlatformRequest) MaxProgressOfTaskStatuses() *PlatformRequest {
 	return r.MaxProgressOfTaskStatusesAs("maxProgressOfTaskStatuses", task_status.NewTaskStatusRequest())
 }
 func (r *PlatformRequest) MaxProgressOfTaskStatusesAs(alias string, child *task_status.TaskStatusRequest) *PlatformRequest {
-	child.Query.Max("progress", "max_progress")
-	r.Query.RelationAggregates = append(r.Query.RelationAggregates, core.NewRelationAggregate("taskStatusList", alias, child.Query, true))
+	query := child.GetQuery().Clone()
+	query.Aggregates = nil
+	query.Max("progress", alias)
+	aggregate := core.NewRelationAggregate("taskStatusList", alias, query, true)
+	aggregate.Operation = &core.QueryOperation{Kind: "aggregate", Method: "MaxProgressOfTaskStatusesAs", Alias: &alias, Relation: "taskStatusList"}
+	r.Query.RelationAggregates = append(r.Query.RelationAggregates, aggregate)
 	return r
 }
 func (r *PlatformRequest) AvgProgressOfTaskStatuses() *PlatformRequest {
 	return r.AvgProgressOfTaskStatusesAs("avgProgressOfTaskStatuses", task_status.NewTaskStatusRequest())
 }
 func (r *PlatformRequest) AvgProgressOfTaskStatusesAs(alias string, child *task_status.TaskStatusRequest) *PlatformRequest {
-	child.Query.Avg("progress", "avg_progress")
-	r.Query.RelationAggregates = append(r.Query.RelationAggregates, core.NewRelationAggregate("taskStatusList", alias, child.Query, true))
+	query := child.GetQuery().Clone()
+	query.Aggregates = nil
+	query.Avg("progress", alias)
+	aggregate := core.NewRelationAggregate("taskStatusList", alias, query, true)
+	aggregate.Operation = &core.QueryOperation{Kind: "aggregate", Method: "AvgProgressOfTaskStatusesAs", Alias: &alias, Relation: "taskStatusList"}
+	r.Query.RelationAggregates = append(r.Query.RelationAggregates, aggregate)
 	return r
 }
 func (r *PlatformRequest) StandardDeviationProgressOfTaskStatuses() *PlatformRequest {
 	return r.StandardDeviationProgressOfTaskStatusesAs("standardDeviationProgressOfTaskStatuses", task_status.NewTaskStatusRequest())
 }
 func (r *PlatformRequest) StandardDeviationProgressOfTaskStatusesAs(alias string, child *task_status.TaskStatusRequest) *PlatformRequest {
-	child.Query.Stddev("progress", "stdDev_progress")
-	r.Query.RelationAggregates = append(r.Query.RelationAggregates, core.NewRelationAggregate("taskStatusList", alias, child.Query, true))
+	query := child.GetQuery().Clone()
+	query.Aggregates = nil
+	query.Stddev("progress", alias)
+	aggregate := core.NewRelationAggregate("taskStatusList", alias, query, true)
+	aggregate.Operation = &core.QueryOperation{Kind: "aggregate", Method: "StandardDeviationProgressOfTaskStatusesAs", Alias: &alias, Relation: "taskStatusList"}
+	r.Query.RelationAggregates = append(r.Query.RelationAggregates, aggregate)
 	return r
 }
 func (r *PlatformRequest) SquareRootOfPopulationStandardDeviationProgressOfTaskStatuses() *PlatformRequest {
 	return r.SquareRootOfPopulationStandardDeviationProgressOfTaskStatusesAs("squareRootOfPopulationStandardDeviationProgressOfTaskStatuses", task_status.NewTaskStatusRequest())
 }
 func (r *PlatformRequest) SquareRootOfPopulationStandardDeviationProgressOfTaskStatusesAs(alias string, child *task_status.TaskStatusRequest) *PlatformRequest {
-	child.Query.StddevPop("progress", "stdDevPop_progress")
-	r.Query.RelationAggregates = append(r.Query.RelationAggregates, core.NewRelationAggregate("taskStatusList", alias, child.Query, true))
+	query := child.GetQuery().Clone()
+	query.Aggregates = nil
+	query.StddevPop("progress", alias)
+	aggregate := core.NewRelationAggregate("taskStatusList", alias, query, true)
+	aggregate.Operation = &core.QueryOperation{Kind: "aggregate", Method: "SquareRootOfPopulationStandardDeviationProgressOfTaskStatusesAs", Alias: &alias, Relation: "taskStatusList"}
+	r.Query.RelationAggregates = append(r.Query.RelationAggregates, aggregate)
 	return r
 }
 func (r *PlatformRequest) SampleVarianceProgressOfTaskStatuses() *PlatformRequest {
 	return r.SampleVarianceProgressOfTaskStatusesAs("sampleVarianceProgressOfTaskStatuses", task_status.NewTaskStatusRequest())
 }
 func (r *PlatformRequest) SampleVarianceProgressOfTaskStatusesAs(alias string, child *task_status.TaskStatusRequest) *PlatformRequest {
-	child.Query.VarSamp("progress", "varSamp_progress")
-	r.Query.RelationAggregates = append(r.Query.RelationAggregates, core.NewRelationAggregate("taskStatusList", alias, child.Query, true))
+	query := child.GetQuery().Clone()
+	query.Aggregates = nil
+	query.VarSamp("progress", alias)
+	aggregate := core.NewRelationAggregate("taskStatusList", alias, query, true)
+	aggregate.Operation = &core.QueryOperation{Kind: "aggregate", Method: "SampleVarianceProgressOfTaskStatusesAs", Alias: &alias, Relation: "taskStatusList"}
+	r.Query.RelationAggregates = append(r.Query.RelationAggregates, aggregate)
 	return r
 }
 func (r *PlatformRequest) SamplePopulationVarianceProgressOfTaskStatuses() *PlatformRequest {
 	return r.SamplePopulationVarianceProgressOfTaskStatusesAs("samplePopulationVarianceProgressOfTaskStatuses", task_status.NewTaskStatusRequest())
 }
 func (r *PlatformRequest) SamplePopulationVarianceProgressOfTaskStatusesAs(alias string, child *task_status.TaskStatusRequest) *PlatformRequest {
-	child.Query.VarPop("progress", "varPop_progress")
-	r.Query.RelationAggregates = append(r.Query.RelationAggregates, core.NewRelationAggregate("taskStatusList", alias, child.Query, true))
+	query := child.GetQuery().Clone()
+	query.Aggregates = nil
+	query.VarPop("progress", alias)
+	aggregate := core.NewRelationAggregate("taskStatusList", alias, query, true)
+	aggregate.Operation = &core.QueryOperation{Kind: "aggregate", Method: "SamplePopulationVarianceProgressOfTaskStatusesAs", Alias: &alias, Relation: "taskStatusList"}
+	r.Query.RelationAggregates = append(r.Query.RelationAggregates, aggregate)
 	return r
 }
 func (r *PlatformRequest) CountTasks() *PlatformRequest {
@@ -688,11 +781,17 @@ func (r *PlatformRequest) CountTasks() *PlatformRequest {
 
 }
 func (r *PlatformRequest) CountTasksAs(alias string) *PlatformRequest {
-	return r.CountTasksWith(alias, task.NewTaskRequest())
+	r.CountTasksWith(alias, task.NewTaskRequest())
+	r.Query.RelationAggregates[len(r.Query.RelationAggregates)-1].Operation = &core.QueryOperation{Kind: "count", Method: "CountTasksAs", Alias: &alias, Relation: "taskList"}
+	return r
 }
 func (r *PlatformRequest) CountTasksWith(alias string, child *task.TaskRequest) *PlatformRequest {
-	child.Query.Count(alias)
-	r.Query.RelationAggregates = append(r.Query.RelationAggregates, core.NewRelationAggregate("taskList", alias, child.Query, true))
+	query := child.GetQuery().Clone()
+	query.Aggregates = nil
+	query.Count(alias)
+	aggregate := core.NewRelationAggregate("taskList", alias, query, true)
+	aggregate.Operation = &core.QueryOperation{Kind: "count", Method: "CountTasksWith", Alias: &alias, Relation: "taskList"}
+	r.Query.RelationAggregates = append(r.Query.RelationAggregates, aggregate)
 	return r
 }
 
@@ -703,7 +802,8 @@ func (r *PlatformRequest) SelectTaskStatusList() *PlatformRequest {
 }
 
 func (r *PlatformRequest) SelectTaskStatusListWith(child *task_status.TaskStatusRequest) *PlatformRequest {
-	r.Query.RelationQuery("taskStatusList", child.Query)
+	r.Query.RelationQuerySelection("taskStatusList", child.GetQuerySelection())
+	r.Query.Relations[len(r.Query.Relations)-1].Operation = &core.QueryOperation{Kind: "relation", Method: "SelectTaskStatusListWith", Relation: "taskStatusList"}
 	return r
 }
 func (r *PlatformRequest) SelectTaskList() *PlatformRequest {
@@ -711,7 +811,8 @@ func (r *PlatformRequest) SelectTaskList() *PlatformRequest {
 }
 
 func (r *PlatformRequest) SelectTaskListWith(child *task.TaskRequest) *PlatformRequest {
-	r.Query.RelationQuery("taskList", child.Query)
+	r.Query.RelationQuerySelection("taskList", child.GetQuerySelection())
+	r.Query.Relations[len(r.Query.Relations)-1].Operation = &core.QueryOperation{Kind: "relation", Method: "SelectTaskListWith", Relation: "taskList"}
 	return r
 }
 
@@ -779,97 +880,22 @@ func (e *ExecutablePlatformRequest) ExecuteForOne(context *runtime.UserContext) 
 }
 
 func (e *ExecutablePlatformRequest) ExecuteForList(context *runtime.UserContext) (*core.SmartList[*Platform], error) {
-	rows, authorized, err := e.executeRecords(context, true)
-	if err != nil {
-		return nil, err
-	}
-
-	var results []*Platform
-	for _, rec := range rows {
-		entity := newLoadedPlatform()
-		if err := entity.FromRecord(rec); err != nil {
-			return nil, err
-		}
-		if relationValue, selected := rec["taskStatusList"]; selected {
-			childRecords, ok := relationValue.V.([]core.Record)
-				if !ok { return nil, fmt.Errorf("relation taskStatusList has unexpected runtime type %T", relationValue.V) }
-				for _, childRecord := range childRecords {
-					childEntity := task_status.NewTaskStatus()
-					childEntity.EntityRoot().ClearEntity(childEntity.EntityKey())
-					childEntity.AttachEntityRoot(entity.EntityRoot())
-					if err := childEntity.FromRecord(childRecord); err != nil { return nil, err }
-					entity.TaskStatusList().Add(childEntity)
-				}}
-		if relationValue, selected := rec["taskList"]; selected {
-			childRecords, ok := relationValue.V.([]core.Record)
-				if !ok { return nil, fmt.Errorf("relation taskList has unexpected runtime type %T", relationValue.V) }
-				for _, childRecord := range childRecords {
-					childEntity := task.NewTask()
-					childEntity.EntityRoot().ClearEntity(childEntity.EntityKey())
-					childEntity.AttachEntityRoot(entity.EntityRoot())
-					if err := childEntity.FromRecord(childRecord); err != nil { return nil, err }
-					entity.TaskList().Add(childEntity)
-				}}
-		results = append(results, entity)
-	}
-	list := core.NewSmartList(results)
-	if len(e.request.queryOptions.Facets) > 0 {
-		dsRaw := context.GetResource("dataService")
-		ds, ok := dsRaw.(data_service.QueryExecutor)
-		if !ok { return nil, fmt.Errorf("dataService does not implement data_service.QueryExecutor") }
-		facets, err := runtime.ExecuteFacets(
-			context, runtime.NewRuntimeDataService(context.Metadata, ds),
-			authorized, e.request.queryOptions)
-		if err != nil { return nil, err }
-		core.AttachFacets(list, facets)
-	}
-	return list, nil
-}
-
-// ExecuteForPage applies trusted policy once, then derives exact-count and row
-// queries from that same authorized snapshot.
-func (e *ExecutablePlatformRequest) ExecuteForPage(context *runtime.UserContext, offset uint64, size uint64) (*core.SmartList[*Platform], error) {
+	// Apply trusted policy once. The runtime owns the entire typed list lifecycle,
+	// including optional exact count, facets and hydration failures.
 	r := e.request
 	if _, err := core.NewQueryIntent(&r.commentText, &r.purposeText); err != nil { return nil, err }
-	if size == 0 {
-		return nil, fmt.Errorf("QUERY_INVALID_LIMIT: size must be positive")
-	}
 	query := r.Query.Clone()
-	query.Page(offset, size).Comment(r.commentText).Purpose(r.purposeText)
+	query.Comment(r.commentText).Purpose(r.purposeText)
+	query, plan, err := runtime.CaptureQueryPlan(query, r.queryOptions)
+	if err != nil { return nil, err }
+	query = plan.WithQueryDiagnostics(query)
 	authorized, err := context.PrepareEntityQuery(query)
 	if err != nil { return nil, err }
 	dsRaw := context.GetResource("dataService")
 	ds, ok := dsRaw.(data_service.QueryExecutor)
 	if !ok { return nil, fmt.Errorf("dataService does not implement data_service.QueryExecutor") }
 	service := runtime.NewRuntimeDataService(context.Metadata, ds)
-	const countAlias = "__teaql_total"
-	var rows []core.Record
-	var total uint64
-	if authorized.IDSetPagination != nil {
-		rows, err = service.FetchAll(context, authorized)
-		if err != nil { return nil, err }
-		if retainedCount, accuracy := context.IDSetCount(); accuracy == "EXACT" {
-			total = retainedCount
-		} else {
-			countRows, countErr := service.FetchAll(context, authorized.ForExactCount(countAlias))
-			if countErr != nil { return nil, countErr }
-			if len(countRows) != 1 { return nil, fmt.Errorf("exact count returned %d rows", len(countRows)) }
-			var ok bool
-			total, ok = countRows[0][countAlias].TryU64()
-			if !ok { return nil, fmt.Errorf("exact count did not return an unsigned integer") }
-		}
-	} else {
-		countRows, countErr := service.FetchAll(context, authorized.ForExactCount(countAlias))
-		if countErr != nil { return nil, countErr }
-		if len(countRows) != 1 { return nil, fmt.Errorf("exact count returned %d rows", len(countRows)) }
-		var ok bool
-		total, ok = countRows[0][countAlias].TryU64()
-		if !ok { return nil, fmt.Errorf("exact count did not return an unsigned integer") }
-		rows, err = service.FetchAll(context, authorized)
-		if err != nil { return nil, err }
-	}
-	results := make([]*Platform, 0, len(rows))
-	for _, rec := range rows {
+	return runtime.ExecuteTypedList(context, service, authorized, plan, func(rec core.Record) (*Platform, error) {
 		entity := newLoadedPlatform()
 		if err := entity.FromRecord(rec); err != nil { return nil, err }
 		if relationValue, selected := rec["taskStatusList"]; selected {
@@ -892,13 +918,13 @@ func (e *ExecutablePlatformRequest) ExecuteForPage(context *runtime.UserContext,
 					if err := childEntity.FromRecord(childRecord); err != nil { return nil, err }
 					entity.TaskList().Add(childEntity)
 				}}
-		results = append(results, entity)
-	}
-	return core.NewSmartList(results).WithTotalCount(total), nil
+		return entity, nil
+	})
 }
 
 // ExecuteForStream consumes a provider cursor one chunk at a time. Returning
-// an error from yield cancels iteration and releases the database resources.
+// an error from yield releases the database resources. runtime.ErrStopStream
+// records an intentional early stop; other callback errors remain failures.
 func (e *ExecutablePlatformRequest) ExecuteForStream(context *runtime.UserContext, chunkSize int, yield func(*Platform) error) error {
 	r := e.request
 	if _, err := core.NewQueryIntent(&r.commentText, &r.purposeText); err != nil { return err }
@@ -907,6 +933,8 @@ func (e *ExecutablePlatformRequest) ExecuteForStream(context *runtime.UserContex
 	}
 	query := r.Query.Clone()
 	query.Comment(r.commentText).Purpose(r.purposeText)
+	query, err := runtime.CaptureStreamQuery(query, r.queryOptions)
+	if err != nil { return err }
 	authorized, err := context.PrepareEntityQuery(query)
 	if err != nil { return err }
 	dsRaw := context.GetResource("dataService")
@@ -914,54 +942,46 @@ func (e *ExecutablePlatformRequest) ExecuteForStream(context *runtime.UserContex
 	if !ok {
 		return fmt.Errorf("dataService does not implement data_service.StreamQueryExecutor")
 	}
-	req, err := data_service.NewQueryRequest(authorized)
-	if err != nil { return err }
-	return ds.QueryStream(context, req, chunkSize, func(chunk *data_service.StreamChunk) error {
-		for _, rec := range chunk.Rows {
-			entity := newLoadedPlatform()
-			if err := entity.FromRecord(rec); err != nil {
-				return err
-			}
-			if err := yield(entity); err != nil {
-				return err
-			}
-		}
-		return nil
-	})
+	return runtime.ExecuteTypedStream(context, ds, authorized, chunkSize, func(rec core.Record) (*Platform, error) {
+		entity := newLoadedPlatform()
+		if err := entity.FromRecord(rec); err != nil { return nil, err }
+		return entity, nil
+	}, yield)
 }
 
 func (e *ExecutablePlatformRequest) ExecuteRecords(context *runtime.UserContext) ([]core.Record, error) {
-	rows, _, err := e.executeRecords(context, false)
+	rows, _, _, err := e.executeRecords(context)
 	return rows, err
 }
 
 // executeRecords returns the same authorized snapshot used for row execution
 // so facets can derive their membership query without reapplying root policy.
-func (e *ExecutablePlatformRequest) executeRecords(context *runtime.UserContext, entityProjection bool) ([]core.Record, *core.SelectQuery, error) {
+func (e *ExecutablePlatformRequest) executeRecords(context *runtime.UserContext) ([]core.Record, *core.SelectQuery, *runtime.FacetPlan, error) {
 	r := e.request
-	if _, err := core.NewQueryIntent(&r.commentText, &r.purposeText); err != nil { return nil, nil, err }
+	if _, err := core.NewQueryIntent(&r.commentText, &r.purposeText); err != nil { return nil, nil, nil, err }
 	query := r.Query.Clone()
 	query.Comment(r.commentText).Purpose(r.purposeText)
-	prepare := context.PrepareQuery
-	if entityProjection { prepare = context.PrepareEntityQuery }
-	authorized, err := prepare(query)
-	if err != nil { return nil, nil, err }
+	query, plan, err := runtime.CaptureQueryPlan(query, r.queryOptions)
+	if err != nil { return nil, nil, nil, err }
+	query = plan.WithQueryDiagnostics(query)
+	authorized, err := context.PrepareQuery(query)
+	if err != nil { return nil, nil, nil, err }
 
 	dsRaw := context.GetResource("dataService")
 	if dsRaw == nil {
-		return nil, nil, fmt.Errorf("dataService not found in UserContext")
+		return nil, nil, nil, fmt.Errorf("dataService not found in UserContext")
 	}
 
 	ds, ok := dsRaw.(data_service.QueryExecutor)
 	if !ok {
-		return nil, nil, fmt.Errorf("dataService does not implement data_service.QueryExecutor")
+		return nil, nil, nil, fmt.Errorf("dataService does not implement data_service.QueryExecutor")
 	}
 
-	rows, err := runtime.NewRuntimeDataService(context.Metadata, ds).FetchAll(context, authorized)
+	rows, err := runtime.NewRuntimeDataService(context.Metadata, ds).FetchAllWithFacetPlan(context, authorized, plan)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
-	return rows, authorized, nil
+	return rows, authorized, plan, nil
 }
 
 // ExecuteForRows preserves aggregate/group projections as records while keeping
@@ -978,6 +998,7 @@ func (r *PlatformRequest) Count() *PlatformRequest {
 
 func (r *PlatformRequest) CountAs(alias string) *PlatformRequest {
 	r.Query.CountField("id", alias)
+	r.queryOptions.PageCountOperation = &core.QueryOperation{Kind: "count", Method: "CountAs", Alias: &alias}
 	return r
 }
 

@@ -1,6 +1,7 @@
 package lib
 
 import (
+	stdcontext "context"
 	"database/sql"
 	"fmt"
 	"os"
@@ -61,7 +62,7 @@ func ensureGeneratedBootstrapOnce(context *runtime.UserContext) error {
 		order_status1001.UpdateName("New")
 		order_status1001.UpdateCode("NEW")
 		order_status1001.UpdateColor("#94A3B8")
-		order_status1001.UpdateDisplayOrder(int64(1))
+		order_status1001.UpdateDisplayOrder(decimal.RequireFromString("1"))
 		if _, err = order_status1001.AuditAs("create model constant OrderStatus(1001)").Save(context); err != nil {
 			createErr := err
 			// A concurrent bootstrap may have inserted the same fixed identity.
@@ -87,8 +88,8 @@ func ensureGeneratedBootstrapOnce(context *runtime.UserContext) error {
 		if !reflect.DeepEqual(order_status1001.Color(), "#94A3B8") {
 			order_status1001.UpdateColor("#94A3B8"); changed = true
 		}
-		if !reflect.DeepEqual(order_status1001.DisplayOrder(), int64(1)) {
-			order_status1001.UpdateDisplayOrder(int64(1)); changed = true
+		if !reflect.DeepEqual(order_status1001.DisplayOrder(), decimal.RequireFromString("1")) {
+			order_status1001.UpdateDisplayOrder(decimal.RequireFromString("1")); changed = true
 		}
 		if changed { if _, err = order_status1001.AuditAs("reconcile model constant OrderStatus(1001)").Save(context); err != nil { return fmt.Errorf("reconcile bootstrap OrderStatus(1001): %w", err) } }
 	}
@@ -100,7 +101,7 @@ func ensureGeneratedBootstrapOnce(context *runtime.UserContext) error {
 		order_status1002.UpdateName("Paid")
 		order_status1002.UpdateCode("PAID")
 		order_status1002.UpdateColor("#22C55E")
-		order_status1002.UpdateDisplayOrder(int64(2))
+		order_status1002.UpdateDisplayOrder(decimal.RequireFromString("2"))
 		if _, err = order_status1002.AuditAs("create model constant OrderStatus(1002)").Save(context); err != nil {
 			createErr := err
 			// A concurrent bootstrap may have inserted the same fixed identity.
@@ -126,8 +127,8 @@ func ensureGeneratedBootstrapOnce(context *runtime.UserContext) error {
 		if !reflect.DeepEqual(order_status1002.Color(), "#22C55E") {
 			order_status1002.UpdateColor("#22C55E"); changed = true
 		}
-		if !reflect.DeepEqual(order_status1002.DisplayOrder(), int64(2)) {
-			order_status1002.UpdateDisplayOrder(int64(2)); changed = true
+		if !reflect.DeepEqual(order_status1002.DisplayOrder(), decimal.RequireFromString("2")) {
+			order_status1002.UpdateDisplayOrder(decimal.RequireFromString("2")); changed = true
 		}
 		if changed { if _, err = order_status1002.AuditAs("reconcile model constant OrderStatus(1002)").Save(context); err != nil { return fmt.Errorf("reconcile bootstrap OrderStatus(1002): %w", err) } }
 	}
@@ -139,7 +140,7 @@ func ensureGeneratedBootstrapOnce(context *runtime.UserContext) error {
 		order_status1003.UpdateName("Cancelled")
 		order_status1003.UpdateCode("CANCELLED")
 		order_status1003.UpdateColor("#EF4444")
-		order_status1003.UpdateDisplayOrder(int64(3))
+		order_status1003.UpdateDisplayOrder(decimal.RequireFromString("3"))
 		if _, err = order_status1003.AuditAs("create model constant OrderStatus(1003)").Save(context); err != nil {
 			createErr := err
 			// A concurrent bootstrap may have inserted the same fixed identity.
@@ -165,8 +166,8 @@ func ensureGeneratedBootstrapOnce(context *runtime.UserContext) error {
 		if !reflect.DeepEqual(order_status1003.Color(), "#EF4444") {
 			order_status1003.UpdateColor("#EF4444"); changed = true
 		}
-		if !reflect.DeepEqual(order_status1003.DisplayOrder(), int64(3)) {
-			order_status1003.UpdateDisplayOrder(int64(3)); changed = true
+		if !reflect.DeepEqual(order_status1003.DisplayOrder(), decimal.RequireFromString("3")) {
+			order_status1003.UpdateDisplayOrder(decimal.RequireFromString("3")); changed = true
 		}
 		if changed { if _, err = order_status1003.AuditAs("reconcile model constant OrderStatus(1003)").Save(context); err != nil { return fmt.Errorf("reconcile bootstrap OrderStatus(1003): %w", err) } }
 	}
@@ -204,7 +205,7 @@ func Module() *runtime.RuntimeModule {
 		descriptor.Property(core.NewPropertyDescriptor("name", core.TypeText).ColumnName("name").NotNull())
 		descriptor.Property(core.NewPropertyDescriptor("code", core.TypeText).ColumnName("code").NotNull())
 		descriptor.Property(core.NewPropertyDescriptor("color", core.TypeText).ColumnName("color").NotNull())
-		descriptor.Property(core.NewPropertyDescriptor("display_order", core.TypeI64).ColumnName("display_order").NotNull())
+		descriptor.Property(core.NewPropertyDescriptor("display_order", core.TypeDecimal).ColumnName("display_order").NotNull())
 		descriptor.Property(core.NewPropertyDescriptor("version", core.TypeI64).ColumnName("version").NotNull().Version())
 		descriptor.Property(core.NewPropertyDescriptor("platform_id", core.TypeU64).ColumnName("platform").NotNull())
 		descriptor.Relation(core.NewRelationDescriptor("platformEntity", "Commerce Platform").LocalKey("platform_id").ForeignKey("id"))
@@ -442,7 +443,7 @@ func ModuleWithBehaviors() *runtime.RuntimeModule {
 		descriptor.Property(core.NewPropertyDescriptor("name", core.TypeText).ColumnName("name").NotNull())
 		descriptor.Property(core.NewPropertyDescriptor("code", core.TypeText).ColumnName("code").NotNull())
 		descriptor.Property(core.NewPropertyDescriptor("color", core.TypeText).ColumnName("color").NotNull())
-		descriptor.Property(core.NewPropertyDescriptor("display_order", core.TypeI64).ColumnName("display_order").NotNull())
+		descriptor.Property(core.NewPropertyDescriptor("display_order", core.TypeDecimal).ColumnName("display_order").NotNull())
 		descriptor.Property(core.NewPropertyDescriptor("version", core.TypeI64).ColumnName("version").NotNull().Version())
 		descriptor.Property(core.NewPropertyDescriptor("platform_id", core.TypeU64).ColumnName("platform").NotNull())
 		descriptor.Relation(core.NewRelationDescriptor("platformEntity", "Commerce Platform").LocalKey("platform_id").ForeignKey("id"))
@@ -542,20 +543,20 @@ func ServiceRuntimeFromEnv() (*runtime.UserContext, error) {
 
 	context.InsertResource("dataService", executor)
 	context.InsertResource("db", db)
-	context.InsertResource("idGenerator", transport)
+	context.InstallDefaultInternalIdGenerator(transport)
 	return context, nil
 }
 
 // EnsureSchema explicitly reconciles the generated module with the configured database.
 // Installing Module() or starting ServiceRuntimeFromEnv never changes database schema.
 func EnsureSchema(context *runtime.UserContext) error {
+	if err := context.ExecuteSchema(runtime.SchemaExecutorFunc(func(schemaContext stdcontext.Context, metadata runtime.MetadataStore) error {
 	db, ok := context.GetResource("db").(*sql.DB)
 	if !ok || db == nil { return fmt.Errorf("db not found in UserContext") }
-	if err := provider.EnsureSoundex(db); err != nil { return fmt.Errorf("register SQLite soundex: %w", err) }
+	if err := provider.EnsureSoundex(db); err != nil { return fmt.Errorf("register SQLite functions: %w", err) }
 dialect := teaql_sql.SqlDialect(&provider.SqliteDialect{})
-	metadata := context.Metadata
 	for _, statement := range dialect.SchemaSetupSqls() {
-		if _, err := db.Exec(statement); err != nil {
+		if _, err := db.ExecContext(schemaContext, statement); err != nil {
 			return fmt.Errorf("initialize SQL dialect: %w", err)
 		}
 	}
@@ -565,19 +566,24 @@ dialect := teaql_sql.SqlDialect(&provider.SqliteDialect{})
 		if err != nil {
 			return fmt.Errorf("compile schema for %s: %w", entity.Name, err)
 		}
-		if _, err := db.Exec(statement); err != nil {
+		if _, err := db.ExecContext(schemaContext, statement); err != nil {
 			return fmt.Errorf("create table for %s: %w", entity.Name, err)
 		}
+		if err := provider.VerifyExactDecimalSchema(db, entity); err != nil {
+					return fmt.Errorf("verify SQLite schema for %s: %w", entity.Name, err)
+				}
 		indexes, err := defaultDialect.SchemaIndexesSqls(entity)
 		if err != nil {
 			return fmt.Errorf("compile indexes for %s: %w", entity.Name, err)
 		}
 		for _, indexStatement := range indexes {
-		if _, err := db.Exec(indexStatement); err != nil {
+		if _, err := db.ExecContext(schemaContext, indexStatement); err != nil {
 			return fmt.Errorf("create index for %s: %w", entity.Name, err)
 		}
 		}
 	}
+	return nil
+	})); err != nil { return err }
 	if err := ensureGeneratedBootstrap(context); err != nil { return err }
 	return nil
 }

@@ -1,9 +1,9 @@
 package customer_order
 
 import (
-	"fmt"
 	"time"
 	"github.com/shopspring/decimal"
+	"github.com/teaql/teaql-golang/runtime"
 	"github.com/teaql/teaql-golang/core"
 	"trace-chain-service-core-workspace/lib/order_item"
 	"trace-chain-service-core-workspace/lib/payment"
@@ -12,35 +12,32 @@ import (
 
 var _ = time.Time{}
 var _ = decimal.Decimal{}
+var _ = core.ValNull
 
-type TeaQLNotLoadedError struct {
-	Root string
-	AccessPath string
-	BreakPoint string
-}
-
-func (e *TeaQLNotLoadedError) Error() string {
-	return fmt.Sprintf("TeaQLNotLoadedError: root=%s access_path=%s break_point=%s", e.Root, e.AccessPath, e.BreakPoint)
-}
+type TeaQLNotLoadedError = runtime.NotLoadedError
 
 type ValueExpression[T any] struct {
 	value T
 	present bool
-	err error
+	err *runtime.NotLoadedError
 }
 
 func valueExpression[T any](value T) *ValueExpression[T] { return &ValueExpression[T]{value: value, present: true} }
 func missingExpression[T any]() *ValueExpression[T] { return &ValueExpression[T]{} }
-func notLoadedExpression[T any](err error) *ValueExpression[T] { return &ValueExpression[T]{err: err} }
+func notLoadedExpression[T any](err *runtime.NotLoadedError) *ValueExpression[T] { return &ValueExpression[T]{err: err} }
 
 func (e *ValueExpression[T]) Eval() (T, bool) {
-	if e.err != nil { panic(e.err) }
+	if e.err != nil { panic(e.err.Terminal("Eval()")) }
 	return e.value, e.present
 }
 
-func (e *ValueExpression[T]) TryEval() (T, bool, error) { return e.value, e.present, e.err }
+func (e *ValueExpression[T]) TryEval() (T, bool, error) {
+	if e.err != nil { return e.value, false, e.err.Terminal("TryEval()") }
+	return e.value, e.present, nil
+}
 
 func (e *ValueExpression[T]) OrElse(fallback T) T {
+	if e.err != nil { panic(e.err.Terminal("OrElse(<fallback>)")) }
 	value, present := e.Eval()
 	if !present { return fallback }
 	return value
@@ -49,99 +46,107 @@ func (e *ValueExpression[T]) OrElse(fallback T) T {
 type CustomerOrderExpression struct {
 	value *CustomerOrder
 	root string
-	path string
-	err error
+	path runtime.ExpressionPath
+	err *runtime.NotLoadedError
 }
 
 func NewCustomerOrderExpression(value *CustomerOrder) *CustomerOrderExpression {
-	id := uint64(0)
-	if value != nil { id = value.Id() }
-	return &CustomerOrderExpression{value: value, root: fmt.Sprintf("CustomerOrder(id=%d)", id)}
+	return &CustomerOrderExpression{value: value, root: "CustomerOrder",
+		path:runtime.NewExpressionPath("E.CustomerOrder(<root>)", runtime.JsonFieldNamingProfile("camelCase"))}
 }
 
-func (e *CustomerOrderExpression) fieldError(field string) error {
-	path := field
-	if e.path != "" { path = e.path + "." + field }
-	return &TeaQLNotLoadedError{Root: e.root, AccessPath: path, BreakPoint: field}
+// WithExpressionPath is the cross-package generated traversal carrier, not an I/O API.
+func (e *CustomerOrderExpression) WithExpressionPath(path runtime.ExpressionPath, err *runtime.NotLoadedError) *CustomerOrderExpression {
+	next := *e
+	next.path, next.err = path, err
+	return &next
 }
 
 func (e *CustomerOrderExpression) Id() *ValueExpression[uint64] {
-	if e.err != nil { return notLoadedExpression[uint64](e.err) }
+	path := e.path.Member("id", "Id")
+	if e.err != nil { return notLoadedExpression[uint64](e.err.WithPath(path)) }
 	if e.value == nil { return missingExpression[uint64]() }
-	if !e.value.IsLoaded("id") { return notLoadedExpression[uint64](e.fieldError("id")) }
+	if !e.value.IsLoaded("id") { return notLoadedExpression[uint64](runtime.NewNotLoadedError(path.MarkMissing(), "id")) }
 	return valueExpression(e.value.Id())
 }
 
 func (e *CustomerOrderExpression) OrderNumber() *ValueExpression[string] {
-	if e.err != nil { return notLoadedExpression[string](e.err) }
+	path := e.path.Member("order_number", "OrderNumber")
+	if e.err != nil { return notLoadedExpression[string](e.err.WithPath(path)) }
 	if e.value == nil { return missingExpression[string]() }
-	if !e.value.IsLoaded("order_number") { return notLoadedExpression[string](e.fieldError("order_number")) }
+	if !e.value.IsLoaded("order_number") { return notLoadedExpression[string](runtime.NewNotLoadedError(path.MarkMissing(), "order_number")) }
 	raw, ok := e.value.Base().GetDynamic("order_number")
 		if !ok || raw.IsNull() { return missingExpression[string]() }
 	return valueExpression(e.value.OrderNumber())
 }
 
 func (e *CustomerOrderExpression) Description() *ValueExpression[string] {
-	if e.err != nil { return notLoadedExpression[string](e.err) }
+	path := e.path.Member("description", "Description")
+	if e.err != nil { return notLoadedExpression[string](e.err.WithPath(path)) }
 	if e.value == nil { return missingExpression[string]() }
-	if !e.value.IsLoaded("description") { return notLoadedExpression[string](e.fieldError("description")) }
+	if !e.value.IsLoaded("description") { return notLoadedExpression[string](runtime.NewNotLoadedError(path.MarkMissing(), "description")) }
 	raw, ok := e.value.Base().GetDynamic("description")
 		if !ok || raw.IsNull() { return missingExpression[string]() }
 	return valueExpression(e.value.Description())
 }
 
 func (e *CustomerOrderExpression) Version() *ValueExpression[int64] {
-	if e.err != nil { return notLoadedExpression[int64](e.err) }
+	path := e.path.Member("version", "Version")
+	if e.err != nil { return notLoadedExpression[int64](e.err.WithPath(path)) }
 	if e.value == nil { return missingExpression[int64]() }
-	if !e.value.IsLoaded("version") { return notLoadedExpression[int64](e.fieldError("version")) }
+	if !e.value.IsLoaded("version") { return notLoadedExpression[int64](runtime.NewNotLoadedError(path.MarkMissing(), "version")) }
 	return valueExpression(e.value.Version())
 }
 type PlatformRelationExpression struct {
 	value core.Record
 	root string
-	path string
-	err error
+	path runtime.ExpressionPath
+	err *runtime.NotLoadedError
 }
 
 func (e *PlatformRelationExpression) Eval() (core.Record, bool) {
-	if e.err != nil { panic(e.err) }
+	if e.err != nil { panic(e.err.Terminal("Eval()")) }
 	return e.value, e.value != nil
 }
 
 func (e *PlatformRelationExpression) Id() *ValueExpression[uint64] {
-	if e.err != nil { return notLoadedExpression[uint64](e.err) }
+	path := e.path.Member("id", "Id")
+	if e.err != nil { return notLoadedExpression[uint64](e.err.WithPath(path)) }
 	if e.value == nil { return missingExpression[uint64]() }
 	raw, ok := e.value["id"]
-	if !ok { return notLoadedExpression[uint64](&TeaQLNotLoadedError{Root:e.root,AccessPath:e.path+".id",BreakPoint:"id"}) }
+	if !ok { return notLoadedExpression[uint64](runtime.NewNotLoadedError(path.MarkMissing(), "id")) }
 	if raw.IsNull() { return missingExpression[uint64]() }
 	value, valid := raw.TryU64(); if !valid { return missingExpression[uint64]() }
 		return valueExpression(value)
 }
 
 func (e *PlatformRelationExpression) Name() *ValueExpression[string] {
-	if e.err != nil { return notLoadedExpression[string](e.err) }
+	path := e.path.Member("name", "Name")
+	if e.err != nil { return notLoadedExpression[string](e.err.WithPath(path)) }
 	if e.value == nil { return missingExpression[string]() }
 	raw, ok := e.value["name"]
-	if !ok { return notLoadedExpression[string](&TeaQLNotLoadedError{Root:e.root,AccessPath:e.path+".name",BreakPoint:"name"}) }
+	if !ok { return notLoadedExpression[string](runtime.NewNotLoadedError(path.MarkMissing(), "name")) }
 	if raw.IsNull() { return missingExpression[string]() }
 	value, valid := raw.TryText(); if !valid { return missingExpression[string]() }
 		return valueExpression(value)
 }
 
 func (e *PlatformRelationExpression) Version() *ValueExpression[int64] {
-	if e.err != nil { return notLoadedExpression[int64](e.err) }
+	path := e.path.Member("version", "Version")
+	if e.err != nil { return notLoadedExpression[int64](e.err.WithPath(path)) }
 	if e.value == nil { return missingExpression[int64]() }
 	raw, ok := e.value["version"]
-	if !ok { return notLoadedExpression[int64](&TeaQLNotLoadedError{Root:e.root,AccessPath:e.path+".version",BreakPoint:"version"}) }
+	if !ok { return notLoadedExpression[int64](runtime.NewNotLoadedError(path.MarkMissing(), "version")) }
 	if raw.IsNull() { return missingExpression[int64]() }
 	value, valid := raw.TryI64(); if !valid { return missingExpression[int64]() }
 		return valueExpression(value)
 }
 
 func (e *CustomerOrderExpression) PlatformId() *ValueExpression[uint64] {
-	if e.err != nil { return notLoadedExpression[uint64](e.err) }
+	path := e.path.Member("platform", "PlatformId")
+	if e.err != nil { return notLoadedExpression[uint64](e.err.WithPath(path)) }
 	if e.value == nil { return missingExpression[uint64]() }
-	if !e.value.IsLoaded("platform_id") { return notLoadedExpression[uint64](e.fieldError("platform_id")) }
+	if !e.value.IsLoaded("platform_id") { return notLoadedExpression[uint64](runtime.NewNotLoadedError(path.MarkMissing(), "platform")) }
 	raw, ok := e.value.Base().GetDynamic("platform_id")
 	if !ok || raw.IsNull() { return missingExpression[uint64]() }
 	if values, list := raw.TryList(); list && len(values) != 0 {
@@ -153,10 +158,10 @@ func (e *CustomerOrderExpression) PlatformId() *ValueExpression[uint64] {
 }
 
 func (e *CustomerOrderExpression) Platform() *PlatformRelationExpression {
-	path := "platform_id"; if e.path != "" { path = e.path + "." + path }
-	if e.err != nil { return &PlatformRelationExpression{root:e.root,path:path,err:e.err} }
+	path := e.path.Member("platform", "Platform")
+	if e.err != nil { return &PlatformRelationExpression{root:e.root,path:path,err:e.err.WithPath(path)} }
 	if e.value == nil { return &PlatformRelationExpression{root:e.root,path:path} }
-	if !e.value.isRelationLoaded("platformEntity") { return &PlatformRelationExpression{root:e.root,path:path,err:e.fieldError("platform_id")} }
+	if !e.value.isRelationLoaded("platformEntity") { return &PlatformRelationExpression{root:e.root,path:path,err:runtime.NewNotLoadedError(path.MarkMissing(), "platform")} }
 	related, ok := e.value.RelationEntity("platformEntity")
 	if !ok || related == nil { return &PlatformRelationExpression{root:e.root,path:path} }
 	return &PlatformRelationExpression{value:related.IntoRecord(),root:e.root,path:path}
@@ -164,98 +169,113 @@ func (e *CustomerOrderExpression) Platform() *PlatformRelationExpression {
 type OrderItemListExpression struct {
 	value *OrderItemList
 	root string
-	path string
-	err error
+	path runtime.ExpressionPath
+	err *runtime.NotLoadedError
 }
 
 func (e *OrderItemListExpression) Size() *ValueExpression[int] {
-	if e.err != nil { return notLoadedExpression[int](e.err) }
+	if e.err != nil { return notLoadedExpression[int](e.err.WithPath(e.path.Operation("Size()"))) }
 	if e.value == nil { return missingExpression[int]() }
 	return valueExpression(len(e.value.Items()))
 }
 
 func (e *OrderItemListExpression) First() *order_item.OrderItemExpression {
-	if e.err != nil { panic(e.err) }
-	if e.value == nil || len(e.value.Items()) == 0 { return order_item.NewOrderItemExpression(nil) }
-	value := e.value.Items()[0]
-	return order_item.NewOrderItemExpression(value)
+	return e.item(0, true)
 }
 
 func (e *OrderItemListExpression) Get(index int) *order_item.OrderItemExpression {
-	if e.err != nil { panic(e.err) }
-	if e.value == nil || index < 0 || index >= len(e.value.Items()) { return order_item.NewOrderItemExpression(nil) }
-	return order_item.NewOrderItemExpression(e.value.Items()[index])
+	return e.item(index, false)
+}
+
+func (e *OrderItemListExpression) item(index int, first bool) *order_item.OrderItemExpression {
+	path := e.path.At(index, first)
+	var failure *runtime.NotLoadedError
+	if e.err != nil { failure = e.err.WithPath(path) }
+	var value *order_item.OrderItem
+	if failure == nil && e.value != nil && index >= 0 && index < len(e.value.Items()) { value = e.value.Items()[index] }
+	return order_item.NewOrderItemExpression(value).WithExpressionPath(path, failure)
 }
 
 func (e *CustomerOrderExpression) OrderItemList() *OrderItemListExpression {
-	if e.err != nil { return &OrderItemListExpression{err: e.err} }
-	if e.value == nil { return &OrderItemListExpression{} }
-	if !e.value.IsLoaded("orderItemList") { return &OrderItemListExpression{err: e.fieldError("orderItemList"), root: e.root, path: "orderItemList"} }
-	return &OrderItemListExpression{value: e.value.OrderItemList(), root: e.root, path: "orderItemList"}
+	path := e.path.Member("order_item_list", "OrderItemList")
+	if e.err != nil { return &OrderItemListExpression{err: e.err.WithPath(path), root:e.root, path:path} }
+	if e.value == nil { return &OrderItemListExpression{root:e.root, path:path} }
+	if !e.value.IsLoaded("orderItemList") { return &OrderItemListExpression{err: runtime.NewNotLoadedError(path.MarkMissing(), "order_item_list"), root:e.root, path:path} }
+	return &OrderItemListExpression{value: e.value.OrderItemList(), root: e.root, path:path}
 }
 
 type PaymentListExpression struct {
 	value *PaymentList
 	root string
-	path string
-	err error
+	path runtime.ExpressionPath
+	err *runtime.NotLoadedError
 }
 
 func (e *PaymentListExpression) Size() *ValueExpression[int] {
-	if e.err != nil { return notLoadedExpression[int](e.err) }
+	if e.err != nil { return notLoadedExpression[int](e.err.WithPath(e.path.Operation("Size()"))) }
 	if e.value == nil { return missingExpression[int]() }
 	return valueExpression(len(e.value.Items()))
 }
 
 func (e *PaymentListExpression) First() *payment.PaymentExpression {
-	if e.err != nil { panic(e.err) }
-	if e.value == nil || len(e.value.Items()) == 0 { return payment.NewPaymentExpression(nil) }
-	value := e.value.Items()[0]
-	return payment.NewPaymentExpression(value)
+	return e.item(0, true)
 }
 
 func (e *PaymentListExpression) Get(index int) *payment.PaymentExpression {
-	if e.err != nil { panic(e.err) }
-	if e.value == nil || index < 0 || index >= len(e.value.Items()) { return payment.NewPaymentExpression(nil) }
-	return payment.NewPaymentExpression(e.value.Items()[index])
+	return e.item(index, false)
+}
+
+func (e *PaymentListExpression) item(index int, first bool) *payment.PaymentExpression {
+	path := e.path.At(index, first)
+	var failure *runtime.NotLoadedError
+	if e.err != nil { failure = e.err.WithPath(path) }
+	var value *payment.Payment
+	if failure == nil && e.value != nil && index >= 0 && index < len(e.value.Items()) { value = e.value.Items()[index] }
+	return payment.NewPaymentExpression(value).WithExpressionPath(path, failure)
 }
 
 func (e *CustomerOrderExpression) PaymentList() *PaymentListExpression {
-	if e.err != nil { return &PaymentListExpression{err: e.err} }
-	if e.value == nil { return &PaymentListExpression{} }
-	if !e.value.IsLoaded("paymentList") { return &PaymentListExpression{err: e.fieldError("paymentList"), root: e.root, path: "paymentList"} }
-	return &PaymentListExpression{value: e.value.PaymentList(), root: e.root, path: "paymentList"}
+	path := e.path.Member("payment_list", "PaymentList")
+	if e.err != nil { return &PaymentListExpression{err: e.err.WithPath(path), root:e.root, path:path} }
+	if e.value == nil { return &PaymentListExpression{root:e.root, path:path} }
+	if !e.value.IsLoaded("paymentList") { return &PaymentListExpression{err: runtime.NewNotLoadedError(path.MarkMissing(), "payment_list"), root:e.root, path:path} }
+	return &PaymentListExpression{value: e.value.PaymentList(), root: e.root, path:path}
 }
 
 type ShipmentListExpression struct {
 	value *ShipmentList
 	root string
-	path string
-	err error
+	path runtime.ExpressionPath
+	err *runtime.NotLoadedError
 }
 
 func (e *ShipmentListExpression) Size() *ValueExpression[int] {
-	if e.err != nil { return notLoadedExpression[int](e.err) }
+	if e.err != nil { return notLoadedExpression[int](e.err.WithPath(e.path.Operation("Size()"))) }
 	if e.value == nil { return missingExpression[int]() }
 	return valueExpression(len(e.value.Items()))
 }
 
 func (e *ShipmentListExpression) First() *shipment.ShipmentExpression {
-	if e.err != nil { panic(e.err) }
-	if e.value == nil || len(e.value.Items()) == 0 { return shipment.NewShipmentExpression(nil) }
-	value := e.value.Items()[0]
-	return shipment.NewShipmentExpression(value)
+	return e.item(0, true)
 }
 
 func (e *ShipmentListExpression) Get(index int) *shipment.ShipmentExpression {
-	if e.err != nil { panic(e.err) }
-	if e.value == nil || index < 0 || index >= len(e.value.Items()) { return shipment.NewShipmentExpression(nil) }
-	return shipment.NewShipmentExpression(e.value.Items()[index])
+	return e.item(index, false)
+}
+
+func (e *ShipmentListExpression) item(index int, first bool) *shipment.ShipmentExpression {
+	path := e.path.At(index, first)
+	var failure *runtime.NotLoadedError
+	if e.err != nil { failure = e.err.WithPath(path) }
+	var value *shipment.Shipment
+	if failure == nil && e.value != nil && index >= 0 && index < len(e.value.Items()) { value = e.value.Items()[index] }
+	return shipment.NewShipmentExpression(value).WithExpressionPath(path, failure)
 }
 
 func (e *CustomerOrderExpression) ShipmentList() *ShipmentListExpression {
-	if e.err != nil { return &ShipmentListExpression{err: e.err} }
-	if e.value == nil { return &ShipmentListExpression{} }
-	if !e.value.IsLoaded("shipmentList") { return &ShipmentListExpression{err: e.fieldError("shipmentList"), root: e.root, path: "shipmentList"} }
-	return &ShipmentListExpression{value: e.value.ShipmentList(), root: e.root, path: "shipmentList"}
+	path := e.path.Member("shipment_list", "ShipmentList")
+	if e.err != nil { return &ShipmentListExpression{err: e.err.WithPath(path), root:e.root, path:path} }
+	if e.value == nil { return &ShipmentListExpression{root:e.root, path:path} }
+	if !e.value.IsLoaded("shipmentList") { return &ShipmentListExpression{err: runtime.NewNotLoadedError(path.MarkMissing(), "shipment_list"), root:e.root, path:path} }
+	return &ShipmentListExpression{value: e.value.ShipmentList(), root: e.root, path:path}
 }

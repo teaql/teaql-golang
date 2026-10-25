@@ -10,6 +10,7 @@ import (
 	"github.com/teaql/teaql-golang/core"
 	"github.com/teaql/teaql-golang/data_service"
 	"github.com/teaql/teaql-golang/runtime"
+	"order-management-service-core-workspace/lib/internal/generatedsearch"
 	"order-management-service-core-workspace/lib/customer_order"
 )
 
@@ -24,6 +25,7 @@ type CustomerRequest struct {
 	purposeText string
 	commentText string
 	relationFactories map[string]func() core.Entity
+	dynamicSearchWarnings []core.DynamicSearchWarning
 }
 
 type ExecutableCustomerRequest struct {
@@ -50,6 +52,25 @@ func (r *CustomerRequest) GetQuery() *core.SelectQuery {
 	return r.Query
 }
 
+// FilterByJson validates all clauses before changing this request.
+func (r *CustomerRequest) FilterByJson(source []byte) (*CustomerRequest, error) {
+	query, warnings, err := generatedsearch.Apply(r.Query, source, nil)
+	if err != nil { return nil, err }
+	r.Query = query
+	r.dynamicSearchWarnings = append(r.dynamicSearchWarnings, warnings...)
+	return r, nil
+}
+
+func (r *CustomerRequest) DynamicSearchWarnings() []core.DynamicSearchWarning {
+	return append([]core.DynamicSearchWarning(nil), r.dynamicSearchWarnings...)
+}
+
+func (r *CustomerRequest) GetQuerySelection() *core.QuerySelection {
+	selection := core.NewQuerySelection(r.Query)
+	selection.QueryOptions = r.queryOptions
+	return selection
+}
+
 func (r *CustomerRequest) GetEntityDescriptor() *core.EntityDescriptor {
 	return NewCustomer().EntityDescriptor()
 }
@@ -60,6 +81,7 @@ func (r *CustomerRequest) NewRelationEntity() core.Entity {
 
 func (r *CustomerRequest) Comment(comment string) *CustomerRequest {
 	r.commentText = comment
+	r.Query.Comment(comment)
 	return r
 }
 
@@ -70,6 +92,7 @@ func (r *CustomerRequest) Purpose(purpose string) *ExecutableCustomerRequest {
 
 func (r *ExecutableCustomerRequest) Comment(comment string) *ExecutableCustomerRequest {
 	r.request.commentText = comment
+	r.request.Query.Comment(comment)
 	return r
 }
 
@@ -468,8 +491,9 @@ func (r *CustomerRequest) FacetByCommercePlatformAs(
 ) *CustomerRequest {
 	includeAll := true
 	if len(includeAllFacets) > 0 { includeAll = includeAllFacets[0] }
-	r.queryOptions.Facets = append(r.queryOptions.Facets, core.NewFacetRequest(
-		name, "commerce_platform_id", core.NewQuerySelection(nestedReq.GetQuery()), includeAll))
+	facet := core.NewFacetRequest(name, "commerce_platform_id", core.QuerySelectionFor(nestedReq), includeAll)
+	facet.Operation = &core.QueryOperation{Kind: "facet", Method: "FacetByCommercePlatformAs", Alias: &name, Relation: "commercePlatform"}
+	r.queryOptions.Facets = append(r.queryOptions.Facets, facet)
 	return r
 }
 func (r *CustomerRequest) OrderByCommercePlatformAsc() *CustomerRequest {
@@ -693,7 +717,8 @@ func (r *CustomerRequest) SelectCommercePlatformWith(child interface {
 	NewRelationEntity() core.Entity
 }) *CustomerRequest {
 	runtime.EnsureRelationProjection(r.Query, "commerce_platform_id")
-	r.Query.RelationQuery("commercePlatformEntity", child.GetQuery())
+	r.Query.RelationQuerySelection("commercePlatformEntity", core.QuerySelectionFor(child))
+	r.Query.Relations[len(r.Query.Relations)-1].Operation = &core.QueryOperation{Kind: "relation", Method: "SelectCommercePlatformWith", Relation: "commercePlatformEntity"}
 	r.relationFactories["commercePlatformEntity"] = child.NewRelationEntity
 	return r
 }
@@ -719,11 +744,17 @@ func (r *CustomerRequest) CountCustomerOrders() *CustomerRequest {
 
 }
 func (r *CustomerRequest) CountCustomerOrdersAs(alias string) *CustomerRequest {
-	return r.CountCustomerOrdersWith(alias, customer_order.NewCustomerOrderRequest())
+	r.CountCustomerOrdersWith(alias, customer_order.NewCustomerOrderRequest())
+	r.Query.RelationAggregates[len(r.Query.RelationAggregates)-1].Operation = &core.QueryOperation{Kind: "count", Method: "CountCustomerOrdersAs", Alias: &alias, Relation: "customerOrderList"}
+	return r
 }
 func (r *CustomerRequest) CountCustomerOrdersWith(alias string, child *customer_order.CustomerOrderRequest) *CustomerRequest {
-	child.Query.Count(alias)
-	r.Query.RelationAggregates = append(r.Query.RelationAggregates, core.NewRelationAggregate("customerOrderList", alias, child.Query, true))
+	query := child.GetQuery().Clone()
+	query.Aggregates = nil
+	query.Count(alias)
+	aggregate := core.NewRelationAggregate("customerOrderList", alias, query, true)
+	aggregate.Operation = &core.QueryOperation{Kind: "count", Method: "CountCustomerOrdersWith", Alias: &alias, Relation: "customerOrderList"}
+	r.Query.RelationAggregates = append(r.Query.RelationAggregates, aggregate)
 	return r
 }
 
@@ -731,112 +762,168 @@ func (r *CustomerRequest) MinOrderDateOfCustomerOrders() *CustomerRequest {
 	return r.MinOrderDateOfCustomerOrdersAs("minOrderDateOfCustomerOrders", customer_order.NewCustomerOrderRequest())
 }
 func (r *CustomerRequest) MinOrderDateOfCustomerOrdersAs(alias string, child *customer_order.CustomerOrderRequest) *CustomerRequest {
-	child.Query.Min("order_date", "min_orderDate")
-	r.Query.RelationAggregates = append(r.Query.RelationAggregates, core.NewRelationAggregate("customerOrderList", alias, child.Query, true))
+	query := child.GetQuery().Clone()
+	query.Aggregates = nil
+	query.Min("order_date", alias)
+	aggregate := core.NewRelationAggregate("customerOrderList", alias, query, true)
+	aggregate.Operation = &core.QueryOperation{Kind: "aggregate", Method: "MinOrderDateOfCustomerOrdersAs", Alias: &alias, Relation: "customerOrderList"}
+	r.Query.RelationAggregates = append(r.Query.RelationAggregates, aggregate)
 	return r
 }
 func (r *CustomerRequest) MaxOrderDateOfCustomerOrders() *CustomerRequest {
 	return r.MaxOrderDateOfCustomerOrdersAs("maxOrderDateOfCustomerOrders", customer_order.NewCustomerOrderRequest())
 }
 func (r *CustomerRequest) MaxOrderDateOfCustomerOrdersAs(alias string, child *customer_order.CustomerOrderRequest) *CustomerRequest {
-	child.Query.Max("order_date", "max_orderDate")
-	r.Query.RelationAggregates = append(r.Query.RelationAggregates, core.NewRelationAggregate("customerOrderList", alias, child.Query, true))
+	query := child.GetQuery().Clone()
+	query.Aggregates = nil
+	query.Max("order_date", alias)
+	aggregate := core.NewRelationAggregate("customerOrderList", alias, query, true)
+	aggregate.Operation = &core.QueryOperation{Kind: "aggregate", Method: "MaxOrderDateOfCustomerOrdersAs", Alias: &alias, Relation: "customerOrderList"}
+	r.Query.RelationAggregates = append(r.Query.RelationAggregates, aggregate)
 	return r
 }
 func (r *CustomerRequest) SumTotalAmountOfCustomerOrders() *CustomerRequest {
 	return r.SumTotalAmountOfCustomerOrdersAs("sumTotalAmountOfCustomerOrders", customer_order.NewCustomerOrderRequest())
 }
 func (r *CustomerRequest) SumTotalAmountOfCustomerOrdersAs(alias string, child *customer_order.CustomerOrderRequest) *CustomerRequest {
-	child.Query.Sum("total_amount", "sum_totalAmount")
-	r.Query.RelationAggregates = append(r.Query.RelationAggregates, core.NewRelationAggregate("customerOrderList", alias, child.Query, true))
+	query := child.GetQuery().Clone()
+	query.Aggregates = nil
+	query.Sum("total_amount", alias)
+	aggregate := core.NewRelationAggregate("customerOrderList", alias, query, true)
+	aggregate.Operation = &core.QueryOperation{Kind: "aggregate", Method: "SumTotalAmountOfCustomerOrdersAs", Alias: &alias, Relation: "customerOrderList"}
+	r.Query.RelationAggregates = append(r.Query.RelationAggregates, aggregate)
 	return r
 }
 func (r *CustomerRequest) MinTotalAmountOfCustomerOrders() *CustomerRequest {
 	return r.MinTotalAmountOfCustomerOrdersAs("minTotalAmountOfCustomerOrders", customer_order.NewCustomerOrderRequest())
 }
 func (r *CustomerRequest) MinTotalAmountOfCustomerOrdersAs(alias string, child *customer_order.CustomerOrderRequest) *CustomerRequest {
-	child.Query.Min("total_amount", "min_totalAmount")
-	r.Query.RelationAggregates = append(r.Query.RelationAggregates, core.NewRelationAggregate("customerOrderList", alias, child.Query, true))
+	query := child.GetQuery().Clone()
+	query.Aggregates = nil
+	query.Min("total_amount", alias)
+	aggregate := core.NewRelationAggregate("customerOrderList", alias, query, true)
+	aggregate.Operation = &core.QueryOperation{Kind: "aggregate", Method: "MinTotalAmountOfCustomerOrdersAs", Alias: &alias, Relation: "customerOrderList"}
+	r.Query.RelationAggregates = append(r.Query.RelationAggregates, aggregate)
 	return r
 }
 func (r *CustomerRequest) MaxTotalAmountOfCustomerOrders() *CustomerRequest {
 	return r.MaxTotalAmountOfCustomerOrdersAs("maxTotalAmountOfCustomerOrders", customer_order.NewCustomerOrderRequest())
 }
 func (r *CustomerRequest) MaxTotalAmountOfCustomerOrdersAs(alias string, child *customer_order.CustomerOrderRequest) *CustomerRequest {
-	child.Query.Max("total_amount", "max_totalAmount")
-	r.Query.RelationAggregates = append(r.Query.RelationAggregates, core.NewRelationAggregate("customerOrderList", alias, child.Query, true))
+	query := child.GetQuery().Clone()
+	query.Aggregates = nil
+	query.Max("total_amount", alias)
+	aggregate := core.NewRelationAggregate("customerOrderList", alias, query, true)
+	aggregate.Operation = &core.QueryOperation{Kind: "aggregate", Method: "MaxTotalAmountOfCustomerOrdersAs", Alias: &alias, Relation: "customerOrderList"}
+	r.Query.RelationAggregates = append(r.Query.RelationAggregates, aggregate)
 	return r
 }
 func (r *CustomerRequest) AvgTotalAmountOfCustomerOrders() *CustomerRequest {
 	return r.AvgTotalAmountOfCustomerOrdersAs("avgTotalAmountOfCustomerOrders", customer_order.NewCustomerOrderRequest())
 }
 func (r *CustomerRequest) AvgTotalAmountOfCustomerOrdersAs(alias string, child *customer_order.CustomerOrderRequest) *CustomerRequest {
-	child.Query.Avg("total_amount", "avg_totalAmount")
-	r.Query.RelationAggregates = append(r.Query.RelationAggregates, core.NewRelationAggregate("customerOrderList", alias, child.Query, true))
+	query := child.GetQuery().Clone()
+	query.Aggregates = nil
+	query.Avg("total_amount", alias)
+	aggregate := core.NewRelationAggregate("customerOrderList", alias, query, true)
+	aggregate.Operation = &core.QueryOperation{Kind: "aggregate", Method: "AvgTotalAmountOfCustomerOrdersAs", Alias: &alias, Relation: "customerOrderList"}
+	r.Query.RelationAggregates = append(r.Query.RelationAggregates, aggregate)
 	return r
 }
 func (r *CustomerRequest) StandardDeviationTotalAmountOfCustomerOrders() *CustomerRequest {
 	return r.StandardDeviationTotalAmountOfCustomerOrdersAs("standardDeviationTotalAmountOfCustomerOrders", customer_order.NewCustomerOrderRequest())
 }
 func (r *CustomerRequest) StandardDeviationTotalAmountOfCustomerOrdersAs(alias string, child *customer_order.CustomerOrderRequest) *CustomerRequest {
-	child.Query.Stddev("total_amount", "stdDev_totalAmount")
-	r.Query.RelationAggregates = append(r.Query.RelationAggregates, core.NewRelationAggregate("customerOrderList", alias, child.Query, true))
+	query := child.GetQuery().Clone()
+	query.Aggregates = nil
+	query.Stddev("total_amount", alias)
+	aggregate := core.NewRelationAggregate("customerOrderList", alias, query, true)
+	aggregate.Operation = &core.QueryOperation{Kind: "aggregate", Method: "StandardDeviationTotalAmountOfCustomerOrdersAs", Alias: &alias, Relation: "customerOrderList"}
+	r.Query.RelationAggregates = append(r.Query.RelationAggregates, aggregate)
 	return r
 }
 func (r *CustomerRequest) SquareRootOfPopulationStandardDeviationTotalAmountOfCustomerOrders() *CustomerRequest {
 	return r.SquareRootOfPopulationStandardDeviationTotalAmountOfCustomerOrdersAs("squareRootOfPopulationStandardDeviationTotalAmountOfCustomerOrders", customer_order.NewCustomerOrderRequest())
 }
 func (r *CustomerRequest) SquareRootOfPopulationStandardDeviationTotalAmountOfCustomerOrdersAs(alias string, child *customer_order.CustomerOrderRequest) *CustomerRequest {
-	child.Query.StddevPop("total_amount", "stdDevPop_totalAmount")
-	r.Query.RelationAggregates = append(r.Query.RelationAggregates, core.NewRelationAggregate("customerOrderList", alias, child.Query, true))
+	query := child.GetQuery().Clone()
+	query.Aggregates = nil
+	query.StddevPop("total_amount", alias)
+	aggregate := core.NewRelationAggregate("customerOrderList", alias, query, true)
+	aggregate.Operation = &core.QueryOperation{Kind: "aggregate", Method: "SquareRootOfPopulationStandardDeviationTotalAmountOfCustomerOrdersAs", Alias: &alias, Relation: "customerOrderList"}
+	r.Query.RelationAggregates = append(r.Query.RelationAggregates, aggregate)
 	return r
 }
 func (r *CustomerRequest) SampleVarianceTotalAmountOfCustomerOrders() *CustomerRequest {
 	return r.SampleVarianceTotalAmountOfCustomerOrdersAs("sampleVarianceTotalAmountOfCustomerOrders", customer_order.NewCustomerOrderRequest())
 }
 func (r *CustomerRequest) SampleVarianceTotalAmountOfCustomerOrdersAs(alias string, child *customer_order.CustomerOrderRequest) *CustomerRequest {
-	child.Query.VarSamp("total_amount", "varSamp_totalAmount")
-	r.Query.RelationAggregates = append(r.Query.RelationAggregates, core.NewRelationAggregate("customerOrderList", alias, child.Query, true))
+	query := child.GetQuery().Clone()
+	query.Aggregates = nil
+	query.VarSamp("total_amount", alias)
+	aggregate := core.NewRelationAggregate("customerOrderList", alias, query, true)
+	aggregate.Operation = &core.QueryOperation{Kind: "aggregate", Method: "SampleVarianceTotalAmountOfCustomerOrdersAs", Alias: &alias, Relation: "customerOrderList"}
+	r.Query.RelationAggregates = append(r.Query.RelationAggregates, aggregate)
 	return r
 }
 func (r *CustomerRequest) SamplePopulationVarianceTotalAmountOfCustomerOrders() *CustomerRequest {
 	return r.SamplePopulationVarianceTotalAmountOfCustomerOrdersAs("samplePopulationVarianceTotalAmountOfCustomerOrders", customer_order.NewCustomerOrderRequest())
 }
 func (r *CustomerRequest) SamplePopulationVarianceTotalAmountOfCustomerOrdersAs(alias string, child *customer_order.CustomerOrderRequest) *CustomerRequest {
-	child.Query.VarPop("total_amount", "varPop_totalAmount")
-	r.Query.RelationAggregates = append(r.Query.RelationAggregates, core.NewRelationAggregate("customerOrderList", alias, child.Query, true))
+	query := child.GetQuery().Clone()
+	query.Aggregates = nil
+	query.VarPop("total_amount", alias)
+	aggregate := core.NewRelationAggregate("customerOrderList", alias, query, true)
+	aggregate.Operation = &core.QueryOperation{Kind: "aggregate", Method: "SamplePopulationVarianceTotalAmountOfCustomerOrdersAs", Alias: &alias, Relation: "customerOrderList"}
+	r.Query.RelationAggregates = append(r.Query.RelationAggregates, aggregate)
 	return r
 }
 func (r *CustomerRequest) MinCreateTimeOfCustomerOrders() *CustomerRequest {
 	return r.MinCreateTimeOfCustomerOrdersAs("minCreateTimeOfCustomerOrders", customer_order.NewCustomerOrderRequest())
 }
 func (r *CustomerRequest) MinCreateTimeOfCustomerOrdersAs(alias string, child *customer_order.CustomerOrderRequest) *CustomerRequest {
-	child.Query.Min("create_time", "min_createTime")
-	r.Query.RelationAggregates = append(r.Query.RelationAggregates, core.NewRelationAggregate("customerOrderList", alias, child.Query, true))
+	query := child.GetQuery().Clone()
+	query.Aggregates = nil
+	query.Min("create_time", alias)
+	aggregate := core.NewRelationAggregate("customerOrderList", alias, query, true)
+	aggregate.Operation = &core.QueryOperation{Kind: "aggregate", Method: "MinCreateTimeOfCustomerOrdersAs", Alias: &alias, Relation: "customerOrderList"}
+	r.Query.RelationAggregates = append(r.Query.RelationAggregates, aggregate)
 	return r
 }
 func (r *CustomerRequest) MaxCreateTimeOfCustomerOrders() *CustomerRequest {
 	return r.MaxCreateTimeOfCustomerOrdersAs("maxCreateTimeOfCustomerOrders", customer_order.NewCustomerOrderRequest())
 }
 func (r *CustomerRequest) MaxCreateTimeOfCustomerOrdersAs(alias string, child *customer_order.CustomerOrderRequest) *CustomerRequest {
-	child.Query.Max("create_time", "max_createTime")
-	r.Query.RelationAggregates = append(r.Query.RelationAggregates, core.NewRelationAggregate("customerOrderList", alias, child.Query, true))
+	query := child.GetQuery().Clone()
+	query.Aggregates = nil
+	query.Max("create_time", alias)
+	aggregate := core.NewRelationAggregate("customerOrderList", alias, query, true)
+	aggregate.Operation = &core.QueryOperation{Kind: "aggregate", Method: "MaxCreateTimeOfCustomerOrdersAs", Alias: &alias, Relation: "customerOrderList"}
+	r.Query.RelationAggregates = append(r.Query.RelationAggregates, aggregate)
 	return r
 }
 func (r *CustomerRequest) MinUpdateTimeOfCustomerOrders() *CustomerRequest {
 	return r.MinUpdateTimeOfCustomerOrdersAs("minUpdateTimeOfCustomerOrders", customer_order.NewCustomerOrderRequest())
 }
 func (r *CustomerRequest) MinUpdateTimeOfCustomerOrdersAs(alias string, child *customer_order.CustomerOrderRequest) *CustomerRequest {
-	child.Query.Min("update_time", "min_updateTime")
-	r.Query.RelationAggregates = append(r.Query.RelationAggregates, core.NewRelationAggregate("customerOrderList", alias, child.Query, true))
+	query := child.GetQuery().Clone()
+	query.Aggregates = nil
+	query.Min("update_time", alias)
+	aggregate := core.NewRelationAggregate("customerOrderList", alias, query, true)
+	aggregate.Operation = &core.QueryOperation{Kind: "aggregate", Method: "MinUpdateTimeOfCustomerOrdersAs", Alias: &alias, Relation: "customerOrderList"}
+	r.Query.RelationAggregates = append(r.Query.RelationAggregates, aggregate)
 	return r
 }
 func (r *CustomerRequest) MaxUpdateTimeOfCustomerOrders() *CustomerRequest {
 	return r.MaxUpdateTimeOfCustomerOrdersAs("maxUpdateTimeOfCustomerOrders", customer_order.NewCustomerOrderRequest())
 }
 func (r *CustomerRequest) MaxUpdateTimeOfCustomerOrdersAs(alias string, child *customer_order.CustomerOrderRequest) *CustomerRequest {
-	child.Query.Max("update_time", "max_updateTime")
-	r.Query.RelationAggregates = append(r.Query.RelationAggregates, core.NewRelationAggregate("customerOrderList", alias, child.Query, true))
+	query := child.GetQuery().Clone()
+	query.Aggregates = nil
+	query.Max("update_time", alias)
+	aggregate := core.NewRelationAggregate("customerOrderList", alias, query, true)
+	aggregate.Operation = &core.QueryOperation{Kind: "aggregate", Method: "MaxUpdateTimeOfCustomerOrdersAs", Alias: &alias, Relation: "customerOrderList"}
+	r.Query.RelationAggregates = append(r.Query.RelationAggregates, aggregate)
 	return r
 }
 
@@ -845,7 +932,8 @@ func (r *CustomerRequest) SelectCustomerOrderList() *CustomerRequest {
 }
 
 func (r *CustomerRequest) SelectCustomerOrderListWith(child *customer_order.CustomerOrderRequest) *CustomerRequest {
-	r.Query.RelationQuery("customerOrderList", child.Query)
+	r.Query.RelationQuerySelection("customerOrderList", child.GetQuerySelection())
+	r.Query.Relations[len(r.Query.Relations)-1].Operation = &core.QueryOperation{Kind: "relation", Method: "SelectCustomerOrderListWith", Relation: "customerOrderList"}
 	return r
 }
 
@@ -896,97 +984,22 @@ func (e *ExecutableCustomerRequest) ExecuteForOne(context *runtime.UserContext) 
 }
 
 func (e *ExecutableCustomerRequest) ExecuteForList(context *runtime.UserContext) (*core.SmartList[*Customer], error) {
-	rows, authorized, err := e.executeRecords(context, true)
-	if err != nil {
-		return nil, err
-	}
-
-	var results []*Customer
-	for _, rec := range rows {
-		entity := newLoadedCustomer()
-		if err := entity.FromRecord(rec); err != nil {
-			return nil, err
-		}
-		if relationValue, selected := rec["commercePlatformEntity"]; selected {
-			entity.markRelationLoaded("commercePlatformEntity")
-			if childRecord, ok := relationValue.V.(core.Record); ok {
-				if factory := e.request.relationFactories["commercePlatformEntity"]; factory != nil {
-					childEntity := factory()
-					if err := childEntity.FromRecord(childRecord); err != nil { return nil, err }
-					entity.setRelationEntity("commercePlatformEntity", childEntity)
-				}
-			}
-		}
-		if relationValue, selected := rec["customerOrderList"]; selected {
-			childRecords, ok := relationValue.V.([]core.Record)
-				if !ok { return nil, fmt.Errorf("relation customerOrderList has unexpected runtime type %T", relationValue.V) }
-				for _, childRecord := range childRecords {
-					childEntity := customer_order.NewCustomerOrder()
-					childEntity.EntityRoot().ClearEntity(childEntity.EntityKey())
-					childEntity.AttachEntityRoot(entity.EntityRoot())
-					if err := childEntity.FromRecord(childRecord); err != nil { return nil, err }
-					entity.CustomerOrderList().Add(childEntity)
-				}}
-		results = append(results, entity)
-	}
-	list := core.NewSmartList(results)
-	if len(e.request.queryOptions.Facets) > 0 {
-		dsRaw := context.GetResource("dataService")
-		ds, ok := dsRaw.(data_service.QueryExecutor)
-		if !ok { return nil, fmt.Errorf("dataService does not implement data_service.QueryExecutor") }
-		facets, err := runtime.ExecuteFacets(
-			context, runtime.NewRuntimeDataService(context.Metadata, ds),
-			authorized, e.request.queryOptions)
-		if err != nil { return nil, err }
-		core.AttachFacets(list, facets)
-	}
-	return list, nil
-}
-
-// ExecuteForPage applies trusted policy once, then derives exact-count and row
-// queries from that same authorized snapshot.
-func (e *ExecutableCustomerRequest) ExecuteForPage(context *runtime.UserContext, offset uint64, size uint64) (*core.SmartList[*Customer], error) {
+	// Apply trusted policy once. The runtime owns the entire typed list lifecycle,
+	// including optional exact count, facets and hydration failures.
 	r := e.request
 	if _, err := core.NewQueryIntent(&r.commentText, &r.purposeText); err != nil { return nil, err }
-	if size == 0 {
-		return nil, fmt.Errorf("QUERY_INVALID_LIMIT: size must be positive")
-	}
 	query := r.Query.Clone()
-	query.Page(offset, size).Comment(r.commentText).Purpose(r.purposeText)
+	query.Comment(r.commentText).Purpose(r.purposeText)
+	query, plan, err := runtime.CaptureQueryPlan(query, r.queryOptions)
+	if err != nil { return nil, err }
+	query = plan.WithQueryDiagnostics(query)
 	authorized, err := context.PrepareEntityQuery(query)
 	if err != nil { return nil, err }
 	dsRaw := context.GetResource("dataService")
 	ds, ok := dsRaw.(data_service.QueryExecutor)
 	if !ok { return nil, fmt.Errorf("dataService does not implement data_service.QueryExecutor") }
 	service := runtime.NewRuntimeDataService(context.Metadata, ds)
-	const countAlias = "__teaql_total"
-	var rows []core.Record
-	var total uint64
-	if authorized.IDSetPagination != nil {
-		rows, err = service.FetchAll(context, authorized)
-		if err != nil { return nil, err }
-		if retainedCount, accuracy := context.IDSetCount(); accuracy == "EXACT" {
-			total = retainedCount
-		} else {
-			countRows, countErr := service.FetchAll(context, authorized.ForExactCount(countAlias))
-			if countErr != nil { return nil, countErr }
-			if len(countRows) != 1 { return nil, fmt.Errorf("exact count returned %d rows", len(countRows)) }
-			var ok bool
-			total, ok = countRows[0][countAlias].TryU64()
-			if !ok { return nil, fmt.Errorf("exact count did not return an unsigned integer") }
-		}
-	} else {
-		countRows, countErr := service.FetchAll(context, authorized.ForExactCount(countAlias))
-		if countErr != nil { return nil, countErr }
-		if len(countRows) != 1 { return nil, fmt.Errorf("exact count returned %d rows", len(countRows)) }
-		var ok bool
-		total, ok = countRows[0][countAlias].TryU64()
-		if !ok { return nil, fmt.Errorf("exact count did not return an unsigned integer") }
-		rows, err = service.FetchAll(context, authorized)
-		if err != nil { return nil, err }
-	}
-	results := make([]*Customer, 0, len(rows))
-	for _, rec := range rows {
+	return runtime.ExecuteTypedList(context, service, authorized, plan, func(rec core.Record) (*Customer, error) {
 		entity := newLoadedCustomer()
 		if err := entity.FromRecord(rec); err != nil { return nil, err }
 		if relationValue, selected := rec["commercePlatformEntity"]; selected {
@@ -1009,13 +1022,13 @@ func (e *ExecutableCustomerRequest) ExecuteForPage(context *runtime.UserContext,
 					if err := childEntity.FromRecord(childRecord); err != nil { return nil, err }
 					entity.CustomerOrderList().Add(childEntity)
 				}}
-		results = append(results, entity)
-	}
-	return core.NewSmartList(results).WithTotalCount(total), nil
+		return entity, nil
+	})
 }
 
 // ExecuteForStream consumes a provider cursor one chunk at a time. Returning
-// an error from yield cancels iteration and releases the database resources.
+// an error from yield releases the database resources. runtime.ErrStopStream
+// records an intentional early stop; other callback errors remain failures.
 func (e *ExecutableCustomerRequest) ExecuteForStream(context *runtime.UserContext, chunkSize int, yield func(*Customer) error) error {
 	r := e.request
 	if _, err := core.NewQueryIntent(&r.commentText, &r.purposeText); err != nil { return err }
@@ -1024,6 +1037,8 @@ func (e *ExecutableCustomerRequest) ExecuteForStream(context *runtime.UserContex
 	}
 	query := r.Query.Clone()
 	query.Comment(r.commentText).Purpose(r.purposeText)
+	query, err := runtime.CaptureStreamQuery(query, r.queryOptions)
+	if err != nil { return err }
 	authorized, err := context.PrepareEntityQuery(query)
 	if err != nil { return err }
 	dsRaw := context.GetResource("dataService")
@@ -1031,54 +1046,46 @@ func (e *ExecutableCustomerRequest) ExecuteForStream(context *runtime.UserContex
 	if !ok {
 		return fmt.Errorf("dataService does not implement data_service.StreamQueryExecutor")
 	}
-	req, err := data_service.NewQueryRequest(authorized)
-	if err != nil { return err }
-	return ds.QueryStream(context, req, chunkSize, func(chunk *data_service.StreamChunk) error {
-		for _, rec := range chunk.Rows {
-			entity := newLoadedCustomer()
-			if err := entity.FromRecord(rec); err != nil {
-				return err
-			}
-			if err := yield(entity); err != nil {
-				return err
-			}
-		}
-		return nil
-	})
+	return runtime.ExecuteTypedStream(context, ds, authorized, chunkSize, func(rec core.Record) (*Customer, error) {
+		entity := newLoadedCustomer()
+		if err := entity.FromRecord(rec); err != nil { return nil, err }
+		return entity, nil
+	}, yield)
 }
 
 func (e *ExecutableCustomerRequest) ExecuteRecords(context *runtime.UserContext) ([]core.Record, error) {
-	rows, _, err := e.executeRecords(context, false)
+	rows, _, _, err := e.executeRecords(context)
 	return rows, err
 }
 
 // executeRecords returns the same authorized snapshot used for row execution
 // so facets can derive their membership query without reapplying root policy.
-func (e *ExecutableCustomerRequest) executeRecords(context *runtime.UserContext, entityProjection bool) ([]core.Record, *core.SelectQuery, error) {
+func (e *ExecutableCustomerRequest) executeRecords(context *runtime.UserContext) ([]core.Record, *core.SelectQuery, *runtime.FacetPlan, error) {
 	r := e.request
-	if _, err := core.NewQueryIntent(&r.commentText, &r.purposeText); err != nil { return nil, nil, err }
+	if _, err := core.NewQueryIntent(&r.commentText, &r.purposeText); err != nil { return nil, nil, nil, err }
 	query := r.Query.Clone()
 	query.Comment(r.commentText).Purpose(r.purposeText)
-	prepare := context.PrepareQuery
-	if entityProjection { prepare = context.PrepareEntityQuery }
-	authorized, err := prepare(query)
-	if err != nil { return nil, nil, err }
+	query, plan, err := runtime.CaptureQueryPlan(query, r.queryOptions)
+	if err != nil { return nil, nil, nil, err }
+	query = plan.WithQueryDiagnostics(query)
+	authorized, err := context.PrepareQuery(query)
+	if err != nil { return nil, nil, nil, err }
 
 	dsRaw := context.GetResource("dataService")
 	if dsRaw == nil {
-		return nil, nil, fmt.Errorf("dataService not found in UserContext")
+		return nil, nil, nil, fmt.Errorf("dataService not found in UserContext")
 	}
 
 	ds, ok := dsRaw.(data_service.QueryExecutor)
 	if !ok {
-		return nil, nil, fmt.Errorf("dataService does not implement data_service.QueryExecutor")
+		return nil, nil, nil, fmt.Errorf("dataService does not implement data_service.QueryExecutor")
 	}
 
-	rows, err := runtime.NewRuntimeDataService(context.Metadata, ds).FetchAll(context, authorized)
+	rows, err := runtime.NewRuntimeDataService(context.Metadata, ds).FetchAllWithFacetPlan(context, authorized, plan)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
-	return rows, authorized, nil
+	return rows, authorized, plan, nil
 }
 
 // ExecuteForRows preserves aggregate/group projections as records while keeping
@@ -1095,6 +1102,7 @@ func (r *CustomerRequest) Count() *CustomerRequest {
 
 func (r *CustomerRequest) CountAs(alias string) *CustomerRequest {
 	r.Query.CountField("id", alias)
+	r.queryOptions.PageCountOperation = &core.QueryOperation{Kind: "count", Method: "CountAs", Alias: &alias}
 	return r
 }
 

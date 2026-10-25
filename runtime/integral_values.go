@@ -5,7 +5,7 @@ import "github.com/teaql/teaql-golang/core"
 // Model-owned storage types are checked after custom Fix, before the generated
 // graph can allocate IDs or enter a provider. This does not enforce business
 // ranges, positive-identity policies or a narrower modeled Integer width.
-func (c *UserContext) checkIntegralValues(input *CheckAndFixInput) []CheckResult {
+func (c *UserContext) checkIntegralValues(input *CheckAndFixInput, references *deferredReferenceState) []CheckResult {
 	entity := c.Entity(input.Entity)
 	if entity == nil {
 		return nil
@@ -23,6 +23,9 @@ func (c *UserContext) checkIntegralValues(input *CheckAndFixInput) []CheckResult
 		message := "Expected an exact signed 64-bit integer"
 		if property.DataType == core.TypeU64 {
 			_, valid = value.TryU64()
+			if !valid {
+				valid = references.allows(property.Name, value)
+			}
 			message = "Expected an exact unsigned 64-bit integer"
 		} else {
 			_, valid = value.TryI64()

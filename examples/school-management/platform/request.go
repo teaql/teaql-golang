@@ -10,6 +10,7 @@ import (
 	"github.com/teaql/teaql-golang/core"
 	"github.com/teaql/teaql-golang/data_service"
 	"github.com/teaql/teaql-golang/runtime"
+	"school-management-service-core-workspace/lib/internal/generatedsearch"
 	"school-management-service-core-workspace/lib/school_type"
 	"school-management-service-core-workspace/lib/school"
 )
@@ -25,6 +26,7 @@ type PlatformRequest struct {
 	purposeText string
 	commentText string
 	relationFactories map[string]func() core.Entity
+	dynamicSearchWarnings []core.DynamicSearchWarning
 }
 
 type ExecutablePlatformRequest struct {
@@ -51,6 +53,25 @@ func (r *PlatformRequest) GetQuery() *core.SelectQuery {
 	return r.Query
 }
 
+// FilterByJson validates all clauses before changing this request.
+func (r *PlatformRequest) FilterByJson(source []byte) (*PlatformRequest, error) {
+	query, warnings, err := generatedsearch.Apply(r.Query, source, nil)
+	if err != nil { return nil, err }
+	r.Query = query
+	r.dynamicSearchWarnings = append(r.dynamicSearchWarnings, warnings...)
+	return r, nil
+}
+
+func (r *PlatformRequest) DynamicSearchWarnings() []core.DynamicSearchWarning {
+	return append([]core.DynamicSearchWarning(nil), r.dynamicSearchWarnings...)
+}
+
+func (r *PlatformRequest) GetQuerySelection() *core.QuerySelection {
+	selection := core.NewQuerySelection(r.Query)
+	selection.QueryOptions = r.queryOptions
+	return selection
+}
+
 func (r *PlatformRequest) GetEntityDescriptor() *core.EntityDescriptor {
 	return NewPlatform().EntityDescriptor()
 }
@@ -61,6 +82,7 @@ func (r *PlatformRequest) NewRelationEntity() core.Entity {
 
 func (r *PlatformRequest) Comment(comment string) *PlatformRequest {
 	r.commentText = comment
+	r.Query.Comment(comment)
 	return r
 }
 
@@ -71,6 +93,7 @@ func (r *PlatformRequest) Purpose(purpose string) *ExecutablePlatformRequest {
 
 func (r *ExecutablePlatformRequest) Comment(comment string) *ExecutablePlatformRequest {
 	r.request.commentText = comment
+	r.request.Query.Comment(comment)
 	return r
 }
 
@@ -616,11 +639,17 @@ func (r *PlatformRequest) CountSchoolTypes() *PlatformRequest {
 
 }
 func (r *PlatformRequest) CountSchoolTypesAs(alias string) *PlatformRequest {
-	return r.CountSchoolTypesWith(alias, school_type.NewSchoolTypeRequest())
+	r.CountSchoolTypesWith(alias, school_type.NewSchoolTypeRequest())
+	r.Query.RelationAggregates[len(r.Query.RelationAggregates)-1].Operation = &core.QueryOperation{Kind: "count", Method: "CountSchoolTypesAs", Alias: &alias, Relation: "schoolTypeList"}
+	return r
 }
 func (r *PlatformRequest) CountSchoolTypesWith(alias string, child *school_type.SchoolTypeRequest) *PlatformRequest {
-	child.Query.Count(alias)
-	r.Query.RelationAggregates = append(r.Query.RelationAggregates, core.NewRelationAggregate("schoolTypeList", alias, child.Query, true))
+	query := child.GetQuery().Clone()
+	query.Aggregates = nil
+	query.Count(alias)
+	aggregate := core.NewRelationAggregate("schoolTypeList", alias, query, true)
+	aggregate.Operation = &core.QueryOperation{Kind: "count", Method: "CountSchoolTypesWith", Alias: &alias, Relation: "schoolTypeList"}
+	r.Query.RelationAggregates = append(r.Query.RelationAggregates, aggregate)
 	return r
 }
 
@@ -628,64 +657,96 @@ func (r *PlatformRequest) SumDisplayOrderOfSchoolTypes() *PlatformRequest {
 	return r.SumDisplayOrderOfSchoolTypesAs("sumDisplayOrderOfSchoolTypes", school_type.NewSchoolTypeRequest())
 }
 func (r *PlatformRequest) SumDisplayOrderOfSchoolTypesAs(alias string, child *school_type.SchoolTypeRequest) *PlatformRequest {
-	child.Query.Sum("display_order", "sum_displayOrder")
-	r.Query.RelationAggregates = append(r.Query.RelationAggregates, core.NewRelationAggregate("schoolTypeList", alias, child.Query, true))
+	query := child.GetQuery().Clone()
+	query.Aggregates = nil
+	query.Sum("display_order", alias)
+	aggregate := core.NewRelationAggregate("schoolTypeList", alias, query, true)
+	aggregate.Operation = &core.QueryOperation{Kind: "aggregate", Method: "SumDisplayOrderOfSchoolTypesAs", Alias: &alias, Relation: "schoolTypeList"}
+	r.Query.RelationAggregates = append(r.Query.RelationAggregates, aggregate)
 	return r
 }
 func (r *PlatformRequest) MinDisplayOrderOfSchoolTypes() *PlatformRequest {
 	return r.MinDisplayOrderOfSchoolTypesAs("minDisplayOrderOfSchoolTypes", school_type.NewSchoolTypeRequest())
 }
 func (r *PlatformRequest) MinDisplayOrderOfSchoolTypesAs(alias string, child *school_type.SchoolTypeRequest) *PlatformRequest {
-	child.Query.Min("display_order", "min_displayOrder")
-	r.Query.RelationAggregates = append(r.Query.RelationAggregates, core.NewRelationAggregate("schoolTypeList", alias, child.Query, true))
+	query := child.GetQuery().Clone()
+	query.Aggregates = nil
+	query.Min("display_order", alias)
+	aggregate := core.NewRelationAggregate("schoolTypeList", alias, query, true)
+	aggregate.Operation = &core.QueryOperation{Kind: "aggregate", Method: "MinDisplayOrderOfSchoolTypesAs", Alias: &alias, Relation: "schoolTypeList"}
+	r.Query.RelationAggregates = append(r.Query.RelationAggregates, aggregate)
 	return r
 }
 func (r *PlatformRequest) MaxDisplayOrderOfSchoolTypes() *PlatformRequest {
 	return r.MaxDisplayOrderOfSchoolTypesAs("maxDisplayOrderOfSchoolTypes", school_type.NewSchoolTypeRequest())
 }
 func (r *PlatformRequest) MaxDisplayOrderOfSchoolTypesAs(alias string, child *school_type.SchoolTypeRequest) *PlatformRequest {
-	child.Query.Max("display_order", "max_displayOrder")
-	r.Query.RelationAggregates = append(r.Query.RelationAggregates, core.NewRelationAggregate("schoolTypeList", alias, child.Query, true))
+	query := child.GetQuery().Clone()
+	query.Aggregates = nil
+	query.Max("display_order", alias)
+	aggregate := core.NewRelationAggregate("schoolTypeList", alias, query, true)
+	aggregate.Operation = &core.QueryOperation{Kind: "aggregate", Method: "MaxDisplayOrderOfSchoolTypesAs", Alias: &alias, Relation: "schoolTypeList"}
+	r.Query.RelationAggregates = append(r.Query.RelationAggregates, aggregate)
 	return r
 }
 func (r *PlatformRequest) AvgDisplayOrderOfSchoolTypes() *PlatformRequest {
 	return r.AvgDisplayOrderOfSchoolTypesAs("avgDisplayOrderOfSchoolTypes", school_type.NewSchoolTypeRequest())
 }
 func (r *PlatformRequest) AvgDisplayOrderOfSchoolTypesAs(alias string, child *school_type.SchoolTypeRequest) *PlatformRequest {
-	child.Query.Avg("display_order", "avg_displayOrder")
-	r.Query.RelationAggregates = append(r.Query.RelationAggregates, core.NewRelationAggregate("schoolTypeList", alias, child.Query, true))
+	query := child.GetQuery().Clone()
+	query.Aggregates = nil
+	query.Avg("display_order", alias)
+	aggregate := core.NewRelationAggregate("schoolTypeList", alias, query, true)
+	aggregate.Operation = &core.QueryOperation{Kind: "aggregate", Method: "AvgDisplayOrderOfSchoolTypesAs", Alias: &alias, Relation: "schoolTypeList"}
+	r.Query.RelationAggregates = append(r.Query.RelationAggregates, aggregate)
 	return r
 }
 func (r *PlatformRequest) StandardDeviationDisplayOrderOfSchoolTypes() *PlatformRequest {
 	return r.StandardDeviationDisplayOrderOfSchoolTypesAs("standardDeviationDisplayOrderOfSchoolTypes", school_type.NewSchoolTypeRequest())
 }
 func (r *PlatformRequest) StandardDeviationDisplayOrderOfSchoolTypesAs(alias string, child *school_type.SchoolTypeRequest) *PlatformRequest {
-	child.Query.Stddev("display_order", "stdDev_displayOrder")
-	r.Query.RelationAggregates = append(r.Query.RelationAggregates, core.NewRelationAggregate("schoolTypeList", alias, child.Query, true))
+	query := child.GetQuery().Clone()
+	query.Aggregates = nil
+	query.Stddev("display_order", alias)
+	aggregate := core.NewRelationAggregate("schoolTypeList", alias, query, true)
+	aggregate.Operation = &core.QueryOperation{Kind: "aggregate", Method: "StandardDeviationDisplayOrderOfSchoolTypesAs", Alias: &alias, Relation: "schoolTypeList"}
+	r.Query.RelationAggregates = append(r.Query.RelationAggregates, aggregate)
 	return r
 }
 func (r *PlatformRequest) SquareRootOfPopulationStandardDeviationDisplayOrderOfSchoolTypes() *PlatformRequest {
 	return r.SquareRootOfPopulationStandardDeviationDisplayOrderOfSchoolTypesAs("squareRootOfPopulationStandardDeviationDisplayOrderOfSchoolTypes", school_type.NewSchoolTypeRequest())
 }
 func (r *PlatformRequest) SquareRootOfPopulationStandardDeviationDisplayOrderOfSchoolTypesAs(alias string, child *school_type.SchoolTypeRequest) *PlatformRequest {
-	child.Query.StddevPop("display_order", "stdDevPop_displayOrder")
-	r.Query.RelationAggregates = append(r.Query.RelationAggregates, core.NewRelationAggregate("schoolTypeList", alias, child.Query, true))
+	query := child.GetQuery().Clone()
+	query.Aggregates = nil
+	query.StddevPop("display_order", alias)
+	aggregate := core.NewRelationAggregate("schoolTypeList", alias, query, true)
+	aggregate.Operation = &core.QueryOperation{Kind: "aggregate", Method: "SquareRootOfPopulationStandardDeviationDisplayOrderOfSchoolTypesAs", Alias: &alias, Relation: "schoolTypeList"}
+	r.Query.RelationAggregates = append(r.Query.RelationAggregates, aggregate)
 	return r
 }
 func (r *PlatformRequest) SampleVarianceDisplayOrderOfSchoolTypes() *PlatformRequest {
 	return r.SampleVarianceDisplayOrderOfSchoolTypesAs("sampleVarianceDisplayOrderOfSchoolTypes", school_type.NewSchoolTypeRequest())
 }
 func (r *PlatformRequest) SampleVarianceDisplayOrderOfSchoolTypesAs(alias string, child *school_type.SchoolTypeRequest) *PlatformRequest {
-	child.Query.VarSamp("display_order", "varSamp_displayOrder")
-	r.Query.RelationAggregates = append(r.Query.RelationAggregates, core.NewRelationAggregate("schoolTypeList", alias, child.Query, true))
+	query := child.GetQuery().Clone()
+	query.Aggregates = nil
+	query.VarSamp("display_order", alias)
+	aggregate := core.NewRelationAggregate("schoolTypeList", alias, query, true)
+	aggregate.Operation = &core.QueryOperation{Kind: "aggregate", Method: "SampleVarianceDisplayOrderOfSchoolTypesAs", Alias: &alias, Relation: "schoolTypeList"}
+	r.Query.RelationAggregates = append(r.Query.RelationAggregates, aggregate)
 	return r
 }
 func (r *PlatformRequest) SamplePopulationVarianceDisplayOrderOfSchoolTypes() *PlatformRequest {
 	return r.SamplePopulationVarianceDisplayOrderOfSchoolTypesAs("samplePopulationVarianceDisplayOrderOfSchoolTypes", school_type.NewSchoolTypeRequest())
 }
 func (r *PlatformRequest) SamplePopulationVarianceDisplayOrderOfSchoolTypesAs(alias string, child *school_type.SchoolTypeRequest) *PlatformRequest {
-	child.Query.VarPop("display_order", "varPop_displayOrder")
-	r.Query.RelationAggregates = append(r.Query.RelationAggregates, core.NewRelationAggregate("schoolTypeList", alias, child.Query, true))
+	query := child.GetQuery().Clone()
+	query.Aggregates = nil
+	query.VarPop("display_order", alias)
+	aggregate := core.NewRelationAggregate("schoolTypeList", alias, query, true)
+	aggregate.Operation = &core.QueryOperation{Kind: "aggregate", Method: "SamplePopulationVarianceDisplayOrderOfSchoolTypesAs", Alias: &alias, Relation: "schoolTypeList"}
+	r.Query.RelationAggregates = append(r.Query.RelationAggregates, aggregate)
 	return r
 }
 func (r *PlatformRequest) CountSchools() *PlatformRequest {
@@ -693,11 +754,17 @@ func (r *PlatformRequest) CountSchools() *PlatformRequest {
 
 }
 func (r *PlatformRequest) CountSchoolsAs(alias string) *PlatformRequest {
-	return r.CountSchoolsWith(alias, school.NewSchoolRequest())
+	r.CountSchoolsWith(alias, school.NewSchoolRequest())
+	r.Query.RelationAggregates[len(r.Query.RelationAggregates)-1].Operation = &core.QueryOperation{Kind: "count", Method: "CountSchoolsAs", Alias: &alias, Relation: "schoolList"}
+	return r
 }
 func (r *PlatformRequest) CountSchoolsWith(alias string, child *school.SchoolRequest) *PlatformRequest {
-	child.Query.Count(alias)
-	r.Query.RelationAggregates = append(r.Query.RelationAggregates, core.NewRelationAggregate("schoolList", alias, child.Query, true))
+	query := child.GetQuery().Clone()
+	query.Aggregates = nil
+	query.Count(alias)
+	aggregate := core.NewRelationAggregate("schoolList", alias, query, true)
+	aggregate.Operation = &core.QueryOperation{Kind: "count", Method: "CountSchoolsWith", Alias: &alias, Relation: "schoolList"}
+	r.Query.RelationAggregates = append(r.Query.RelationAggregates, aggregate)
 	return r
 }
 
@@ -705,112 +772,168 @@ func (r *PlatformRequest) MinEstablishedDateOfSchools() *PlatformRequest {
 	return r.MinEstablishedDateOfSchoolsAs("minEstablishedDateOfSchools", school.NewSchoolRequest())
 }
 func (r *PlatformRequest) MinEstablishedDateOfSchoolsAs(alias string, child *school.SchoolRequest) *PlatformRequest {
-	child.Query.Min("established_date", "min_establishedDate")
-	r.Query.RelationAggregates = append(r.Query.RelationAggregates, core.NewRelationAggregate("schoolList", alias, child.Query, true))
+	query := child.GetQuery().Clone()
+	query.Aggregates = nil
+	query.Min("established_date", alias)
+	aggregate := core.NewRelationAggregate("schoolList", alias, query, true)
+	aggregate.Operation = &core.QueryOperation{Kind: "aggregate", Method: "MinEstablishedDateOfSchoolsAs", Alias: &alias, Relation: "schoolList"}
+	r.Query.RelationAggregates = append(r.Query.RelationAggregates, aggregate)
 	return r
 }
 func (r *PlatformRequest) MaxEstablishedDateOfSchools() *PlatformRequest {
 	return r.MaxEstablishedDateOfSchoolsAs("maxEstablishedDateOfSchools", school.NewSchoolRequest())
 }
 func (r *PlatformRequest) MaxEstablishedDateOfSchoolsAs(alias string, child *school.SchoolRequest) *PlatformRequest {
-	child.Query.Max("established_date", "max_establishedDate")
-	r.Query.RelationAggregates = append(r.Query.RelationAggregates, core.NewRelationAggregate("schoolList", alias, child.Query, true))
+	query := child.GetQuery().Clone()
+	query.Aggregates = nil
+	query.Max("established_date", alias)
+	aggregate := core.NewRelationAggregate("schoolList", alias, query, true)
+	aggregate.Operation = &core.QueryOperation{Kind: "aggregate", Method: "MaxEstablishedDateOfSchoolsAs", Alias: &alias, Relation: "schoolList"}
+	r.Query.RelationAggregates = append(r.Query.RelationAggregates, aggregate)
 	return r
 }
 func (r *PlatformRequest) SumStudentCapacityOfSchools() *PlatformRequest {
 	return r.SumStudentCapacityOfSchoolsAs("sumStudentCapacityOfSchools", school.NewSchoolRequest())
 }
 func (r *PlatformRequest) SumStudentCapacityOfSchoolsAs(alias string, child *school.SchoolRequest) *PlatformRequest {
-	child.Query.Sum("student_capacity", "sum_studentCapacity")
-	r.Query.RelationAggregates = append(r.Query.RelationAggregates, core.NewRelationAggregate("schoolList", alias, child.Query, true))
+	query := child.GetQuery().Clone()
+	query.Aggregates = nil
+	query.Sum("student_capacity", alias)
+	aggregate := core.NewRelationAggregate("schoolList", alias, query, true)
+	aggregate.Operation = &core.QueryOperation{Kind: "aggregate", Method: "SumStudentCapacityOfSchoolsAs", Alias: &alias, Relation: "schoolList"}
+	r.Query.RelationAggregates = append(r.Query.RelationAggregates, aggregate)
 	return r
 }
 func (r *PlatformRequest) MinStudentCapacityOfSchools() *PlatformRequest {
 	return r.MinStudentCapacityOfSchoolsAs("minStudentCapacityOfSchools", school.NewSchoolRequest())
 }
 func (r *PlatformRequest) MinStudentCapacityOfSchoolsAs(alias string, child *school.SchoolRequest) *PlatformRequest {
-	child.Query.Min("student_capacity", "min_studentCapacity")
-	r.Query.RelationAggregates = append(r.Query.RelationAggregates, core.NewRelationAggregate("schoolList", alias, child.Query, true))
+	query := child.GetQuery().Clone()
+	query.Aggregates = nil
+	query.Min("student_capacity", alias)
+	aggregate := core.NewRelationAggregate("schoolList", alias, query, true)
+	aggregate.Operation = &core.QueryOperation{Kind: "aggregate", Method: "MinStudentCapacityOfSchoolsAs", Alias: &alias, Relation: "schoolList"}
+	r.Query.RelationAggregates = append(r.Query.RelationAggregates, aggregate)
 	return r
 }
 func (r *PlatformRequest) MaxStudentCapacityOfSchools() *PlatformRequest {
 	return r.MaxStudentCapacityOfSchoolsAs("maxStudentCapacityOfSchools", school.NewSchoolRequest())
 }
 func (r *PlatformRequest) MaxStudentCapacityOfSchoolsAs(alias string, child *school.SchoolRequest) *PlatformRequest {
-	child.Query.Max("student_capacity", "max_studentCapacity")
-	r.Query.RelationAggregates = append(r.Query.RelationAggregates, core.NewRelationAggregate("schoolList", alias, child.Query, true))
+	query := child.GetQuery().Clone()
+	query.Aggregates = nil
+	query.Max("student_capacity", alias)
+	aggregate := core.NewRelationAggregate("schoolList", alias, query, true)
+	aggregate.Operation = &core.QueryOperation{Kind: "aggregate", Method: "MaxStudentCapacityOfSchoolsAs", Alias: &alias, Relation: "schoolList"}
+	r.Query.RelationAggregates = append(r.Query.RelationAggregates, aggregate)
 	return r
 }
 func (r *PlatformRequest) AvgStudentCapacityOfSchools() *PlatformRequest {
 	return r.AvgStudentCapacityOfSchoolsAs("avgStudentCapacityOfSchools", school.NewSchoolRequest())
 }
 func (r *PlatformRequest) AvgStudentCapacityOfSchoolsAs(alias string, child *school.SchoolRequest) *PlatformRequest {
-	child.Query.Avg("student_capacity", "avg_studentCapacity")
-	r.Query.RelationAggregates = append(r.Query.RelationAggregates, core.NewRelationAggregate("schoolList", alias, child.Query, true))
+	query := child.GetQuery().Clone()
+	query.Aggregates = nil
+	query.Avg("student_capacity", alias)
+	aggregate := core.NewRelationAggregate("schoolList", alias, query, true)
+	aggregate.Operation = &core.QueryOperation{Kind: "aggregate", Method: "AvgStudentCapacityOfSchoolsAs", Alias: &alias, Relation: "schoolList"}
+	r.Query.RelationAggregates = append(r.Query.RelationAggregates, aggregate)
 	return r
 }
 func (r *PlatformRequest) StandardDeviationStudentCapacityOfSchools() *PlatformRequest {
 	return r.StandardDeviationStudentCapacityOfSchoolsAs("standardDeviationStudentCapacityOfSchools", school.NewSchoolRequest())
 }
 func (r *PlatformRequest) StandardDeviationStudentCapacityOfSchoolsAs(alias string, child *school.SchoolRequest) *PlatformRequest {
-	child.Query.Stddev("student_capacity", "stdDev_studentCapacity")
-	r.Query.RelationAggregates = append(r.Query.RelationAggregates, core.NewRelationAggregate("schoolList", alias, child.Query, true))
+	query := child.GetQuery().Clone()
+	query.Aggregates = nil
+	query.Stddev("student_capacity", alias)
+	aggregate := core.NewRelationAggregate("schoolList", alias, query, true)
+	aggregate.Operation = &core.QueryOperation{Kind: "aggregate", Method: "StandardDeviationStudentCapacityOfSchoolsAs", Alias: &alias, Relation: "schoolList"}
+	r.Query.RelationAggregates = append(r.Query.RelationAggregates, aggregate)
 	return r
 }
 func (r *PlatformRequest) SquareRootOfPopulationStandardDeviationStudentCapacityOfSchools() *PlatformRequest {
 	return r.SquareRootOfPopulationStandardDeviationStudentCapacityOfSchoolsAs("squareRootOfPopulationStandardDeviationStudentCapacityOfSchools", school.NewSchoolRequest())
 }
 func (r *PlatformRequest) SquareRootOfPopulationStandardDeviationStudentCapacityOfSchoolsAs(alias string, child *school.SchoolRequest) *PlatformRequest {
-	child.Query.StddevPop("student_capacity", "stdDevPop_studentCapacity")
-	r.Query.RelationAggregates = append(r.Query.RelationAggregates, core.NewRelationAggregate("schoolList", alias, child.Query, true))
+	query := child.GetQuery().Clone()
+	query.Aggregates = nil
+	query.StddevPop("student_capacity", alias)
+	aggregate := core.NewRelationAggregate("schoolList", alias, query, true)
+	aggregate.Operation = &core.QueryOperation{Kind: "aggregate", Method: "SquareRootOfPopulationStandardDeviationStudentCapacityOfSchoolsAs", Alias: &alias, Relation: "schoolList"}
+	r.Query.RelationAggregates = append(r.Query.RelationAggregates, aggregate)
 	return r
 }
 func (r *PlatformRequest) SampleVarianceStudentCapacityOfSchools() *PlatformRequest {
 	return r.SampleVarianceStudentCapacityOfSchoolsAs("sampleVarianceStudentCapacityOfSchools", school.NewSchoolRequest())
 }
 func (r *PlatformRequest) SampleVarianceStudentCapacityOfSchoolsAs(alias string, child *school.SchoolRequest) *PlatformRequest {
-	child.Query.VarSamp("student_capacity", "varSamp_studentCapacity")
-	r.Query.RelationAggregates = append(r.Query.RelationAggregates, core.NewRelationAggregate("schoolList", alias, child.Query, true))
+	query := child.GetQuery().Clone()
+	query.Aggregates = nil
+	query.VarSamp("student_capacity", alias)
+	aggregate := core.NewRelationAggregate("schoolList", alias, query, true)
+	aggregate.Operation = &core.QueryOperation{Kind: "aggregate", Method: "SampleVarianceStudentCapacityOfSchoolsAs", Alias: &alias, Relation: "schoolList"}
+	r.Query.RelationAggregates = append(r.Query.RelationAggregates, aggregate)
 	return r
 }
 func (r *PlatformRequest) SamplePopulationVarianceStudentCapacityOfSchools() *PlatformRequest {
 	return r.SamplePopulationVarianceStudentCapacityOfSchoolsAs("samplePopulationVarianceStudentCapacityOfSchools", school.NewSchoolRequest())
 }
 func (r *PlatformRequest) SamplePopulationVarianceStudentCapacityOfSchoolsAs(alias string, child *school.SchoolRequest) *PlatformRequest {
-	child.Query.VarPop("student_capacity", "varPop_studentCapacity")
-	r.Query.RelationAggregates = append(r.Query.RelationAggregates, core.NewRelationAggregate("schoolList", alias, child.Query, true))
+	query := child.GetQuery().Clone()
+	query.Aggregates = nil
+	query.VarPop("student_capacity", alias)
+	aggregate := core.NewRelationAggregate("schoolList", alias, query, true)
+	aggregate.Operation = &core.QueryOperation{Kind: "aggregate", Method: "SamplePopulationVarianceStudentCapacityOfSchoolsAs", Alias: &alias, Relation: "schoolList"}
+	r.Query.RelationAggregates = append(r.Query.RelationAggregates, aggregate)
 	return r
 }
 func (r *PlatformRequest) MinCreateTimeOfSchools() *PlatformRequest {
 	return r.MinCreateTimeOfSchoolsAs("minCreateTimeOfSchools", school.NewSchoolRequest())
 }
 func (r *PlatformRequest) MinCreateTimeOfSchoolsAs(alias string, child *school.SchoolRequest) *PlatformRequest {
-	child.Query.Min("create_time", "min_createTime")
-	r.Query.RelationAggregates = append(r.Query.RelationAggregates, core.NewRelationAggregate("schoolList", alias, child.Query, true))
+	query := child.GetQuery().Clone()
+	query.Aggregates = nil
+	query.Min("create_time", alias)
+	aggregate := core.NewRelationAggregate("schoolList", alias, query, true)
+	aggregate.Operation = &core.QueryOperation{Kind: "aggregate", Method: "MinCreateTimeOfSchoolsAs", Alias: &alias, Relation: "schoolList"}
+	r.Query.RelationAggregates = append(r.Query.RelationAggregates, aggregate)
 	return r
 }
 func (r *PlatformRequest) MaxCreateTimeOfSchools() *PlatformRequest {
 	return r.MaxCreateTimeOfSchoolsAs("maxCreateTimeOfSchools", school.NewSchoolRequest())
 }
 func (r *PlatformRequest) MaxCreateTimeOfSchoolsAs(alias string, child *school.SchoolRequest) *PlatformRequest {
-	child.Query.Max("create_time", "max_createTime")
-	r.Query.RelationAggregates = append(r.Query.RelationAggregates, core.NewRelationAggregate("schoolList", alias, child.Query, true))
+	query := child.GetQuery().Clone()
+	query.Aggregates = nil
+	query.Max("create_time", alias)
+	aggregate := core.NewRelationAggregate("schoolList", alias, query, true)
+	aggregate.Operation = &core.QueryOperation{Kind: "aggregate", Method: "MaxCreateTimeOfSchoolsAs", Alias: &alias, Relation: "schoolList"}
+	r.Query.RelationAggregates = append(r.Query.RelationAggregates, aggregate)
 	return r
 }
 func (r *PlatformRequest) MinUpdateTimeOfSchools() *PlatformRequest {
 	return r.MinUpdateTimeOfSchoolsAs("minUpdateTimeOfSchools", school.NewSchoolRequest())
 }
 func (r *PlatformRequest) MinUpdateTimeOfSchoolsAs(alias string, child *school.SchoolRequest) *PlatformRequest {
-	child.Query.Min("update_time", "min_updateTime")
-	r.Query.RelationAggregates = append(r.Query.RelationAggregates, core.NewRelationAggregate("schoolList", alias, child.Query, true))
+	query := child.GetQuery().Clone()
+	query.Aggregates = nil
+	query.Min("update_time", alias)
+	aggregate := core.NewRelationAggregate("schoolList", alias, query, true)
+	aggregate.Operation = &core.QueryOperation{Kind: "aggregate", Method: "MinUpdateTimeOfSchoolsAs", Alias: &alias, Relation: "schoolList"}
+	r.Query.RelationAggregates = append(r.Query.RelationAggregates, aggregate)
 	return r
 }
 func (r *PlatformRequest) MaxUpdateTimeOfSchools() *PlatformRequest {
 	return r.MaxUpdateTimeOfSchoolsAs("maxUpdateTimeOfSchools", school.NewSchoolRequest())
 }
 func (r *PlatformRequest) MaxUpdateTimeOfSchoolsAs(alias string, child *school.SchoolRequest) *PlatformRequest {
-	child.Query.Max("update_time", "max_updateTime")
-	r.Query.RelationAggregates = append(r.Query.RelationAggregates, core.NewRelationAggregate("schoolList", alias, child.Query, true))
+	query := child.GetQuery().Clone()
+	query.Aggregates = nil
+	query.Max("update_time", alias)
+	aggregate := core.NewRelationAggregate("schoolList", alias, query, true)
+	aggregate.Operation = &core.QueryOperation{Kind: "aggregate", Method: "MaxUpdateTimeOfSchoolsAs", Alias: &alias, Relation: "schoolList"}
+	r.Query.RelationAggregates = append(r.Query.RelationAggregates, aggregate)
 	return r
 }
 
@@ -819,7 +942,8 @@ func (r *PlatformRequest) SelectSchoolTypeList() *PlatformRequest {
 }
 
 func (r *PlatformRequest) SelectSchoolTypeListWith(child *school_type.SchoolTypeRequest) *PlatformRequest {
-	r.Query.RelationQuery("schoolTypeList", child.Query)
+	r.Query.RelationQuerySelection("schoolTypeList", child.GetQuerySelection())
+	r.Query.Relations[len(r.Query.Relations)-1].Operation = &core.QueryOperation{Kind: "relation", Method: "SelectSchoolTypeListWith", Relation: "schoolTypeList"}
 	return r
 }
 func (r *PlatformRequest) SelectSchoolList() *PlatformRequest {
@@ -827,7 +951,8 @@ func (r *PlatformRequest) SelectSchoolList() *PlatformRequest {
 }
 
 func (r *PlatformRequest) SelectSchoolListWith(child *school.SchoolRequest) *PlatformRequest {
-	r.Query.RelationQuery("schoolList", child.Query)
+	r.Query.RelationQuerySelection("schoolList", child.GetQuerySelection())
+	r.Query.Relations[len(r.Query.Relations)-1].Operation = &core.QueryOperation{Kind: "relation", Method: "SelectSchoolListWith", Relation: "schoolList"}
 	return r
 }
 
@@ -895,97 +1020,22 @@ func (e *ExecutablePlatformRequest) ExecuteForOne(context *runtime.UserContext) 
 }
 
 func (e *ExecutablePlatformRequest) ExecuteForList(context *runtime.UserContext) (*core.SmartList[*Platform], error) {
-	rows, authorized, err := e.executeRecords(context, true)
-	if err != nil {
-		return nil, err
-	}
-
-	var results []*Platform
-	for _, rec := range rows {
-		entity := newLoadedPlatform()
-		if err := entity.FromRecord(rec); err != nil {
-			return nil, err
-		}
-		if relationValue, selected := rec["schoolTypeList"]; selected {
-			childRecords, ok := relationValue.V.([]core.Record)
-				if !ok { return nil, fmt.Errorf("relation schoolTypeList has unexpected runtime type %T", relationValue.V) }
-				for _, childRecord := range childRecords {
-					childEntity := school_type.NewSchoolType()
-					childEntity.EntityRoot().ClearEntity(childEntity.EntityKey())
-					childEntity.AttachEntityRoot(entity.EntityRoot())
-					if err := childEntity.FromRecord(childRecord); err != nil { return nil, err }
-					entity.SchoolTypeList().Add(childEntity)
-				}}
-		if relationValue, selected := rec["schoolList"]; selected {
-			childRecords, ok := relationValue.V.([]core.Record)
-				if !ok { return nil, fmt.Errorf("relation schoolList has unexpected runtime type %T", relationValue.V) }
-				for _, childRecord := range childRecords {
-					childEntity := school.NewSchool()
-					childEntity.EntityRoot().ClearEntity(childEntity.EntityKey())
-					childEntity.AttachEntityRoot(entity.EntityRoot())
-					if err := childEntity.FromRecord(childRecord); err != nil { return nil, err }
-					entity.SchoolList().Add(childEntity)
-				}}
-		results = append(results, entity)
-	}
-	list := core.NewSmartList(results)
-	if len(e.request.queryOptions.Facets) > 0 {
-		dsRaw := context.GetResource("dataService")
-		ds, ok := dsRaw.(data_service.QueryExecutor)
-		if !ok { return nil, fmt.Errorf("dataService does not implement data_service.QueryExecutor") }
-		facets, err := runtime.ExecuteFacets(
-			context, runtime.NewRuntimeDataService(context.Metadata, ds),
-			authorized, e.request.queryOptions)
-		if err != nil { return nil, err }
-		core.AttachFacets(list, facets)
-	}
-	return list, nil
-}
-
-// ExecuteForPage applies trusted policy once, then derives exact-count and row
-// queries from that same authorized snapshot.
-func (e *ExecutablePlatformRequest) ExecuteForPage(context *runtime.UserContext, offset uint64, size uint64) (*core.SmartList[*Platform], error) {
+	// Apply trusted policy once. The runtime owns the entire typed list lifecycle,
+	// including optional exact count, facets and hydration failures.
 	r := e.request
 	if _, err := core.NewQueryIntent(&r.commentText, &r.purposeText); err != nil { return nil, err }
-	if size == 0 {
-		return nil, fmt.Errorf("QUERY_INVALID_LIMIT: size must be positive")
-	}
 	query := r.Query.Clone()
-	query.Page(offset, size).Comment(r.commentText).Purpose(r.purposeText)
+	query.Comment(r.commentText).Purpose(r.purposeText)
+	query, plan, err := runtime.CaptureQueryPlan(query, r.queryOptions)
+	if err != nil { return nil, err }
+	query = plan.WithQueryDiagnostics(query)
 	authorized, err := context.PrepareEntityQuery(query)
 	if err != nil { return nil, err }
 	dsRaw := context.GetResource("dataService")
 	ds, ok := dsRaw.(data_service.QueryExecutor)
 	if !ok { return nil, fmt.Errorf("dataService does not implement data_service.QueryExecutor") }
 	service := runtime.NewRuntimeDataService(context.Metadata, ds)
-	const countAlias = "__teaql_total"
-	var rows []core.Record
-	var total uint64
-	if authorized.IDSetPagination != nil {
-		rows, err = service.FetchAll(context, authorized)
-		if err != nil { return nil, err }
-		if retainedCount, accuracy := context.IDSetCount(); accuracy == "EXACT" {
-			total = retainedCount
-		} else {
-			countRows, countErr := service.FetchAll(context, authorized.ForExactCount(countAlias))
-			if countErr != nil { return nil, countErr }
-			if len(countRows) != 1 { return nil, fmt.Errorf("exact count returned %d rows", len(countRows)) }
-			var ok bool
-			total, ok = countRows[0][countAlias].TryU64()
-			if !ok { return nil, fmt.Errorf("exact count did not return an unsigned integer") }
-		}
-	} else {
-		countRows, countErr := service.FetchAll(context, authorized.ForExactCount(countAlias))
-		if countErr != nil { return nil, countErr }
-		if len(countRows) != 1 { return nil, fmt.Errorf("exact count returned %d rows", len(countRows)) }
-		var ok bool
-		total, ok = countRows[0][countAlias].TryU64()
-		if !ok { return nil, fmt.Errorf("exact count did not return an unsigned integer") }
-		rows, err = service.FetchAll(context, authorized)
-		if err != nil { return nil, err }
-	}
-	results := make([]*Platform, 0, len(rows))
-	for _, rec := range rows {
+	return runtime.ExecuteTypedList(context, service, authorized, plan, func(rec core.Record) (*Platform, error) {
 		entity := newLoadedPlatform()
 		if err := entity.FromRecord(rec); err != nil { return nil, err }
 		if relationValue, selected := rec["schoolTypeList"]; selected {
@@ -1008,13 +1058,13 @@ func (e *ExecutablePlatformRequest) ExecuteForPage(context *runtime.UserContext,
 					if err := childEntity.FromRecord(childRecord); err != nil { return nil, err }
 					entity.SchoolList().Add(childEntity)
 				}}
-		results = append(results, entity)
-	}
-	return core.NewSmartList(results).WithTotalCount(total), nil
+		return entity, nil
+	})
 }
 
 // ExecuteForStream consumes a provider cursor one chunk at a time. Returning
-// an error from yield cancels iteration and releases the database resources.
+// an error from yield releases the database resources. runtime.ErrStopStream
+// records an intentional early stop; other callback errors remain failures.
 func (e *ExecutablePlatformRequest) ExecuteForStream(context *runtime.UserContext, chunkSize int, yield func(*Platform) error) error {
 	r := e.request
 	if _, err := core.NewQueryIntent(&r.commentText, &r.purposeText); err != nil { return err }
@@ -1023,6 +1073,8 @@ func (e *ExecutablePlatformRequest) ExecuteForStream(context *runtime.UserContex
 	}
 	query := r.Query.Clone()
 	query.Comment(r.commentText).Purpose(r.purposeText)
+	query, err := runtime.CaptureStreamQuery(query, r.queryOptions)
+	if err != nil { return err }
 	authorized, err := context.PrepareEntityQuery(query)
 	if err != nil { return err }
 	dsRaw := context.GetResource("dataService")
@@ -1030,54 +1082,46 @@ func (e *ExecutablePlatformRequest) ExecuteForStream(context *runtime.UserContex
 	if !ok {
 		return fmt.Errorf("dataService does not implement data_service.StreamQueryExecutor")
 	}
-	req, err := data_service.NewQueryRequest(authorized)
-	if err != nil { return err }
-	return ds.QueryStream(context, req, chunkSize, func(chunk *data_service.StreamChunk) error {
-		for _, rec := range chunk.Rows {
-			entity := newLoadedPlatform()
-			if err := entity.FromRecord(rec); err != nil {
-				return err
-			}
-			if err := yield(entity); err != nil {
-				return err
-			}
-		}
-		return nil
-	})
+	return runtime.ExecuteTypedStream(context, ds, authorized, chunkSize, func(rec core.Record) (*Platform, error) {
+		entity := newLoadedPlatform()
+		if err := entity.FromRecord(rec); err != nil { return nil, err }
+		return entity, nil
+	}, yield)
 }
 
 func (e *ExecutablePlatformRequest) ExecuteRecords(context *runtime.UserContext) ([]core.Record, error) {
-	rows, _, err := e.executeRecords(context, false)
+	rows, _, _, err := e.executeRecords(context)
 	return rows, err
 }
 
 // executeRecords returns the same authorized snapshot used for row execution
 // so facets can derive their membership query without reapplying root policy.
-func (e *ExecutablePlatformRequest) executeRecords(context *runtime.UserContext, entityProjection bool) ([]core.Record, *core.SelectQuery, error) {
+func (e *ExecutablePlatformRequest) executeRecords(context *runtime.UserContext) ([]core.Record, *core.SelectQuery, *runtime.FacetPlan, error) {
 	r := e.request
-	if _, err := core.NewQueryIntent(&r.commentText, &r.purposeText); err != nil { return nil, nil, err }
+	if _, err := core.NewQueryIntent(&r.commentText, &r.purposeText); err != nil { return nil, nil, nil, err }
 	query := r.Query.Clone()
 	query.Comment(r.commentText).Purpose(r.purposeText)
-	prepare := context.PrepareQuery
-	if entityProjection { prepare = context.PrepareEntityQuery }
-	authorized, err := prepare(query)
-	if err != nil { return nil, nil, err }
+	query, plan, err := runtime.CaptureQueryPlan(query, r.queryOptions)
+	if err != nil { return nil, nil, nil, err }
+	query = plan.WithQueryDiagnostics(query)
+	authorized, err := context.PrepareQuery(query)
+	if err != nil { return nil, nil, nil, err }
 
 	dsRaw := context.GetResource("dataService")
 	if dsRaw == nil {
-		return nil, nil, fmt.Errorf("dataService not found in UserContext")
+		return nil, nil, nil, fmt.Errorf("dataService not found in UserContext")
 	}
 
 	ds, ok := dsRaw.(data_service.QueryExecutor)
 	if !ok {
-		return nil, nil, fmt.Errorf("dataService does not implement data_service.QueryExecutor")
+		return nil, nil, nil, fmt.Errorf("dataService does not implement data_service.QueryExecutor")
 	}
 
-	rows, err := runtime.NewRuntimeDataService(context.Metadata, ds).FetchAll(context, authorized)
+	rows, err := runtime.NewRuntimeDataService(context.Metadata, ds).FetchAllWithFacetPlan(context, authorized, plan)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
-	return rows, authorized, nil
+	return rows, authorized, plan, nil
 }
 
 // ExecuteForRows preserves aggregate/group projections as records while keeping
@@ -1094,6 +1138,7 @@ func (r *PlatformRequest) Count() *PlatformRequest {
 
 func (r *PlatformRequest) CountAs(alias string) *PlatformRequest {
 	r.Query.CountField("id", alias)
+	r.queryOptions.PageCountOperation = &core.QueryOperation{Kind: "count", Method: "CountAs", Alias: &alias}
 	return r
 }
 

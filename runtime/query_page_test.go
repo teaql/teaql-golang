@@ -97,3 +97,47 @@ func TestPageDefaultHelperAndInvalidIntent(t *testing.T) {
 		}
 	}
 }
+
+func TestTypedCountedListProtectsIdentityAfterSeparatingRowShape(t *testing.T) {
+	for _, typed := range []bool{false, true} {
+		context := projectionContext()
+		policy := &narrowEntityProjectionPolicy{}
+		context.WithRequestPolicy(policy)
+		alias := "total"
+		query := core.NewSelectQuery("Order").Project("description").CountField("entity_id", alias).Page(1, 1).
+			Comment("load narrow counted rows").Purpose("preserve entity identity without changing records")
+		options := core.NewQueryOptions()
+		options.PageCountOperation = &core.QueryOperation{Kind: "count", Method: "CountAs", Alias: &alias}
+		snapshot, plan, err := CaptureQueryPlan(query, options)
+		if err != nil {
+			t.Fatal(err)
+		}
+		authorized, err := context.PrepareEntityQuery(snapshot)
+		if err != nil {
+			t.Fatal(err)
+		}
+		executor := &requestPageExecutor{}
+		service := NewRuntimeDataService(context.Metadata, executor)
+		if typed {
+			_, err = ExecuteTypedList(context, service, authorized, plan, func(row core.Record) (core.Record, error) { return row, nil })
+		} else {
+			_, err = service.FetchListWithFacetPlan(context, authorized, plan)
+		}
+		if err != nil || len(executor.queries) != 2 {
+			t.Fatalf("counted execution: %v", err)
+		}
+		want := []string{"description"}
+		if typed {
+			want = append(want, "entity_id", "revision")
+		}
+		if !reflect.DeepEqual(executor.queries[1].Query.Projection, want) {
+			t.Fatalf("typed=%v projection=%v", typed, executor.queries[1].Query.Projection)
+		}
+		if len(executor.queries[0].Query.Projection) != 0 || len(executor.queries[1].Query.Aggregates) != 0 {
+			t.Fatal("count and row shapes were mixed")
+		}
+		if policy.calls != 1 || plan.typedEntityRows || !reflect.DeepEqual(query.Projection, []string{"description"}) {
+			t.Fatal("policy repeated or caller state mutated")
+		}
+	}
+}

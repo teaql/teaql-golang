@@ -4,7 +4,6 @@ package order_status
 
 import (
 	"fmt"
-	"strings"
 	"time"
 
 	"github.com/shopspring/decimal"
@@ -77,7 +76,7 @@ func (r *OrderStatusRequest) GetEntityDescriptor() *core.EntityDescriptor {
 }
 
 func (r *OrderStatusRequest) NewRelationEntity() core.Entity {
-	return NewOrderStatus()
+	return newLoadedOrderStatus()
 }
 
 func (r *OrderStatusRequest) Comment(comment string) *OrderStatusRequest {
@@ -607,51 +606,51 @@ func (r *OrderStatusRequest) SelectDisplayOrder() *OrderStatusRequest {
 	return r
 }
 
-func (r *OrderStatusRequest) WithDisplayOrderIs(value int64) *OrderStatusRequest {
-	r.Query.AndFilter(core.ExprEq("display_order", core.ValI64(value)))
+func (r *OrderStatusRequest) WithDisplayOrderIs(value decimal.Decimal) *OrderStatusRequest {
+	r.Query.AndFilter(core.ExprEq("display_order", core.ValDecimal(value)))
 	return r
 }
-func (r *OrderStatusRequest) WithDisplayOrderIsNot(value int64) *OrderStatusRequest {
-	r.Query.AndFilter(core.ExprNe("display_order", core.ValI64(value)))
+func (r *OrderStatusRequest) WithDisplayOrderIsNot(value decimal.Decimal) *OrderStatusRequest {
+	r.Query.AndFilter(core.ExprNe("display_order", core.ValDecimal(value)))
 	return r
 }
-func (r *OrderStatusRequest) WithDisplayOrderIn(values []int64) *OrderStatusRequest {
+func (r *OrderStatusRequest) WithDisplayOrderIn(values []decimal.Decimal) *OrderStatusRequest {
 	converted := make([]core.Value, 0, len(values))
 	for _, value := range values {
-		converted = append(converted, core.ValI64(value))
+		converted = append(converted, core.ValDecimal(value))
 	}
 	r.Query.AndFilter(core.ExprInList("display_order", converted))
 	return r
 }
-func (r *OrderStatusRequest) WithDisplayOrderNotIn(values []int64) *OrderStatusRequest {
+func (r *OrderStatusRequest) WithDisplayOrderNotIn(values []decimal.Decimal) *OrderStatusRequest {
 	converted := make([]core.Value, 0, len(values))
 	for _, value := range values {
-		converted = append(converted, core.ValI64(value))
+		converted = append(converted, core.ValDecimal(value))
 	}
 	r.Query.AndFilter(core.ExprNotInList("display_order", converted))
 	return r
 }
-func (r *OrderStatusRequest) WithDisplayOrderGreaterThan(value int64) *OrderStatusRequest {
-	r.Query.AndFilter(core.ExprGt("display_order", core.ValI64(value)))
+func (r *OrderStatusRequest) WithDisplayOrderGreaterThan(value decimal.Decimal) *OrderStatusRequest {
+	r.Query.AndFilter(core.ExprGt("display_order", core.ValDecimal(value)))
 	return r
 }
-func (r *OrderStatusRequest) WithDisplayOrderGreaterThanOrEqualTo(value int64) *OrderStatusRequest {
-	r.Query.AndFilter(core.ExprGte("display_order", core.ValI64(value)))
+func (r *OrderStatusRequest) WithDisplayOrderGreaterThanOrEqualTo(value decimal.Decimal) *OrderStatusRequest {
+	r.Query.AndFilter(core.ExprGte("display_order", core.ValDecimal(value)))
 	return r
 }
-func (r *OrderStatusRequest) WithDisplayOrderLessThan(value int64) *OrderStatusRequest {
-	r.Query.AndFilter(core.ExprLt("display_order", core.ValI64(value)))
+func (r *OrderStatusRequest) WithDisplayOrderLessThan(value decimal.Decimal) *OrderStatusRequest {
+	r.Query.AndFilter(core.ExprLt("display_order", core.ValDecimal(value)))
 	return r
 }
-func (r *OrderStatusRequest) WithDisplayOrderLessThanOrEqualTo(value int64) *OrderStatusRequest {
-	r.Query.AndFilter(core.ExprLte("display_order", core.ValI64(value)))
+func (r *OrderStatusRequest) WithDisplayOrderLessThanOrEqualTo(value decimal.Decimal) *OrderStatusRequest {
+	r.Query.AndFilter(core.ExprLte("display_order", core.ValDecimal(value)))
 	return r
 }
-func (r *OrderStatusRequest) WithDisplayOrderBetween(lower int64, upper int64) *OrderStatusRequest {
+func (r *OrderStatusRequest) WithDisplayOrderBetween(lower decimal.Decimal, upper decimal.Decimal) *OrderStatusRequest {
 	value := lower
-	from := core.ValI64(value)
+	from := core.ValDecimal(value)
 	value = upper
-	to := core.ValI64(value)
+	to := core.ValDecimal(value)
 	r.Query.AndFilter(core.ExprBetweenNode("display_order", from, to))
 	return r
 }
@@ -745,7 +744,7 @@ func (r *OrderStatusRequest) SelectPlatformWith(child interface {
 	GetQuery() *core.SelectQuery
 	NewRelationEntity() core.Entity
 }) *OrderStatusRequest {
-	r.Query.Project("platform_id")
+	runtime.EnsureRelationProjection(r.Query, "platform_id")
 	r.Query.RelationQuerySelection("platformEntity", core.QuerySelectionFor(child))
 	r.Query.Relations[len(r.Query.Relations)-1].Operation = &core.QueryOperation{Kind: "relation", Method: "SelectPlatformWith", Relation: "platformEntity"}
 	r.relationFactories["platformEntity"] = child.NewRelationEntity
@@ -938,9 +937,7 @@ func (r *OrderStatusRequest) WithoutCustomerOrderListMatching(child *customer_or
 
 func (e *ExecutableOrderStatusRequest) NewEntity(context *runtime.UserContext) *OrderStatus {
 	r := e.request
-	if strings.TrimSpace(r.purposeText) == "" || strings.TrimSpace(r.commentText) == "" {
-		panic("security audit failure: non-empty Comment() and Purpose() are required before NewEntity()")
-	}
+	if _, err := core.NewQueryIntent(&r.commentText, &r.purposeText); err != nil { panic(err) }
 	entity := NewOrderStatus()
 	initialized := context.InitializeEntity("OrderStatus", entity)
 	typed, ok := initialized.(*OrderStatus)
@@ -970,31 +967,26 @@ func (e *ExecutableOrderStatusRequest) ExecuteForList(context *runtime.UserConte
 	// Apply trusted policy once. The runtime owns the entire typed list lifecycle,
 	// including optional exact count, facets and hydration failures.
 	r := e.request
-	if strings.TrimSpace(r.purposeText) == "" || strings.TrimSpace(r.commentText) == "" {
-		return nil, fmt.Errorf("security audit failure: Comment() and Purpose() must be called before ExecuteForList()")
-	}
+	if _, err := core.NewQueryIntent(&r.commentText, &r.purposeText); err != nil { return nil, err }
 	query := r.Query.Clone()
 	query.Comment(r.commentText).Purpose(r.purposeText)
 	query, plan, err := runtime.CaptureQueryPlan(query, r.queryOptions)
 	if err != nil { return nil, err }
 	query = plan.WithQueryDiagnostics(query)
-	authorized, err := context.PrepareQuery(query)
+	authorized, err := context.PrepareEntityQuery(query)
 	if err != nil { return nil, err }
 	dsRaw := context.GetResource("dataService")
 	ds, ok := dsRaw.(data_service.QueryExecutor)
 	if !ok { return nil, fmt.Errorf("dataService does not implement data_service.QueryExecutor") }
 	service := runtime.NewRuntimeDataService(context.Metadata, ds)
-	queryRoot := core.NewEntityRoot()
 	return runtime.ExecuteTypedList(context, service, authorized, plan, func(rec core.Record) (*OrderStatus, error) {
-		entity := NewOrderStatus()
-		entity.AttachEntityRoot(queryRoot)
+		entity := newLoadedOrderStatus()
 		if err := entity.FromRecord(rec); err != nil { return nil, err }
 		if relationValue, selected := rec["platformEntity"]; selected {
 			entity.markRelationLoaded("platformEntity")
 			if childRecord, ok := relationValue.V.(core.Record); ok {
 				if factory := e.request.relationFactories["platformEntity"]; factory != nil {
 					childEntity := factory()
-					if attachable, ok := childEntity.(interface { AttachEntityRoot(*core.EntityRoot) }); ok { attachable.AttachEntityRoot(entity.EntityRoot()) }
 					if err := childEntity.FromRecord(childRecord); err != nil { return nil, err }
 					entity.setRelationEntity("platformEntity", childEntity)
 				}
@@ -1005,6 +997,7 @@ func (e *ExecutableOrderStatusRequest) ExecuteForList(context *runtime.UserConte
 				if !ok { return nil, fmt.Errorf("relation customerOrderList has unexpected runtime type %T", relationValue.V) }
 				for _, childRecord := range childRecords {
 					childEntity := customer_order.NewCustomerOrder()
+					childEntity.EntityRoot().ClearEntity(childEntity.EntityKey())
 					childEntity.AttachEntityRoot(entity.EntityRoot())
 					if err := childEntity.FromRecord(childRecord); err != nil { return nil, err }
 					entity.CustomerOrderList().Add(childEntity)
@@ -1018,9 +1011,7 @@ func (e *ExecutableOrderStatusRequest) ExecuteForList(context *runtime.UserConte
 // records an intentional early stop; other callback errors remain failures.
 func (e *ExecutableOrderStatusRequest) ExecuteForStream(context *runtime.UserContext, chunkSize int, yield func(*OrderStatus) error) error {
 	r := e.request
-	if strings.TrimSpace(r.purposeText) == "" || strings.TrimSpace(r.commentText) == "" {
-		return fmt.Errorf("security audit failure: Comment() and Purpose() must be called before ExecuteForStream()")
-	}
+	if _, err := core.NewQueryIntent(&r.commentText, &r.purposeText); err != nil { return err }
 	if yield == nil {
 		return fmt.Errorf("stream consumer must not be nil")
 	}
@@ -1028,17 +1019,15 @@ func (e *ExecutableOrderStatusRequest) ExecuteForStream(context *runtime.UserCon
 	query.Comment(r.commentText).Purpose(r.purposeText)
 	query, err := runtime.CaptureStreamQuery(query, r.queryOptions)
 	if err != nil { return err }
-	authorized, err := context.PrepareQuery(query)
+	authorized, err := context.PrepareEntityQuery(query)
 	if err != nil { return err }
 	dsRaw := context.GetResource("dataService")
 	ds, ok := dsRaw.(data_service.StreamQueryExecutor)
 	if !ok {
 		return fmt.Errorf("dataService does not implement data_service.StreamQueryExecutor")
 	}
-	queryRoot := core.NewEntityRoot()
 	return runtime.ExecuteTypedStream(context, ds, authorized, chunkSize, func(rec core.Record) (*OrderStatus, error) {
-		entity := NewOrderStatus()
-		entity.AttachEntityRoot(queryRoot)
+		entity := newLoadedOrderStatus()
 		if err := entity.FromRecord(rec); err != nil { return nil, err }
 		return entity, nil
 	}, yield)
@@ -1053,9 +1042,7 @@ func (e *ExecutableOrderStatusRequest) ExecuteRecords(context *runtime.UserConte
 // so facets can derive their membership query without reapplying root policy.
 func (e *ExecutableOrderStatusRequest) executeRecords(context *runtime.UserContext) ([]core.Record, *core.SelectQuery, *runtime.FacetPlan, error) {
 	r := e.request
-	if strings.TrimSpace(r.purposeText) == "" || strings.TrimSpace(r.commentText) == "" {
-		return nil, nil, nil, fmt.Errorf("security audit failure: Comment() and Purpose() must be called before ExecuteForList()")
-	}
+	if _, err := core.NewQueryIntent(&r.commentText, &r.purposeText); err != nil { return nil, nil, nil, err }
 	query := r.Query.Clone()
 	query.Comment(r.commentText).Purpose(r.purposeText)
 	query, plan, err := runtime.CaptureQueryPlan(query, r.queryOptions)

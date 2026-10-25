@@ -1599,7 +1599,12 @@ func (c *UserContext) CheckAndFix(input *CheckAndFixInput) error {
 }
 
 func (c *UserContext) checkAndFix(input *CheckAndFixInput) error {
+	return c.checkAndFixWithReferences(input, nil)
+}
+
+func (c *UserContext) checkAndFixWithReferences(input *CheckAndFixInput, references *deferredReferenceState) error {
 	var results []CheckResult
+	entity, operation := input.Entity, input.Operation
 	if c.checkerRegistry != nil {
 		if input.Now.IsZero() {
 			input.Now = c.FixTime()
@@ -1608,8 +1613,14 @@ func (c *UserContext) checkAndFix(input *CheckAndFixInput) error {
 	}
 	// A configured Fix may repair inputs. Validate its final values, even when
 	// the application intentionally supplies no model checker.
-	results = append(results, c.checkFiniteFloatingValues(input)...)
-	results = append(results, c.checkIntegralValues(input)...)
+	if input.Entity != entity || input.Operation != operation {
+		results = append(results, CheckResult{RuleID: "invalid_type", EntityType: entity,
+			CanonicalLocation: Location(), Message: "Fix cannot change mutation identity or operation"})
+	} else {
+		references.revalidate()
+		results = append(results, c.checkFiniteFloatingValues(input)...)
+		results = append(results, c.checkIntegralValues(input, references)...)
+	}
 	c.TranslateCheckResults(results)
 	if len(results) != 0 {
 		return &RuntimeError{Type: "Check", CheckResults: results}

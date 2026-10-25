@@ -10,6 +10,7 @@ import (
 	"github.com/teaql/teaql-golang/core"
 	"github.com/teaql/teaql-golang/data_service"
 	"github.com/teaql/teaql-golang/runtime"
+	"trace-chain-service-core-workspace/lib/internal/generatedsearch"
 )
 
 var (
@@ -23,6 +24,7 @@ type OrderItemRequest struct {
 	purposeText string
 	commentText string
 	relationFactories map[string]func() core.Entity
+	dynamicSearchWarnings []core.DynamicSearchWarning
 }
 
 type ExecutableOrderItemRequest struct {
@@ -49,6 +51,19 @@ func (r *OrderItemRequest) GetQuery() *core.SelectQuery {
 	return r.Query
 }
 
+// FilterByJson validates all clauses before changing this request.
+func (r *OrderItemRequest) FilterByJson(source []byte) (*OrderItemRequest, error) {
+	query, warnings, err := generatedsearch.Apply(r.Query, source, nil)
+	if err != nil { return nil, err }
+	r.Query = query
+	r.dynamicSearchWarnings = append(r.dynamicSearchWarnings, warnings...)
+	return r, nil
+}
+
+func (r *OrderItemRequest) DynamicSearchWarnings() []core.DynamicSearchWarning {
+	return append([]core.DynamicSearchWarning(nil), r.dynamicSearchWarnings...)
+}
+
 func (r *OrderItemRequest) GetQuerySelection() *core.QuerySelection {
 	selection := core.NewQuerySelection(r.Query)
 	selection.QueryOptions = r.queryOptions
@@ -65,6 +80,7 @@ func (r *OrderItemRequest) NewRelationEntity() core.Entity {
 
 func (r *OrderItemRequest) Comment(comment string) *OrderItemRequest {
 	r.commentText = comment
+	r.Query.Comment(comment)
 	return r
 }
 
@@ -75,6 +91,7 @@ func (r *OrderItemRequest) Purpose(purpose string) *ExecutableOrderItemRequest {
 
 func (r *ExecutableOrderItemRequest) Comment(comment string) *ExecutableOrderItemRequest {
 	r.request.commentText = comment
+	r.request.Query.Comment(comment)
 	return r
 }
 
@@ -279,12 +296,9 @@ func (r *OrderItemRequest) FacetByCustomerOrderAs(
 ) *OrderItemRequest {
 	includeAll := true
 	if len(includeAllFacets) > 0 { includeAll = includeAllFacets[0] }
-	selection := core.NewQuerySelection(nestedReq.GetQuery())
-	if provider, ok := nestedReq.(interface{ GetQuerySelection() *core.QuerySelection }); ok {
-		selection = provider.GetQuerySelection()
-	}
-	r.queryOptions.Facets = append(r.queryOptions.Facets, core.NewFacetRequest(
-		name, "customer_order_id", selection, includeAll))
+	facet := core.NewFacetRequest(name, "customer_order_id", core.QuerySelectionFor(nestedReq), includeAll)
+	facet.Operation = &core.QueryOperation{Kind: "facet", Method: "FacetByCustomerOrderAs", Alias: &name, Relation: "customerOrder"}
+	r.queryOptions.Facets = append(r.queryOptions.Facets, facet)
 	return r
 }
 func (r *OrderItemRequest) OrderByCustomerOrderAsc() *OrderItemRequest {
@@ -467,9 +481,8 @@ func (r *OrderItemRequest) SelectCustomerOrderWith(child interface {
 	NewRelationEntity() core.Entity
 }) *OrderItemRequest {
 	runtime.EnsureRelationProjection(r.Query, "customer_order_id")
-	selection := core.NewQuerySelection(child.GetQuery())
-	if provider, ok := child.(interface{ GetQuerySelection() *core.QuerySelection }); ok { selection = provider.GetQuerySelection() }
-	r.Query.RelationQuerySelection("customerOrderEntity", selection)
+	r.Query.RelationQuerySelection("customerOrderEntity", core.QuerySelectionFor(child))
+	r.Query.Relations[len(r.Query.Relations)-1].Operation = &core.QueryOperation{Kind: "relation", Method: "SelectCustomerOrderWith", Relation: "customerOrderEntity"}
 	r.relationFactories["customerOrderEntity"] = child.NewRelationEntity
 	return r
 }
@@ -522,89 +535,22 @@ func (e *ExecutableOrderItemRequest) ExecuteForOne(context *runtime.UserContext)
 }
 
 func (e *ExecutableOrderItemRequest) ExecuteForList(context *runtime.UserContext) (*core.SmartList[*OrderItem], error) {
-	rows, authorized, facetPlan, err := e.executeRecords(context, true)
-	if err != nil {
-		return nil, err
-	}
-
-	var results []*OrderItem
-	for _, rec := range rows {
-		entity := newLoadedOrderItem()
-		if err := entity.FromRecord(rec); err != nil {
-			return nil, err
-		}
-		if relationValue, selected := rec["customerOrderEntity"]; selected {
-			entity.markRelationLoaded("customerOrderEntity")
-			if childRecord, ok := relationValue.V.(core.Record); ok {
-				if factory := e.request.relationFactories["customerOrderEntity"]; factory != nil {
-					childEntity := factory()
-					if err := childEntity.FromRecord(childRecord); err != nil { return nil, err }
-					entity.setRelationEntity("customerOrderEntity", childEntity)
-				}
-			}
-		}
-		results = append(results, entity)
-	}
-	list := core.NewSmartList(results)
-	if facetPlan.HasFacets() {
-		dsRaw := context.GetResource("dataService")
-		ds, ok := dsRaw.(data_service.QueryExecutor)
-		if !ok { return nil, fmt.Errorf("dataService does not implement data_service.QueryExecutor") }
-		facets, err := facetPlan.Execute(
-			context, runtime.NewRuntimeDataService(context.Metadata, ds),
-			authorized)
-		if err != nil { return nil, err }
-		core.AttachFacets(list, facets)
-	}
-	return list, nil
-}
-
-// ExecuteForPage applies trusted policy once, then derives exact-count and row
-// queries from that same authorized snapshot.
-func (e *ExecutableOrderItemRequest) ExecuteForPage(context *runtime.UserContext, offset uint64, size uint64) (*core.SmartList[*OrderItem], error) {
+	// Apply trusted policy once. The runtime owns the entire typed list lifecycle,
+	// including optional exact count, facets and hydration failures.
 	r := e.request
 	if _, err := core.NewQueryIntent(&r.commentText, &r.purposeText); err != nil { return nil, err }
-	if size == 0 {
-		return nil, fmt.Errorf("QUERY_INVALID_LIMIT: size must be positive")
-	}
-	query, facetPlan, err := runtime.CaptureQueryPlan(r.Query, r.queryOptions)
+	query := r.Query.Clone()
+	query.Comment(r.commentText).Purpose(r.purposeText)
+	query, plan, err := runtime.CaptureQueryPlan(query, r.queryOptions)
 	if err != nil { return nil, err }
-	query.Page(offset, size).Comment(r.commentText).Purpose(r.purposeText)
-	query = facetPlan.WithQueryDiagnostics(query)
+	query = plan.WithQueryDiagnostics(query)
 	authorized, err := context.PrepareEntityQuery(query)
 	if err != nil { return nil, err }
 	dsRaw := context.GetResource("dataService")
 	ds, ok := dsRaw.(data_service.QueryExecutor)
 	if !ok { return nil, fmt.Errorf("dataService does not implement data_service.QueryExecutor") }
 	service := runtime.NewRuntimeDataService(context.Metadata, ds)
-	const countAlias = "__teaql_total"
-	var rows []core.Record
-	var total uint64
-	if authorized.IDSetPagination != nil {
-		rows, err = service.FetchAllWithFacetPlan(context, authorized, facetPlan)
-		if err != nil { return nil, err }
-		if retainedCount, accuracy := context.IDSetCount(); accuracy == "EXACT" {
-			total = retainedCount
-		} else {
-			countRows, countErr := service.FetchAll(context, authorized.ForExactCount(countAlias))
-			if countErr != nil { return nil, countErr }
-			if len(countRows) != 1 { return nil, fmt.Errorf("exact count returned %d rows", len(countRows)) }
-			var ok bool
-			total, ok = countRows[0][countAlias].TryU64()
-			if !ok { return nil, fmt.Errorf("exact count did not return an unsigned integer") }
-		}
-	} else {
-		countRows, countErr := service.FetchAll(context, authorized.ForExactCount(countAlias))
-		if countErr != nil { return nil, countErr }
-		if len(countRows) != 1 { return nil, fmt.Errorf("exact count returned %d rows", len(countRows)) }
-		var ok bool
-		total, ok = countRows[0][countAlias].TryU64()
-		if !ok { return nil, fmt.Errorf("exact count did not return an unsigned integer") }
-		rows, err = service.FetchAllWithFacetPlan(context, authorized, facetPlan)
-		if err != nil { return nil, err }
-	}
-	results := make([]*OrderItem, 0, len(rows))
-	for _, rec := range rows {
+	return runtime.ExecuteTypedList(context, service, authorized, plan, func(rec core.Record) (*OrderItem, error) {
 		entity := newLoadedOrderItem()
 		if err := entity.FromRecord(rec); err != nil { return nil, err }
 		if relationValue, selected := rec["customerOrderEntity"]; selected {
@@ -617,23 +563,23 @@ func (e *ExecutableOrderItemRequest) ExecuteForPage(context *runtime.UserContext
 				}
 			}
 		}
-		results = append(results, entity)
-	}
-	return core.NewSmartList(results).WithTotalCount(total), nil
+		return entity, nil
+	})
 }
 
 // ExecuteForStream consumes a provider cursor one chunk at a time. Returning
-// an error from yield cancels iteration and releases the database resources.
+// an error from yield releases the database resources. runtime.ErrStopStream
+// records an intentional early stop; other callback errors remain failures.
 func (e *ExecutableOrderItemRequest) ExecuteForStream(context *runtime.UserContext, chunkSize int, yield func(*OrderItem) error) error {
 	r := e.request
 	if _, err := core.NewQueryIntent(&r.commentText, &r.purposeText); err != nil { return err }
 	if yield == nil {
 		return fmt.Errorf("stream consumer must not be nil")
 	}
-	query, facetPlan, err := runtime.CaptureQueryPlan(r.Query, r.queryOptions)
-	if err != nil { return err }
+	query := r.Query.Clone()
 	query.Comment(r.commentText).Purpose(r.purposeText)
-	query = facetPlan.WithQueryDiagnostics(query)
+	query, err := runtime.CaptureStreamQuery(query, r.queryOptions)
+	if err != nil { return err }
 	authorized, err := context.PrepareEntityQuery(query)
 	if err != nil { return err }
 	dsRaw := context.GetResource("dataService")
@@ -641,39 +587,29 @@ func (e *ExecutableOrderItemRequest) ExecuteForStream(context *runtime.UserConte
 	if !ok {
 		return fmt.Errorf("dataService does not implement data_service.StreamQueryExecutor")
 	}
-	req, err := data_service.NewQueryRequest(authorized)
-	if err != nil { return err }
-	return ds.QueryStream(context, req, chunkSize, func(chunk *data_service.StreamChunk) error {
-		for _, rec := range chunk.Rows {
-			entity := newLoadedOrderItem()
-			if err := entity.FromRecord(rec); err != nil {
-				return err
-			}
-			if err := yield(entity); err != nil {
-				return err
-			}
-		}
-		return nil
-	})
+	return runtime.ExecuteTypedStream(context, ds, authorized, chunkSize, func(rec core.Record) (*OrderItem, error) {
+		entity := newLoadedOrderItem()
+		if err := entity.FromRecord(rec); err != nil { return nil, err }
+		return entity, nil
+	}, yield)
 }
 
 func (e *ExecutableOrderItemRequest) ExecuteRecords(context *runtime.UserContext) ([]core.Record, error) {
-	rows, _, _, err := e.executeRecords(context, false)
+	rows, _, _, err := e.executeRecords(context)
 	return rows, err
 }
 
 // executeRecords returns the same authorized snapshot used for row execution
 // so facets can derive their membership query without reapplying root policy.
-func (e *ExecutableOrderItemRequest) executeRecords(context *runtime.UserContext, entityProjection bool) ([]core.Record, *core.SelectQuery, *runtime.FacetPlan, error) {
+func (e *ExecutableOrderItemRequest) executeRecords(context *runtime.UserContext) ([]core.Record, *core.SelectQuery, *runtime.FacetPlan, error) {
 	r := e.request
 	if _, err := core.NewQueryIntent(&r.commentText, &r.purposeText); err != nil { return nil, nil, nil, err }
-	query, facetPlan, err := runtime.CaptureQueryPlan(r.Query, r.queryOptions)
-	if err != nil { return nil, nil, nil, err }
+	query := r.Query.Clone()
 	query.Comment(r.commentText).Purpose(r.purposeText)
-	query = facetPlan.WithQueryDiagnostics(query)
-	prepare := context.PrepareQuery
-	if entityProjection { prepare = context.PrepareEntityQuery }
-	authorized, err := prepare(query)
+	query, plan, err := runtime.CaptureQueryPlan(query, r.queryOptions)
+	if err != nil { return nil, nil, nil, err }
+	query = plan.WithQueryDiagnostics(query)
+	authorized, err := context.PrepareQuery(query)
 	if err != nil { return nil, nil, nil, err }
 
 	dsRaw := context.GetResource("dataService")
@@ -686,11 +622,11 @@ func (e *ExecutableOrderItemRequest) executeRecords(context *runtime.UserContext
 		return nil, nil, nil, fmt.Errorf("dataService does not implement data_service.QueryExecutor")
 	}
 
-	rows, err := runtime.NewRuntimeDataService(context.Metadata, ds).FetchAllWithFacetPlan(context, authorized, facetPlan)
+	rows, err := runtime.NewRuntimeDataService(context.Metadata, ds).FetchAllWithFacetPlan(context, authorized, plan)
 	if err != nil {
 		return nil, nil, nil, err
 	}
-	return rows, authorized, facetPlan, nil
+	return rows, authorized, plan, nil
 }
 
 // ExecuteForRows preserves aggregate/group projections as records while keeping
@@ -707,6 +643,7 @@ func (r *OrderItemRequest) Count() *OrderItemRequest {
 
 func (r *OrderItemRequest) CountAs(alias string) *OrderItemRequest {
 	r.Query.CountField("id", alias)
+	r.queryOptions.PageCountOperation = &core.QueryOperation{Kind: "count", Method: "CountAs", Alias: &alias}
 	return r
 }
 

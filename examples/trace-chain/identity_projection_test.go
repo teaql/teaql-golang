@@ -136,6 +136,9 @@ func TestGeneratedNarrowEntityProjectionProtectsIdentityWithoutPermittingPartial
 			if mode != "stream" {
 				request.SelectPlatformWith(lib.Q.Platforms().SelectName().Limit(1))
 			}
+			if mode == "page" {
+				request.Offset(0).Limit(1).Count()
+			}
 			projectionBefore := append([]string(nil), request.Query.Projection...)
 			comment := "load narrow entity through " + mode
 			executable := request.Comment(comment).Purpose("verify mandatory identity and fail-closed partial mutation")
@@ -143,7 +146,7 @@ func TestGeneratedNarrowEntityProjectionProtectsIdentityWithoutPermittingPartial
 			var err error
 			switch mode {
 			case "page":
-				rows, err = executable.ExecuteForPage(e.context, 0, 1)
+				rows, err = executable.ExecuteForList(e.context)
 				if err == nil && (rows.TotalCount == nil || *rows.TotalCount != 1) {
 					t.Fatal("page count does not match the bounded authorized filter")
 				}
@@ -180,7 +183,7 @@ func TestGeneratedNarrowEntityProjectionProtectsIdentityWithoutPermittingPartial
 				if len(statement.TraceChain) < 4 || statement.TraceChain[0].Name != "Customer Order" {
 					t.Fatal("projection preparation lost request-owned query intent/path")
 				}
-				if strings.Contains(statement.ParameterizedSQL, "__teaql_total") {
+				if isExactCountStatement(statement.ParameterizedSQL) {
 					countQueries++
 					selectPart := strings.Split(statement.ParameterizedSQL, " FROM ")[0]
 					if strings.Contains(selectPart, "version") || strings.Contains(selectPart, "description") || strings.Contains(selectPart, ",") {

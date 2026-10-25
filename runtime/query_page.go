@@ -29,6 +29,13 @@ func ExecuteTypedList[T any](context stdcontext.Context, service *RuntimeDataSer
 	if hydrate == nil {
 		return nil, fmt.Errorf("typed list hydration must not be nil")
 	}
+	if plan != nil && plan.countOperation != nil {
+		// Count is result metadata, not the typed row's aggregate shape. Do not
+		// mutate a captured plan that another invocation can still reuse.
+		owned := *plan
+		owned.typedEntityRows = true
+		plan = &owned
+	}
 	rows, err := service.FetchListWithFacetPlan(context, request.Query, plan)
 	if err != nil {
 		return nil, err
@@ -132,6 +139,15 @@ func (s *RuntimeDataService) FetchPageWithFacetPlan(context stdcontext.Context, 
 				rowsQuery.Aggregates = append(rowsQuery.Aggregates, aggregate)
 			}
 		}
+	}
+	if plan.typedEntityRows && s.metadata != nil {
+		descriptor := s.metadata.Entity(rowsQuery.Entity)
+		if descriptor == nil {
+			return nil, &RuntimeError{Type: "MissingEntity", MissingEntityName: rowsQuery.Entity}
+		}
+		// Authorization already ran. Protect only the actual row shape after
+		// removing the synthetic count; never add identities to the COUNT SQL.
+		protectEntityProjection(rowsQuery, descriptor)
 	}
 	if err := rowsQuery.PrepareForList(); err != nil {
 		return nil, err

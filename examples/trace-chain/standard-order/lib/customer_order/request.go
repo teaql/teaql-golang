@@ -4,7 +4,6 @@ package customer_order
 
 import (
 	"fmt"
-	"strings"
 	"time"
 
 	"github.com/shopspring/decimal"
@@ -77,7 +76,7 @@ func (r *CustomerOrderRequest) GetEntityDescriptor() *core.EntityDescriptor {
 }
 
 func (r *CustomerOrderRequest) NewRelationEntity() core.Entity {
-	return NewCustomerOrder()
+	return newLoadedCustomerOrder()
 }
 
 func (r *CustomerOrderRequest) Comment(comment string) *CustomerOrderRequest {
@@ -713,7 +712,7 @@ func (r *CustomerOrderRequest) SelectCustomerWith(child interface {
 	GetQuery() *core.SelectQuery
 	NewRelationEntity() core.Entity
 }) *CustomerOrderRequest {
-	r.Query.Project("customer_id")
+	runtime.EnsureRelationProjection(r.Query, "customer_id")
 	r.Query.RelationQuerySelection("customerEntity", core.QuerySelectionFor(child))
 	r.Query.Relations[len(r.Query.Relations)-1].Operation = &core.QueryOperation{Kind: "relation", Method: "SelectCustomerWith", Relation: "customerEntity"}
 	r.relationFactories["customerEntity"] = child.NewRelationEntity
@@ -723,7 +722,7 @@ func (r *CustomerOrderRequest) SelectStatusWith(child interface {
 	GetQuery() *core.SelectQuery
 	NewRelationEntity() core.Entity
 }) *CustomerOrderRequest {
-	r.Query.Project("status_id")
+	runtime.EnsureRelationProjection(r.Query, "status_id")
 	r.Query.RelationQuerySelection("statusEntity", core.QuerySelectionFor(child))
 	r.Query.Relations[len(r.Query.Relations)-1].Operation = &core.QueryOperation{Kind: "relation", Method: "SelectStatusWith", Relation: "statusEntity"}
 	r.relationFactories["statusEntity"] = child.NewRelationEntity
@@ -1003,9 +1002,7 @@ func (r *CustomerOrderRequest) WithoutOrderItemListMatching(child *order_item.Or
 
 func (e *ExecutableCustomerOrderRequest) NewEntity(context *runtime.UserContext) *CustomerOrder {
 	r := e.request
-	if strings.TrimSpace(r.purposeText) == "" || strings.TrimSpace(r.commentText) == "" {
-		panic("security audit failure: non-empty Comment() and Purpose() are required before NewEntity()")
-	}
+	if _, err := core.NewQueryIntent(&r.commentText, &r.purposeText); err != nil { panic(err) }
 	entity := NewCustomerOrder()
 	initialized := context.InitializeEntity("CustomerOrder", entity)
 	typed, ok := initialized.(*CustomerOrder)
@@ -1035,31 +1032,26 @@ func (e *ExecutableCustomerOrderRequest) ExecuteForList(context *runtime.UserCon
 	// Apply trusted policy once. The runtime owns the entire typed list lifecycle,
 	// including optional exact count, facets and hydration failures.
 	r := e.request
-	if strings.TrimSpace(r.purposeText) == "" || strings.TrimSpace(r.commentText) == "" {
-		return nil, fmt.Errorf("security audit failure: Comment() and Purpose() must be called before ExecuteForList()")
-	}
+	if _, err := core.NewQueryIntent(&r.commentText, &r.purposeText); err != nil { return nil, err }
 	query := r.Query.Clone()
 	query.Comment(r.commentText).Purpose(r.purposeText)
 	query, plan, err := runtime.CaptureQueryPlan(query, r.queryOptions)
 	if err != nil { return nil, err }
 	query = plan.WithQueryDiagnostics(query)
-	authorized, err := context.PrepareQuery(query)
+	authorized, err := context.PrepareEntityQuery(query)
 	if err != nil { return nil, err }
 	dsRaw := context.GetResource("dataService")
 	ds, ok := dsRaw.(data_service.QueryExecutor)
 	if !ok { return nil, fmt.Errorf("dataService does not implement data_service.QueryExecutor") }
 	service := runtime.NewRuntimeDataService(context.Metadata, ds)
-	queryRoot := core.NewEntityRoot()
 	return runtime.ExecuteTypedList(context, service, authorized, plan, func(rec core.Record) (*CustomerOrder, error) {
-		entity := NewCustomerOrder()
-		entity.AttachEntityRoot(queryRoot)
+		entity := newLoadedCustomerOrder()
 		if err := entity.FromRecord(rec); err != nil { return nil, err }
 		if relationValue, selected := rec["customerEntity"]; selected {
 			entity.markRelationLoaded("customerEntity")
 			if childRecord, ok := relationValue.V.(core.Record); ok {
 				if factory := e.request.relationFactories["customerEntity"]; factory != nil {
 					childEntity := factory()
-					if attachable, ok := childEntity.(interface { AttachEntityRoot(*core.EntityRoot) }); ok { attachable.AttachEntityRoot(entity.EntityRoot()) }
 					if err := childEntity.FromRecord(childRecord); err != nil { return nil, err }
 					entity.setRelationEntity("customerEntity", childEntity)
 				}
@@ -1070,7 +1062,6 @@ func (e *ExecutableCustomerOrderRequest) ExecuteForList(context *runtime.UserCon
 			if childRecord, ok := relationValue.V.(core.Record); ok {
 				if factory := e.request.relationFactories["statusEntity"]; factory != nil {
 					childEntity := factory()
-					if attachable, ok := childEntity.(interface { AttachEntityRoot(*core.EntityRoot) }); ok { attachable.AttachEntityRoot(entity.EntityRoot()) }
 					if err := childEntity.FromRecord(childRecord); err != nil { return nil, err }
 					entity.setRelationEntity("statusEntity", childEntity)
 				}
@@ -1081,6 +1072,7 @@ func (e *ExecutableCustomerOrderRequest) ExecuteForList(context *runtime.UserCon
 				if !ok { return nil, fmt.Errorf("relation orderItemList has unexpected runtime type %T", relationValue.V) }
 				for _, childRecord := range childRecords {
 					childEntity := order_item.NewOrderItem()
+					childEntity.EntityRoot().ClearEntity(childEntity.EntityKey())
 					childEntity.AttachEntityRoot(entity.EntityRoot())
 					if err := childEntity.FromRecord(childRecord); err != nil { return nil, err }
 					entity.OrderItemList().Add(childEntity)
@@ -1094,9 +1086,7 @@ func (e *ExecutableCustomerOrderRequest) ExecuteForList(context *runtime.UserCon
 // records an intentional early stop; other callback errors remain failures.
 func (e *ExecutableCustomerOrderRequest) ExecuteForStream(context *runtime.UserContext, chunkSize int, yield func(*CustomerOrder) error) error {
 	r := e.request
-	if strings.TrimSpace(r.purposeText) == "" || strings.TrimSpace(r.commentText) == "" {
-		return fmt.Errorf("security audit failure: Comment() and Purpose() must be called before ExecuteForStream()")
-	}
+	if _, err := core.NewQueryIntent(&r.commentText, &r.purposeText); err != nil { return err }
 	if yield == nil {
 		return fmt.Errorf("stream consumer must not be nil")
 	}
@@ -1104,17 +1094,15 @@ func (e *ExecutableCustomerOrderRequest) ExecuteForStream(context *runtime.UserC
 	query.Comment(r.commentText).Purpose(r.purposeText)
 	query, err := runtime.CaptureStreamQuery(query, r.queryOptions)
 	if err != nil { return err }
-	authorized, err := context.PrepareQuery(query)
+	authorized, err := context.PrepareEntityQuery(query)
 	if err != nil { return err }
 	dsRaw := context.GetResource("dataService")
 	ds, ok := dsRaw.(data_service.StreamQueryExecutor)
 	if !ok {
 		return fmt.Errorf("dataService does not implement data_service.StreamQueryExecutor")
 	}
-	queryRoot := core.NewEntityRoot()
 	return runtime.ExecuteTypedStream(context, ds, authorized, chunkSize, func(rec core.Record) (*CustomerOrder, error) {
-		entity := NewCustomerOrder()
-		entity.AttachEntityRoot(queryRoot)
+		entity := newLoadedCustomerOrder()
 		if err := entity.FromRecord(rec); err != nil { return nil, err }
 		return entity, nil
 	}, yield)
@@ -1129,9 +1117,7 @@ func (e *ExecutableCustomerOrderRequest) ExecuteRecords(context *runtime.UserCon
 // so facets can derive their membership query without reapplying root policy.
 func (e *ExecutableCustomerOrderRequest) executeRecords(context *runtime.UserContext) ([]core.Record, *core.SelectQuery, *runtime.FacetPlan, error) {
 	r := e.request
-	if strings.TrimSpace(r.purposeText) == "" || strings.TrimSpace(r.commentText) == "" {
-		return nil, nil, nil, fmt.Errorf("security audit failure: Comment() and Purpose() must be called before ExecuteForList()")
-	}
+	if _, err := core.NewQueryIntent(&r.commentText, &r.purposeText); err != nil { return nil, nil, nil, err }
 	query := r.Query.Clone()
 	query.Comment(r.commentText).Purpose(r.purposeText)
 	query, plan, err := runtime.CaptureQueryPlan(query, r.queryOptions)

@@ -31,8 +31,8 @@ var models = map[string]core.GeneratedSearchModel{
                "name": "string",
                "code": "string",
                "color": "string",
-               "display_order": "integer",
-               "displayOrder": "integer",
+               "display_order": "decimal",
+               "displayOrder": "decimal",
                "version": "integer",
 			},
 			Relations: map[string]string{

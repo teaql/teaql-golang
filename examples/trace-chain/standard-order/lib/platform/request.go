@@ -4,7 +4,6 @@ package platform
 
 import (
 	"fmt"
-	"strings"
 	"time"
 
 	"github.com/shopspring/decimal"
@@ -78,7 +77,7 @@ func (r *PlatformRequest) GetEntityDescriptor() *core.EntityDescriptor {
 }
 
 func (r *PlatformRequest) NewRelationEntity() core.Entity {
-	return NewPlatform()
+	return newLoadedPlatform()
 }
 
 func (r *PlatformRequest) Comment(comment string) *PlatformRequest {
@@ -592,9 +591,7 @@ func (r *PlatformRequest) WithoutCustomerListMatching(child *customer.CustomerRe
 
 func (e *ExecutablePlatformRequest) NewEntity(context *runtime.UserContext) *Platform {
 	r := e.request
-	if strings.TrimSpace(r.purposeText) == "" || strings.TrimSpace(r.commentText) == "" {
-		panic("security audit failure: non-empty Comment() and Purpose() are required before NewEntity()")
-	}
+	if _, err := core.NewQueryIntent(&r.commentText, &r.purposeText); err != nil { panic(err) }
 	entity := NewPlatform()
 	initialized := context.InitializeEntity("Platform", entity)
 	typed, ok := initialized.(*Platform)
@@ -624,30 +621,27 @@ func (e *ExecutablePlatformRequest) ExecuteForList(context *runtime.UserContext)
 	// Apply trusted policy once. The runtime owns the entire typed list lifecycle,
 	// including optional exact count, facets and hydration failures.
 	r := e.request
-	if strings.TrimSpace(r.purposeText) == "" || strings.TrimSpace(r.commentText) == "" {
-		return nil, fmt.Errorf("security audit failure: Comment() and Purpose() must be called before ExecuteForList()")
-	}
+	if _, err := core.NewQueryIntent(&r.commentText, &r.purposeText); err != nil { return nil, err }
 	query := r.Query.Clone()
 	query.Comment(r.commentText).Purpose(r.purposeText)
 	query, plan, err := runtime.CaptureQueryPlan(query, r.queryOptions)
 	if err != nil { return nil, err }
 	query = plan.WithQueryDiagnostics(query)
-	authorized, err := context.PrepareQuery(query)
+	authorized, err := context.PrepareEntityQuery(query)
 	if err != nil { return nil, err }
 	dsRaw := context.GetResource("dataService")
 	ds, ok := dsRaw.(data_service.QueryExecutor)
 	if !ok { return nil, fmt.Errorf("dataService does not implement data_service.QueryExecutor") }
 	service := runtime.NewRuntimeDataService(context.Metadata, ds)
-	queryRoot := core.NewEntityRoot()
 	return runtime.ExecuteTypedList(context, service, authorized, plan, func(rec core.Record) (*Platform, error) {
-		entity := NewPlatform()
-		entity.AttachEntityRoot(queryRoot)
+		entity := newLoadedPlatform()
 		if err := entity.FromRecord(rec); err != nil { return nil, err }
 		if relationValue, selected := rec["orderStatusList"]; selected {
 			childRecords, ok := relationValue.V.([]core.Record)
 				if !ok { return nil, fmt.Errorf("relation orderStatusList has unexpected runtime type %T", relationValue.V) }
 				for _, childRecord := range childRecords {
 					childEntity := order_status.NewOrderStatus()
+					childEntity.EntityRoot().ClearEntity(childEntity.EntityKey())
 					childEntity.AttachEntityRoot(entity.EntityRoot())
 					if err := childEntity.FromRecord(childRecord); err != nil { return nil, err }
 					entity.OrderStatusList().Add(childEntity)
@@ -657,6 +651,7 @@ func (e *ExecutablePlatformRequest) ExecuteForList(context *runtime.UserContext)
 				if !ok { return nil, fmt.Errorf("relation customerList has unexpected runtime type %T", relationValue.V) }
 				for _, childRecord := range childRecords {
 					childEntity := customer.NewCustomer()
+					childEntity.EntityRoot().ClearEntity(childEntity.EntityKey())
 					childEntity.AttachEntityRoot(entity.EntityRoot())
 					if err := childEntity.FromRecord(childRecord); err != nil { return nil, err }
 					entity.CustomerList().Add(childEntity)
@@ -670,9 +665,7 @@ func (e *ExecutablePlatformRequest) ExecuteForList(context *runtime.UserContext)
 // records an intentional early stop; other callback errors remain failures.
 func (e *ExecutablePlatformRequest) ExecuteForStream(context *runtime.UserContext, chunkSize int, yield func(*Platform) error) error {
 	r := e.request
-	if strings.TrimSpace(r.purposeText) == "" || strings.TrimSpace(r.commentText) == "" {
-		return fmt.Errorf("security audit failure: Comment() and Purpose() must be called before ExecuteForStream()")
-	}
+	if _, err := core.NewQueryIntent(&r.commentText, &r.purposeText); err != nil { return err }
 	if yield == nil {
 		return fmt.Errorf("stream consumer must not be nil")
 	}
@@ -680,17 +673,15 @@ func (e *ExecutablePlatformRequest) ExecuteForStream(context *runtime.UserContex
 	query.Comment(r.commentText).Purpose(r.purposeText)
 	query, err := runtime.CaptureStreamQuery(query, r.queryOptions)
 	if err != nil { return err }
-	authorized, err := context.PrepareQuery(query)
+	authorized, err := context.PrepareEntityQuery(query)
 	if err != nil { return err }
 	dsRaw := context.GetResource("dataService")
 	ds, ok := dsRaw.(data_service.StreamQueryExecutor)
 	if !ok {
 		return fmt.Errorf("dataService does not implement data_service.StreamQueryExecutor")
 	}
-	queryRoot := core.NewEntityRoot()
 	return runtime.ExecuteTypedStream(context, ds, authorized, chunkSize, func(rec core.Record) (*Platform, error) {
-		entity := NewPlatform()
-		entity.AttachEntityRoot(queryRoot)
+		entity := newLoadedPlatform()
 		if err := entity.FromRecord(rec); err != nil { return nil, err }
 		return entity, nil
 	}, yield)
@@ -705,9 +696,7 @@ func (e *ExecutablePlatformRequest) ExecuteRecords(context *runtime.UserContext)
 // so facets can derive their membership query without reapplying root policy.
 func (e *ExecutablePlatformRequest) executeRecords(context *runtime.UserContext) ([]core.Record, *core.SelectQuery, *runtime.FacetPlan, error) {
 	r := e.request
-	if strings.TrimSpace(r.purposeText) == "" || strings.TrimSpace(r.commentText) == "" {
-		return nil, nil, nil, fmt.Errorf("security audit failure: Comment() and Purpose() must be called before ExecuteForList()")
-	}
+	if _, err := core.NewQueryIntent(&r.commentText, &r.purposeText); err != nil { return nil, nil, nil, err }
 	query := r.Query.Clone()
 	query.Comment(r.commentText).Purpose(r.purposeText)
 	query, plan, err := runtime.CaptureQueryPlan(query, r.queryOptions)

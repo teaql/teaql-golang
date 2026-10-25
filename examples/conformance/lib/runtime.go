@@ -1,6 +1,7 @@
 package lib
 
 import (
+	stdcontext "context"
 	"database/sql"
 	"fmt"
 	"os"
@@ -225,20 +226,20 @@ func ServiceRuntimeFromEnv() (*runtime.UserContext, error) {
 
 	context.InsertResource("dataService", executor)
 	context.InsertResource("db", db)
-	context.InsertResource("idGenerator", transport)
+	context.InstallDefaultInternalIdGenerator(transport)
 	return context, nil
 }
 
 // EnsureSchema explicitly reconciles the generated module with the configured database.
 // Installing Module() or starting ServiceRuntimeFromEnv never changes database schema.
 func EnsureSchema(context *runtime.UserContext) error {
+	if err := context.ExecuteSchema(runtime.SchemaExecutorFunc(func(schemaContext stdcontext.Context, metadata runtime.MetadataStore) error {
 	db, ok := context.GetResource("db").(*sql.DB)
 	if !ok || db == nil { return fmt.Errorf("db not found in UserContext") }
-	if err := provider.EnsureSoundex(db); err != nil { return fmt.Errorf("register SQLite soundex: %w", err) }
+	if err := provider.EnsureSoundex(db); err != nil { return fmt.Errorf("register SQLite functions: %w", err) }
 dialect := teaql_sql.SqlDialect(&provider.SqliteDialect{})
-	metadata := context.Metadata
 	for _, statement := range dialect.SchemaSetupSqls() {
-		if _, err := db.Exec(statement); err != nil {
+		if _, err := db.ExecContext(schemaContext, statement); err != nil {
 			return fmt.Errorf("initialize SQL dialect: %w", err)
 		}
 	}
@@ -248,19 +249,24 @@ dialect := teaql_sql.SqlDialect(&provider.SqliteDialect{})
 		if err != nil {
 			return fmt.Errorf("compile schema for %s: %w", entity.Name, err)
 		}
-		if _, err := db.Exec(statement); err != nil {
+		if _, err := db.ExecContext(schemaContext, statement); err != nil {
 			return fmt.Errorf("create table for %s: %w", entity.Name, err)
 		}
+		if err := provider.VerifyExactDecimalSchema(db, entity); err != nil {
+					return fmt.Errorf("verify SQLite schema for %s: %w", entity.Name, err)
+				}
 		indexes, err := defaultDialect.SchemaIndexesSqls(entity)
 		if err != nil {
 			return fmt.Errorf("compile indexes for %s: %w", entity.Name, err)
 		}
 		for _, indexStatement := range indexes {
-		if _, err := db.Exec(indexStatement); err != nil {
+		if _, err := db.ExecContext(schemaContext, indexStatement); err != nil {
 			return fmt.Errorf("create index for %s: %w", entity.Name, err)
 		}
 		}
 	}
+	return nil
+	})); err != nil { return err }
 	if err := ensureGeneratedBootstrap(context); err != nil { return err }
 	return nil
 }

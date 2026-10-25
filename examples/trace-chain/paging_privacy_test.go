@@ -41,7 +41,7 @@ func TestGeneratedPageCountPrivacyAndIndependentGraphSaves(t *testing.T) {
 	purpose := "verify " + privateName + " " + group
 	page, err := lib.Q.CustomerOrders().WithDescriptionIs(group).
 		SelectOrderItemListWith(lib.Q.OrderItems().WithNameIs(privateName).OrderByIdAsc().Limit(2)).
-		OrderByIdAsc().Comment(comment).Purpose(purpose).ExecuteForPage(e.context, 1, 2)
+		OrderByIdAsc().Offset(1).Limit(2).Count().Comment(comment).Purpose(purpose).ExecuteForList(e.context)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -82,7 +82,7 @@ func TestGeneratedPageCountPrivacyAndIndependentGraphSaves(t *testing.T) {
 		if len(path) < 4 || path[0].Name != "Customer Order" || path[len(path)-2].Kind != "provider" || path[len(path)-1].Kind != "sql" {
 			t.Fatal("derived SQL lost canonical request path")
 		}
-		if strings.Contains(statement.ParameterizedSQL, "__teaql_total") {
+		if isExactCountStatement(statement.ParameterizedSQL) {
 			countQueries++
 			if strings.Contains(statement.ParameterizedSQL, "order_item_data") {
 				t.Fatal("COUNT executed the removed relation")
@@ -146,4 +146,10 @@ func TestGeneratedPageCountPrivacyAndIndependentGraphSaves(t *testing.T) {
 	}
 	t.Log("PAGE_OBSERVED " + string(observed))
 	t.Log("GENERATED PAGE PRIVACY PASSED: exact count, bounded graph, independent root/child saves")
+}
+
+// Count() owns its result alias. Recognize the physical aggregate, not a
+// private alias used by the retired ExecuteForPage helper.
+func isExactCountStatement(sql string) bool {
+	return strings.HasPrefix(strings.ToUpper(strings.TrimSpace(sql)), "SELECT COUNT(")
 }
