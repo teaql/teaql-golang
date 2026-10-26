@@ -16,25 +16,31 @@ type TeaQLNotLoadedError = runtime.NotLoadedError
 type ValueExpression[T any] struct {
 	value T
 	present bool
-	err *runtime.NotLoadedError
+	err error
 }
 
 func valueExpression[T any](value T) *ValueExpression[T] { return &ValueExpression[T]{value: value, present: true} }
 func missingExpression[T any]() *ValueExpression[T] { return &ValueExpression[T]{} }
 func notLoadedExpression[T any](err *runtime.NotLoadedError) *ValueExpression[T] { return &ValueExpression[T]{err: err} }
+func invalidExpression[T any](err error) *ValueExpression[T] { return &ValueExpression[T]{err: err} }
+
+func expressionTerminal(err error, terminal string) error {
+	if missing, ok := err.(*runtime.NotLoadedError); ok { return missing.Terminal(terminal) }
+	return err
+}
 
 func (e *ValueExpression[T]) Eval() (T, bool) {
-	if e.err != nil { panic(e.err.Terminal("Eval()")) }
+	if e.err != nil { panic(expressionTerminal(e.err, "Eval()")) }
 	return e.value, e.present
 }
 
 func (e *ValueExpression[T]) TryEval() (T, bool, error) {
-	if e.err != nil { return e.value, false, e.err.Terminal("TryEval()") }
+	if e.err != nil { return e.value, false, expressionTerminal(e.err, "TryEval()") }
 	return e.value, e.present, nil
 }
 
 func (e *ValueExpression[T]) OrElse(fallback T) T {
-	if e.err != nil { panic(e.err.Terminal("OrElse(<fallback>)")) }
+	if e.err != nil { panic(expressionTerminal(e.err, "OrElse(<fallback>)")) }
 	value, present := e.Eval()
 	if !present { return fallback }
 	return value
@@ -124,6 +130,7 @@ func (e *ScalarTypeProbeExpression) RequiredInteger() *ValueExpression[int64] {
 	if !e.value.IsLoaded("required_integer") { return notLoadedExpression[int64](runtime.NewNotLoadedError(path.MarkMissing(), "required_integer")) }
 	raw, ok := e.value.Base().GetDynamic("required_integer")
 		if !ok || raw.IsNull() { return missingExpression[int64]() }
+	if err := core.ValidateInteger32("Scalar Type Probe", "required_integer", raw); err != nil { return invalidExpression[int64](err) }
 	return valueExpression(e.value.RequiredInteger())
 }
 
@@ -134,6 +141,7 @@ func (e *ScalarTypeProbeExpression) OptionalInteger() *ValueExpression[*int64] {
 	if !e.value.IsLoaded("optional_integer") { return notLoadedExpression[*int64](runtime.NewNotLoadedError(path.MarkMissing(), "optional_integer")) }
 	raw, ok := e.value.Base().GetDynamic("optional_integer")
 		if !ok || raw.IsNull() { return missingExpression[*int64]() }
+	if err := core.ValidateInteger32("Scalar Type Probe", "optional_integer", raw); err != nil { return invalidExpression[*int64](err) }
 	return valueExpression(e.value.OptionalInteger())
 }
 

@@ -153,6 +153,13 @@ func (e *OrderLine) teaqlFromRecord(record core.Record, captureLoaded bool) erro
 	if err != nil {
 		return err
 	}
+	if value, present := base.Dynamic["quantity"]; present && !value.IsNull() {
+		if err := core.ValidateInteger32("order_line", "quantity", value); err != nil { return err }
+	}
+
+
+
+
 	e.base = base
 	e.root.Rekey(oldKey, e.EntityKey())
 	e.root.SetOriginalVersion(e.EntityKey(), e.base.Version)

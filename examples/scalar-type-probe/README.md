@@ -43,8 +43,25 @@ before I/O. Eight additional native-updater cases cover both bounds on create
 and update; legal endpoints round-trip through Q/E and audited version 1→2.
 Long remains 64-bit. The fixture reuses the unchanged evaluated model and a
 freshly generated library. This is mutation admission, not qualification of
-legacy corrupt Integer readback, business ID positivity, full canonical relation
+business ID positivity, full canonical relation
 naming, live external databases or an installed-package release.
+
+## Invalid legacy Integer reads
+
+The main `verify.sh` also runs 40 read-side cases per round: eight real SQLite
+corruptions, eight failed `FromRecord` calls with entity/ledger atomicity, and
+24 E terminals (`TryEval`, `Eval`, `OrElse`). Required and optional Integer
+fields reject overflow, underflow, fractional REAL and nonnumeric text. Errors
+identify the canonical field/entity/expected type without retaining raw values.
+A failed read does not write or allocate IDs. Safe projections still leave
+unselected fields NotLoaded. `OrElse` must not disguise an invalid loaded value;
+genuine loaded null and ordinary NotLoaded semantics remain unchanged.
+
+SQL and Base writes in this test are explicitly labelled fault injections.
+Generated audited saves create the rows, generated Q performs the tested reads,
+and generated E supplies the values/errors. Two executions preserve 18 rows
+(16 intentionally corrupt) at version 1; the original valid Integer/Long control
+remains readable. This does not qualify every scalar family or external database.
 
 Time is `core.TimeOfDay`, or `*core.TimeOfDay` when optional. It is neither a
 timestamp nor a duration; zero means midnight. `core.ParseTimeOfDay` validates

@@ -148,6 +148,14 @@ func (e *School) teaqlFromRecord(record core.Record, captureLoaded bool) error {
 	if err != nil {
 		return err
 	}
+	if value, present := base.Dynamic["student_capacity"]; present && !value.IsNull() {
+		if err := core.ValidateInteger32("School", "student_capacity", value); err != nil { return err }
+	}
+
+
+
+
+
 	e.base = base
 	e.root.Rekey(oldKey, e.EntityKey())
 	e.root.SetOriginalVersion(e.EntityKey(), e.base.Version)

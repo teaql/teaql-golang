@@ -7,7 +7,7 @@ const requested=process.env.TEAQL_EXAMPLES_EVIDENCE_DIR;
 const evidence=requested?path.join(path.resolve(requested),'scalar-type-probe'):fs.mkdtempSync(path.join(os.tmpdir(),'teaql-go-scalar-evidence-'));
 if(requested){assert(!fs.existsSync(evidence),'never replace a previous scalar run');fs.mkdirSync(evidence,{recursive:true});}
 const scratch=fs.mkdtempSync(path.join(os.tmpdir(),'teaql-go-scalar-build-')),runner=createOwnedRunner();
-const report={schema:'teaql.go-scalar-example/v2',passed:false,localRuntime:repo,commands:[],rounds:[],typedEntityJsonAccepted:false,
+const report={schema:'teaql.go-scalar-example/v3',passed:false,localRuntime:repo,commands:[],rounds:[],typedEntityJsonAccepted:false,integerReadAccepted:false,
   publicPublication:false,sourceDeleted:false,sharedCachesDeleted:false,testDatabasesDeleted:false};
 function fingerprint(){
   const bytes=fs.readFileSync(path.join(example,'generated-provenance.json')),m=JSON.parse(bytes);
@@ -57,12 +57,15 @@ try{
     const json=[...log.matchAll(/^GO_ENTITY_JSON profile=(camelCase|snake_case|PascalCase) fields=21 exact=true null_not_loaded=true forward=true reverse=true independent_roots=true stale_rejected=true partial_zero_io=true json_zero_io=true id=([1-9][0-9]*)$/gm)];
     assert.equal(json.length,3);assert.deepEqual(json.map(m=>m[1]).sort(),['PascalCase','camelCase','snake_case']);
     assert.equal(new Set(json.map(m=>m[2])).size,3);assert(/^--- PASS: TestGeneratedTypedEntityJSON /m.test(log));
-    report.rounds.push({round,timeEntityId:time[0][1],nonFiniteCases:12,jsonEntityIDs:Object.fromEntries(json.map(m=>[m[1],m[2]]))});assert.equal(fingerprint(),report.provenanceSha256);process.stdout.write(log);
+    assert.equal((log.match(/^CORE_INTEGER_READ_REJECT /gm)||[]).length,40);
+    assert(log.includes('CORE_INTEGER_READ_ORACLE rows='+(round*9)+' version=1 corrupt='+(round*8)+' queries=8 hydration=8 expressions=24 raw_values_redacted=true'));
+    assert(/^--- PASS: TestGeneratedIntegerReadBoundaries \(/m.test(log));
+    report.rounds.push({round,timeEntityId:time[0][1],nonFiniteCases:12,jsonEntityIDs:Object.fromEntries(json.map(m=>[m[1],m[2]])),integerRead:{queryFailures:8,atomicHydrationFailures:8,expressionFailures:24,rows:round*9,corruptRows:round*8,rawValuesRedacted:true}});assert.equal(fingerprint(),report.provenanceSha256);process.stdout.write(log);
   }
   assert.notEqual(report.rounds[0].timeEntityId,report.rounds[1].timeEntityId,'SQLite must not reset between rounds');
   assert.equal(new Set(report.rounds.flatMap(r=>Object.values(r.jsonEntityIDs))).size,6,'JSON database must not reset between rounds');
-  report.databases=['scalars.sqlite','scalars.sqlite.nonfinite.sqlite','scalars.sqlite.typed-time.sqlite','scalars.sqlite.entity-json.sqlite'].map(file=>({file,sha256:sha(fs.readFileSync(path.join(evidence,file)))}));
-  report.typedEntityJsonAccepted=true;report.passed=true;console.log('PASS: generated Go scalar/TimeOfDay/typed-entity-JSON example twice without cleanup');
+  report.databases=['scalars.sqlite','scalars.sqlite.nonfinite.sqlite','scalars.sqlite.typed-time.sqlite','scalars.sqlite.entity-json.sqlite','scalars.sqlite.integer-read.sqlite'].map(file=>({file,sha256:sha(fs.readFileSync(path.join(evidence,file)))}));
+  report.typedEntityJsonAccepted=true;report.integerReadAccepted=true;report.passed=true;console.log('PASS: generated Go scalar/TimeOfDay/typed-entity-JSON/Integer-read example twice without cleanup');
 }catch(error){report.error=error.stack;console.error(error.stack);process.exitCode||=1;}
 finally{
   report.disposedOwnedBytes=runner.safeToClean?ownedBytes(scratch):0;

@@ -16,25 +16,31 @@ type TeaQLNotLoadedError = runtime.NotLoadedError
 type ValueExpression[T any] struct {
 	value T
 	present bool
-	err *runtime.NotLoadedError
+	err error
 }
 
 func valueExpression[T any](value T) *ValueExpression[T] { return &ValueExpression[T]{value: value, present: true} }
 func missingExpression[T any]() *ValueExpression[T] { return &ValueExpression[T]{} }
 func notLoadedExpression[T any](err *runtime.NotLoadedError) *ValueExpression[T] { return &ValueExpression[T]{err: err} }
+func invalidExpression[T any](err error) *ValueExpression[T] { return &ValueExpression[T]{err: err} }
+
+func expressionTerminal(err error, terminal string) error {
+	if missing, ok := err.(*runtime.NotLoadedError); ok { return missing.Terminal(terminal) }
+	return err
+}
 
 func (e *ValueExpression[T]) Eval() (T, bool) {
-	if e.err != nil { panic(e.err.Terminal("Eval()")) }
+	if e.err != nil { panic(expressionTerminal(e.err, "Eval()")) }
 	return e.value, e.present
 }
 
 func (e *ValueExpression[T]) TryEval() (T, bool, error) {
-	if e.err != nil { return e.value, false, e.err.Terminal("TryEval()") }
+	if e.err != nil { return e.value, false, expressionTerminal(e.err, "TryEval()") }
 	return e.value, e.present, nil
 }
 
 func (e *ValueExpression[T]) OrElse(fallback T) T {
-	if e.err != nil { panic(e.err.Terminal("OrElse(<fallback>)")) }
+	if e.err != nil { panic(expressionTerminal(e.err, "OrElse(<fallback>)")) }
 	value, present := e.Eval()
 	if !present { return fallback }
 	return value
@@ -104,6 +110,7 @@ func (e *SchoolExpression) StudentCapacity() *ValueExpression[int64] {
 	if !e.value.IsLoaded("student_capacity") { return notLoadedExpression[int64](runtime.NewNotLoadedError(path.MarkMissing(), "student_capacity")) }
 	raw, ok := e.value.Base().GetDynamic("student_capacity")
 		if !ok || raw.IsNull() { return missingExpression[int64]() }
+	if err := core.ValidateInteger32("School", "student_capacity", raw); err != nil { return invalidExpression[int64](err) }
 	return valueExpression(e.value.StudentCapacity())
 }
 

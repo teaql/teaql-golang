@@ -160,6 +160,31 @@ func (e *ScalarTypeProbe) teaqlFromRecord(record core.Record, captureLoaded bool
 
 
 
+	if value, present := base.Dynamic["required_integer"]; present && !value.IsNull() {
+		if err := core.ValidateInteger32("Scalar Type Probe", "required_integer", value); err != nil { return err }
+	}
+
+	if value, present := base.Dynamic["optional_integer"]; present && !value.IsNull() {
+		if err := core.ValidateInteger32("Scalar Type Probe", "optional_integer", value); err != nil { return err }
+	}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 	e.base = base
 	e.root.Rekey(oldKey, e.EntityKey())
 	e.root.SetOriginalVersion(e.EntityKey(), e.base.Version)

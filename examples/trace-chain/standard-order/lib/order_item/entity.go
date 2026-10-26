@@ -143,6 +143,12 @@ func (e *OrderItem) teaqlFromRecord(record core.Record, captureLoaded bool) erro
 	if err != nil {
 		return err
 	}
+	if value, present := base.Dynamic["quantity"]; present && !value.IsNull() {
+		if err := core.ValidateInteger32("Order Item", "quantity", value); err != nil { return err }
+	}
+
+
+
 	e.base = base
 	e.root.Rekey(oldKey, e.EntityKey())
 	e.root.SetOriginalVersion(e.EntityKey(), e.base.Version)

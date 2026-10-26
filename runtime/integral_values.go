@@ -1,10 +1,6 @@
 package runtime
 
-import (
-	"math"
-
-	"github.com/teaql/teaql-golang/core"
-)
+import "github.com/teaql/teaql-golang/core"
 
 // Model-owned storage types are checked after custom Fix, before the generated
 // graph can allocate IDs or enter a provider. This does not enforce business
@@ -33,10 +29,9 @@ func (c *UserContext) checkIntegralValues(input *CheckAndFixInput, references *d
 			}
 			message = "Expected an exact unsigned 64-bit integer"
 		} else {
-			number, exact := value.TryI64()
-			valid = exact
+			_, valid = value.TryI64()
 			if property.IsInt32 {
-				valid = exact && number >= math.MinInt32 && number <= math.MaxInt32
+				_, valid = value.TryI32()
 				message = "Expected an exact signed 32-bit integer"
 			}
 		}
