@@ -337,7 +337,9 @@ func (e *TaskExecutionLog) TeaqlPreflightGraph(context *runtime.UserContext, int
 		for field, value := range checkedValues {
 			if before, exists := valuesBeforeCheck[field]; !exists || !reflect.DeepEqual(before, value) {
 				e.base.PutDynamic(field, value)
-				e.root.Set(e.EntityKey(), field, value)
+				canonical, mappingErr := context.CanonicalLedgerField(e.EntityName(), field)
+				if mappingErr != nil { return mappingErr }
+				e.root.Set(e.EntityKey(), canonical, value)
 			}
 		}
 		if checkErr != nil { return checkErr }
@@ -417,7 +419,9 @@ func (e *TaskExecutionLog) TeaqlSaveWithinGraph(context *runtime.UserContext, in
 		checkErr := runtime.CheckAndFixGraphEntity(context, &runtime.CheckAndFixInput{Entity: "Task Execution Log", Operation: core.MutationInsert, Values: checkedValues}, e.root, e.EntityKey())
 		for field, value := range checkedValues {
 			if before, exists := valuesBeforeCheck[field]; !exists || !reflect.DeepEqual(before, value) {
-				e.root.Set(e.EntityKey(), field, value)
+				canonical, mappingErr := context.CanonicalLedgerField(e.EntityName(), field)
+				if mappingErr != nil { return nil, mappingErr }
+				e.root.Set(e.EntityKey(), canonical, value)
 			}
 		}
 		if checkErr != nil { return nil, checkErr }
@@ -501,7 +505,9 @@ func (e *TaskExecutionLog) TeaqlSaveWithinGraph(context *runtime.UserContext, in
 		checkErr := runtime.CheckAndFixGraphEntity(context, &runtime.CheckAndFixInput{Entity: "Task Execution Log", Operation: core.MutationUpdate, Values: checkedValues}, e.root, e.EntityKey())
 		for field, value := range checkedValues {
 			if before, exists := valuesBeforeCheck[field]; !exists || !reflect.DeepEqual(before, value) {
-				e.root.Set(e.EntityKey(), field, value)
+				canonical, mappingErr := context.CanonicalLedgerField(e.EntityName(), field)
+				if mappingErr != nil { return nil, mappingErr }
+				e.root.Set(e.EntityKey(), canonical, value)
 			}
 		}
 		if checkErr != nil { return nil, checkErr }
@@ -509,7 +515,8 @@ func (e *TaskExecutionLog) TeaqlSaveWithinGraph(context *runtime.UserContext, in
 		scope, err := core.MutationScopeForEntity(parentScope, e.EntityKey(), intent, e.comment)
 		if err != nil { return nil, err }
 		cmd := core.NewUpdateCommand("Task Execution Log", core.ValU64(e.base.Id))
-		cmd.Values = e.root.Change(e.EntityKey())
+		cmd.Values, err = context.StorageLedgerRecord(e.EntityName(), e.root.Change(e.EntityKey()))
+		if err != nil { return nil, err }
 		// A clean parent still carries the scope for changed descendants, but
 		// must not emit an empty UPDATE or bump its optimistic version.
 		if len(cmd.Values) == 0 {
@@ -601,9 +608,15 @@ func (e *TaskExecutionLog) TaskId() uint64 {
 }
 
 func (e *TaskExecutionLog) UpdateTaskId(value uint64) *TaskExecutionLog {
+	previous, present := e.base.GetDynamic("task_id")
 	e.base.PutDynamic("task_id", core.ValU64(value))
 	e.dirtyFields["task_id"] = true
-	e.root.Set(e.EntityKey(), "task_id", core.ValU64(value))
+	current, _ := e.base.GetDynamic("task_id")
+	if !present || !reflect.DeepEqual(previous, current) {
+		delete(e.relations, "taskEntity")
+		delete(e.loadedRelations, "taskEntity")
+	}
+	e.root.Set(e.EntityKey(), "task", core.ValU64(value))
 	e.loadState["task_id"] = true
 	return e
 }

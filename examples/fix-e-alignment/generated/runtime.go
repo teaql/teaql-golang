@@ -89,7 +89,7 @@ func Module() *runtime.RuntimeModule {
 		descriptor.Property(core.NewPropertyDescriptor("update_time", core.TypeTimestamp).ColumnName("update_time").NotNull())
 		descriptor.Property(core.NewPropertyDescriptor("version", core.TypeI64).ColumnName("version").NotNull().Version())
 		descriptor.Property(core.NewPropertyDescriptor("tenant_id", core.TypeU64).ColumnName("tenant").NotNull())
-		descriptor.Relation(core.NewRelationDescriptor("tenantEntity", "tenant").LocalKey("tenant_id").ForeignKey("id"))
+		descriptor.Relation(core.NewRelationDescriptor("tenantEntity", "tenant").CanonicalKey("tenant").LocalKey("tenant_id").ForeignKey("id"))
 		descriptor.Relation(core.NewRelationDescriptor("orderItemList", "order_item").LocalKey("id").ForeignKey("purchase_order_id").Many())
 		descriptor.AuditMaskFields([]string{})
 		for _, property := range descriptor.Properties { property.LogPolicy = "plain" }
@@ -106,8 +106,8 @@ func Module() *runtime.RuntimeModule {
 		descriptor.Property(core.NewPropertyDescriptor("version", core.TypeI64).ColumnName("version").NotNull().Version())
 		descriptor.Property(core.NewPropertyDescriptor("purchase_order_id", core.TypeU64).ColumnName("purchase_order").NotNull())
 		descriptor.Property(core.NewPropertyDescriptor("tenant_id", core.TypeU64).ColumnName("tenant").NotNull())
-		descriptor.Relation(core.NewRelationDescriptor("purchaseOrderEntity", "purchase_order").LocalKey("purchase_order_id").ForeignKey("id"))
-		descriptor.Relation(core.NewRelationDescriptor("tenantEntity", "tenant").LocalKey("tenant_id").ForeignKey("id"))
+		descriptor.Relation(core.NewRelationDescriptor("purchaseOrderEntity", "purchase_order").CanonicalKey("purchase_order").LocalKey("purchase_order_id").ForeignKey("id"))
+		descriptor.Relation(core.NewRelationDescriptor("tenantEntity", "tenant").CanonicalKey("tenant").LocalKey("tenant_id").ForeignKey("id"))
 		descriptor.AuditMaskFields([]string{})
 		for _, property := range descriptor.Properties { property.LogPolicy = "plain" }
 		module.Entity(descriptor)
@@ -169,14 +169,14 @@ func checkPurchaseOrder(context *runtime.UserContext, input *runtime.CheckAndFix
 		root, err := context.RequireActiveRoot("Tenant")
 		if err != nil {
 			results = append(results, runtime.CheckResult{RuleID: "context_root", CanonicalLocation: runtime.Location().Property("tenant"), SystemValue: "Tenant"})
-		} else if value, exists := input.Values["tenant_id"]; exists && value.V != nil {
+		} else if value, exists := input.Values["tenant"]; exists && value.V != nil {
 			if supplied, ok := value.TryU64(); !ok || supplied != root.ID { results = append(results, runtime.CheckResult{RuleID: "context_root_mismatch", CanonicalLocation: runtime.Location().Property("tenant"), InputValue: value.V, SystemValue: root.ID}) }
 		} else {
-			input.Values["tenant_id"] = core.ValU64(root.ID)
+			input.Values["tenant"] = core.ValU64(root.ID)
 			if err := context.RecordFixEvidence(runtime.FixEvidence{EntityType: "PurchaseOrder", ModelPath: "tenant", Source: runtime.FixEvidenceContext, SourceLabel: "activeRoot:Tenant"}); err != nil { panic(err) }
 		}
 	} else if input.Operation == core.MutationUpdate {
-		if value, exists := input.Values["tenant_id"]; exists && value.V != nil {
+		if value, exists := input.Values["tenant"]; exists && value.V != nil {
 			root, err := context.RequireActiveRoot("Tenant")
 			if err != nil {
 				results = append(results, runtime.CheckResult{RuleID: "context_root", CanonicalLocation: runtime.Location().Property("tenant"), SystemValue: "Tenant"})
@@ -207,7 +207,7 @@ func checkPurchaseOrder(context *runtime.UserContext, input *runtime.CheckAndFix
 	}
 
 
-	if value, exists := input.Values["tenant_id"]; (input.Operation == core.MutationInsert && !exists) || (exists && value.V == nil) {
+	if value, exists := input.Values["tenant"]; (input.Operation == core.MutationInsert && !exists) || (exists && value.V == nil) {
 		results = append(results, runtime.CheckResult{RuleID: "required", CanonicalLocation: runtime.Location().Property("tenant")})
 	}
 
@@ -243,14 +243,14 @@ func checkOrderItem(context *runtime.UserContext, input *runtime.CheckAndFixInpu
 		root, err := context.RequireActiveRoot("Tenant")
 		if err != nil {
 			results = append(results, runtime.CheckResult{RuleID: "context_root", CanonicalLocation: runtime.Location().Property("tenant"), SystemValue: "Tenant"})
-		} else if value, exists := input.Values["tenant_id"]; exists && value.V != nil {
+		} else if value, exists := input.Values["tenant"]; exists && value.V != nil {
 			if supplied, ok := value.TryU64(); !ok || supplied != root.ID { results = append(results, runtime.CheckResult{RuleID: "context_root_mismatch", CanonicalLocation: runtime.Location().Property("tenant"), InputValue: value.V, SystemValue: root.ID}) }
 		} else {
-			input.Values["tenant_id"] = core.ValU64(root.ID)
+			input.Values["tenant"] = core.ValU64(root.ID)
 			if err := context.RecordFixEvidence(runtime.FixEvidence{EntityType: "OrderItem", ModelPath: "tenant", Source: runtime.FixEvidenceContext, SourceLabel: "activeRoot:Tenant"}); err != nil { panic(err) }
 		}
 	} else if input.Operation == core.MutationUpdate {
-		if value, exists := input.Values["tenant_id"]; exists && value.V != nil {
+		if value, exists := input.Values["tenant"]; exists && value.V != nil {
 			root, err := context.RequireActiveRoot("Tenant")
 			if err != nil {
 				results = append(results, runtime.CheckResult{RuleID: "context_root", CanonicalLocation: runtime.Location().Property("tenant"), SystemValue: "Tenant"})
@@ -281,11 +281,11 @@ func checkOrderItem(context *runtime.UserContext, input *runtime.CheckAndFixInpu
 	}
 
 
-	if value, exists := input.Values["purchase_order_id"]; (input.Operation == core.MutationInsert && !exists) || (exists && value.V == nil) {
+	if value, exists := input.Values["purchase_order"]; (input.Operation == core.MutationInsert && !exists) || (exists && value.V == nil) {
 		results = append(results, runtime.CheckResult{RuleID: "required", CanonicalLocation: runtime.Location().Property("purchase_order")})
 	}
 
-	if value, exists := input.Values["tenant_id"]; (input.Operation == core.MutationInsert && !exists) || (exists && value.V == nil) {
+	if value, exists := input.Values["tenant"]; (input.Operation == core.MutationInsert && !exists) || (exists && value.V == nil) {
 		results = append(results, runtime.CheckResult{RuleID: "required", CanonicalLocation: runtime.Location().Property("tenant")})
 	}
 
@@ -348,7 +348,7 @@ func ModuleWithBehaviors() *runtime.RuntimeModule {
 		descriptor.Property(core.NewPropertyDescriptor("update_time", core.TypeTimestamp).ColumnName("update_time").NotNull())
 		descriptor.Property(core.NewPropertyDescriptor("version", core.TypeI64).ColumnName("version").NotNull().Version())
 		descriptor.Property(core.NewPropertyDescriptor("tenant_id", core.TypeU64).ColumnName("tenant").NotNull())
-		descriptor.Relation(core.NewRelationDescriptor("tenantEntity", "tenant").LocalKey("tenant_id").ForeignKey("id"))
+		descriptor.Relation(core.NewRelationDescriptor("tenantEntity", "tenant").CanonicalKey("tenant").LocalKey("tenant_id").ForeignKey("id"))
 		descriptor.Relation(core.NewRelationDescriptor("orderItemList", "order_item").LocalKey("id").ForeignKey("purchase_order_id").Many())
 		descriptor.AuditMaskFields([]string{})
 		for _, property := range descriptor.Properties { property.LogPolicy = "plain" }
@@ -368,8 +368,8 @@ func ModuleWithBehaviors() *runtime.RuntimeModule {
 		descriptor.Property(core.NewPropertyDescriptor("version", core.TypeI64).ColumnName("version").NotNull().Version())
 		descriptor.Property(core.NewPropertyDescriptor("purchase_order_id", core.TypeU64).ColumnName("purchase_order").NotNull())
 		descriptor.Property(core.NewPropertyDescriptor("tenant_id", core.TypeU64).ColumnName("tenant").NotNull())
-		descriptor.Relation(core.NewRelationDescriptor("purchaseOrderEntity", "purchase_order").LocalKey("purchase_order_id").ForeignKey("id"))
-		descriptor.Relation(core.NewRelationDescriptor("tenantEntity", "tenant").LocalKey("tenant_id").ForeignKey("id"))
+		descriptor.Relation(core.NewRelationDescriptor("purchaseOrderEntity", "purchase_order").CanonicalKey("purchase_order").LocalKey("purchase_order_id").ForeignKey("id"))
+		descriptor.Relation(core.NewRelationDescriptor("tenantEntity", "tenant").CanonicalKey("tenant").LocalKey("tenant_id").ForeignKey("id"))
 		descriptor.AuditMaskFields([]string{})
 		for _, property := range descriptor.Properties { property.LogPolicy = "plain" }
 		module.EntityWithBehavior(

@@ -89,7 +89,7 @@ func Module() *runtime.RuntimeModule {
 		descriptor.Property(core.NewPropertyDescriptor("description", core.TypeText).ColumnName("description").NotNull())
 		descriptor.Property(core.NewPropertyDescriptor("version", core.TypeI64).ColumnName("version").NotNull().Version())
 		descriptor.Property(core.NewPropertyDescriptor("platform_id", core.TypeU64).ColumnName("platform").NotNull())
-		descriptor.Relation(core.NewRelationDescriptor("platformEntity", "Platform").LocalKey("platform_id").ForeignKey("id"))
+		descriptor.Relation(core.NewRelationDescriptor("platformEntity", "Platform").CanonicalKey("platform").LocalKey("platform_id").ForeignKey("id"))
 		descriptor.Relation(core.NewRelationDescriptor("orderItemList", "Order Item").LocalKey("id").ForeignKey("customer_order_id").Many())
 		descriptor.Relation(core.NewRelationDescriptor("paymentList", "Payment").LocalKey("id").ForeignKey("customer_order_id").Many())
 		descriptor.Relation(core.NewRelationDescriptor("shipmentList", "Shipment").LocalKey("id").ForeignKey("customer_order_id").Many())
@@ -104,7 +104,7 @@ func Module() *runtime.RuntimeModule {
 		descriptor.Property(core.NewPropertyDescriptor("name", core.TypeText).ColumnName("name").NotNull())
 		descriptor.Property(core.NewPropertyDescriptor("version", core.TypeI64).ColumnName("version").NotNull().Version())
 		descriptor.Property(core.NewPropertyDescriptor("customer_order_id", core.TypeU64).ColumnName("customer_order").NotNull())
-		descriptor.Relation(core.NewRelationDescriptor("customerOrderEntity", "Customer Order").LocalKey("customer_order_id").ForeignKey("id"))
+		descriptor.Relation(core.NewRelationDescriptor("customerOrderEntity", "Customer Order").CanonicalKey("customer_order").LocalKey("customer_order_id").ForeignKey("id"))
 		descriptor.AuditMaskFields([]string{"name"})
 		for _, property := range descriptor.Properties { property.LogPolicy = "plain" }
 		module.Entity(descriptor)
@@ -116,7 +116,7 @@ func Module() *runtime.RuntimeModule {
 		descriptor.Property(core.NewPropertyDescriptor("reference_code", core.TypeText).ColumnName("reference_code").NotNull())
 		descriptor.Property(core.NewPropertyDescriptor("version", core.TypeI64).ColumnName("version").NotNull().Version())
 		descriptor.Property(core.NewPropertyDescriptor("customer_order_id", core.TypeU64).ColumnName("customer_order").NotNull())
-		descriptor.Relation(core.NewRelationDescriptor("customerOrderEntity", "Customer Order").LocalKey("customer_order_id").ForeignKey("id"))
+		descriptor.Relation(core.NewRelationDescriptor("customerOrderEntity", "Customer Order").CanonicalKey("customer_order").LocalKey("customer_order_id").ForeignKey("id"))
 		descriptor.Relation(core.NewRelationDescriptor("paymentAttemptList", "Payment Attempt").LocalKey("id").ForeignKey("payment_id").Many())
 		descriptor.AuditMaskFields([]string{})
 		for _, property := range descriptor.Properties { property.LogPolicy = "plain" }
@@ -129,7 +129,7 @@ func Module() *runtime.RuntimeModule {
 		descriptor.Property(core.NewPropertyDescriptor("reference_code", core.TypeText).ColumnName("reference_code").NotNull())
 		descriptor.Property(core.NewPropertyDescriptor("version", core.TypeI64).ColumnName("version").NotNull().Version())
 		descriptor.Property(core.NewPropertyDescriptor("payment_id", core.TypeU64).ColumnName("payment").NotNull())
-		descriptor.Relation(core.NewRelationDescriptor("paymentEntity", "Payment").LocalKey("payment_id").ForeignKey("id"))
+		descriptor.Relation(core.NewRelationDescriptor("paymentEntity", "Payment").CanonicalKey("payment").LocalKey("payment_id").ForeignKey("id"))
 		descriptor.AuditMaskFields([]string{})
 		for _, property := range descriptor.Properties { property.LogPolicy = "plain" }
 		module.Entity(descriptor)
@@ -141,7 +141,7 @@ func Module() *runtime.RuntimeModule {
 		descriptor.Property(core.NewPropertyDescriptor("reference_code", core.TypeText).ColumnName("reference_code").NotNull())
 		descriptor.Property(core.NewPropertyDescriptor("version", core.TypeI64).ColumnName("version").NotNull().Version())
 		descriptor.Property(core.NewPropertyDescriptor("customer_order_id", core.TypeU64).ColumnName("customer_order").NotNull())
-		descriptor.Relation(core.NewRelationDescriptor("customerOrderEntity", "Customer Order").LocalKey("customer_order_id").ForeignKey("id"))
+		descriptor.Relation(core.NewRelationDescriptor("customerOrderEntity", "Customer Order").CanonicalKey("customer_order").LocalKey("customer_order_id").ForeignKey("id"))
 		descriptor.AuditMaskFields([]string{})
 		for _, property := range descriptor.Properties { property.LogPolicy = "plain" }
 		module.Entity(descriptor)
@@ -205,7 +205,7 @@ func checkPlatform(context *runtime.UserContext, input *runtime.CheckAndFixInput
 
 func checkCustomerOrder(context *runtime.UserContext, input *runtime.CheckAndFixInput) []runtime.CheckResult {
 	results := make([]runtime.CheckResult, 0)
-	if value, exists := input.Values["platform_id"]; (input.Operation == core.MutationInsert && !exists) || (exists && value.V == nil) {
+	if value, exists := input.Values["platform"]; (input.Operation == core.MutationInsert && !exists) || (exists && value.V == nil) {
 		results = append(results, runtime.CheckResult{RuleID: "required", CanonicalLocation: runtime.Location().Property("platform")})
 	}
 
@@ -229,7 +229,7 @@ func checkCustomerOrder(context *runtime.UserContext, input *runtime.CheckAndFix
 
 func checkOrderItem(context *runtime.UserContext, input *runtime.CheckAndFixInput) []runtime.CheckResult {
 	results := make([]runtime.CheckResult, 0)
-	if value, exists := input.Values["customer_order_id"]; (input.Operation == core.MutationInsert && !exists) || (exists && value.V == nil) {
+	if value, exists := input.Values["customer_order"]; (input.Operation == core.MutationInsert && !exists) || (exists && value.V == nil) {
 		results = append(results, runtime.CheckResult{RuleID: "required", CanonicalLocation: runtime.Location().Property("customer_order")})
 	}
 
@@ -246,7 +246,7 @@ func checkOrderItem(context *runtime.UserContext, input *runtime.CheckAndFixInpu
 
 func checkPayment(context *runtime.UserContext, input *runtime.CheckAndFixInput) []runtime.CheckResult {
 	results := make([]runtime.CheckResult, 0)
-	if value, exists := input.Values["customer_order_id"]; (input.Operation == core.MutationInsert && !exists) || (exists && value.V == nil) {
+	if value, exists := input.Values["customer_order"]; (input.Operation == core.MutationInsert && !exists) || (exists && value.V == nil) {
 		results = append(results, runtime.CheckResult{RuleID: "required", CanonicalLocation: runtime.Location().Property("customer_order")})
 	}
 
@@ -263,7 +263,7 @@ func checkPayment(context *runtime.UserContext, input *runtime.CheckAndFixInput)
 
 func checkPaymentAttempt(context *runtime.UserContext, input *runtime.CheckAndFixInput) []runtime.CheckResult {
 	results := make([]runtime.CheckResult, 0)
-	if value, exists := input.Values["payment_id"]; (input.Operation == core.MutationInsert && !exists) || (exists && value.V == nil) {
+	if value, exists := input.Values["payment"]; (input.Operation == core.MutationInsert && !exists) || (exists && value.V == nil) {
 		results = append(results, runtime.CheckResult{RuleID: "required", CanonicalLocation: runtime.Location().Property("payment")})
 	}
 
@@ -280,7 +280,7 @@ func checkPaymentAttempt(context *runtime.UserContext, input *runtime.CheckAndFi
 
 func checkShipment(context *runtime.UserContext, input *runtime.CheckAndFixInput) []runtime.CheckResult {
 	results := make([]runtime.CheckResult, 0)
-	if value, exists := input.Values["customer_order_id"]; (input.Operation == core.MutationInsert && !exists) || (exists && value.V == nil) {
+	if value, exists := input.Values["customer_order"]; (input.Operation == core.MutationInsert && !exists) || (exists && value.V == nil) {
 		results = append(results, runtime.CheckResult{RuleID: "required", CanonicalLocation: runtime.Location().Property("customer_order")})
 	}
 
@@ -319,7 +319,7 @@ func ModuleWithBehaviors() *runtime.RuntimeModule {
 		descriptor.Property(core.NewPropertyDescriptor("description", core.TypeText).ColumnName("description").NotNull())
 		descriptor.Property(core.NewPropertyDescriptor("version", core.TypeI64).ColumnName("version").NotNull().Version())
 		descriptor.Property(core.NewPropertyDescriptor("platform_id", core.TypeU64).ColumnName("platform").NotNull())
-		descriptor.Relation(core.NewRelationDescriptor("platformEntity", "Platform").LocalKey("platform_id").ForeignKey("id"))
+		descriptor.Relation(core.NewRelationDescriptor("platformEntity", "Platform").CanonicalKey("platform").LocalKey("platform_id").ForeignKey("id"))
 		descriptor.Relation(core.NewRelationDescriptor("orderItemList", "Order Item").LocalKey("id").ForeignKey("customer_order_id").Many())
 		descriptor.Relation(core.NewRelationDescriptor("paymentList", "Payment").LocalKey("id").ForeignKey("customer_order_id").Many())
 		descriptor.Relation(core.NewRelationDescriptor("shipmentList", "Shipment").LocalKey("id").ForeignKey("customer_order_id").Many())
@@ -337,7 +337,7 @@ func ModuleWithBehaviors() *runtime.RuntimeModule {
 		descriptor.Property(core.NewPropertyDescriptor("name", core.TypeText).ColumnName("name").NotNull())
 		descriptor.Property(core.NewPropertyDescriptor("version", core.TypeI64).ColumnName("version").NotNull().Version())
 		descriptor.Property(core.NewPropertyDescriptor("customer_order_id", core.TypeU64).ColumnName("customer_order").NotNull())
-		descriptor.Relation(core.NewRelationDescriptor("customerOrderEntity", "Customer Order").LocalKey("customer_order_id").ForeignKey("id"))
+		descriptor.Relation(core.NewRelationDescriptor("customerOrderEntity", "Customer Order").CanonicalKey("customer_order").LocalKey("customer_order_id").ForeignKey("id"))
 		descriptor.AuditMaskFields([]string{"name"})
 		for _, property := range descriptor.Properties { property.LogPolicy = "plain" }
 		module.EntityWithBehavior(
@@ -352,7 +352,7 @@ func ModuleWithBehaviors() *runtime.RuntimeModule {
 		descriptor.Property(core.NewPropertyDescriptor("reference_code", core.TypeText).ColumnName("reference_code").NotNull())
 		descriptor.Property(core.NewPropertyDescriptor("version", core.TypeI64).ColumnName("version").NotNull().Version())
 		descriptor.Property(core.NewPropertyDescriptor("customer_order_id", core.TypeU64).ColumnName("customer_order").NotNull())
-		descriptor.Relation(core.NewRelationDescriptor("customerOrderEntity", "Customer Order").LocalKey("customer_order_id").ForeignKey("id"))
+		descriptor.Relation(core.NewRelationDescriptor("customerOrderEntity", "Customer Order").CanonicalKey("customer_order").LocalKey("customer_order_id").ForeignKey("id"))
 		descriptor.Relation(core.NewRelationDescriptor("paymentAttemptList", "Payment Attempt").LocalKey("id").ForeignKey("payment_id").Many())
 		descriptor.AuditMaskFields([]string{})
 		for _, property := range descriptor.Properties { property.LogPolicy = "plain" }
@@ -368,7 +368,7 @@ func ModuleWithBehaviors() *runtime.RuntimeModule {
 		descriptor.Property(core.NewPropertyDescriptor("reference_code", core.TypeText).ColumnName("reference_code").NotNull())
 		descriptor.Property(core.NewPropertyDescriptor("version", core.TypeI64).ColumnName("version").NotNull().Version())
 		descriptor.Property(core.NewPropertyDescriptor("payment_id", core.TypeU64).ColumnName("payment").NotNull())
-		descriptor.Relation(core.NewRelationDescriptor("paymentEntity", "Payment").LocalKey("payment_id").ForeignKey("id"))
+		descriptor.Relation(core.NewRelationDescriptor("paymentEntity", "Payment").CanonicalKey("payment").LocalKey("payment_id").ForeignKey("id"))
 		descriptor.AuditMaskFields([]string{})
 		for _, property := range descriptor.Properties { property.LogPolicy = "plain" }
 		module.EntityWithBehavior(
@@ -383,7 +383,7 @@ func ModuleWithBehaviors() *runtime.RuntimeModule {
 		descriptor.Property(core.NewPropertyDescriptor("reference_code", core.TypeText).ColumnName("reference_code").NotNull())
 		descriptor.Property(core.NewPropertyDescriptor("version", core.TypeI64).ColumnName("version").NotNull().Version())
 		descriptor.Property(core.NewPropertyDescriptor("customer_order_id", core.TypeU64).ColumnName("customer_order").NotNull())
-		descriptor.Relation(core.NewRelationDescriptor("customerOrderEntity", "Customer Order").LocalKey("customer_order_id").ForeignKey("id"))
+		descriptor.Relation(core.NewRelationDescriptor("customerOrderEntity", "Customer Order").CanonicalKey("customer_order").LocalKey("customer_order_id").ForeignKey("id"))
 		descriptor.AuditMaskFields([]string{})
 		for _, property := range descriptor.Properties { property.LogPolicy = "plain" }
 		module.EntityWithBehavior(

@@ -16,7 +16,7 @@ func CheckAndFixGraphEntity(context *UserContext, input *CheckAndFixInput, ledge
 	if input == nil {
 		return nil
 	}
-	return context.checkAndFixWithReferences(input, context.captureDeferredReferences(input, ledger, owner))
+	return context.checkAndFixStorage(input, ledger, owner)
 }
 
 type deferredReference struct {
@@ -55,7 +55,11 @@ func (c *UserContext) captureDeferredReferences(input *CheckAndFixInput, ledger 
 		if !propertyIsReference {
 			continue
 		}
-		value, exists := input.Values[relation.LocKey]
+		field, err := core.CanonicalLedgerField(entity, relation.LocKey)
+		if err != nil {
+			continue // The mapping boundary rejects ambiguous relation metadata.
+		}
+		value, exists := input.Values[field]
 		temporary, typed := value.V.(int64)
 		if !exists || !typed || temporary >= 0 {
 			continue
@@ -63,7 +67,7 @@ func (c *UserContext) captureDeferredReferences(input *CheckAndFixInput, ledger 
 		if state == nil {
 			state = &deferredReferenceState{ledger: ledger, owner: owner}
 		}
-		state.fields = append(state.fields, deferredReference{field: relation.LocKey, value: temporary})
+		state.fields = append(state.fields, deferredReference{field: field, value: temporary})
 		state.targets = append(state.targets, core.NewEntityKey(relation.TargetEntity, value))
 	}
 	if state == nil {

@@ -1605,6 +1605,9 @@ func (c *UserContext) checkAndFix(input *CheckAndFixInput) error {
 func (c *UserContext) checkAndFixWithReferences(input *CheckAndFixInput, references *deferredReferenceState) error {
 	var results []CheckResult
 	entity, operation := input.Entity, input.Operation
+	if err := c.mapCheckerInput(input, true); err != nil {
+		return checkerMappingError(entity, err)
+	}
 	if c.checkerRegistry != nil {
 		if input.Now.IsZero() {
 			input.Now = c.FixTime()
@@ -1617,6 +1620,9 @@ func (c *UserContext) checkAndFixWithReferences(input *CheckAndFixInput, referen
 		results = append(results, CheckResult{RuleID: "invalid_type", EntityType: entity,
 			CanonicalLocation: Location(), Message: "Fix cannot change mutation identity or operation"})
 	} else {
+		if err := c.mapCheckerInput(input, true); err != nil {
+			return checkerMappingError(entity, err)
+		}
 		references.revalidate()
 		results = append(results, c.checkFiniteFloatingValues(input)...)
 		results = append(results, c.checkIntegralValues(input, references)...)

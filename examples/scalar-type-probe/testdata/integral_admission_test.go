@@ -25,7 +25,11 @@ type injectedIntegralFix struct {
 
 func (fix *injectedIntegralFix) CheckAndFix(_ *runtime.UserContext, input *runtime.CheckAndFixInput) []runtime.CheckResult {
 	fix.calls++
-	input.Values[fix.field] = fix.value
+	field := fix.field
+	if field == "type_platform_id" {
+		field = "type_platform"
+	}
+	input.Values[field] = fix.value
 	return nil
 }
 
@@ -87,8 +91,12 @@ func TestGeneratedIntegralAdmissionAfterCustomFix(t *testing.T) {
 					t.Fatalf("expected structured Check, got %T: %v", saveErr, saveErr)
 				}
 				found := false
+				canonical := tc.field
+				if canonical == "type_platform_id" {
+					canonical = "type_platform"
+				}
 				for _, result := range checked.CheckResults {
-					if result.RuleID == "invalid_type" && result.ModelPath() == tc.field {
+					if result.RuleID == "invalid_type" && result.ModelPath() == canonical {
 						found = true
 					}
 					if _, err := json.Marshal(result.ToWire(runtime.JsonFieldCamelCase)); err != nil {

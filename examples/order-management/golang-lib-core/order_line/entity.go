@@ -392,7 +392,9 @@ func (e *OrderLine) TeaqlPreflightGraph(context *runtime.UserContext, intent cor
 		for field, value := range checkedValues {
 			if before, exists := valuesBeforeCheck[field]; !exists || !reflect.DeepEqual(before, value) {
 				e.base.PutDynamic(field, value)
-				e.root.Set(e.EntityKey(), field, value)
+				canonical, mappingErr := context.CanonicalLedgerField(e.EntityName(), field)
+				if mappingErr != nil { return mappingErr }
+				e.root.Set(e.EntityKey(), canonical, value)
 			}
 		}
 		if checkErr != nil { return checkErr }
@@ -472,7 +474,9 @@ func (e *OrderLine) TeaqlSaveWithinGraph(context *runtime.UserContext, intent co
 		checkErr := runtime.CheckAndFixGraphEntity(context, &runtime.CheckAndFixInput{Entity: "order_line", Operation: core.MutationInsert, Values: checkedValues}, e.root, e.EntityKey())
 		for field, value := range checkedValues {
 			if before, exists := valuesBeforeCheck[field]; !exists || !reflect.DeepEqual(before, value) {
-				e.root.Set(e.EntityKey(), field, value)
+				canonical, mappingErr := context.CanonicalLedgerField(e.EntityName(), field)
+				if mappingErr != nil { return nil, mappingErr }
+				e.root.Set(e.EntityKey(), canonical, value)
 			}
 		}
 		if checkErr != nil { return nil, checkErr }
@@ -556,7 +560,9 @@ func (e *OrderLine) TeaqlSaveWithinGraph(context *runtime.UserContext, intent co
 		checkErr := runtime.CheckAndFixGraphEntity(context, &runtime.CheckAndFixInput{Entity: "order_line", Operation: core.MutationUpdate, Values: checkedValues}, e.root, e.EntityKey())
 		for field, value := range checkedValues {
 			if before, exists := valuesBeforeCheck[field]; !exists || !reflect.DeepEqual(before, value) {
-				e.root.Set(e.EntityKey(), field, value)
+				canonical, mappingErr := context.CanonicalLedgerField(e.EntityName(), field)
+				if mappingErr != nil { return nil, mappingErr }
+				e.root.Set(e.EntityKey(), canonical, value)
 			}
 		}
 		if checkErr != nil { return nil, checkErr }
@@ -564,7 +570,8 @@ func (e *OrderLine) TeaqlSaveWithinGraph(context *runtime.UserContext, intent co
 		scope, err := core.MutationScopeForEntity(parentScope, e.EntityKey(), intent, e.comment)
 		if err != nil { return nil, err }
 		cmd := core.NewUpdateCommand("order_line", core.ValU64(e.base.Id))
-		cmd.Values = e.root.Change(e.EntityKey())
+		cmd.Values, err = context.StorageLedgerRecord(e.EntityName(), e.root.Change(e.EntityKey()))
+		if err != nil { return nil, err }
 		// A clean parent still carries the scope for changed descendants, but
 		// must not emit an empty UPDATE or bump its optimistic version.
 		if len(cmd.Values) == 0 {
@@ -682,9 +689,15 @@ func (e *OrderLine) CustomerOrderId() uint64 {
 }
 
 func (e *OrderLine) UpdateCustomerOrderId(value uint64) *OrderLine {
+	previous, present := e.base.GetDynamic("customer_order_id")
 	e.base.PutDynamic("customer_order_id", core.ValU64(value))
 	e.dirtyFields["customer_order_id"] = true
-	e.root.Set(e.EntityKey(), "customer_order_id", core.ValU64(value))
+	current, _ := e.base.GetDynamic("customer_order_id")
+	if !present || !reflect.DeepEqual(previous, current) {
+		delete(e.relations, "customerOrderEntity")
+		delete(e.loadedRelations, "customerOrderEntity")
+	}
+	e.root.Set(e.EntityKey(), "customer_order", core.ValU64(value))
 	e.loadState["customer_order_id"] = true
 	return e
 }
@@ -698,9 +711,15 @@ func (e *OrderLine) ProductId() uint64 {
 }
 
 func (e *OrderLine) UpdateProductId(value uint64) *OrderLine {
+	previous, present := e.base.GetDynamic("product_id")
 	e.base.PutDynamic("product_id", core.ValU64(value))
 	e.dirtyFields["product_id"] = true
-	e.root.Set(e.EntityKey(), "product_id", core.ValU64(value))
+	current, _ := e.base.GetDynamic("product_id")
+	if !present || !reflect.DeepEqual(previous, current) {
+		delete(e.relations, "productEntity")
+		delete(e.loadedRelations, "productEntity")
+	}
+	e.root.Set(e.EntityKey(), "product", core.ValU64(value))
 	e.loadState["product_id"] = true
 	return e
 }
@@ -714,9 +733,15 @@ func (e *OrderLine) CommercePlatformId() uint64 {
 }
 
 func (e *OrderLine) UpdateCommercePlatformId(value uint64) *OrderLine {
+	previous, present := e.base.GetDynamic("commerce_platform_id")
 	e.base.PutDynamic("commerce_platform_id", core.ValU64(value))
 	e.dirtyFields["commerce_platform_id"] = true
-	e.root.Set(e.EntityKey(), "commerce_platform_id", core.ValU64(value))
+	current, _ := e.base.GetDynamic("commerce_platform_id")
+	if !present || !reflect.DeepEqual(previous, current) {
+		delete(e.relations, "commercePlatformEntity")
+		delete(e.loadedRelations, "commercePlatformEntity")
+	}
+	e.root.Set(e.EntityKey(), "commerce_platform", core.ValU64(value))
 	e.loadState["commerce_platform_id"] = true
 	return e
 }

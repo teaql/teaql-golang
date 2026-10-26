@@ -16,7 +16,13 @@ func (c *UserContext) checkIntegralValues(input *CheckAndFixInput, references *d
 		if property.DataType != core.TypeI64 && property.DataType != core.TypeU64 {
 			continue
 		}
-		value, exists := input.Values[property.Name]
+		field, err := core.CanonicalLedgerField(entity, property.Name)
+		if err != nil {
+			results = append(results, CheckResult{RuleID: "invalid_type", EntityType: input.Entity,
+				CanonicalLocation: Location(), Message: err.Error()})
+			continue
+		}
+		value, exists := input.Values[field]
 		if !exists || value.IsNull() {
 			continue
 		}
@@ -25,7 +31,7 @@ func (c *UserContext) checkIntegralValues(input *CheckAndFixInput, references *d
 		if property.DataType == core.TypeU64 {
 			_, valid = value.TryU64()
 			if !valid {
-				valid = references.allows(property.Name, value)
+				valid = references.allows(field, value)
 			}
 			message = "Expected an exact unsigned 64-bit integer"
 		} else {
@@ -37,7 +43,7 @@ func (c *UserContext) checkIntegralValues(input *CheckAndFixInput, references *d
 		}
 		if !valid {
 			results = append(results, CheckResult{RuleID: "invalid_type", EntityType: input.Entity,
-				CanonicalLocation: Location().Property(property.Name), Message: message})
+				CanonicalLocation: Location().Property(field), Message: message})
 		}
 	}
 	return results

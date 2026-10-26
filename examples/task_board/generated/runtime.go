@@ -266,7 +266,7 @@ func Module() *runtime.RuntimeModule {
 		descriptor.Property(core.NewPropertyDescriptor("progress", core.TypeDecimal).ColumnName("progress").NotNull())
 		descriptor.Property(core.NewPropertyDescriptor("version", core.TypeI64).ColumnName("version").NotNull().Version())
 		descriptor.Property(core.NewPropertyDescriptor("platform_id", core.TypeU64).ColumnName("platform").NotNull())
-		descriptor.Relation(core.NewRelationDescriptor("platformEntity", "Platform").LocalKey("platform_id").ForeignKey("id"))
+		descriptor.Relation(core.NewRelationDescriptor("platformEntity", "Platform").CanonicalKey("platform").LocalKey("platform_id").ForeignKey("id"))
 		descriptor.Relation(core.NewRelationDescriptor("taskList", "Task").LocalKey("id").ForeignKey("status_id").Many())
 		descriptor.AuditMaskFields([]string{})
 		for _, property := range descriptor.Properties { property.LogPolicy = "plain" }
@@ -280,8 +280,8 @@ func Module() *runtime.RuntimeModule {
 		descriptor.Property(core.NewPropertyDescriptor("version", core.TypeI64).ColumnName("version").NotNull().Version())
 		descriptor.Property(core.NewPropertyDescriptor("status_id", core.TypeU64).ColumnName("status").NotNull())
 		descriptor.Property(core.NewPropertyDescriptor("platform_id", core.TypeU64).ColumnName("platform").NotNull())
-		descriptor.Relation(core.NewRelationDescriptor("statusEntity", "Task Status").LocalKey("status_id").ForeignKey("id"))
-		descriptor.Relation(core.NewRelationDescriptor("platformEntity", "Platform").LocalKey("platform_id").ForeignKey("id"))
+		descriptor.Relation(core.NewRelationDescriptor("statusEntity", "Task Status").CanonicalKey("status").LocalKey("status_id").ForeignKey("id"))
+		descriptor.Relation(core.NewRelationDescriptor("platformEntity", "Platform").CanonicalKey("platform").LocalKey("platform_id").ForeignKey("id"))
 		descriptor.Relation(core.NewRelationDescriptor("taskExecutionLogList", "Task Execution Log").LocalKey("id").ForeignKey("task_id").Many())
 		descriptor.AuditMaskFields([]string{})
 		for _, property := range descriptor.Properties { property.LogPolicy = "plain" }
@@ -295,7 +295,7 @@ func Module() *runtime.RuntimeModule {
 		descriptor.Property(core.NewPropertyDescriptor("detail", core.TypeText).ColumnName("detail").NotNull())
 		descriptor.Property(core.NewPropertyDescriptor("version", core.TypeI64).ColumnName("version").NotNull().Version())
 		descriptor.Property(core.NewPropertyDescriptor("task_id", core.TypeU64).ColumnName("task").NotNull())
-		descriptor.Relation(core.NewRelationDescriptor("taskEntity", "Task").LocalKey("task_id").ForeignKey("id"))
+		descriptor.Relation(core.NewRelationDescriptor("taskEntity", "Task").CanonicalKey("task").LocalKey("task_id").ForeignKey("id"))
 		descriptor.AuditMaskFields([]string{"detail"})
 		for _, property := range descriptor.Properties { property.LogPolicy = "plain" }
 		module.Entity(descriptor)
@@ -402,7 +402,7 @@ func checkTaskStatus(context *runtime.UserContext, input *runtime.CheckAndFixInp
 		results = append(results, runtime.CheckResult{RuleID: "required", CanonicalLocation: runtime.Location().Property("progress")})
 	}
 
-	if value, exists := input.Values["platform_id"]; (input.Operation == core.MutationInsert && !exists) || (exists && value.V == nil) {
+	if value, exists := input.Values["platform"]; (input.Operation == core.MutationInsert && !exists) || (exists && value.V == nil) {
 		results = append(results, runtime.CheckResult{RuleID: "required", CanonicalLocation: runtime.Location().Property("platform")})
 	}
 
@@ -422,11 +422,11 @@ func checkTask(context *runtime.UserContext, input *runtime.CheckAndFixInput) []
 		if text, ok := value.V.(string); ok && len([]rune(text)) > 200 { results = append(results, runtime.CheckResult{RuleID: "max_length", CanonicalLocation: runtime.Location().Property("name"), InputValue: text, SystemValue: 200}) }
 	}
 
-	if value, exists := input.Values["status_id"]; (input.Operation == core.MutationInsert && !exists) || (exists && value.V == nil) {
+	if value, exists := input.Values["status"]; (input.Operation == core.MutationInsert && !exists) || (exists && value.V == nil) {
 		results = append(results, runtime.CheckResult{RuleID: "required", CanonicalLocation: runtime.Location().Property("status")})
 	}
 
-	if value, exists := input.Values["platform_id"]; (input.Operation == core.MutationInsert && !exists) || (exists && value.V == nil) {
+	if value, exists := input.Values["platform"]; (input.Operation == core.MutationInsert && !exists) || (exists && value.V == nil) {
 		results = append(results, runtime.CheckResult{RuleID: "required", CanonicalLocation: runtime.Location().Property("platform")})
 	}
 
@@ -436,7 +436,7 @@ func checkTask(context *runtime.UserContext, input *runtime.CheckAndFixInput) []
 
 func checkTaskExecutionLog(context *runtime.UserContext, input *runtime.CheckAndFixInput) []runtime.CheckResult {
 	results := make([]runtime.CheckResult, 0)
-	if value, exists := input.Values["task_id"]; (input.Operation == core.MutationInsert && !exists) || (exists && value.V == nil) {
+	if value, exists := input.Values["task"]; (input.Operation == core.MutationInsert && !exists) || (exists && value.V == nil) {
 		results = append(results, runtime.CheckResult{RuleID: "required", CanonicalLocation: runtime.Location().Property("task")})
 	}
 
@@ -488,7 +488,7 @@ func ModuleWithBehaviors() *runtime.RuntimeModule {
 		descriptor.Property(core.NewPropertyDescriptor("progress", core.TypeDecimal).ColumnName("progress").NotNull())
 		descriptor.Property(core.NewPropertyDescriptor("version", core.TypeI64).ColumnName("version").NotNull().Version())
 		descriptor.Property(core.NewPropertyDescriptor("platform_id", core.TypeU64).ColumnName("platform").NotNull())
-		descriptor.Relation(core.NewRelationDescriptor("platformEntity", "Platform").LocalKey("platform_id").ForeignKey("id"))
+		descriptor.Relation(core.NewRelationDescriptor("platformEntity", "Platform").CanonicalKey("platform").LocalKey("platform_id").ForeignKey("id"))
 		descriptor.Relation(core.NewRelationDescriptor("taskList", "Task").LocalKey("id").ForeignKey("status_id").Many())
 		descriptor.AuditMaskFields([]string{})
 		for _, property := range descriptor.Properties { property.LogPolicy = "plain" }
@@ -505,8 +505,8 @@ func ModuleWithBehaviors() *runtime.RuntimeModule {
 		descriptor.Property(core.NewPropertyDescriptor("version", core.TypeI64).ColumnName("version").NotNull().Version())
 		descriptor.Property(core.NewPropertyDescriptor("status_id", core.TypeU64).ColumnName("status").NotNull())
 		descriptor.Property(core.NewPropertyDescriptor("platform_id", core.TypeU64).ColumnName("platform").NotNull())
-		descriptor.Relation(core.NewRelationDescriptor("statusEntity", "Task Status").LocalKey("status_id").ForeignKey("id"))
-		descriptor.Relation(core.NewRelationDescriptor("platformEntity", "Platform").LocalKey("platform_id").ForeignKey("id"))
+		descriptor.Relation(core.NewRelationDescriptor("statusEntity", "Task Status").CanonicalKey("status").LocalKey("status_id").ForeignKey("id"))
+		descriptor.Relation(core.NewRelationDescriptor("platformEntity", "Platform").CanonicalKey("platform").LocalKey("platform_id").ForeignKey("id"))
 		descriptor.Relation(core.NewRelationDescriptor("taskExecutionLogList", "Task Execution Log").LocalKey("id").ForeignKey("task_id").Many())
 		descriptor.AuditMaskFields([]string{})
 		for _, property := range descriptor.Properties { property.LogPolicy = "plain" }
@@ -523,7 +523,7 @@ func ModuleWithBehaviors() *runtime.RuntimeModule {
 		descriptor.Property(core.NewPropertyDescriptor("detail", core.TypeText).ColumnName("detail").NotNull())
 		descriptor.Property(core.NewPropertyDescriptor("version", core.TypeI64).ColumnName("version").NotNull().Version())
 		descriptor.Property(core.NewPropertyDescriptor("task_id", core.TypeU64).ColumnName("task").NotNull())
-		descriptor.Relation(core.NewRelationDescriptor("taskEntity", "Task").LocalKey("task_id").ForeignKey("id"))
+		descriptor.Relation(core.NewRelationDescriptor("taskEntity", "Task").CanonicalKey("task").LocalKey("task_id").ForeignKey("id"))
 		descriptor.AuditMaskFields([]string{"detail"})
 		for _, property := range descriptor.Properties { property.LogPolicy = "plain" }
 		module.EntityWithBehavior(

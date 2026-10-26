@@ -388,7 +388,9 @@ func (e *Customer) TeaqlPreflightGraph(context *runtime.UserContext, intent core
 		for field, value := range checkedValues {
 			if before, exists := valuesBeforeCheck[field]; !exists || !reflect.DeepEqual(before, value) {
 				e.base.PutDynamic(field, value)
-				e.root.Set(e.EntityKey(), field, value)
+				canonical, mappingErr := context.CanonicalLedgerField(e.EntityName(), field)
+				if mappingErr != nil { return mappingErr }
+				e.root.Set(e.EntityKey(), canonical, value)
 			}
 		}
 		if checkErr != nil { return checkErr }
@@ -484,7 +486,9 @@ func (e *Customer) TeaqlSaveWithinGraph(context *runtime.UserContext, intent cor
 		checkErr := runtime.CheckAndFixGraphEntity(context, &runtime.CheckAndFixInput{Entity: "customer", Operation: core.MutationInsert, Values: checkedValues}, e.root, e.EntityKey())
 		for field, value := range checkedValues {
 			if before, exists := valuesBeforeCheck[field]; !exists || !reflect.DeepEqual(before, value) {
-				e.root.Set(e.EntityKey(), field, value)
+				canonical, mappingErr := context.CanonicalLedgerField(e.EntityName(), field)
+				if mappingErr != nil { return nil, mappingErr }
+				e.root.Set(e.EntityKey(), canonical, value)
 			}
 		}
 		if checkErr != nil { return nil, checkErr }
@@ -568,7 +572,9 @@ func (e *Customer) TeaqlSaveWithinGraph(context *runtime.UserContext, intent cor
 		checkErr := runtime.CheckAndFixGraphEntity(context, &runtime.CheckAndFixInput{Entity: "customer", Operation: core.MutationUpdate, Values: checkedValues}, e.root, e.EntityKey())
 		for field, value := range checkedValues {
 			if before, exists := valuesBeforeCheck[field]; !exists || !reflect.DeepEqual(before, value) {
-				e.root.Set(e.EntityKey(), field, value)
+				canonical, mappingErr := context.CanonicalLedgerField(e.EntityName(), field)
+				if mappingErr != nil { return nil, mappingErr }
+				e.root.Set(e.EntityKey(), canonical, value)
 			}
 		}
 		if checkErr != nil { return nil, checkErr }
@@ -576,7 +582,8 @@ func (e *Customer) TeaqlSaveWithinGraph(context *runtime.UserContext, intent cor
 		scope, err := core.MutationScopeForEntity(parentScope, e.EntityKey(), intent, e.comment)
 		if err != nil { return nil, err }
 		cmd := core.NewUpdateCommand("customer", core.ValU64(e.base.Id))
-		cmd.Values = e.root.Change(e.EntityKey())
+		cmd.Values, err = context.StorageLedgerRecord(e.EntityName(), e.root.Change(e.EntityKey()))
+		if err != nil { return nil, err }
 		// A clean parent still carries the scope for changed descendants, but
 		// must not emit an empty UPDATE or bump its optimistic version.
 		if len(cmd.Values) == 0 {
@@ -708,9 +715,15 @@ func (e *Customer) CommercePlatformId() uint64 {
 }
 
 func (e *Customer) UpdateCommercePlatformId(value uint64) *Customer {
+	previous, present := e.base.GetDynamic("commerce_platform_id")
 	e.base.PutDynamic("commerce_platform_id", core.ValU64(value))
 	e.dirtyFields["commerce_platform_id"] = true
-	e.root.Set(e.EntityKey(), "commerce_platform_id", core.ValU64(value))
+	current, _ := e.base.GetDynamic("commerce_platform_id")
+	if !present || !reflect.DeepEqual(previous, current) {
+		delete(e.relations, "commercePlatformEntity")
+		delete(e.loadedRelations, "commercePlatformEntity")
+	}
+	e.root.Set(e.EntityKey(), "commerce_platform", core.ValU64(value))
 	e.loadState["commerce_platform_id"] = true
 	return e
 }

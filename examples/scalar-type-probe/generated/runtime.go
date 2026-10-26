@@ -106,7 +106,7 @@ func Module() *runtime.RuntimeModule {
 		descriptor.Property(core.NewPropertyDescriptor("update_time", core.TypeTimestamp).ColumnName("update_time").NotNull())
 		descriptor.Property(core.NewPropertyDescriptor("version", core.TypeI64).ColumnName("version").NotNull().Version())
 		descriptor.Property(core.NewPropertyDescriptor("type_platform_id", core.TypeU64).ColumnName("type_platform").NotNull())
-		descriptor.Relation(core.NewRelationDescriptor("typePlatformEntity", "Type Platform").LocalKey("type_platform_id").ForeignKey("id"))
+		descriptor.Relation(core.NewRelationDescriptor("typePlatformEntity", "Type Platform").CanonicalKey("type_platform").LocalKey("type_platform_id").ForeignKey("id"))
 		descriptor.AuditMaskFields([]string{})
 		for _, property := range descriptor.Properties { property.LogPolicy = "plain" }
 		module.Entity(descriptor)
@@ -177,7 +177,7 @@ func checkScalarTypeProbe(context *runtime.UserContext, input *runtime.CheckAndF
 	}
 
 
-	if value, exists := input.Values["type_platform_id"]; (input.Operation == core.MutationInsert && !exists) || (exists && value.V == nil) {
+	if value, exists := input.Values["type_platform"]; (input.Operation == core.MutationInsert && !exists) || (exists && value.V == nil) {
 		results = append(results, runtime.CheckResult{RuleID: "required", CanonicalLocation: runtime.Location().Property("type_platform")})
 	}
 
@@ -295,7 +295,7 @@ func ModuleWithBehaviors() *runtime.RuntimeModule {
 		descriptor.Property(core.NewPropertyDescriptor("update_time", core.TypeTimestamp).ColumnName("update_time").NotNull())
 		descriptor.Property(core.NewPropertyDescriptor("version", core.TypeI64).ColumnName("version").NotNull().Version())
 		descriptor.Property(core.NewPropertyDescriptor("type_platform_id", core.TypeU64).ColumnName("type_platform").NotNull())
-		descriptor.Relation(core.NewRelationDescriptor("typePlatformEntity", "Type Platform").LocalKey("type_platform_id").ForeignKey("id"))
+		descriptor.Relation(core.NewRelationDescriptor("typePlatformEntity", "Type Platform").CanonicalKey("type_platform").LocalKey("type_platform_id").ForeignKey("id"))
 		descriptor.AuditMaskFields([]string{})
 		for _, property := range descriptor.Properties { property.LogPolicy = "plain" }
 		module.EntityWithBehavior(

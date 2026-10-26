@@ -48,6 +48,76 @@ func (c *UserContext) StorageLedgerRecord(entity string, ledger core.Record) (co
 	return core.StorageLedgerRecord(descriptor, ledger)
 }
 
+// mapCheckerInput validates both maps before changing either. A public Checker
+// sees KSML keys; provider/native record aliases never become its vocabulary.
+func (c *UserContext) mapCheckerInput(input *CheckAndFixInput, canonical bool) error {
+	descriptor := c.Entity(input.Entity)
+	if descriptor == nil {
+		return nil // Legacy unmodeled Checkers retain their existing record contract.
+	}
+	mapper := core.CanonicalLedgerRecord
+	if !canonical {
+		mapper = core.StorageLedgerRecord
+	}
+	values, err := mapper(descriptor, input.Values)
+	if err != nil {
+		return err
+	}
+	oldValues, err := mapper(descriptor, input.OldValues)
+	if err != nil {
+		return err
+	}
+	input.Values = replaceCheckerRecord(input.Values, values)
+	input.OldValues = replaceCheckerRecord(input.OldValues, oldValues)
+	return nil
+}
+
+func replaceCheckerRecord(target, source core.Record) core.Record {
+	if target == nil && len(source) == 0 {
+		return nil
+	}
+	if target == nil {
+		target = make(core.Record, len(source))
+	}
+	for field := range target {
+		delete(target, field)
+	}
+	for field, value := range source {
+		target[field] = value
+	}
+	return target
+}
+
+func checkerMappingError(entity string, err error) error {
+	return &RuntimeError{Type: "Check", CheckResults: []CheckResult{{
+		RuleID: "invalid_type", EntityType: entity, CanonicalLocation: Location(), Message: err.Error(),
+	}}}
+}
+
+// checkAndFixStorage is private generated/provider infrastructure. The native
+// carrier stays native while customer callbacks and diagnostics stay canonical.
+// Copy before mapping so rejected aliases cannot partially rewrite its input.
+func (c *UserContext) checkAndFixStorage(input *CheckAndFixInput, ledger *core.EntityRoot, owner core.EntityKey) error {
+	checked := *input
+	checked.Values = cloneRecord(input.Values)
+	checked.OldValues = cloneRecord(input.OldValues)
+	if err := c.mapCheckerInput(&checked, true); err != nil {
+		return checkerMappingError(input.Entity, err)
+	}
+	references := c.captureDeferredReferences(&checked, ledger, owner)
+	err := c.checkAndFixWithReferences(&checked, references)
+	if checked.Entity != input.Entity || checked.Operation != input.Operation {
+		return err
+	}
+	if mappingErr := c.mapCheckerInput(&checked, false); mappingErr != nil {
+		return checkerMappingError(input.Entity, mappingErr)
+	}
+	input.Values = replaceCheckerRecord(input.Values, checked.Values)
+	input.OldValues = replaceCheckerRecord(input.OldValues, checked.OldValues)
+	input.Now = checked.Now
+	return err
+}
+
 func (c *UserContext) canonicalizeAuditFields(event *RawAuditEvent) error {
 	if event == nil || c.Entity(event.Entity) == nil {
 		return nil

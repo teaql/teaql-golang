@@ -115,7 +115,7 @@ func (e *SqlDataServiceExecutor) Mutate(context stdcontext.Context, request data
 		input := mutationCheckInput(request)
 		if input != nil {
 			input.Now = userCtx.FixTime()
-			if err = userCtx.checkAndFix(input); err != nil {
+			if err = userCtx.checkAndFixStorage(input, nil, core.EntityKey{}); err != nil {
 				return nil, err
 			}
 		}

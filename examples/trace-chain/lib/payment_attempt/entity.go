@@ -332,7 +332,9 @@ func (e *PaymentAttempt) TeaqlPreflightGraph(context *runtime.UserContext, inten
 		for field, value := range checkedValues {
 			if before, exists := valuesBeforeCheck[field]; !exists || !reflect.DeepEqual(before, value) {
 				e.base.PutDynamic(field, value)
-				e.root.Set(e.EntityKey(), field, value)
+				canonical, mappingErr := context.CanonicalLedgerField(e.EntityName(), field)
+				if mappingErr != nil { return mappingErr }
+				e.root.Set(e.EntityKey(), canonical, value)
 			}
 		}
 		if checkErr != nil { return checkErr }
@@ -412,7 +414,9 @@ func (e *PaymentAttempt) TeaqlSaveWithinGraph(context *runtime.UserContext, inte
 		checkErr := runtime.CheckAndFixGraphEntity(context, &runtime.CheckAndFixInput{Entity: "Payment Attempt", Operation: core.MutationInsert, Values: checkedValues}, e.root, e.EntityKey())
 		for field, value := range checkedValues {
 			if before, exists := valuesBeforeCheck[field]; !exists || !reflect.DeepEqual(before, value) {
-				e.root.Set(e.EntityKey(), field, value)
+				canonical, mappingErr := context.CanonicalLedgerField(e.EntityName(), field)
+				if mappingErr != nil { return nil, mappingErr }
+				e.root.Set(e.EntityKey(), canonical, value)
 			}
 		}
 		if checkErr != nil { return nil, checkErr }
@@ -496,7 +500,9 @@ func (e *PaymentAttempt) TeaqlSaveWithinGraph(context *runtime.UserContext, inte
 		checkErr := runtime.CheckAndFixGraphEntity(context, &runtime.CheckAndFixInput{Entity: "Payment Attempt", Operation: core.MutationUpdate, Values: checkedValues}, e.root, e.EntityKey())
 		for field, value := range checkedValues {
 			if before, exists := valuesBeforeCheck[field]; !exists || !reflect.DeepEqual(before, value) {
-				e.root.Set(e.EntityKey(), field, value)
+				canonical, mappingErr := context.CanonicalLedgerField(e.EntityName(), field)
+				if mappingErr != nil { return nil, mappingErr }
+				e.root.Set(e.EntityKey(), canonical, value)
 			}
 		}
 		if checkErr != nil { return nil, checkErr }
@@ -504,7 +510,8 @@ func (e *PaymentAttempt) TeaqlSaveWithinGraph(context *runtime.UserContext, inte
 		scope, err := core.MutationScopeForEntity(parentScope, e.EntityKey(), intent, e.comment)
 		if err != nil { return nil, err }
 		cmd := core.NewUpdateCommand("Payment Attempt", core.ValU64(e.base.Id))
-		cmd.Values = e.root.Change(e.EntityKey())
+		cmd.Values, err = context.StorageLedgerRecord(e.EntityName(), e.root.Change(e.EntityKey()))
+		if err != nil { return nil, err }
 		// A clean parent still carries the scope for changed descendants, but
 		// must not emit an empty UPDATE or bump its optimistic version.
 		if len(cmd.Values) == 0 {
@@ -583,9 +590,15 @@ func (e *PaymentAttempt) PaymentId() uint64 {
 }
 
 func (e *PaymentAttempt) UpdatePaymentId(value uint64) *PaymentAttempt {
+	previous, present := e.base.GetDynamic("payment_id")
 	e.base.PutDynamic("payment_id", core.ValU64(value))
 	e.dirtyFields["payment_id"] = true
-	e.root.Set(e.EntityKey(), "payment_id", core.ValU64(value))
+	current, _ := e.base.GetDynamic("payment_id")
+	if !present || !reflect.DeepEqual(previous, current) {
+		delete(e.relations, "paymentEntity")
+		delete(e.loadedRelations, "paymentEntity")
+	}
+	e.root.Set(e.EntityKey(), "payment", core.ValU64(value))
 	e.loadState["payment_id"] = true
 	return e
 }

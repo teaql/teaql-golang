@@ -402,7 +402,9 @@ func (e *CustomerOrder) TeaqlPreflightGraph(context *runtime.UserContext, intent
 		for field, value := range checkedValues {
 			if before, exists := valuesBeforeCheck[field]; !exists || !reflect.DeepEqual(before, value) {
 				e.base.PutDynamic(field, value)
-				e.root.Set(e.EntityKey(), field, value)
+				canonical, mappingErr := context.CanonicalLedgerField(e.EntityName(), field)
+				if mappingErr != nil { return mappingErr }
+				e.root.Set(e.EntityKey(), canonical, value)
 			}
 		}
 		if checkErr != nil { return checkErr }
@@ -498,7 +500,9 @@ func (e *CustomerOrder) TeaqlSaveWithinGraph(context *runtime.UserContext, inten
 		checkErr := runtime.CheckAndFixGraphEntity(context, &runtime.CheckAndFixInput{Entity: "Customer Order", Operation: core.MutationInsert, Values: checkedValues}, e.root, e.EntityKey())
 		for field, value := range checkedValues {
 			if before, exists := valuesBeforeCheck[field]; !exists || !reflect.DeepEqual(before, value) {
-				e.root.Set(e.EntityKey(), field, value)
+				canonical, mappingErr := context.CanonicalLedgerField(e.EntityName(), field)
+				if mappingErr != nil { return nil, mappingErr }
+				e.root.Set(e.EntityKey(), canonical, value)
 			}
 		}
 		if checkErr != nil { return nil, checkErr }
@@ -582,7 +586,9 @@ func (e *CustomerOrder) TeaqlSaveWithinGraph(context *runtime.UserContext, inten
 		checkErr := runtime.CheckAndFixGraphEntity(context, &runtime.CheckAndFixInput{Entity: "Customer Order", Operation: core.MutationUpdate, Values: checkedValues}, e.root, e.EntityKey())
 		for field, value := range checkedValues {
 			if before, exists := valuesBeforeCheck[field]; !exists || !reflect.DeepEqual(before, value) {
-				e.root.Set(e.EntityKey(), field, value)
+				canonical, mappingErr := context.CanonicalLedgerField(e.EntityName(), field)
+				if mappingErr != nil { return nil, mappingErr }
+				e.root.Set(e.EntityKey(), canonical, value)
 			}
 		}
 		if checkErr != nil { return nil, checkErr }
@@ -590,7 +596,8 @@ func (e *CustomerOrder) TeaqlSaveWithinGraph(context *runtime.UserContext, inten
 		scope, err := core.MutationScopeForEntity(parentScope, e.EntityKey(), intent, e.comment)
 		if err != nil { return nil, err }
 		cmd := core.NewUpdateCommand("Customer Order", core.ValU64(e.base.Id))
-		cmd.Values = e.root.Change(e.EntityKey())
+		cmd.Values, err = context.StorageLedgerRecord(e.EntityName(), e.root.Change(e.EntityKey()))
+		if err != nil { return nil, err }
 		// A clean parent still carries the scope for changed descendants, but
 		// must not emit an empty UPDATE or bump its optimistic version.
 		if len(cmd.Values) == 0 {
@@ -709,9 +716,15 @@ func (e *CustomerOrder) CustomerId() uint64 {
 }
 
 func (e *CustomerOrder) UpdateCustomerId(value uint64) *CustomerOrder {
+	previous, present := e.base.GetDynamic("customer_id")
 	e.base.PutDynamic("customer_id", core.ValU64(value))
 	e.dirtyFields["customer_id"] = true
-	e.root.Set(e.EntityKey(), "customer_id", core.ValU64(value))
+	current, _ := e.base.GetDynamic("customer_id")
+	if !present || !reflect.DeepEqual(previous, current) {
+		delete(e.relations, "customerEntity")
+		delete(e.loadedRelations, "customerEntity")
+	}
+	e.root.Set(e.EntityKey(), "customer", core.ValU64(value))
 	e.loadState["customer_id"] = true
 	return e
 }
@@ -725,9 +738,15 @@ func (e *CustomerOrder) StatusId() uint64 {
 }
 
 func (e *CustomerOrder) UpdateStatusId(value uint64) *CustomerOrder {
+	previous, present := e.base.GetDynamic("status_id")
 	e.base.PutDynamic("status_id", core.ValU64(value))
 	e.dirtyFields["status_id"] = true
-	e.root.Set(e.EntityKey(), "status_id", core.ValU64(value))
+	current, _ := e.base.GetDynamic("status_id")
+	if !present || !reflect.DeepEqual(previous, current) {
+		delete(e.relations, "statusEntity")
+		delete(e.loadedRelations, "statusEntity")
+	}
+	e.root.Set(e.EntityKey(), "status", core.ValU64(value))
 	e.loadState["status_id"] = true
 	return e
 }
