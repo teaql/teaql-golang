@@ -7,6 +7,9 @@ type PropertyDescriptor struct {
 	ColName   string
 	IsId      bool
 	IsVersion bool
+	// IsInt32 distinguishes a modeled Integer from Long while retaining the
+	// existing I64 value carrier and physical SQL integer representation.
+	IsInt32 bool
 	// Trusted descriptor policy, never taken from a query/TFP request.
 	LogPolicy string
 }
@@ -39,6 +42,13 @@ func (p *PropertyDescriptor) Id() *PropertyDescriptor {
 
 func (p *PropertyDescriptor) Version() *PropertyDescriptor {
 	p.IsVersion = true
+	return p
+}
+
+// Int32 declares the model's signed 32-bit Integer domain. It does not change
+// the generated native accessor or the provider's physical column name/type.
+func (p *PropertyDescriptor) Int32() *PropertyDescriptor {
+	p.IsInt32 = true
 	return p
 }
 

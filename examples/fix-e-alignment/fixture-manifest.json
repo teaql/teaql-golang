@@ -1,18 +1,18 @@
 {
   "schema": "teaql.generated-example-fixture/v1",
-  "generatorCommit": "07299e84ad403dca4752b10f3b1bc00a613951ee",
-  "generatorSourceContentsSha256": "7d379f7b26fb0bc36d7021476f1f7a2c19116500f08fc3e48b8f501b664ae701",
-  "producerReceiptSha256": "228c60db88c1b4143510f52feed13597c4f0c59683c42817f0a6aa7d6a93cfe2",
+  "generatorCommit": "0f8ba44788962934d6a1de218d86d8145354d9fe",
+  "generatorSourceContentsSha256": "093e1eb616b43630ec34d05232622ae3dd9d12ae5e0a75eeedf7b9e6b932feed",
+  "producerReceiptSha256": "a88591dc36dbdca79886c0d5beb33e2f3f223ca32aa4f33cdf99de32f1201736",
   "evaluationErrors": 0,
   "language": "go",
   "modelSha256": "a2cf4c907cb084cb0946e993eeba586c8c0701a89fdc4a849808aa743be033b7",
-  "generatedManifestSha256": "e130e00c686f38c5dced3237118cf76a39477b7f908f60869122664a20ef5ab1",
+  "generatedManifestSha256": "61f0e06077e365ff36bcbdbebc919f21b86206146815ce4b1ba005573a137c88",
   "producerFixture": "fix-e-alignment",
   "producerSource": {
-    "commit": "07299e84ad403dca4752b10f3b1bc00a613951ee",
+    "commit": "0f8ba44788962934d6a1de218d86d8145354d9fe",
     "diff": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
     "status": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-    "sourceContentsSha256": "7d379f7b26fb0bc36d7021476f1f7a2c19116500f08fc3e48b8f501b664ae701",
+    "sourceContentsSha256": "093e1eb616b43630ec34d05232622ae3dd9d12ae5e0a75eeedf7b9e6b932feed",
     "retainedModels": [
       {
         "id": "conformance",

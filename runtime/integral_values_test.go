@@ -105,3 +105,52 @@ func TestIntegralValuesPermitExactNumbersNullAndCustomRepair(t *testing.T) {
 		t.Fatalf("repair rejected: %v", err)
 	}
 }
+
+func TestIntegralModeledIntegerWidthAfterFix(t *testing.T) {
+	context := NewRuntimeModule().Entity(core.NewEntityDescriptor("Probe").
+		Property(core.NewPropertyDescriptor("quantity", core.TypeI64).Int32()).
+		Property(core.NewPropertyDescriptor("long_quantity", core.TypeI64))).IntoContext()
+	for _, value := range []core.Value{
+		core.ValI64(math.MinInt32), core.ValI64(math.MaxInt32), core.ValI64(0),
+		core.ValDecimal(decimal.RequireFromString("2147483647.000")),
+		core.ValDecimal(decimal.RequireFromString("-2147483648.000")), core.ValNull(),
+	} {
+		if err := context.CheckAndFix(&CheckAndFixInput{Entity: "Probe", Values: core.Record{"quantity": value}}); err != nil {
+			t.Fatalf("valid modeled Integer rejected: %v", err)
+		}
+	}
+	for _, value := range []core.Value{
+		core.ValI64(math.MinInt64), core.ValI64(math.MaxInt64), core.ValI64(int64(math.MaxInt32) + 1),
+		core.ValDecimal(decimal.RequireFromString("-2147483649.000")),
+	} {
+		if err := context.CheckAndFix(&CheckAndFixInput{Entity: "Probe", Values: core.Record{"long_quantity": value}}); err != nil {
+			t.Fatal("Integer policy must not narrow Long", err)
+		}
+		for _, afterFix := range []bool{false, true} {
+			ctx := NewRuntimeModule().Entity(context.Entity("Probe")).IntoContext()
+			input := &CheckAndFixInput{Entity: "Probe", Values: core.Record{"quantity": value}}
+			fix := &integralFixRegistry{field: "quantity", value: value}
+			if afterFix {
+				input.Values["quantity"] = core.ValI64(7)
+				ctx.WithCheckerRegistry(fix)
+			}
+			var failure *RuntimeError
+			if err := ctx.CheckAndFix(input); !errors.As(err, &failure) || len(failure.CheckResults) != 1 {
+				t.Fatalf("expected precise Integer range failure: %v", err)
+			}
+			result := failure.CheckResults[0]
+			if result.RuleID != "invalid_type" || result.ModelPath() != "quantity" {
+				t.Fatalf("wrong modeled Integer diagnosis: %#v", result)
+			}
+			if afterFix && fix.calls != 1 {
+				t.Fatal("post-Fix admission must not run Fix twice")
+			}
+		}
+	}
+	fix := &integralFixRegistry{field: "quantity", value: core.ValI64(math.MaxInt32)}
+	context.WithCheckerRegistry(fix)
+	input := &CheckAndFixInput{Entity: "Probe", Values: core.Record{"quantity": core.ValI64(math.MaxInt64)}}
+	if err := context.CheckAndFix(input); err != nil || fix.calls != 1 {
+		t.Fatalf("valid custom Integer repair rejected: %v", err)
+	}
+}

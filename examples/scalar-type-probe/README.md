@@ -27,7 +27,7 @@ node examples/scalar-type-probe/verify-integral.cjs
 ```
 
 This focused companion compiles once with the race detector and runs twice on
-one SQLite database without reset. Eleven invalid signed-integer/reference
+one SQLite database without reset. Fifteen invalid modeled-Integer/Long/reference
 values are tested on both create and update. A custom Fix injects fractional
 Decimals, overflow, negative unsigned references, floats, text and booleans.
 Each rejection must identify the field with `invalid_type` before query,
@@ -36,10 +36,15 @@ and Q reload calibrate all observers; E and read-only SQLite confirm unchanged
 Long, FK and optimistic version. Decimal-to-integer conversion must be exact,
 including extreme exponent rejection without allocating a huge power of ten.
 
-The fixture reuses this example's unchanged evaluated model and generated
-library. These are 64-bit storage-boundary checks, not qualification of the
-modeled Integer's narrower I32 range, business ID positivity, full canonical
-relation naming, live external databases or an installed-package release.
+The generated model marks Integer as a signed 32-bit domain while retaining
+the native int64 accessor and SQLite INTEGER column. Both normal generated
+Checker and custom Fix paths reject out-of-range required/optional Integers
+before I/O. Eight additional native-updater cases cover both bounds on create
+and update; legal endpoints round-trip through Q/E and audited version 1→2.
+Long remains 64-bit. The fixture reuses the unchanged evaluated model and a
+freshly generated library. This is mutation admission, not qualification of
+legacy corrupt Integer readback, business ID positivity, full canonical relation
+naming, live external databases or an installed-package release.
 
 Time is `core.TimeOfDay`, or `*core.TimeOfDay` when optional. It is neither a
 timestamp nor a duration; zero means midnight. `core.ParseTimeOfDay` validates

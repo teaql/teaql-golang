@@ -30,6 +30,7 @@ func (fix *injectedIntegralFix) CheckAndFix(_ *runtime.UserContext, input *runti
 }
 
 func TestGeneratedIntegralAdmissionAfterCustomFix(t *testing.T) {
+	t.Run("native-integer32", verifyGeneratedNativeInteger32)
 	ctx, observer := configured(t, ".integral.sqlite")
 	baseline, err := prepared(ctx).AuditAs("calibrate exact integral admission observers").Save(ctx)
 	if err != nil {
@@ -52,6 +53,10 @@ func TestGeneratedIntegralAdmissionAfterCustomFix(t *testing.T) {
 		name, field string
 		value       core.Value
 	}{
+		{"integer-positive-overflow", "required_integer", core.ValI64(int64(math.MaxInt32) + 1)},
+		{"integer-negative-overflow", "required_integer", core.ValI64(int64(math.MinInt32) - 1)},
+		{"optional-integer-positive-overflow", "optional_integer", core.ValDecimal(decimal.NewFromInt(int64(math.MaxInt32) + 1))},
+		{"optional-integer-negative-overflow", "optional_integer", core.ValDecimal(decimal.NewFromInt(int64(math.MinInt32) - 1))},
 		{"fractional-signed", "required_long", core.ValDecimal(decimal.RequireFromString("12.75"))},
 		{"signed-overflow", "required_long", core.ValU64(math.MaxUint64)},
 		{"signed-float", "required_long", core.ValF64(12)},
@@ -114,5 +119,73 @@ func TestGeneratedIntegralAdmissionAfterCustomFix(t *testing.T) {
 	}
 	if !t.Failed() {
 		fmt.Printf("CORE_INTEGRAL_ORACLE rows=%d version=1 exact_long=true known_fk=true calibrated=true\n", rows)
+	}
+}
+
+func verifyGeneratedNativeInteger32(t *testing.T) {
+	ctx, observer := configured(t, ".native-integer32.sqlite")
+	saved, err := prepared(ctx).AuditAs("calibrate native Integer width admission").Save(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	id, present, err := lib.E.ScalarTypeProbe(saved).Id().TryEval()
+	if err != nil || !present {
+		t.Fatal("saved Integer probe has no identity", err)
+	}
+	row := reload(t, ctx, id)
+	counts := observer.snapshot()
+	if counts.Query == 0 || counts.Mutate == 0 || counts.Begin == 0 || counts.NextID == 0 {
+		t.Fatalf("uncalibrated Integer observers: %+v", counts)
+	}
+	expect(t, "initial_integer_max", int64(math.MaxInt32), lib.E.ScalarTypeProbe(row).RequiredInteger().TryEval)
+	expect(t, "initial_optional_min", pointer(int64(math.MinInt32)), lib.E.ScalarTypeProbe(row).OptionalInteger().TryEval)
+	for _, operation := range []string{"create", "update"} {
+		for _, field := range []string{"required_integer", "optional_integer"} {
+			for _, value := range []int64{int64(math.MinInt32) - 1, int64(math.MaxInt32) + 1} {
+				name := fmt.Sprintf("%s/%s/%d", operation, field, value)
+				t.Run(name, func(t *testing.T) {
+					entity := prepared(ctx)
+					if operation == "update" {
+						entity = reload(t, ctx, id)
+					}
+					if field == "required_integer" {
+						entity.UpdateRequiredInteger(value)
+					} else {
+						entity.UpdateOptionalInteger(&value)
+					}
+					observer.reset()
+					_, err := entity.AuditAs("reject out-of-range native Integer before I/O").Save(ctx)
+					var checked *runtime.RuntimeError
+					if !errors.As(err, &checked) || checked.Type != "Check" {
+						t.Fatalf("expected structured native Integer rejection: %v", err)
+					}
+					found := false
+					for _, result := range checked.CheckResults {
+						found = found || result.RuleID == "invalid_type" && result.ModelPath() == field
+					}
+					if !found || observer.snapshot() != (callCounts{}) {
+						t.Fatalf("incorrect pre-provider rejection: %+v, %+v", checked.CheckResults, observer.snapshot())
+					}
+					fmt.Printf("CORE_INTEGER32_NATIVE_REJECT operation=%s field=%s value=%d query=0 mutate=0 begin=0 next_id=0\n", operation, field, value)
+				})
+			}
+		}
+	}
+	row = reload(t, ctx, id)
+	expect(t, "unchanged_version", int64(1), lib.E.ScalarTypeProbe(row).Version().TryEval)
+	expect(t, "unchanged_integer", int64(math.MaxInt32), lib.E.ScalarTypeProbe(row).RequiredInteger().TryEval)
+	expect(t, "unchanged_optional", pointer(int64(math.MinInt32)), lib.E.ScalarTypeProbe(row).OptionalInteger().TryEval)
+	row.UpdateRequiredInteger(math.MinInt32)
+	row.UpdateOptionalInteger(pointer(int64(math.MaxInt32)))
+	if _, err := row.AuditAs("save legal Integer endpoints without narrowing Long").Save(ctx); err != nil {
+		t.Fatal(err)
+	}
+	row = reload(t, ctx, id)
+	expect(t, "updated_version", int64(2), lib.E.ScalarTypeProbe(row).Version().TryEval)
+	expect(t, "updated_integer_min", int64(math.MinInt32), lib.E.ScalarTypeProbe(row).RequiredInteger().TryEval)
+	expect(t, "updated_optional_max", pointer(int64(math.MaxInt32)), lib.E.ScalarTypeProbe(row).OptionalInteger().TryEval)
+	expect(t, "unrestricted_long", int64(math.MaxInt64), lib.E.ScalarTypeProbe(row).RequiredLong().TryEval)
+	if !t.Failed() {
+		fmt.Println("CORE_INTEGER32_NATIVE_PASS cases=8 endpoints=true long64=true version=2 calibrated=true")
 	}
 }

@@ -8,9 +8,10 @@ const requested=process.env.TEAQL_EXAMPLES_EVIDENCE_DIR;
 const evidence=requested?path.join(path.resolve(requested),'scalar-integral-admission'):fs.mkdtempSync(path.join(os.tmpdir(),'teaql-go-integral-evidence-'));
 if(requested){assert(!fs.existsSync(evidence),'never overwrite evidence');fs.mkdirSync(evidence,{recursive:true});}
 const scratch=fs.mkdtempSync(path.join(os.tmpdir(),'teaql-go-integral-build-')),runner=createOwnedRunner();
-const report={schema:'teaql.go-integral-example/v1',passed:false,localRuntime:repo,commands:[],rounds:[],
+const report={schema:'teaql.go-integral-example/v2',modeledInteger32:true,passed:false,localRuntime:repo,commands:[],rounds:[],
   publicPublication:false,sharedCachesDeleted:false,sourceDeleted:false,testDatabasesDeleted:false};
-const cases=['fractional-signed','signed-overflow','signed-float','signed-text','signed-bool','fractional-reference',
+const cases=['integer-positive-overflow','integer-negative-overflow','optional-integer-positive-overflow','optional-integer-negative-overflow',
+  'fractional-signed','signed-overflow','signed-float','signed-text','signed-bool','fractional-reference',
   'negative-reference','reference-overflow','reference-float','reference-text','reference-bool'];
 async function main(){
 try{
@@ -39,11 +40,11 @@ try{
   for(const round of [1,2]){
     const log=await run('round-'+round,[binary,'-test.v','-test.count=1','-test.run=^TestGeneratedIntegralAdmissionAfterCustomFix$']);
     assert(!/^--- FAIL:|panic:|^FAIL(?:\s|$)|DATA RACE/m.test(log));assert(/^PASS$/m.test(log));
-    const rows=[...log.matchAll(/^CORE_INTEGRAL_REJECT language=go operation=(create|update) case=([a-z-]+) field=(required_long|type_platform_id) query=0 mutate=0 begin=0 next_id=0 fix_calls=1$/gm)];
+    const rows=[...log.matchAll(/^CORE_INTEGRAL_REJECT language=go operation=(create|update) case=([a-z-]+) field=(required_integer|optional_integer|required_long|type_platform_id) query=0 mutate=0 begin=0 next_id=0 fix_calls=1$/gm)];
     assert.deepEqual(rows.map(m=>m[1]+':'+m[2]).sort(),['create','update'].flatMap(op=>cases.map(name=>op+':'+name)).sort());
     for(const row of rows)assert(new RegExp('^\\s+--- PASS: TestGeneratedIntegralAdmissionAfterCustomFix/'+row[1]+'/'+row[2]+' \\(','m').test(log));
     assert(log.includes('CORE_INTEGRAL_ORACLE rows='+round+' version=1 exact_long=true known_fk=true calibrated=true'));
-    report.rounds.push({round,rejectedCases:22,rows:round});process.stdout.write(log);
+    report.rounds.push({round,rejectedCases:30,rows:round});process.stdout.write(log);
   }
   const database='scalars.sqlite.integral.sqlite';report.database={file:database,sha256:sha(fs.readFileSync(path.join(evidence,database)))};
   assert.equal(sha(fs.readFileSync(path.join(example,'generated-provenance.json'))),report.provenanceSha256);
