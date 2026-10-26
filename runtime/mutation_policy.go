@@ -290,6 +290,9 @@ func (c *UserContext) ReviewMutationPlan(input *MutationPlan) (*MutationGovernan
 	if input == nil || strings.TrimSpace(input.RequestKey) == "" || strings.TrimSpace(input.RootEntity) == "" {
 		return nil, &RuntimeError{Type: "MutationPolicy", Message: "mutation plan requires request key and root entity"}
 	}
+	if err := c.validateMutationPlanFields(input); err != nil {
+		return nil, err
+	}
 	plan := cloneMutationPlan(input)
 	plan.AuditReason = intent.AuditReason()
 	if plan.ExecutionID == "" {
