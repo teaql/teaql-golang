@@ -87,6 +87,38 @@ func (r *EntityRoot) Change(key EntityKey) Record {
 	return result
 }
 
+// DiscardFields removes only the still-observed exact values. Other pending
+// fields, typed entities, original versions, lifecycle and trace are untouched.
+// It cannot erase a value replaced between baseline comparison and admission.
+func (r *EntityRoot) DiscardFields(key EntityKey, observed Record) []string {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	id := key.mapKey()
+	if _, fresh := r.newKeys[id]; fresh {
+		return nil
+	}
+	if _, deleted := r.deletedKeys[id]; deleted {
+		return nil
+	}
+	entry, present := r.changes[id]
+	if !present {
+		return nil
+	}
+	removed := make([]string, 0, len(observed))
+	for field, value := range observed {
+		if current, exists := entry.Values[field]; exists && ExactValueEqual(current, value) {
+			delete(entry.Values, field)
+			removed = append(removed, field)
+		}
+	}
+	if len(entry.Values) == 0 {
+		delete(r.changes, id)
+	} else {
+		r.changes[id] = entry
+	}
+	return removed
+}
+
 func (r *EntityRoot) MergeFrom(other *EntityRoot) {
 	if other == nil || other == r {
 		return

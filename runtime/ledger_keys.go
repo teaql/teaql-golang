@@ -101,6 +101,16 @@ func (c *UserContext) checkAndFixStorage(input *CheckAndFixInput, ledger *core.E
 	checked := *input
 	checked.Values = cloneRecord(input.Values)
 	checked.OldValues = cloneRecord(input.OldValues)
+	if ledger != nil {
+		changed := ledger.Change(owner)
+		if err := c.validateMutationPlanFields(&MutationPlan{Operations: []MutationOperation{{Kind: input.Operation, Entity: input.Entity, ID: owner.ID, ChangedValues: changed}}}); err != nil {
+			return err
+		}
+		checked.changedFields = make(map[string]bool, len(changed))
+		for field := range changed {
+			checked.changedFields[field] = true
+		}
+	}
 	if err := c.mapCheckerInput(&checked, true); err != nil {
 		return checkerMappingError(input.Entity, err)
 	}

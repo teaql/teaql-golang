@@ -350,11 +350,23 @@ type FixEvidence struct {
 // CheckAndFixInput is the provider-independent mutation state seen by model checkers.
 // Values may be amended by declared fixes before SQL compilation.
 type CheckAndFixInput struct {
-	Entity    string
-	Operation core.MutationKind
-	Values    core.Record
-	OldValues core.Record
-	Now       time.Time
+	Entity        string
+	Operation     core.MutationKind
+	Values        core.Record
+	OldValues     core.Record
+	Now           time.Time
+	changedFields map[string]bool
+}
+
+// FieldChanged distinguishes an explicitly mutated field from the complete
+// loaded record supplied for graph validation. Standalone requests retain the
+// rule that a supplied field is an attempted mutation.
+func (input *CheckAndFixInput) FieldChanged(field string) bool {
+	if input.changedFields != nil {
+		return input.changedFields[field]
+	}
+	_, present := input.Values[field]
+	return present
 }
 
 // EntityReference is trusted context-owned identity, never a raw magic number.
@@ -845,6 +857,15 @@ func (c *UserContext) executePreparedGraphSave(ctx stdcontext.Context, intent co
 	if plan != nil {
 		plan = cloneMutationPlan(plan)
 		plan.AuditReason = intent.AuditReason()
+	}
+	// A complete, explicit empty prepared plan is a no-op, not an UPDATE.
+	// Keep the traversal callback behind a rejecting provider so a late child
+	// mutation cannot silently escape the sealed empty plan.
+	if plan != nil && len(plan.Operations) == 0 {
+		if strings.TrimSpace(plan.RequestKey) == "" || strings.TrimSpace(plan.RootEntity) == "" {
+			return &RuntimeError{Type: "MutationPolicy", Message: "mutation plan requires request key and root entity"}
+		}
+		return c.executeEmptyPreparedGraph(work)
 	}
 	snapshot, err := c.ReviewMutationPlan(plan)
 	if err != nil {

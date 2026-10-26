@@ -12,6 +12,9 @@ type PropertyDescriptor struct {
 	IsInt32 bool
 	// Trusted descriptor policy, never taken from a query/TFP request.
 	LogPolicy string
+	// Admission rule evaluated before restored-value cancellation or customer
+	// Checker/Fix. Trusted model metadata, never supplied by a mutation request.
+	ImmutableUpdateRule string
 }
 
 func NewPropertyDescriptor(name string, dataType DataType) *PropertyDescriptor {
@@ -49,6 +52,11 @@ func (p *PropertyDescriptor) Version() *PropertyDescriptor {
 // the generated native accessor or the provider's physical column name/type.
 func (p *PropertyDescriptor) Int32() *PropertyDescriptor {
 	p.IsInt32 = true
+	return p
+}
+
+func (p *PropertyDescriptor) ImmutableAfterCreate(rule string) *PropertyDescriptor {
+	p.ImmutableUpdateRule = rule
 	return p
 }
 

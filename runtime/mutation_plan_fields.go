@@ -26,6 +26,12 @@ func (c *UserContext) validateMutationPlanFields(plan *MutationPlan) error {
 					Message: "Mutation fields must use declared canonical model names",
 				}}}
 			}
+			if property := entity.PropertyByName(storage); operation.Kind == core.MutationUpdate && property.ImmutableUpdateRule != "" {
+				return &RuntimeError{Type: "Check", CheckResults: []CheckResult{{
+					RuleID: property.ImmutableUpdateRule, EntityType: operation.Entity, CanonicalLocation: Location().Property(field),
+					Message: "This model field is immutable after create",
+				}}}
+			}
 		}
 	}
 	return nil
