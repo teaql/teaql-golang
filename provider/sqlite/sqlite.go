@@ -133,6 +133,8 @@ func (d *SqliteDialect) SchemaTypeSql(dataType core.DataType, property *core.Pro
 		return "NUMERIC", nil
 	case core.TypeText:
 		return "VARCHAR(255)", nil
+	case core.TypeBlobRef:
+		return "VARCHAR(128)", nil
 	case core.TypeLargeText:
 		return "TEXT", nil
 	case core.TypeJson:
@@ -405,6 +407,8 @@ func bindSqliteValue(value core.Value) (interface{}, error) {
 		return int64(v), nil
 	case string:
 		return v, nil
+	case core.BlobRef:
+		return v.Value()
 	}
 	return nil, fmt.Errorf("unsupported sqlite bind value type %T", value.V)
 }

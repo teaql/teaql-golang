@@ -317,6 +317,8 @@ func sqlLiteral(value core.Value, kind DatabaseKind) string {
 		return v.String()
 	case string:
 		return quotedSqlString(v)
+	case core.BlobRef:
+		return "'[REDACTED]'"
 	case time.Time:
 		date := quotedSqlString(v.UTC().Format("2006-01-02"))
 		if kind == DatabaseKindPostgreSQL {

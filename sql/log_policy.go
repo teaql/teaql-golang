@@ -21,6 +21,9 @@ func (d *DefaultSqlDialect) intentOperands(params []core.Value) []intentOperand 
 
 func fieldLogPolicy(entity *core.EntityDescriptor, field string) string {
 	property := entity.PropertyByName(field)
+	if property != nil && (property.DataType == core.TypeBlobRef || property.BlobSpec != nil) {
+		return "credential"
+	}
 	if logprivacy.CredentialName(field) || property != nil && logprivacy.CredentialName(property.ColName) {
 		return "credential"
 	}
