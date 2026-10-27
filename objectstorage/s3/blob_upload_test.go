@@ -25,13 +25,16 @@ import (
 	teaqlsql "github.com/teaql/teaql-golang/sql"
 )
 
-type s3UploadPermission struct{ allowed bool }
+type s3UploadPermission struct {
+	allowed    bool
+	extensions []string
+}
 
 func (*s3UploadPermission) Scope(*runtime.UserContext) (string, error) {
 	return "f4-s3-upload", nil
 }
-func (*s3UploadPermission) Field(*runtime.UserContext, blobreference.UploadTarget) (core.BlobFieldSpec, error) {
-	return core.NewBlobFieldSpec("Asset", "document", []string{"pdf"}, true, "default")
+func (p *s3UploadPermission) Field(*runtime.UserContext, blobreference.UploadTarget) (core.BlobFieldSpec, error) {
+	return core.NewBlobFieldSpec("Asset", "document", p.extensions, true, "default")
 }
 func (p *s3UploadPermission) Authorize(_ *runtime.UserContext, target blobreference.UploadTarget,
 	action string, _ blobreference.UploadInput) error {
@@ -67,6 +70,16 @@ func (v *s3PDFVerifier) Verify(reader io.Reader, extension string, maximum int64
 	digest := sha256.Sum256(data)
 	return blobreference.VerifiedContent{SizeBytes: int64(len(data)),
 		SHA256: hex.EncodeToString(digest[:]), ContentType: "application/pdf"}, nil
+}
+
+type s3CountingVerifier struct {
+	inner blobreference.ContentVerifier
+	calls int
+}
+
+func (v *s3CountingVerifier) Verify(reader io.Reader, extension string, maximum int64) (blobreference.VerifiedContent, error) {
+	v.calls++
+	return v.inner.Verify(reader, extension, maximum)
 }
 
 type s3BindingPermission struct{}
@@ -112,6 +125,13 @@ func TestRealSQLiteBlobUploadThroughS3(t *testing.T) {
 	if os.Getenv("TEAQL_S3_TEST_BLOB_UPLOAD") != "1" {
 		t.Skip("explicit S3-compatible Blob upload gate required")
 	}
+	t.Run("fixture-pdf", func(t *testing.T) { runSQLiteBlobUploadThroughS3(t, false) })
+	if os.Getenv("TEAQL_S3_TEST_REAL_IMAGE") == "1" {
+		t.Run("real-jpeg", func(t *testing.T) { runSQLiteBlobUploadThroughS3(t, true) })
+	}
+}
+
+func runSQLiteBlobUploadThroughS3(t *testing.T, image bool) {
 	endpoint, bucket := os.Getenv("TEAQL_S3_TEST_ENDPOINT"), os.Getenv("TEAQL_S3_TEST_BUCKET")
 	access, secret := os.Getenv("TEAQL_S3_TEST_ACCESS_KEY"), os.Getenv("TEAQL_S3_TEST_SECRET_KEY")
 	if endpoint == "" || bucket == "" || access == "" || secret == "" {
@@ -150,19 +170,34 @@ func TestRealSQLiteBlobUploadThroughS3(t *testing.T) {
 	if _, err := db.Exec("CREATE TABLE asset (id INTEGER PRIMARY KEY, document TEXT)"); err != nil {
 		t.Fatal(err)
 	}
-	permission, verifier := &s3UploadPermission{allowed: true}, &s3PDFVerifier{}
+	permission := &s3UploadPermission{allowed: true, extensions: []string{"pdf"}}
+	var parser blobreference.ContentVerifier = &s3PDFVerifier{}
+	data := []byte("%PDF-1.7\nreal S3 Blob upload\n%%EOF")
+	fileName, contentType := "report.pdf", "application/pdf"
+	if image {
+		permission.extensions = []string{"jpg"}
+		parser, err = blobreference.NewImageContentVerifier(10_000, 100<<20, 2)
+		if err != nil {
+			t.Fatal(err)
+		}
+		data, err = os.ReadFile(filepath.Join("..", "..", "blobreference", "testdata", "sample.jpg"))
+		if err != nil {
+			t.Fatal(err)
+		}
+		fileName, contentType = "sample.jpg", "image/jpeg"
+	}
+	verifier := &s3CountingVerifier{inner: parser}
 	service, err := blobreference.NewSQLiteUploadService(catalog, permission, verifier, 10_000, 15*time.Minute)
 	if err != nil {
 		t.Fatal(err)
 	}
-	data := []byte("%PDF-1.7\nreal S3 Blob upload\n%%EOF")
 	nonce := make([]byte, 16)
 	if _, err := rand.Read(nonce); err != nil {
 		t.Fatal(err)
 	}
 	session, err := service.Begin(actor, blobreference.UploadTarget{Entity: "Asset", EntityID: "1", Field: "document"},
-		blobreference.UploadInput{FileName: "report.pdf", DeclaredSize: int64(len(data)),
-			DeclaredContentType: "application/pdf"}, hex.EncodeToString(nonce))
+		blobreference.UploadInput{FileName: fileName, DeclaredSize: int64(len(data)),
+			DeclaredContentType: contentType}, hex.EncodeToString(nonce))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -212,7 +247,7 @@ func TestRealSQLiteBlobUploadThroughS3(t *testing.T) {
 		session.Reference.Key()).Scan(&status, &mime, &size, &version); err != nil {
 		t.Fatal(err)
 	}
-	if status != "uploaded_unbound" || mime != "application/pdf" || size != int64(len(data)) ||
+	if status != "uploaded_unbound" || mime != contentType || size != int64(len(data)) ||
 		version != head.ETag() {
 		t.Fatal("S3 Blob catalog/object mismatch")
 	}
@@ -281,8 +316,8 @@ func TestRealSQLiteBlobUploadThroughS3(t *testing.T) {
 	partial, readErr := io.ReadAll(response.Body)
 	closeErr = response.Body.Close()
 	if readErr != nil || closeErr != nil || response.StatusCode != http.StatusPartialContent ||
-		!bytes.Equal(partial, data[:8]) || response.Header.Get("Content-Type") != "application/pdf" ||
-		!strings.Contains(response.Header.Get("Content-Disposition"), "report.pdf") {
+		!bytes.Equal(partial, data[:8]) || response.Header.Get("Content-Type") != contentType ||
+		!strings.Contains(response.Header.Get("Content-Disposition"), fileName) {
 		t.Fatal("S3 Blob signed view HTTP Range mismatch", response.StatusCode, readErr, closeErr)
 	}
 	readPermission.allowed = false
