@@ -325,7 +325,12 @@ func (e *OrderItem) Save(context *runtime.UserContext) (*OrderItem, error) {
 // TeaqlPreflightGraph runs Checker/Fix for the complete aggregate before the
 // first provider mutation. It is generated infrastructure, not application API.
 func (e *OrderItem) TeaqlPreflightGraph(context *runtime.UserContext, intent core.MutationIntent) error {
+	return e.TeaqlPreflightWithinGraph(context, intent, nil)
+}
+
+func (e *OrderItem) TeaqlPreflightWithinGraph(context *runtime.UserContext, intent core.MutationIntent, parent *core.EntityKey) error {
 	if err := intent.Validate(); err != nil { return err }
+	if err := context.PrepareGraphMutationLineage(e.root, e.EntityKey(), parent, intent, e.comment); err != nil { return err }
 	restoredFields, err := context.DiscardRestoredScalarChanges(e.root, e.EntityKey(), e.loadedSnapshot)
 	if err != nil { return err }
 	for _, field := range restoredFields { delete(e.dirtyFields, field) }

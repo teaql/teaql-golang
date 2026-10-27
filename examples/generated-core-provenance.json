@@ -1,10 +1,10 @@
 {
   "schema": "teaql.generated-example-fixture/v1",
-  "generatorCommit": "96330e65d10f5018f5401b1e243c8fa03915fd7e",
-  "generatorSourceContentsSha256": "2257c071100d8e666a1a013c7eacde050921c958352cd0b735155f5c72728240",
-  "producerReceiptSha256": "b78915f409eb497c86fe58ffc7adfc6eea7a60c21f60bc13d26a7f7a0f56ca82",
+  "generatorCommit": "9a8e853476637213c4e73e4436ef089801d145eb",
+  "generatorSourceContentsSha256": "e64b67a965f539713bb49dfbf8a45312b8d4a623057b3282f8974cbbb9373e35",
+  "producerReceiptSha256": "b8e916fe76ca8ed2b8930b089ca1b486a1db86a0412f125ad7e9a6b10f5ce5b1",
   "evaluationErrors": 0,
-  "retainedManifestSha256": "5aea20574618ee401d695106df69a31e2785bc05be2113132a140e157204a1ae",
+  "retainedManifestSha256": "fdb1cab7f56063b2d784514bf0687808beef6cc92f0426bfc435fca2e017c8f6",
   "fixtures": {
     "conformance": {
       "modelSha256": "0a59f66db2487fdd0430087dd5985ae780225c088ad800679cb57c593c6bcee7",
@@ -26,8 +26,8 @@
         "work_item/expression.go": "ce4e2c24aabd82c49f96ed4cb9cc067ed601ff322035a966950cea2cbcf4142b",
         "platform/checker.go": "ae95114ab80d2d5e2793f9392cf55f54a5c9fd68401a6a24946d7a8f4368a1bd",
         "work_item/checker.go": "a9696ef2aa83b222153db63631e74eefaeb4e16d0e4cbb66959b59e44204cc3c",
-        "platform/entity.go": "0345bb650abe319211f9b73e44bfebd54db5048d76f3597590dc8e4dd070b955",
-        "work_item/entity.go": "3bd2edb0f9ee2e7cfeca37c355a21c2ab111396cbfaa63c7fb69881e55316840"
+        "platform/entity.go": "9e5f0e9cf3cf2a6e7b8421beceb556075262f47465fd24e8802f049fed5f4b66",
+        "work_item/entity.go": "4e6e8e6894d2d87fdcda8a13a17be09cb6287327edcb492642707430bfde8b42"
       },
       "dependencyBindings": [
         {
@@ -62,9 +62,9 @@
         "platform/checker.go": "ae95114ab80d2d5e2793f9392cf55f54a5c9fd68401a6a24946d7a8f4368a1bd",
         "school_type/checker.go": "fede55c385b25274234d30c25971ff0f0bb123b83e44784843f0a23d260fe4b6",
         "school/checker.go": "7eeb520f1f690e5abb2a56446ad5f919a96839d7709297d0d7887493a906d6df",
-        "platform/entity.go": "e4c5168274d95f74fd240cc78e8d8df2dbb174fdf017e8eedd4b5848cc5ddf8b",
-        "school_type/entity.go": "43987a2c307577fe83446df92147664611da7638ece25cb799685cebdba2a528",
-        "school/entity.go": "fdd58e4e33663e523b77afca9de4015859b915984ef117da0a555dd1c60bac31"
+        "platform/entity.go": "e99559729db900c404e99db263b83d29d25ecaaca6688b32b26d0c7b16685609",
+        "school_type/entity.go": "29f90e7c991740a5a2896a74393f9ca56894f5963465c302f81732ab9f78e974",
+        "school/entity.go": "7f4b0ac1bdcccc29c805a09aa5038061dc5b8d372fd9ef154abc09bee3ea479c"
       },
       "dependencyBindings": [
         {
@@ -115,13 +115,13 @@
         "product/checker.go": "3de44dfe697971ffd64b2156992408e9a174f95b719c202a6a26aaf17fa7365d",
         "order_line/checker.go": "da0b7c2ad55deb170e313b1c1564b76e0800e632ad0c9eae145078f7df524f98",
         "order_search_preset/checker.go": "9b93139c7f5267f70a68a2d5c3a0ba215d5b3ef649a5587330593a6a77be5e06",
-        "commerce_platform/entity.go": "68d4a13e7c86f8fbb216c9958f9b818e3a27f9dc7865f7998b113ab6455e8658",
-        "customer/entity.go": "eb8aafea936aa57e78961da4382285bd921daa2ee08844bb2f33239283724f1e",
-        "order_status/entity.go": "18b7d286d2f9ccf37ca3307c03dc875e158d457f21a4c8c6046876eda6890022",
-        "customer_order/entity.go": "0e5dc705c685ed9c07d7183fb83b4cc1577395d17a37e2dd19580a09eb2de717",
-        "product/entity.go": "8df753e5e277868a56c6a47ef148cf44707d0bdca841a689ae4bd5cb82e983e4",
-        "order_line/entity.go": "b28c9acbfdffb36b5826259568010093b0203b6b45c80575a57d5e3ec3fa1d39",
-        "order_search_preset/entity.go": "bd2e34fae708b634d1c031c99c969b2e62a73a4b7199a7a5258666962549eb1e"
+        "commerce_platform/entity.go": "56f971fbb085902b3977f8a16059af2bec878c307f79a6a117cdefeb826447ec",
+        "customer/entity.go": "d9859e81b9e59c1d3e571f6ba4af08d551358d8a4236e3904665dc8f8d7a08eb",
+        "order_status/entity.go": "7f77496f9d10010cae0183790dccaf8acb49dde42a046b3f8e0297c923248ef1",
+        "customer_order/entity.go": "632da9e8c1e134ce070fac2c3419c0cb81cd314860a1506583af6b0d6e0bf3d8",
+        "product/entity.go": "cb598ff7f7695f1162ed34df06feda06c23b54c8a7e810edbfdd995781b4227c",
+        "order_line/entity.go": "955bae6ba5d8f587cf40749e2207b83fa940bf18c7f2dbf85a20f789cdae3056",
+        "order_search_preset/entity.go": "fbedc213dc8279e4cfa9ba057c10710a31a8056e922a9ccbb3db12657015e4c4"
       },
       "dependencyBindings": [
         {
@@ -160,10 +160,10 @@
         "task_status/checker.go": "895440c0ea4faa4eeac0bc92bdbcb020c8d52ffe274711140a6756cd06c6f58b",
         "task/checker.go": "b5a5be8f9469ca457b5cdabb87f25126c69a09e56757bdbecfdb5b6c7b166edc",
         "task_execution_log/checker.go": "3745b729abc5b6355febc9b78ee56770ec21659439ea65ad75406a886a11da74",
-        "platform/entity.go": "47d985a002a87caca02e61111273510818c621e44f047b87e1822fbb27a228e3",
-        "task_status/entity.go": "adfb537803e74d6a6e61eced5ef9d841428b8d769ea17fc83f3bb7101860a3c6",
-        "task/entity.go": "d2b83e9fa61127a1b1b609961f8e50b9ef8a74c3ad2ee77788df5ef29a060fa2",
-        "task_execution_log/entity.go": "753c40546f87a05dd2855e6b3e17bab7648a0c0493a92e7225e47e152f218dee"
+        "platform/entity.go": "bf59f62ba071943b0b50338fe2118665a67d4f54e79d23395016d781fd006b02",
+        "task_status/entity.go": "e85b948f7090529846d771a7894f1151fa5455a38c16e05ac7c219934cee8d9e",
+        "task/entity.go": "3094fc593e8b59e3d8e59007d878fae00b46d1cfaab9268ad7a1f6b4a8e9d8ab",
+        "task_execution_log/entity.go": "54fd1571317e02b01463553bcf437510e3f97bb214274f724adbf2ef793c91b9"
       },
       "dependencyBindings": [
         {
@@ -210,12 +210,12 @@
         "payment/checker.go": "b9fb61d66210588163a6ac98803c176f238ec633154ca504bca06c653c70a3ff",
         "payment_attempt/checker.go": "c33b17c3b5ea147b900ee739df8d34941fb0fd865af8b069172adab91a63902b",
         "shipment/checker.go": "edb9435ea445033e998fcfc8ed8f8baf10ae70a90c644100857fcbb6fbe2291e",
-        "platform/entity.go": "87870999aea4ad3f5336c2a373b50c6c0084f433d259dc68add018a880be89e0",
-        "customer_order/entity.go": "8e3a940f7df5c1c75df81c5a7c1cfcd4e9e138b36b2a688d5670f05e39796408",
-        "order_item/entity.go": "9d162410c73ee5d163a998027540a6b7dcad1d1ec63426105e0fca3e11b002ce",
-        "payment/entity.go": "b3a591e12f545808ebee9543eff7ff77ce31ce524409e126389c1163243b2c9e",
-        "payment_attempt/entity.go": "57a6c2ad405bc2fffd1d95fa72ceeddcb94fa307c03408a89c0907614a3cd5a9",
-        "shipment/entity.go": "44a1880aed279ead8064448bb34c87cedd7d5aa0de0a3e5d730300cf57b79a8a"
+        "platform/entity.go": "fe2a7c83c2609446b17445ad6f804e62163815117b66fd4b5a1251c66b9ca0b7",
+        "customer_order/entity.go": "807075b8672140d2a3a7e60579261a7840bbf50d5efd9992af10f048670ad376",
+        "order_item/entity.go": "a6c49dd824aecc6523bb7daf6e3d1b4accaf2e8ec19873125248bb7fc6c5bf13",
+        "payment/entity.go": "fcdf6f9fdfd358d5c2c26a2ec58d9ef5e66df6fe57a2333e81542c79a68ebd66",
+        "payment_attempt/entity.go": "b80e7bf64874f7e71a8b00fda3ea2298861ba8be52c7ca2f388f14bd07d26d12",
+        "shipment/entity.go": "c8a0e0f4ea39778772fab8a3edc051807762ba06fb183b3dd59fb70788d9ccc3"
       },
       "dependencyBindings": []
     },
@@ -251,11 +251,11 @@
         "customer/checker.go": "003db818e57763e609fb670b182a2de387efb351d42a405d2a19d1ef442b186b",
         "customer_order/checker.go": "6c93030644a04f0f89a2f01b12207189110623051812a081270efe5c9f583dd6",
         "order_item/checker.go": "02e151227137a4eb1df8824d4ba83bcd08057bc88c57beb33f63096a0b0434af",
-        "platform/entity.go": "64df58971db398eef5b82899b6723fa41ffd0e875f296aca366db28741f13094",
-        "order_status/entity.go": "6f47d708bffaafb33c79dc0187d1f80fbedc7c85ba8093c00f5c84df610b4d18",
-        "customer/entity.go": "ee993ab7f4ae815b2a7cb06806f55c317003d1a0da668ab570697c6db42e2e04",
-        "customer_order/entity.go": "94083676e0fdc27a8d84df02265f763534f903ff4970b4dfc0b8cd6e61031ff7",
-        "order_item/entity.go": "b231706258b6b204709aec78fe343669014a9ebd2ac261bcf62c1d35a2633d6a"
+        "platform/entity.go": "477a55e6544369f42158c2893eb2a3d884a751fd5e657f06b76ef91653b29f59",
+        "order_status/entity.go": "8125e812899fd80d0501395d9d620cf49f9c021380706424bfa7572e832acd13",
+        "customer/entity.go": "a0b399d23b5dd2a7baecb8c5169021b9e2d99c0931d9e6fdbaad401784526e98",
+        "customer_order/entity.go": "ad50b549c66ad8b8bba16dc88589e043b75dfe27b37cc3e28e131b4d50cba5b4",
+        "order_item/entity.go": "8b86b77b9562f942a3e316f202517b642b5a79bd8d3261590e8ea08905b26ef6"
       },
       "dependencyBindings": []
     },
@@ -283,9 +283,9 @@
         "tenant/checker.go": "78409224822eecf82ae5617141b0116f808a6d1bab0b483789b6496a49c013e8",
         "purchase_order/checker.go": "1c2bb40949d6a04e92ac1dba63c681727447a2b7027c7b7c50b83609eef39b90",
         "order_item/checker.go": "02e151227137a4eb1df8824d4ba83bcd08057bc88c57beb33f63096a0b0434af",
-        "tenant/entity.go": "a4347659f8685d7e88356aad1b2e7fbba293d91f047a05ccad6e2f8c159d8cea",
-        "purchase_order/entity.go": "89a3ed7b58120904a5345138ea8c932cd2e3072bd20019389f8abcb8e248ddf2",
-        "order_item/entity.go": "e49f6f84dc79247e43e09eeb63e5bb3ac1dab069a8caaa7322817faf69ed108e"
+        "tenant/entity.go": "155884ef46f79336c9a96ab149f9537572780cd491d09d89082f626087325baa",
+        "purchase_order/entity.go": "32ef5d7c402b9844fcf53c554ed14dd9cfcdc95f2edaf2950a10b90d3abbc3c2",
+        "order_item/entity.go": "2403ead12bf5d7b39101227e255515866e65f54efe435ca727e6aece38312ffd"
       },
       "dependencyBindings": []
     },
@@ -309,8 +309,8 @@
         "scalar_type_probe/expression.go": "308ab7e89e86f47e69cc6c315f21fa424bcdded63eb442ee93748d5b6865ca9c",
         "type_platform/checker.go": "d34524d9ccc3e9f7161924149af5e32c7ad204deca31e1d86f1561877c78135e",
         "scalar_type_probe/checker.go": "355e35a675df34683b3c7cfb85abe12a77f2dde6ab027c11c6a1574b2e8c51be",
-        "type_platform/entity.go": "6b73cac569b1dbf04726cd2572a5d792999cb25441feeab8a3a5aa9d31e6efc7",
-        "scalar_type_probe/entity.go": "0145c0141b2480eb767e9e998cb384a799a5830e78ee678a77e7622d19b7a4d9"
+        "type_platform/entity.go": "7d5e23faf62d4881244a53ccf50c23009a9b71e8e8bc93db1e41600b5822685c",
+        "scalar_type_probe/entity.go": "d8da00301e1b4cde072cae00c63973545a98f42744c0acf05e022dd6a8c5c582"
       },
       "dependencyBindings": []
     }

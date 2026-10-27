@@ -350,7 +350,12 @@ func (e *SchoolType) Save(context *runtime.UserContext) (*SchoolType, error) {
 // TeaqlPreflightGraph runs Checker/Fix for the complete aggregate before the
 // first provider mutation. It is generated infrastructure, not application API.
 func (e *SchoolType) TeaqlPreflightGraph(context *runtime.UserContext, intent core.MutationIntent) error {
+	return e.TeaqlPreflightWithinGraph(context, intent, nil)
+}
+
+func (e *SchoolType) TeaqlPreflightWithinGraph(context *runtime.UserContext, intent core.MutationIntent, parent *core.EntityKey) error {
 	if err := intent.Validate(); err != nil { return err }
+	if err := context.PrepareGraphMutationLineage(e.root, e.EntityKey(), parent, intent, e.comment); err != nil { return err }
 	restoredFields, err := context.DiscardRestoredScalarChanges(e.root, e.EntityKey(), e.loadedSnapshot)
 	if err != nil { return err }
 	for _, field := range restoredFields { delete(e.dirtyFields, field) }
@@ -403,7 +408,8 @@ func (e *SchoolType) TeaqlPreflightGraph(context *runtime.UserContext, intent co
 		parentID := core.ValU64(e.base.Id)
 		if e.base.Id == 0 { parentID = e.ledgerID }
 		child.Base().PutDynamic("school_type_id", parentID)
-		if err := child.TeaqlPreflightGraph(context, intent); err != nil {
+		parentKey := e.EntityKey()
+		if err := child.TeaqlPreflightWithinGraph(context, intent, &parentKey); err != nil {
 			var checkError *runtime.RuntimeError
 			if errors.As(err, &checkError) && checkError.Type == "Check" {
 				prefix := runtime.Location().Property("school_list").At(index)
