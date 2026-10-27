@@ -60,6 +60,16 @@ func (c *SQLiteCatalog) EnsureSchema(ctx stdcontext.Context) error {
             FOREIGN KEY (key) REFERENCES teaql_blob_catalog(key)
         )`,
 		`CREATE INDEX IF NOT EXISTS teaql_blob_binding_key ON teaql_blob_binding(key)`,
+		`CREATE TABLE IF NOT EXISTS teaql_blob_upload (
+            upload_id TEXT PRIMARY KEY, scope TEXT NOT NULL, replay_key TEXT NOT NULL,
+            request_hash TEXT NOT NULL, key TEXT NOT NULL, entity TEXT NOT NULL,
+            entity_id TEXT NOT NULL, field TEXT NOT NULL, file_name TEXT NOT NULL,
+            extension TEXT NOT NULL, declared_size BIGINT NOT NULL,
+            expires_unix_ms BIGINT NOT NULL, state TEXT NOT NULL CHECK
+              (state IN ('initiated','written','completed')),
+            written_sha256 TEXT, written_etag TEXT,
+            UNIQUE(scope,replay_key), FOREIGN KEY(key) REFERENCES teaql_blob_catalog(key)
+        )`,
 	} {
 		if _, err := c.transport.ExecuteSql(ctx, &teaqlsql.CompiledQuery{Sql: statement}); err != nil {
 			return errors.New("BLOB_CATALOG_FAILED")
@@ -72,6 +82,9 @@ func (c *SQLiteCatalog) ValidateSchema(ctx stdcontext.Context) error {
 	for _, statement := range []string{
 		`SELECT key, scope, object_key, content_version, file_name, content_type, size_bytes, status FROM teaql_blob_catalog WHERE 1 = 0`,
 		`SELECT scope, entity, entity_id, field, key, version FROM teaql_blob_binding WHERE 1 = 0`,
+		`SELECT upload_id, scope, replay_key, request_hash, key, entity, entity_id,
+            field, file_name, extension, declared_size, expires_unix_ms, state,
+            written_sha256, written_etag FROM teaql_blob_upload WHERE 1 = 0`,
 	} {
 		if _, err := c.transport.FetchAllSql(ctx, &teaqlsql.CompiledQuery{Sql: statement}); err != nil {
 			return errors.New("BLOB_SCHEMA_MISSING")

@@ -79,6 +79,12 @@ var blobMIME = map[string]string{
 	"pdf":  "application/pdf",
 }
 
+// BlobMIMEForExtension resolves only the frozen Blob format set, never a client hint.
+func BlobMIMEForExtension(extension string) (string, bool) {
+	mime, okay := blobMIME[extension]
+	return mime, okay
+}
+
 // BlobFieldSpec records trusted model format restrictions, not upload authority.
 type BlobFieldSpec struct {
 	Entity, Field, PolicyProfile string

@@ -1,0 +1,216 @@
+package sqlite
+
+import (
+	"bytes"
+	"crypto/rand"
+	"crypto/sha256"
+	"encoding/hex"
+	"errors"
+	"io"
+	"path/filepath"
+	"strings"
+	"testing"
+	"time"
+
+	"github.com/teaql/teaql-golang/blobreference"
+	"github.com/teaql/teaql-golang/core"
+	"github.com/teaql/teaql-golang/runtime"
+)
+
+type uploadPermission struct {
+	scope   string
+	allowed bool
+}
+
+func (p *uploadPermission) Scope(*runtime.UserContext) (string, error) { return p.scope, nil }
+func (p *uploadPermission) Field(_ *runtime.UserContext, target blobreference.UploadTarget) (core.BlobFieldSpec, error) {
+	return core.NewBlobFieldSpec("Customer", "document", []string{"pdf"}, true, "default")
+}
+func (p *uploadPermission) Authorize(_ *runtime.UserContext, target blobreference.UploadTarget,
+	action string, input blobreference.UploadInput) error {
+	if !p.allowed || target.Entity != "Customer" || target.Field != "document" ||
+		action != "Begin" && action != "Write" && action != "Confirm" {
+		return errors.New("revoked")
+	}
+	return nil
+}
+
+// This test-only parser proves full-byte verifier orchestration, not production PDF parsing.
+type fixturePDFVerifier struct {
+	early bool
+	calls int
+}
+
+func (v *fixturePDFVerifier) Verify(reader io.Reader, extension string, maximum int64) (blobreference.VerifiedContent, error) {
+	v.calls++
+	if v.early {
+		return blobreference.VerifiedContent{SizeBytes: 1, ContentType: "application/pdf"}, nil
+	}
+	data, err := io.ReadAll(io.LimitReader(reader, maximum+1))
+	if err != nil || int64(len(data)) > maximum || extension != "pdf" ||
+		!bytes.HasPrefix(data, []byte("%PDF-")) || !bytes.Contains(data, []byte("%%EOF")) {
+		return blobreference.VerifiedContent{}, errors.New("invalid fixture")
+	}
+	digest := sha256.Sum256(data)
+	return blobreference.VerifiedContent{SizeBytes: int64(len(data)), SHA256: hex.EncodeToString(digest[:]),
+		ContentType: "application/pdf"}, nil
+}
+
+func TestSQLiteBlobUploadRequiresRealBytesAndFullVerificationBeforeBinding(t *testing.T) {
+	e := nativeBatchEnvironment(t)
+	catalog, err := blobreference.NewSQLiteCatalog(e.executor.Transport)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := catalog.EnsureSchema(e.ctx); err != nil {
+		t.Fatal(err)
+	}
+	if err := catalog.ValidateSchema(e.ctx); err != nil {
+		t.Fatal(err)
+	}
+	secret := make([]byte, 32)
+	if _, err := rand.Read(secret); err != nil {
+		t.Fatal(err)
+	}
+	store, err := blobreference.NewFileObjectStorage(filepath.Join(t.TempDir(), "private"), secret)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer store.Close()
+	e.ctx.WithObjectStorage(store)
+	e.ctx.WithObjectStorageObserver(runtime.ObjectStorageObserverFunc(func(runtime.ObjectStorageEvent) {}))
+	permission := &uploadPermission{scope: "tenant-a", allowed: true}
+	verifier := &fixturePDFVerifier{}
+	service, err := blobreference.NewSQLiteUploadService(catalog, permission, verifier, 10_000, 15*time.Minute)
+	if err != nil {
+		t.Fatal(err)
+	}
+	data := []byte("%PDF-1.7\nreal file bytes\n%%EOF")
+	target := blobreference.UploadTarget{Entity: "Customer", EntityID: "1", Field: "document"}
+	input := blobreference.UploadInput{FileName: "upload/path/report.pdf", DeclaredSize: int64(len(data)),
+		DeclaredContentType: "application/pdf"}
+	session, err := service.Begin(e.ctx, target, input, "request-1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	replay, err := service.Begin(e.ctx, target, input, "request-1")
+	if err != nil || replay.ID != session.ID {
+		t.Fatalf("scoped replay: %v", err)
+	}
+	changed := input
+	changed.FileName = "other.pdf"
+	if _, err := service.Begin(e.ctx, target, changed, "request-1"); err == nil || err.Error() != "BLOB_IDEMPOTENCY_CONFLICT" {
+		t.Fatalf("changed replay accepted: %v", err)
+	}
+	if _, err := service.Complete(e.ctx, session.ID); err == nil || err.Error() != "BLOB_UPLOAD_INCOMPLETE" {
+		t.Fatalf("unwritten upload completed: %v", err)
+	}
+	permission.scope = "tenant-b"
+	if _, err := service.Write(e.ctx, session.ID, io.NopCloser(bytes.NewReader(data))); err == nil || err.Error() != "BLOB_UPLOAD_DENIED" {
+		t.Fatalf("foreign scope wrote: %v", err)
+	}
+	permission.scope = "tenant-a"
+	count, err := service.Write(e.ctx, session.ID, io.NopCloser(bytes.NewReader(data)))
+	if err != nil || count != int64(len(data)) {
+		t.Fatalf("real File write: %d %v", count, err)
+	}
+	var status string
+	if err := e.db.QueryRow("SELECT status FROM teaql_blob_catalog WHERE key=?", session.Reference.Key()).Scan(&status); err != nil || status != "initiated" {
+		t.Fatalf("unverified upload advanced: %s %v", status, err)
+	}
+	permission.allowed = false
+	if _, err := service.Complete(e.ctx, session.ID); err == nil || err.Error() != "BLOB_UPLOAD_DENIED" {
+		t.Fatalf("revoked confirmation advanced: %v", err)
+	}
+	permission.allowed = true
+	reference, err := service.Complete(e.ctx, session.ID)
+	if err != nil || reference.Key() != session.Reference.Key() || verifier.calls != 1 {
+		t.Fatalf("verified confirmation: %v calls=%d", err, verifier.calls)
+	}
+	if err := e.db.QueryRow("SELECT status FROM teaql_blob_catalog WHERE key=?", reference.Key()).Scan(&status); err != nil || status != "uploaded_unbound" {
+		t.Fatalf("verified state: %s %v", status, err)
+	}
+	reason := "bind verified file"
+	intent, err := core.NewMutationIntent(&reason)
+	if err != nil {
+		t.Fatal(err)
+	}
+	err = e.ctx.ExecuteGraphSaveWithSQL(intent, func(graph *runtime.GraphSQLHandle) error {
+		_, err := catalog.BindInGraph(e.ctx, graph, e.ctx, blobreference.BindingChange{
+			Target: blobreference.BindingTarget{Entity: "Customer", EntityID: "1", Field: "document"},
+			Next:   &reference, ExpectedVersion: 0, NextVersion: 1, Action: "Create",
+		}, &catalogPermission{scope: "tenant-a", allowed: true})
+		return err
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := e.db.QueryRow("SELECT status FROM teaql_blob_catalog WHERE key=?", reference.Key()).Scan(&status); err != nil || status != "available" {
+		t.Fatalf("bound status: %s %v", status, err)
+	}
+	second, err := service.Begin(e.ctx, target, input, "request-2")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := service.Write(e.ctx, second.ID, io.NopCloser(bytes.NewReader(data))); err != nil {
+		t.Fatal(err)
+	}
+	var location string
+	if err := e.db.QueryRow("SELECT object_key FROM teaql_blob_catalog WHERE key=?", second.Reference.Key()).Scan(&location); err != nil {
+		t.Fatal(err)
+	}
+	key, err := core.NewObjectKey(location)
+	if err != nil {
+		t.Fatal(err)
+	}
+	storage, err := e.ctx.ObjectStorage("test same-byte replacement")
+	if err != nil {
+		t.Fatal(err)
+	}
+	replace, _ := core.NewObjectPutOptions(int64(len(data)), core.ObjectReplace)
+	replace, _ = replace.WithContentType("application/pdf")
+	if _, err := storage.PutBytes(key, data, replace); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := service.Complete(e.ctx, second.ID); err == nil || err.Error() != "BLOB_UPLOAD_INCOMPLETE" {
+		t.Fatalf("same-byte replacement completed: %v", err)
+	}
+	third, err := service.Begin(e.ctx, target, input, "request-3")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := service.Write(e.ctx, third.ID, io.NopCloser(bytes.NewReader(data))); err != nil {
+		t.Fatal(err)
+	}
+	unsafeVerifier := &fixturePDFVerifier{early: true}
+	unsafe, err := blobreference.NewSQLiteUploadService(catalog, permission, unsafeVerifier, 10_000, 15*time.Minute)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := unsafe.Complete(e.ctx, third.ID); err == nil || !strings.Contains(err.Error(), "BLOB_UPLOAD_INCOMPLETE") {
+		t.Fatalf("early verifier completed: %v", err)
+	}
+	if err := e.db.QueryRow("SELECT status FROM teaql_blob_catalog WHERE key=?", third.Reference.Key()).Scan(&status); err != nil || status != "initiated" {
+		t.Fatalf("early verifier promoted: %s %v", status, err)
+	}
+	fourth, err := service.Begin(e.ctx, target, input, "request-4")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := service.Write(e.ctx, fourth.ID, io.NopCloser(bytes.NewReader(append(append([]byte(nil), data...), 'x')))); err == nil {
+		t.Fatal("oversized source accepted")
+	}
+	if _, err := service.Complete(e.ctx, fourth.ID); err == nil || err.Error() != "BLOB_UPLOAD_INCOMPLETE" {
+		t.Fatalf("oversized source completed: %v", err)
+	}
+	fifth, err := service.Begin(e.ctx, target, input, "request-5")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := service.Write(e.ctx, fifth.ID, io.NopCloser(bytes.NewReader(data[:len(data)-1]))); err == nil {
+		t.Fatal("short source accepted")
+	}
+	if _, err := service.Complete(e.ctx, fifth.ID); err == nil || err.Error() != "BLOB_UPLOAD_INCOMPLETE" {
+		t.Fatalf("short source completed: %v", err)
+	}
+}
