@@ -1,9 +1,14 @@
 package sqlite
 
 import (
+	"bytes"
 	stdcontext "context"
+	"crypto/rand"
 	"errors"
 	"io"
+	"net/http"
+	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
@@ -390,5 +395,107 @@ func TestSQLiteBlobCurrentReadAndViewProjectionRejectStaleOrRevoked(t *testing.T
 	}
 	if _, err := catalog.CurrentRead(ctx, slot); err == nil || err.Error() != "BLOB_READ_DENIED" {
 		t.Fatalf("deleted content accepted: %v", err)
+	}
+}
+
+func TestSQLiteBlobAuthorizedViewServesRealFileBytesAndDeniesRevokedRefresh(t *testing.T) {
+	e := nativeBatchEnvironment(t)
+	ctx := stdcontext.Background()
+	catalog, err := blobreference.NewSQLiteCatalog(e.executor.Transport)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := catalog.EnsureSchema(ctx); err != nil {
+		t.Fatal(err)
+	}
+	secret := make([]byte, 32)
+	if _, err := rand.Read(secret); err != nil {
+		t.Fatal(err)
+	}
+	store, err := blobreference.NewFileObjectStorage(filepath.Join(t.TempDir(), "private"), secret)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer store.Close()
+	if _, err := store.Start(); err != nil {
+		t.Fatal(err)
+	}
+	e.ctx.WithObjectStorage(store)
+	storage, err := e.ctx.ObjectStorage("publish current Blob")
+	if err != nil {
+		t.Fatal(err)
+	}
+	key, err := core.NewObjectKey("objects/read-real")
+	if err != nil {
+		t.Fatal(err)
+	}
+	data := []byte("%PDF-1x")
+	put, _ := core.NewObjectPutOptions(int64(len(data)), core.ObjectCreateOnly)
+	put, _ = put.WithContentType("application/pdf")
+	if _, err := storage.PutBytes(key, data, put); err != nil {
+		t.Fatal(err)
+	}
+	reference, err := core.ParseBlobRef("blob_go_real_1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := e.db.Exec(`INSERT INTO teaql_blob_catalog
+        (key,scope,object_key,content_version,file_name,content_type,size_bytes,status)
+        VALUES (?,?,?,?,?,?,?,?)`, reference.Key(), "tenant-a", key.Value(), "v1",
+		"report.pdf", "application/pdf", len(data), "uploaded_unbound"); err != nil {
+		t.Fatal(err)
+	}
+	reason := "bind real Blob"
+	intent, err := core.NewMutationIntent(&reason)
+	if err != nil {
+		t.Fatal(err)
+	}
+	err = e.ctx.ExecuteGraphSaveWithSQL(intent, func(graph *runtime.GraphSQLHandle) error {
+		_, err := catalog.BindInGraph(ctx, graph, e.ctx, blobreference.BindingChange{
+			Target: blobreference.BindingTarget{Entity: "Customer", EntityID: "1", Field: "document"},
+			Next:   &reference, ExpectedVersion: 0, NextVersion: 1, Action: "Create",
+		}, &catalogPermission{scope: "tenant-a", allowed: true})
+		return err
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	slot := runtime.AuthorizedBlobSlot{Path: []any{"document"}, Entity: "Customer", EntityID: "1",
+		Field: "document", Scope: "tenant-a", BindingVersion: 1, Reference: reference}
+	authorization := &catalogReadPermission{allowed: true}
+	e.ctx.InsertResource("responseGraphAuthorizer", catalogGraphAuthorizer{runtime.AuthorizedResponseGraph{
+		Presentation: map[string]any{"document": reference}, BlobSlots: []runtime.AuthorizedBlobSlot{slot}}})
+	e.ctx.InsertResource("blobResponseContributor", blobreference.SQLiteReadContributor{
+		Catalog: catalog, Authorize: authorization})
+	options := runtime.ViewOptions{Mode: "ordinary", BusinessOutcome: "read_only",
+		ExpiresAt: time.Now().Add(time.Minute)}
+	view, err := (runtime.ViewPreparationService{}).Prepare(e.ctx, nil, options)
+	if err != nil {
+		t.Fatal(err)
+	}
+	shown, ok := view.Presentation.(map[string]any)
+	if !ok {
+		t.Fatalf("unexpected presentation: %T", view.Presentation)
+	}
+	link, ok := shown["document"].(string)
+	if !ok || !strings.HasPrefix(link, "http://127.0.0.1:") || strings.Contains(link, key.Value()) {
+		t.Fatal("view did not project an opaque local URL")
+	}
+	response, err := http.Get(link)
+	if err != nil {
+		t.Fatal(err)
+	}
+	body, readErr := io.ReadAll(response.Body)
+	_ = response.Body.Close()
+	if readErr != nil || response.StatusCode != http.StatusOK || !bytes.Equal(body, data) ||
+		response.Header.Get("Content-Type") != "application/pdf" ||
+		response.Header.Get("Content-Disposition") != `inline; filename="report.pdf"` {
+		t.Fatalf("real view GET mismatch: status=%d err=%v", response.StatusCode, readErr)
+	}
+	authorization.allowed = false
+	_, err = (runtime.ViewPreparationService{}).Prepare(e.ctx, nil, options)
+	var denied *runtime.ViewPreparationError
+	if !errors.As(err, &denied) || denied.Code != "BLOB_READ_DENIED" {
+		t.Fatalf("revoked refresh accepted: %v", err)
 	}
 }
