@@ -659,6 +659,9 @@ func (d *DefaultSqlDialect) CompileDelete(entity *core.EntityDescriptor, command
 	var params []core.Value
 
 	if command.SoftDelete {
+		if command.ExpectedVersion != nil && *command.ExpectedVersion <= 0 {
+			return nil, fmt.Errorf("soft deletion of %s requires a positive original version; use explicit recovery for a tombstone", entity.Name)
+		}
 		versionProperty := entity.VersionProperty()
 		if versionProperty == nil {
 			return nil, ErrMissingVersionProperty(entity.Name)
@@ -675,6 +678,9 @@ func (d *DefaultSqlDialect) CompileDelete(entity *core.EntityDescriptor, command
 		if command.ExpectedVersion != nil {
 			d.bindField(&params, core.ValI64(*command.ExpectedVersion), entity, versionProperty.Name)
 			predicates = append(predicates, fmt.Sprintf("%s = %s", d.Dialect.QuoteIdent(versionProperty.ColName), d.Dialect.Placeholder(len(params))))
+		} else {
+			// A trusted blind delete must not rewrite an existing tombstone.
+			predicates = append(predicates, fmt.Sprintf("%s >= 1", d.Dialect.QuoteIdent(versionProperty.ColName)))
 		}
 		var err error
 		predicates, params, err = d.appendMutationGuards(entity, predicates, params, command.Guards)

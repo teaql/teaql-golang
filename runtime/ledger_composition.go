@@ -37,6 +37,13 @@ func validateOperationVersions(plan *MutationPlan) error {
 		}
 		key := fmt.Sprintf("%s\x00%T:%v", operation.Entity, operation.ID.V, operation.ID.V)
 		version := *operation.OriginalVersion
+		if operation.Kind == core.MutationDelete && !operation.HardDelete && version <= 0 {
+			return &RuntimeError{Type: "Check", CheckResults: []CheckResult{{
+				RuleID: "invalid_deletion_state", EntityType: operation.Entity,
+				CanonicalLocation: Location().Property("version"),
+				Message:           "Soft deletion requires a live entity with a positive original version; use explicit recovery for a tombstone",
+			}}}
+		}
 		if target, exists := versions[key]; exists && target != version {
 			return ledgerCompositionError(&core.LedgerVersionConflict{Key: core.NewEntityKey(operation.Entity, operation.ID), TargetVersion: target, SourceVersion: version})
 		}
