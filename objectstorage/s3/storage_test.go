@@ -101,6 +101,65 @@ func TestMinioRealSignedRangeAndExpiry(t *testing.T) {
 	if expired.StatusCode != http.StatusForbidden {
 		t.Fatal("expired signed URL accepted", expired.StatusCode)
 	}
+	if os.Getenv("TEAQL_S3_TEST_CREATE_ONLY") == "1" {
+		createKey, _ := core.NewObjectKey("f4/go/create/" + hex.EncodeToString(random))
+		raceKey, _ := core.NewObjectKey("f4/go/race/" + hex.EncodeToString(random))
+		t.Cleanup(func() { _ = storage.Delete(createKey); _ = storage.Delete(raceKey) })
+		create, _ := core.NewObjectPutOptions(int64(len(data)), core.ObjectCreateOnly)
+		create, _ = create.WithContentType("application/pdf")
+		created, err := storage.PutBytes(createKey, data, create)
+		if err != nil {
+			t.Fatal("create-only first put", err)
+		}
+		_, err = storage.PutBytes(createKey, bytes.Repeat([]byte{'x'}, len(data)), create)
+		checkCode(t, core.StorageConflict, err)
+		stable, err := storage.Head(createKey)
+		if err != nil || stable == nil || stable.ETag() != created.ETag() {
+			t.Fatal("create-only replaced first object", err)
+		}
+		stored, err := storage.Get(createKey)
+		if err != nil {
+			t.Fatal(err)
+		}
+		firstBytes, readErr := io.ReadAll(stored.Stream())
+		closeErr := stored.Close()
+		if readErr != nil || closeErr != nil || !bytes.Equal(firstBytes, data) {
+			t.Fatal("create-only bytes changed", readErr, closeErr)
+		}
+		candidates := [][]byte{data, bytes.Repeat([]byte{'y'}, len(data))}
+		type result struct {
+			index int
+			err   error
+		}
+		outcomes := make(chan result, 2)
+		for i := range candidates {
+			go func(index int) {
+				_, putErr := storage.PutBytes(raceKey, candidates[index], create)
+				outcomes <- result{index, putErr}
+			}(i)
+		}
+		winner, wins := -1, 0
+		for range candidates {
+			outcome := <-outcomes
+			if outcome.err == nil {
+				winner, wins = outcome.index, wins+1
+			} else {
+				checkCode(t, core.StorageConflict, outcome.err)
+			}
+		}
+		if wins != 1 {
+			t.Fatal("create-only race had wrong winner count", wins)
+		}
+		content, err := storage.Get(raceKey)
+		if err != nil {
+			t.Fatal(err)
+		}
+		raceBytes, readErr := io.ReadAll(content.Stream())
+		closeErr = content.Close()
+		if readErr != nil || closeErr != nil || !bytes.Equal(raceBytes, candidates[winner]) {
+			t.Fatal("create-only race changed winner bytes", readErr, closeErr)
+		}
+	}
 }
 
 func testClient(endpoint string, httpClient *http.Client) *sdk.Client {
