@@ -1,10 +1,10 @@
 {
   "schema": "teaql.generated-example-fixture/v1",
   "generatorCommit": "96330e65d10f5018f5401b1e243c8fa03915fd7e",
-  "generatorSourceContentsSha256": "42ad666cde71eebf8734e46f4ae294dd90cc0afe93b2be97898c583167e3047e",
-  "producerReceiptSha256": "a869cb30cdd91191943679f42c131e737d09deea2299e624441fe3a8fc0f08d5",
+  "generatorSourceContentsSha256": "2257c071100d8e666a1a013c7eacde050921c958352cd0b735155f5c72728240",
+  "producerReceiptSha256": "b78915f409eb497c86fe58ffc7adfc6eea7a60c21f60bc13d26a7f7a0f56ca82",
   "evaluationErrors": 0,
-  "retainedManifestSha256": "ccc40d016f5f99ecf176bf5bbef1a8b41c3fd0d843eacc7e775147b7de0314d3",
+  "retainedManifestSha256": "5aea20574618ee401d695106df69a31e2785bc05be2113132a140e157204a1ae",
   "fixtures": {
     "conformance": {
       "modelSha256": "0a59f66db2487fdd0430087dd5985ae780225c088ad800679cb57c593c6bcee7",
@@ -26,8 +26,8 @@
         "work_item/expression.go": "ce4e2c24aabd82c49f96ed4cb9cc067ed601ff322035a966950cea2cbcf4142b",
         "platform/checker.go": "ae95114ab80d2d5e2793f9392cf55f54a5c9fd68401a6a24946d7a8f4368a1bd",
         "work_item/checker.go": "a9696ef2aa83b222153db63631e74eefaeb4e16d0e4cbb66959b59e44204cc3c",
-        "platform/entity.go": "66e3bcb874b738dbaa76ef4c28656c63280e8c3296821d09ec5adf05c06532db",
-        "work_item/entity.go": "fb4b77e062799ef6ce3ac8248fbfad7ad09f60e3b3afa66045dd30c50960363b"
+        "platform/entity.go": "0345bb650abe319211f9b73e44bfebd54db5048d76f3597590dc8e4dd070b955",
+        "work_item/entity.go": "3bd2edb0f9ee2e7cfeca37c355a21c2ab111396cbfaa63c7fb69881e55316840"
       },
       "dependencyBindings": [
         {
@@ -62,9 +62,9 @@
         "platform/checker.go": "ae95114ab80d2d5e2793f9392cf55f54a5c9fd68401a6a24946d7a8f4368a1bd",
         "school_type/checker.go": "fede55c385b25274234d30c25971ff0f0bb123b83e44784843f0a23d260fe4b6",
         "school/checker.go": "7eeb520f1f690e5abb2a56446ad5f919a96839d7709297d0d7887493a906d6df",
-        "platform/entity.go": "fc8c1648b598121a2347e79d22e7f138de68edaf7e88b16b13ff8da6ed9f24e0",
-        "school_type/entity.go": "b8b91c429a7b8d09c2b725551d52b830ba38a108bb57261da74bac301c475767",
-        "school/entity.go": "9592c25e21fba5603ab1d18a0134c25f377c60daa834c229ea8fd42576e2cb41"
+        "platform/entity.go": "e4c5168274d95f74fd240cc78e8d8df2dbb174fdf017e8eedd4b5848cc5ddf8b",
+        "school_type/entity.go": "43987a2c307577fe83446df92147664611da7638ece25cb799685cebdba2a528",
+        "school/entity.go": "fdd58e4e33663e523b77afca9de4015859b915984ef117da0a555dd1c60bac31"
       },
       "dependencyBindings": [
         {
@@ -115,13 +115,13 @@
         "product/checker.go": "3de44dfe697971ffd64b2156992408e9a174f95b719c202a6a26aaf17fa7365d",
         "order_line/checker.go": "da0b7c2ad55deb170e313b1c1564b76e0800e632ad0c9eae145078f7df524f98",
         "order_search_preset/checker.go": "9b93139c7f5267f70a68a2d5c3a0ba215d5b3ef649a5587330593a6a77be5e06",
-        "commerce_platform/entity.go": "5c9e7b0b3722cc6759e9af70f70971339c0b27779adf08f4b39583f9e5106edd",
-        "customer/entity.go": "85a2bcdffe13ccabe13832a7a4363eb41ee83ca6127bc39641c812da0bbbfc3e",
-        "order_status/entity.go": "f28d8a940da10c571f7fe67c61321ce8b1fe566807fdad6a9560ffd50f42231a",
-        "customer_order/entity.go": "c745fe483775465d2926dbf0ed46d62b13a584f0e0acb3cb89de745098af74e7",
-        "product/entity.go": "ace360976ceba298e736d43ee95a97fc7064d967bbf6c6df53bf35fa1a62387b",
-        "order_line/entity.go": "0b22ea900c13f98d7634cfa6b4b480360d46938914dc09e8a6cf97ec3d9af970",
-        "order_search_preset/entity.go": "57388b313f55af39b15f2283dd83d8d3b8d5f3348c96177321842700c5189bb1"
+        "commerce_platform/entity.go": "68d4a13e7c86f8fbb216c9958f9b818e3a27f9dc7865f7998b113ab6455e8658",
+        "customer/entity.go": "eb8aafea936aa57e78961da4382285bd921daa2ee08844bb2f33239283724f1e",
+        "order_status/entity.go": "18b7d286d2f9ccf37ca3307c03dc875e158d457f21a4c8c6046876eda6890022",
+        "customer_order/entity.go": "0e5dc705c685ed9c07d7183fb83b4cc1577395d17a37e2dd19580a09eb2de717",
+        "product/entity.go": "8df753e5e277868a56c6a47ef148cf44707d0bdca841a689ae4bd5cb82e983e4",
+        "order_line/entity.go": "b28c9acbfdffb36b5826259568010093b0203b6b45c80575a57d5e3ec3fa1d39",
+        "order_search_preset/entity.go": "bd2e34fae708b634d1c031c99c969b2e62a73a4b7199a7a5258666962549eb1e"
       },
       "dependencyBindings": [
         {
@@ -160,10 +160,10 @@
         "task_status/checker.go": "895440c0ea4faa4eeac0bc92bdbcb020c8d52ffe274711140a6756cd06c6f58b",
         "task/checker.go": "b5a5be8f9469ca457b5cdabb87f25126c69a09e56757bdbecfdb5b6c7b166edc",
         "task_execution_log/checker.go": "3745b729abc5b6355febc9b78ee56770ec21659439ea65ad75406a886a11da74",
-        "platform/entity.go": "cf4fd9326c034257a92fe92e3c3946dbba12db7743280314cfff5f4f86cf07be",
-        "task_status/entity.go": "6b95ad6116f6252f0c03dca8f032107a863e179d90ff42a22fec1a9b2693c7cf",
-        "task/entity.go": "d2696d1aa86b0184bfb4ccf981ef00fd5039f98ade2375b0eb6f1c01c3079d6a",
-        "task_execution_log/entity.go": "0672afb74aa7146c7fd8cf02398eb2698e8d45327109ff38d619b1c3e896542d"
+        "platform/entity.go": "47d985a002a87caca02e61111273510818c621e44f047b87e1822fbb27a228e3",
+        "task_status/entity.go": "adfb537803e74d6a6e61eced5ef9d841428b8d769ea17fc83f3bb7101860a3c6",
+        "task/entity.go": "d2b83e9fa61127a1b1b609961f8e50b9ef8a74c3ad2ee77788df5ef29a060fa2",
+        "task_execution_log/entity.go": "753c40546f87a05dd2855e6b3e17bab7648a0c0493a92e7225e47e152f218dee"
       },
       "dependencyBindings": [
         {
@@ -210,12 +210,12 @@
         "payment/checker.go": "b9fb61d66210588163a6ac98803c176f238ec633154ca504bca06c653c70a3ff",
         "payment_attempt/checker.go": "c33b17c3b5ea147b900ee739df8d34941fb0fd865af8b069172adab91a63902b",
         "shipment/checker.go": "edb9435ea445033e998fcfc8ed8f8baf10ae70a90c644100857fcbb6fbe2291e",
-        "platform/entity.go": "b3b1d6ad47746cc0e2ff6809b47229653d6e30d78d3f5e6c948cdee1e219a6ef",
-        "customer_order/entity.go": "0915618b217bbc7e66f87177e8504e488df84e65547ead090debd536b4b1c4c7",
-        "order_item/entity.go": "1ac479aadd35a46666c3a05f171a12181b32d85530a3e062b89c38ce2af13e07",
-        "payment/entity.go": "575eaadc18d9cd712ade78ea894058a19e46ff249e8550d62a99e3c6cf76037b",
-        "payment_attempt/entity.go": "f87df1d8bb8c822e4e9d9a9ca56b70eddeaf4447d74f5a681430fd324522ef38",
-        "shipment/entity.go": "7d32557f770c1a78085992b6fb2b8a80d1cad958ea48291eeb4d07a5a44d51f4"
+        "platform/entity.go": "87870999aea4ad3f5336c2a373b50c6c0084f433d259dc68add018a880be89e0",
+        "customer_order/entity.go": "8e3a940f7df5c1c75df81c5a7c1cfcd4e9e138b36b2a688d5670f05e39796408",
+        "order_item/entity.go": "9d162410c73ee5d163a998027540a6b7dcad1d1ec63426105e0fca3e11b002ce",
+        "payment/entity.go": "b3a591e12f545808ebee9543eff7ff77ce31ce524409e126389c1163243b2c9e",
+        "payment_attempt/entity.go": "57a6c2ad405bc2fffd1d95fa72ceeddcb94fa307c03408a89c0907614a3cd5a9",
+        "shipment/entity.go": "44a1880aed279ead8064448bb34c87cedd7d5aa0de0a3e5d730300cf57b79a8a"
       },
       "dependencyBindings": []
     },
@@ -251,11 +251,11 @@
         "customer/checker.go": "003db818e57763e609fb670b182a2de387efb351d42a405d2a19d1ef442b186b",
         "customer_order/checker.go": "6c93030644a04f0f89a2f01b12207189110623051812a081270efe5c9f583dd6",
         "order_item/checker.go": "02e151227137a4eb1df8824d4ba83bcd08057bc88c57beb33f63096a0b0434af",
-        "platform/entity.go": "8275d52d0e598fdf19e7c6a731c1574aa75caa83c999aee70327a59ce7d52d5c",
-        "order_status/entity.go": "ad42859743ec2521af930e6dd301c41bbf391c0d097f168989c293b39c006c0b",
-        "customer/entity.go": "2d875dc0e6c75f26001ce574d11ebf7fb0fa73cb4edf9cd281b2f0a5e5eb0558",
-        "customer_order/entity.go": "3906a7605553d2227824628f563414cb86737e40176d299ada234a203c318350",
-        "order_item/entity.go": "0bae7a11df037080bd16a9d20285ec548b8587d6c12a9c805170efb1ac2acdcf"
+        "platform/entity.go": "64df58971db398eef5b82899b6723fa41ffd0e875f296aca366db28741f13094",
+        "order_status/entity.go": "6f47d708bffaafb33c79dc0187d1f80fbedc7c85ba8093c00f5c84df610b4d18",
+        "customer/entity.go": "ee993ab7f4ae815b2a7cb06806f55c317003d1a0da668ab570697c6db42e2e04",
+        "customer_order/entity.go": "94083676e0fdc27a8d84df02265f763534f903ff4970b4dfc0b8cd6e61031ff7",
+        "order_item/entity.go": "b231706258b6b204709aec78fe343669014a9ebd2ac261bcf62c1d35a2633d6a"
       },
       "dependencyBindings": []
     },
@@ -283,9 +283,9 @@
         "tenant/checker.go": "78409224822eecf82ae5617141b0116f808a6d1bab0b483789b6496a49c013e8",
         "purchase_order/checker.go": "1c2bb40949d6a04e92ac1dba63c681727447a2b7027c7b7c50b83609eef39b90",
         "order_item/checker.go": "02e151227137a4eb1df8824d4ba83bcd08057bc88c57beb33f63096a0b0434af",
-        "tenant/entity.go": "0e0fd9a30c4eee5f32bd39b06e8c853f8715186aebe393048c395aceed17f3a2",
-        "purchase_order/entity.go": "f27f16f915ee787358e41b08be9e826bd5dc4a3beb446d418cbfcd3ae6bb39e0",
-        "order_item/entity.go": "96840fe932700c5c9a5c2db4d500a107667d5c75e9d50c9cec11f0317fa0c12e"
+        "tenant/entity.go": "a4347659f8685d7e88356aad1b2e7fbba293d91f047a05ccad6e2f8c159d8cea",
+        "purchase_order/entity.go": "89a3ed7b58120904a5345138ea8c932cd2e3072bd20019389f8abcb8e248ddf2",
+        "order_item/entity.go": "e49f6f84dc79247e43e09eeb63e5bb3ac1dab069a8caaa7322817faf69ed108e"
       },
       "dependencyBindings": []
     },
@@ -309,8 +309,8 @@
         "scalar_type_probe/expression.go": "308ab7e89e86f47e69cc6c315f21fa424bcdded63eb442ee93748d5b6865ca9c",
         "type_platform/checker.go": "d34524d9ccc3e9f7161924149af5e32c7ad204deca31e1d86f1561877c78135e",
         "scalar_type_probe/checker.go": "355e35a675df34683b3c7cfb85abe12a77f2dde6ab027c11c6a1574b2e8c51be",
-        "type_platform/entity.go": "3e1c0983684f486424cff2a4fa331d4374387a08845ad57a71ac3e48bc3fdcd3",
-        "scalar_type_probe/entity.go": "16de14217499b9eceed8df6281521704b6a4e98a0029f133f08fe62d4612ce52"
+        "type_platform/entity.go": "6b73cac569b1dbf04726cd2572a5d792999cb25441feeab8a3a5aa9d31e6efc7",
+        "scalar_type_probe/entity.go": "0145c0141b2480eb767e9e998cb384a799a5830e78ee678a77e7622d19b7a4d9"
       },
       "dependencyBindings": []
     }

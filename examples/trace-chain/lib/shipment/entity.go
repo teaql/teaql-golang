@@ -435,7 +435,7 @@ func (e *Shipment) TeaqlSaveWithinGraph(context *runtime.UserContext, intent cor
 				return nil, fmt.Errorf("generate id for %s: %w", e.EntityName(), err)
 			}
 			e.base.Id = id
-			e.root.Rekey(core.NewEntityKey(e.EntityName(), e.ledgerID), e.EntityKey())
+			if err := context.RekeyPreparedGraphEntity(e.root, core.NewEntityKey(e.EntityName(), e.ledgerID), e.EntityKey()); err != nil { return nil, err }
 		} else {
 			if err := context.EnsureInternalIdFloor(context.Context, e.EntityName(), e.base.Id); err != nil {
 				return nil, fmt.Errorf("synchronize id floor for %s: %w", e.EntityName(), err)

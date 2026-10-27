@@ -1,18 +1,18 @@
 {
   "schema": "teaql.generated-example-fixture/v1",
   "generatorCommit": "96330e65d10f5018f5401b1e243c8fa03915fd7e",
-  "generatorSourceContentsSha256": "42ad666cde71eebf8734e46f4ae294dd90cc0afe93b2be97898c583167e3047e",
-  "producerReceiptSha256": "a869cb30cdd91191943679f42c131e737d09deea2299e624441fe3a8fc0f08d5",
+  "generatorSourceContentsSha256": "2257c071100d8e666a1a013c7eacde050921c958352cd0b735155f5c72728240",
+  "producerReceiptSha256": "b78915f409eb497c86fe58ffc7adfc6eea7a60c21f60bc13d26a7f7a0f56ca82",
   "evaluationErrors": 0,
   "language": "go",
   "modelSha256": "a2cf4c907cb084cb0946e993eeba586c8c0701a89fdc4a849808aa743be033b7",
-  "generatedManifestSha256": "ccc40d016f5f99ecf176bf5bbef1a8b41c3fd0d843eacc7e775147b7de0314d3",
+  "generatedManifestSha256": "5aea20574618ee401d695106df69a31e2785bc05be2113132a140e157204a1ae",
   "producerFixture": "fix-e-alignment",
   "producerSource": {
     "commit": "96330e65d10f5018f5401b1e243c8fa03915fd7e",
-    "diff": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-    "status": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-    "sourceContentsSha256": "42ad666cde71eebf8734e46f4ae294dd90cc0afe93b2be97898c583167e3047e",
+    "diff": "837e20cc45b27f7d7748a72ed72585adf160cab46ac380c56fa06f8cad296fde",
+    "status": "eece345971e50ad98b4e416a73c02a13553ac6beef58ae3ed2282826701fbebb",
+    "sourceContentsSha256": "2257c071100d8e666a1a013c7eacde050921c958352cd0b735155f5c72728240",
     "retainedModels": [
       {
         "id": "conformance",
@@ -105,8 +105,8 @@
     "tenant/checker.go": "78409224822eecf82ae5617141b0116f808a6d1bab0b483789b6496a49c013e8",
     "purchase_order/checker.go": "1c2bb40949d6a04e92ac1dba63c681727447a2b7027c7b7c50b83609eef39b90",
     "order_item/checker.go": "02e151227137a4eb1df8824d4ba83bcd08057bc88c57beb33f63096a0b0434af",
-    "tenant/entity.go": "0e0fd9a30c4eee5f32bd39b06e8c853f8715186aebe393048c395aceed17f3a2",
-    "purchase_order/entity.go": "f27f16f915ee787358e41b08be9e826bd5dc4a3beb446d418cbfcd3ae6bb39e0",
-    "order_item/entity.go": "96840fe932700c5c9a5c2db4d500a107667d5c75e9d50c9cec11f0317fa0c12e"
+    "tenant/entity.go": "a4347659f8685d7e88356aad1b2e7fbba293d91f047a05ccad6e2f8c159d8cea",
+    "purchase_order/entity.go": "89a3ed7b58120904a5345138ea8c932cd2e3072bd20019389f8abcb8e248ddf2",
+    "order_item/entity.go": "e49f6f84dc79247e43e09eeb63e5bb3ac1dab069a8caaa7322817faf69ed108e"
   }
 }
