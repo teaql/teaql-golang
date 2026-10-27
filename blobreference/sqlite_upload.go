@@ -207,6 +207,9 @@ func (s *SQLiteUploadService) Begin(actor *runtime.UserContext, target UploadTar
 			if _, err := s.current(actor, target, "Begin", normalized, scope); err != nil {
 				return err
 			}
+			if s.now().UnixMilli() >= expiry {
+				return uploadError("BLOB_UPLOAD_EXPIRED")
+			}
 			result = UploadSession{id, reference, time.UnixMilli(expiry)}
 			return nil
 		}
@@ -387,9 +390,15 @@ func (s *SQLiteUploadService) Write(actor *runtime.UserContext, id string, sourc
 	}
 	hash := hex.EncodeToString(reader.digest.Sum(nil))
 	err = s.transaction(actor, func(sql teaqlsql.SqlTransport) error {
+		now := s.now().UnixMilli()
+		if now >= row.ExpiresUnixMs {
+			return uploadError("BLOB_UPLOAD_EXPIRED")
+		}
 		affected, err := sql.ExecuteSql(actor, sqlQuery(`UPDATE teaql_blob_upload SET state='written',
-            written_sha256=?,written_etag=? WHERE upload_id=? AND scope=? AND state='initiated'`,
-			core.ValText(hash), core.ValText(metadata.ETag()), core.ValText(id), core.ValText(row.Scope)))
+			written_sha256=?,written_etag=? WHERE upload_id=? AND scope=? AND state='initiated'
+			AND expires_unix_ms > ? AND EXISTS (SELECT 1 FROM teaql_blob_catalog
+			WHERE key=teaql_blob_upload.key AND scope=teaql_blob_upload.scope AND status='initiated')`,
+			core.ValText(hash), core.ValText(metadata.ETag()), core.ValText(id), core.ValText(row.Scope), core.ValI64(now)))
 		if err != nil {
 			return uploadError("BLOB_CATALOG_FAILED")
 		}
@@ -521,9 +530,14 @@ func (s *SQLiteUploadService) Complete(actor *runtime.UserContext, id string) (c
 		return empty, uploadError("BLOB_UPLOAD_EXPIRED")
 	}
 	err = s.transaction(actor, func(sql teaqlsql.SqlTransport) error {
+		now := s.now().UnixMilli()
+		if now >= row.ExpiresUnixMs {
+			return uploadError("BLOB_UPLOAD_EXPIRED")
+		}
 		affected, err := sql.ExecuteSql(actor, sqlQuery(`UPDATE teaql_blob_upload SET state='completed'
-            WHERE upload_id=? AND scope=? AND state='written' AND written_sha256=? AND written_etag=?`,
-			core.ValText(id), core.ValText(row.Scope), core.ValText(row.WrittenSHA256), core.ValText(row.WrittenETag)))
+			WHERE upload_id=? AND scope=? AND state='written' AND written_sha256=? AND written_etag=?
+			AND expires_unix_ms > ?`, core.ValText(id), core.ValText(row.Scope),
+			core.ValText(row.WrittenSHA256), core.ValText(row.WrittenETag), core.ValI64(now)))
 		if err != nil {
 			return uploadError("BLOB_CATALOG_FAILED")
 		}

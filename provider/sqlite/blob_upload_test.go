@@ -247,3 +247,40 @@ func TestSQLiteBlobUploadRequiresRealBytesAndFullVerificationBeforeBinding(t *te
 		t.Fatalf("short source completed: %v", err)
 	}
 }
+
+func TestSQLiteBlobUploadExpiredReplayCannotRecoverOldSession(t *testing.T) {
+	e := nativeBatchEnvironment(t)
+	catalog, err := blobreference.NewSQLiteCatalog(e.executor.Transport)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := catalog.EnsureSchema(e.ctx); err != nil {
+		t.Fatal(err)
+	}
+	service, err := blobreference.NewSQLiteUploadService(catalog,
+		&uploadPermission{scope: "tenant-a", allowed: true}, &fixturePDFVerifier{},
+		10_000, time.Second)
+	if err != nil {
+		t.Fatal(err)
+	}
+	target := blobreference.UploadTarget{Entity: "Customer", EntityID: "1", Field: "document"}
+	input := blobreference.UploadInput{FileName: "report.pdf", DeclaredSize: 42}
+	first, err := service.Begin(e.ctx, target, input, "expired-request")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if replay, err := service.Begin(e.ctx, target, input, "expired-request"); err != nil || replay.ID != first.ID {
+		t.Fatalf("live replay failed: %v", err)
+	}
+	time.Sleep(time.Until(first.ExpiresAt) + time.Millisecond)
+	if _, err := service.Begin(e.ctx, target, input, "expired-request"); err == nil || err.Error() != "BLOB_UPLOAD_EXPIRED" {
+		t.Fatalf("expired replay recovered old session: %v", err)
+	}
+	second, err := service.Begin(e.ctx, target, input, "fresh-request")
+	if err != nil || second.ID == first.ID {
+		t.Fatalf("new request did not get a fresh session: %v", err)
+	}
+	if _, err := service.Write(e.ctx, first.ID, io.NopCloser(bytes.NewReader(make([]byte, 42)))); err == nil || err.Error() != "BLOB_UPLOAD_EXPIRED" {
+		t.Fatalf("expired session wrote bytes: %v", err)
+	}
+}
