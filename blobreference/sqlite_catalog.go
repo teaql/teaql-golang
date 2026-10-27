@@ -40,6 +40,12 @@ type BindingAuthorization interface {
 	Authorize(*runtime.UserContext, BindingTarget, *core.BlobRef, *core.BlobRef, string) error
 }
 
+// BindingPolicyAuthorization supplies the current target-field policy on the
+// same physical graph SQL lease. New bindings fail closed without this fact.
+type BindingPolicyAuthorization interface {
+	CurrentPolicyOnLease(*runtime.UserContext, teaqlsql.SqlTransport, BindingTarget) (RetentionPolicy, error)
+}
+
 type SQLiteCatalog struct {
 	transport teaqlsql.SqlTransport
 	now       func() time.Time
@@ -357,9 +363,13 @@ func (c *SQLiteCatalog) bindWithTransport(ctx stdcontext.Context, transport teaq
 		return errors.New("BLOB_BIND_DENIED")
 	}
 	key := core.ValNull()
+	var acceptedPolicy *RetentionPolicy
+	var acceptedFloor int64
 	if change.Next != nil {
 		key = core.ValText(change.Next.Key())
-		eligible, queryErr := transport.FetchAllSql(ctx, sqlQuery(`SELECT key FROM teaql_blob_catalog
+		eligible, queryErr := transport.FetchAllSql(ctx, sqlQuery(`SELECT key,status,completed_at_ms,
+				last_unbound_at_ms,policy_profile,upload_mode,unbound_retention_seconds,
+				effective_unref_seconds,retention_floor_until_ms FROM teaql_blob_catalog
 				WHERE key = ? AND scope = ? AND status IN ('uploaded_unbound','available')`,
 			key, core.ValText(scope)))
 		if queryErr != nil {
@@ -368,6 +378,62 @@ func (c *SQLiteCatalog) bindWithTransport(ctx stdcontext.Context, transport teaq
 		if len(eligible) != 1 {
 			return errors.New("BLOB_BIND_DENIED")
 		}
+		blob := eligible[0]
+		status, statusOK := sqlText(blob["status"])
+		profile, profileOK := sqlText(blob["policy_profile"])
+		mode, modeOK := sqlText(blob["upload_mode"])
+		completed, completedOK := blob["completed_at_ms"].TryI64()
+		unboundSeconds, unboundOK := blob["unbound_retention_seconds"].TryI64()
+		effectiveSeconds, effectiveOK := blob["effective_unref_seconds"].TryI64()
+		policySource, policySourceOK := authorization.(BindingPolicyAuthorization)
+		if !statusOK || !profileOK || profile == "" || !modeOK || mode != "server_stream" ||
+			!completedOK || !validRetentionTime(completed) || !unboundOK || !validRetentionSeconds(unboundSeconds) ||
+			!effectiveOK || !validRetentionSeconds(effectiveSeconds) || !policySourceOK {
+			return errors.New("BLOB_BIND_DENIED")
+		}
+		policy, err := policySource.CurrentPolicyOnLease(actor, transport, change.Target)
+		if err != nil || !policy.Valid() || policy.UploadMode() != "server_stream" {
+			return errors.New("BLOB_BIND_DENIED")
+		}
+		now := c.now().UnixMilli()
+		if !validRetentionTime(now) {
+			return errors.New("BLOB_POLICY_INVALID")
+		}
+		var eligibleAt *int64
+		if status == "available" {
+			bound, err := transport.FetchAllSql(ctx, sqlQuery(`SELECT 1 FROM teaql_blob_binding
+				WHERE key = ? LIMIT 1`, key))
+			if err != nil {
+				return errors.New("BLOB_CATALOG_FAILED")
+			}
+			if len(bound) == 0 {
+				lastUnbound, okay := blob["last_unbound_at_ms"].TryI64()
+				if !okay || !validRetentionTime(lastUnbound) {
+					return errors.New("BLOB_BIND_DENIED")
+				}
+				var floor *int64
+				if blob["retention_floor_until_ms"].V != nil {
+					value, okay := blob["retention_floor_until_ms"].TryI64()
+					if !okay || !validRetentionTime(value) {
+						return errors.New("BLOB_BIND_DENIED")
+					}
+					floor = &value
+				}
+				deadline, err := UnreferencedEligibleAt(lastUnbound, effectiveSeconds, floor)
+				if err != nil {
+					return err
+				}
+				eligibleAt = &deadline
+			}
+		}
+		if err := RequireBindable(status, now, &completed, unboundSeconds, eligibleAt); err != nil {
+			return err
+		}
+		acceptedFloor, err = UnreferencedEligibleAt(now, policy.MinimumRetentionSeconds(), nil)
+		if err != nil {
+			return err
+		}
+		acceptedPolicy = &policy
 	}
 	var affected uint64
 	if len(rows) == 1 {
@@ -396,6 +462,20 @@ func (c *SQLiteCatalog) bindWithTransport(ctx stdcontext.Context, transport teaq
 		}
 		if promoted != 1 {
 			return errors.New("BLOB_BIND_DENIED")
+		}
+		if acceptedPolicy != nil {
+			updated, err := transport.ExecuteSql(ctx, sqlQuery(`UPDATE teaql_blob_catalog SET
+				effective_unref_seconds=MAX(effective_unref_seconds,?),
+				retention_floor_until_ms=CASE WHEN retention_floor_until_ms IS NULL
+					OR retention_floor_until_ms<? THEN ? ELSE retention_floor_until_ms END
+				WHERE key=? AND scope=? AND upload_mode='server_stream'
+					AND effective_unref_seconds IS NOT NULL`,
+				core.ValI64(acceptedPolicy.UnreferencedRetentionSeconds()),
+				core.ValI64(acceptedFloor), core.ValI64(acceptedFloor),
+				core.ValText(change.Next.Key()), core.ValText(scope)))
+			if err != nil || updated != 1 {
+				return errors.New("BLOB_BIND_DENIED")
+			}
 		}
 	}
 	if previous != nil && (change.Next == nil || previous.Key() != change.Next.Key()) {

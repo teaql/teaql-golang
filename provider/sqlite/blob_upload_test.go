@@ -256,7 +256,12 @@ func TestSQLiteBlobUploadRequiresRealBytesAndFullVerificationBeforeBinding(t *te
 	defer store.Close()
 	e.ctx.WithObjectStorage(store)
 	e.ctx.WithObjectStorageObserver(runtime.ObjectStorageObserverFunc(func(runtime.ObjectStorageEvent) {}))
-	permission := &uploadPermission{scope: "tenant-a", allowed: true}
+	policy, err := blobreference.NewRetentionPolicy("default", "server_stream", 3600, 3600, 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	permission := &policyUploadPermission{uploadPermission: &uploadPermission{
+		scope: "tenant-a", allowed: true}, policy: policy}
 	verifier := &fixturePDFVerifier{}
 	service, err := blobreference.NewSQLiteUploadService(catalog, permission, verifier, 10_000, 15*time.Minute)
 	if err != nil {

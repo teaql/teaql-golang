@@ -100,6 +100,7 @@ func TestModeledBlobNativeMutationSharesSQLiteOwner(t *testing.T) {
 			"application/pdf", 7, "uploaded_unbound"); err != nil {
 			t.Fatal(err)
 		}
+		markCatalogPolicyBacked(t, db, key)
 		return ref
 	}
 	first := seed("blob_native_first")

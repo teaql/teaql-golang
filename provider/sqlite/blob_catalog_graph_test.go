@@ -4,6 +4,7 @@ import (
 	"bytes"
 	stdcontext "context"
 	"crypto/rand"
+	"database/sql"
 	"errors"
 	"io"
 	"net/http"
@@ -16,6 +17,7 @@ import (
 	"github.com/teaql/teaql-golang/core"
 	ds "github.com/teaql/teaql-golang/data_service"
 	"github.com/teaql/teaql-golang/runtime"
+	teaqlsql "github.com/teaql/teaql-golang/sql"
 )
 
 type catalogReadPermission struct{ allowed bool }
@@ -62,6 +64,7 @@ func (s *catalogSigningStore) GetReadURL(_ runtime.StorageInvocation, key core.O
 type catalogPermission struct {
 	scope   string
 	allowed bool
+	policy  *blobreference.RetentionPolicy
 }
 
 func (p *catalogPermission) Scope(*runtime.UserContext) (string, error) { return p.scope, nil }
@@ -71,6 +74,26 @@ func (p *catalogPermission) Authorize(*runtime.UserContext, blobreference.Bindin
 		return errors.New("revoked")
 	}
 	return nil
+}
+
+func (p *catalogPermission) CurrentPolicyOnLease(_ *runtime.UserContext,
+	_ teaqlsql.SqlTransport, _ blobreference.BindingTarget) (blobreference.RetentionPolicy, error) {
+	if p.policy != nil {
+		return *p.policy, nil
+	}
+	return blobreference.NewRetentionPolicy("default", "server_stream", 3600, 3600, 0)
+}
+
+func markCatalogPolicyBacked(t *testing.T, db *sql.DB, key string) {
+	t.Helper()
+	now := time.Now().UnixMilli()
+	if _, err := db.Exec(`UPDATE teaql_blob_catalog SET completed_at_ms=?,
+		last_unbound_at_ms=CASE WHEN status='available' THEN ? ELSE NULL END,
+		policy_profile='default',upload_mode='server_stream',
+		unbound_retention_seconds=3600,effective_unref_seconds=3600 WHERE key=?`,
+		now, now, key); err != nil {
+		t.Fatal(err)
+	}
 }
 
 func TestSQLiteBlobCatalogBindingSharesNativeBusinessGraphAndRejectsStaleOrRevoked(t *testing.T) {
@@ -99,6 +122,7 @@ func TestSQLiteBlobCatalogBindingSharesNativeBusinessGraphAndRejectsStaleOrRevok
 		"asset.pdf", "application/pdf", 7, "uploaded_unbound"); err != nil {
 		t.Fatal(err)
 	}
+	markCatalogPolicyBacked(t, e.db, reference.Key())
 	permission := &catalogPermission{scope: "tenant-a", allowed: true}
 	change := blobreference.BindingChange{Target: blobreference.BindingTarget{
 		Entity: "Customer", EntityID: "1", Field: "document"}, Next: &reference,
@@ -312,6 +336,99 @@ func TestSQLiteBlobCatalogRejectsOldNotNullBindingKeySchema(t *testing.T) {
 	}
 }
 
+func TestSQLiteBlobBindingAcceptsMaximumRetentionAndRejectsExpiredSources(t *testing.T) {
+	e := nativeBatchEnvironment(t)
+	catalog, err := blobreference.NewSQLiteCatalog(e.executor.Transport)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := catalog.EnsureSchema(e.ctx); err != nil {
+		t.Fatal(err)
+	}
+	reference, err := core.ParseBlobRef("blob_go_retention_1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := e.db.Exec(`INSERT INTO teaql_blob_catalog
+		(key,scope,object_key,content_version,file_name,content_type,size_bytes,status,
+		completed_at_ms,policy_profile,upload_mode,unbound_retention_seconds,effective_unref_seconds)
+		VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)`, reference.Key(), "tenant-a", "objects/retained",
+		"v1", "retained.pdf", "application/pdf", 1, "uploaded_unbound",
+		time.Now().UnixMilli(), "default", "server_stream", 3600, 20); err != nil {
+		t.Fatal(err)
+	}
+	longer, err := blobreference.NewRetentionPolicy("target", "server_stream", 3600, 30, 15)
+	if err != nil {
+		t.Fatal(err)
+	}
+	permission := &catalogPermission{scope: "tenant-a", allowed: true, policy: &longer}
+	target := blobreference.BindingTarget{Entity: "Customer", EntityID: "1", Field: "document"}
+	reason := "retention binding"
+	intent, err := core.NewMutationIntent(&reason)
+	if err != nil {
+		t.Fatal(err)
+	}
+	bind := func(next *core.BlobRef, expected, nextVersion int64) error {
+		return e.ctx.ExecuteGraphSaveWithSQL(intent, func(graph *runtime.GraphSQLHandle) error {
+			_, err := catalog.BindInGraph(e.ctx, graph, e.ctx, blobreference.BindingChange{
+				Target: target, Next: next, ExpectedVersion: expected, NextVersion: nextVersion,
+				Action: "Update"}, permission)
+			return err
+		})
+	}
+	before := time.Now().UnixMilli()
+	if err := bind(&reference, 0, 1); err != nil {
+		t.Fatal(err)
+	}
+	var effective, floor int64
+	if err := e.db.QueryRow(`SELECT effective_unref_seconds,retention_floor_until_ms
+		FROM teaql_blob_catalog WHERE key=?`, reference.Key()).Scan(&effective, &floor); err != nil ||
+		effective != 30 || floor < before+15_000 || floor > time.Now().UnixMilli()+15_000 {
+		t.Fatalf("retention acceptance: %d %d %v", effective, floor, err)
+	}
+	if err := bind(nil, 1, 2); err != nil {
+		t.Fatal(err)
+	}
+	shorter, err := blobreference.NewRetentionPolicy("target", "server_stream", 1, 1, 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	permission.policy = &shorter
+	if err := bind(&reference, 2, 3); err != nil {
+		t.Fatal(err)
+	}
+	var lastUnbound any
+	if err := e.db.QueryRow(`SELECT effective_unref_seconds,retention_floor_until_ms,
+		last_unbound_at_ms FROM teaql_blob_catalog WHERE key=?`, reference.Key()).Scan(
+		&effective, &floor, &lastUnbound); err != nil || effective != 30 || lastUnbound != nil {
+		t.Fatalf("shorter policy reduced retention or retained stale unbind: %d %v %v", effective, lastUnbound, err)
+	}
+	if err := bind(nil, 3, 4); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := e.db.Exec(`UPDATE teaql_blob_catalog SET last_unbound_at_ms=0,
+		retention_floor_until_ms=0 WHERE key=?`, reference.Key()); err != nil {
+		t.Fatal(err)
+	}
+	if err := bind(&reference, 4, 5); err == nil || err.Error() != "BLOB_REFERENCE_EXPIRED" {
+		t.Fatalf("expired former binding accepted: %v", err)
+	}
+
+	expired, _ := core.ParseBlobRef("blob_go_retention_expired")
+	if _, err := e.db.Exec(`INSERT INTO teaql_blob_catalog
+		(key,scope,object_key,content_version,file_name,content_type,size_bytes,status,
+		completed_at_ms,policy_profile,upload_mode,unbound_retention_seconds,effective_unref_seconds)
+		VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)`, expired.Key(), "tenant-a", "objects/expired",
+		"v1", "expired.pdf", "application/pdf", 1, "uploaded_unbound",
+		0, "default", "server_stream", 1, 1); err != nil {
+		t.Fatal(err)
+	}
+	target.EntityID = "2"
+	if err := bind(&expired, 0, 1); err == nil || err.Error() != "BLOB_REFERENCE_EXPIRED" {
+		t.Fatalf("expired completed Blob accepted: %v", err)
+	}
+}
+
 func TestSQLiteBlobCatalogMigratesOldTimeAndPolicyFactsWithoutInventingDeadlines(t *testing.T) {
 	e := nativeBatchEnvironment(t)
 	if _, err := e.db.Exec(`CREATE TABLE teaql_blob_catalog (
@@ -348,6 +465,25 @@ func TestSQLiteBlobCatalogMigratesOldTimeAndPolicyFactsWithoutInventingDeadlines
 		t.Fatalf("old row acquired invented retention facts: %v %v %v %v %v %v %v",
 			completed, unbound, profile, mode, duration, effective, floor)
 	}
+	reference, err := core.ParseBlobRef("blob_legacy")
+	if err != nil {
+		t.Fatal(err)
+	}
+	reason := "legacy binding without policy"
+	intent, err := core.NewMutationIntent(&reason)
+	if err != nil {
+		t.Fatal(err)
+	}
+	err = e.ctx.ExecuteGraphSaveWithSQL(intent, func(graph *runtime.GraphSQLHandle) error {
+		_, err := catalog.BindInGraph(e.ctx, graph, e.ctx, blobreference.BindingChange{
+			Target: blobreference.BindingTarget{Entity: "Customer", EntityID: "1", Field: "document"},
+			Next:   &reference, ExpectedVersion: 0, NextVersion: 1, Action: "Create",
+		}, &catalogPermission{scope: "tenant-a", allowed: true})
+		return err
+	})
+	if err == nil || err.Error() != "BLOB_BIND_DENIED" {
+		t.Fatalf("legacy unknown deadline acquired new binding: %v", err)
+	}
 }
 
 func TestSQLiteBlobCurrentReadAndViewProjectionRejectStaleOrRevoked(t *testing.T) {
@@ -370,6 +506,7 @@ func TestSQLiteBlobCurrentReadAndViewProjectionRejectStaleOrRevoked(t *testing.T
 		"report.pdf", "application/pdf", 7, "available"); err != nil {
 		t.Fatal(err)
 	}
+	markCatalogPolicyBacked(t, e.db, reference.Key())
 	change := blobreference.BindingChange{Target: blobreference.BindingTarget{
 		Entity: "Customer", EntityID: "1", Field: "document"}, Next: &reference,
 		ExpectedVersion: 0, NextVersion: 1, Action: "Create"}
@@ -484,6 +621,7 @@ func TestSQLiteBlobAuthorizedViewServesRealFileBytesAndDeniesRevokedRefresh(t *t
 		"report.pdf", "application/pdf", len(data), "uploaded_unbound"); err != nil {
 		t.Fatal(err)
 	}
+	markCatalogPolicyBacked(t, e.db, reference.Key())
 	reason := "bind real Blob"
 	intent, err := core.NewMutationIntent(&reason)
 	if err != nil {

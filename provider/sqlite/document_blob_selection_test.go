@@ -41,6 +41,7 @@ func TestSQLiteDocumentSelectionSharesBusinessBindingAndReceipt(t *testing.T) {
 			"v1", key+".pdf", "application/pdf", 3); err != nil {
 			t.Fatal(err)
 		}
+		markCatalogPolicyBacked(t, e.db, key)
 	}
 	keys, err := document.NewStaticReferenceKeyProvider("k1",
 		document.ReferenceKey{KeyID: "k1", MasterKey: bytes.Repeat([]byte{0x42}, 32)})
