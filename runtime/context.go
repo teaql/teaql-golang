@@ -289,6 +289,7 @@ type UserContext struct {
 	initialGraphs                     []*GraphNode
 	rootGraphs                        []*GraphNode
 	resources                         map[string]interface{}
+	requiredCapabilities              map[string]struct{}
 	standardAuditSink                 RawAuditEventSink
 	appAuditSink                      AppAuditEventSink
 	runtimeTelemetrySink              RuntimeTelemetrySink
@@ -904,6 +905,9 @@ func (c *UserContext) executeGraphSave(operationContext stdcontext.Context, work
 			c.finishGraphPreparation()
 		}
 	}()
+	if err := c.ValidateCapabilities(); err != nil {
+		return err
+	}
 	c.graphSaveMu.Lock()
 	provider := c.resources["dataService"]
 	originalIDGenerator, hadIDGenerator := c.resources["idGenerator"]
