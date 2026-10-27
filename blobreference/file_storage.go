@@ -1,6 +1,7 @@
 package blobreference
 
 import (
+	"context"
 	"crypto/aes"
 	"crypto/cipher"
 	"crypto/rand"
@@ -15,6 +16,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	goruntime "runtime"
 	"strings"
 	"sync"
 	"time"
@@ -89,6 +91,47 @@ func fileKeyHash(key core.ObjectKey) string {
 
 func (s *FileObjectStorage) directory(hash string) string {
 	return filepath.Join(s.root, hash[:2], hash)
+}
+
+func (s *FileObjectStorage) lockManifest(ctx context.Context, hash string) (func(), error) {
+	path := filepath.Join(s.directory(hash), "manifest.lock")
+	file, err := os.OpenFile(path, os.O_CREATE|os.O_RDWR, 0600)
+	if err != nil {
+		return nil, fileStorageError(core.StorageIO)
+	}
+	info, err := os.Lstat(path)
+	actual, statErr := file.Stat()
+	if err != nil || statErr != nil || info.Mode()&os.ModeSymlink != 0 || !actual.Mode().IsRegular() ||
+		(goruntime.GOOS != "windows" && actual.Mode().Perm()&0077 != 0) {
+		_ = file.Close()
+		return nil, fileStorageError(core.StorageUnavailable)
+	}
+	if ctx == nil {
+		ctx = context.Background()
+	}
+	ticker := time.NewTicker(20 * time.Millisecond)
+	defer ticker.Stop()
+	deadline := time.NewTimer(30 * time.Second)
+	defer deadline.Stop()
+	for {
+		acquired, err := tryManifestFileLock(file)
+		if err != nil {
+			_ = file.Close()
+			return nil, fileStorageError(core.StorageUnavailable)
+		}
+		if acquired {
+			return func() { unlockManifestFile(file); _ = file.Close() }, nil
+		}
+		select {
+		case <-ctx.Done():
+			_ = file.Close()
+			return nil, fileStorageError(core.StorageTimeout)
+		case <-deadline.C:
+			_ = file.Close()
+			return nil, fileStorageError(core.StorageTimeout)
+		case <-ticker.C:
+		}
+	}
 }
 
 func (s *FileObjectStorage) privateRoot() error {
@@ -231,6 +274,11 @@ func (s *FileObjectStorage) Put(invocation runtime.StorageInvocation, key core.O
 		return nil, fileStorageError(core.StorageIO)
 	}
 	manifestPath := filepath.Join(directory, "manifest.json")
+	unlock, err := s.lockManifest(invocation.Context(), hash)
+	if err != nil {
+		return nil, err
+	}
+	defer unlock()
 	if options.Mode() == core.ObjectCreateOnly {
 		if err := os.Link(manifestTemp, manifestPath); err != nil {
 			if errors.Is(err, os.ErrExist) {
@@ -284,6 +332,9 @@ func (s *FileObjectStorage) Head(_ runtime.StorageInvocation, key core.ObjectKey
 	if s == nil || !key.Valid() {
 		return nil, fileStorageError(core.StorageInvalidInput)
 	}
+	if _, err := os.Lstat(s.root); errors.Is(err, os.ErrNotExist) {
+		return nil, nil
+	}
 	if err := s.privateRoot(); err != nil {
 		return nil, err
 	}
@@ -299,18 +350,75 @@ func (s *FileObjectStorage) Head(_ runtime.StorageInvocation, key core.ObjectKey
 	return s.metadata(key, manifest)
 }
 
-func (s *FileObjectStorage) Delete(_ runtime.StorageInvocation, key core.ObjectKey) error {
+func (s *FileObjectStorage) Delete(invocation runtime.StorageInvocation, key core.ObjectKey) error {
 	if s == nil || !key.Valid() {
 		return fileStorageError(core.StorageInvalidInput)
+	}
+	if _, err := os.Lstat(s.root); errors.Is(err, os.ErrNotExist) {
+		return nil
 	}
 	if err := s.privateRoot(); err != nil {
 		return err
 	}
-	err := os.Remove(filepath.Join(s.directory(fileKeyHash(key)), "manifest.json"))
+	hash := fileKeyHash(key)
+	if _, err := os.Lstat(s.directory(hash)); errors.Is(err, os.ErrNotExist) {
+		return nil
+	}
+	unlock, err := s.lockManifest(invocation.Context(), hash)
+	if err != nil {
+		return err
+	}
+	defer unlock()
+	err = os.Remove(filepath.Join(s.directory(hash), "manifest.json"))
 	if err != nil && !errors.Is(err, os.ErrNotExist) {
 		return fileStorageError(core.StorageIO)
 	}
 	return nil
+}
+
+// DeleteIfVersion removes only the current immutable generation under the
+// persistent cross-process manifest lock. Older generations need a collector.
+func (s *FileObjectStorage) DeleteIfVersion(invocation runtime.StorageInvocation,
+	key core.ObjectKey, contentVersion string) (runtime.ObjectConditionalDeleteResult, error) {
+	if s == nil || !key.Valid() {
+		return "", fileStorageError(core.StorageInvalidInput)
+	}
+	if _, err := os.Lstat(s.root); errors.Is(err, os.ErrNotExist) {
+		return runtime.ObjectAlreadyMissing, nil
+	}
+	if err := s.privateRoot(); err != nil {
+		return "", err
+	}
+	hash := fileKeyHash(key)
+	if _, err := os.Lstat(s.directory(hash)); errors.Is(err, os.ErrNotExist) {
+		return runtime.ObjectAlreadyMissing, nil
+	}
+	unlock, err := s.lockManifest(invocation.Context(), hash)
+	if err != nil {
+		return "", err
+	}
+	defer unlock()
+	manifest, err := s.manifest(hash)
+	if err != nil {
+		return "", err
+	}
+	if manifest == nil {
+		return runtime.ObjectAlreadyMissing, nil
+	}
+	metadata, err := s.metadata(key, manifest)
+	if err != nil {
+		return "", err
+	}
+	if metadata.ETag() != contentVersion {
+		return runtime.ObjectVersionMismatch, nil
+	}
+	if err := os.Remove(filepath.Join(s.directory(hash), "data-"+manifest.Version)); err != nil && !errors.Is(err, os.ErrNotExist) {
+		return "", fileStorageError(core.StorageIO)
+	}
+	if err := os.Remove(filepath.Join(s.directory(hash), "manifest.json")); err != nil {
+		return "", fileStorageError(core.StorageIO)
+	}
+	return runtime.ObjectDeleted, nil
 }
 
 func (s *FileObjectStorage) seal(ticket fileTicket) (string, error) {

@@ -1,8 +1,13 @@
 package sqlite
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
 	"errors"
 	"io"
+	"os"
+	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
@@ -24,6 +29,22 @@ func (p *maintenancePermission) CanMaintain(*runtime.UserContext, string) (bool,
 type maintenanceStore struct {
 	objects map[string]string
 	deletes int
+}
+
+type noConditionalStore struct{}
+
+func (*noConditionalStore) Put(runtime.StorageInvocation, core.ObjectKey, io.Reader, core.ObjectPutOptions) (*core.ObjectMetadata, error) {
+	return nil, errors.New("unneeded")
+}
+func (*noConditionalStore) Get(runtime.StorageInvocation, core.ObjectKey) (*runtime.ObjectContent, error) {
+	return nil, errors.New("unneeded")
+}
+func (*noConditionalStore) Head(runtime.StorageInvocation, core.ObjectKey) (*core.ObjectMetadata, error) {
+	return nil, nil
+}
+func (*noConditionalStore) Delete(runtime.StorageInvocation, core.ObjectKey) error { return nil }
+func (*noConditionalStore) GetReadURL(runtime.StorageInvocation, core.ObjectKey, core.ObjectReadURLOptions) (core.ObjectReadURL, error) {
+	return core.ObjectReadURL{}, errors.New("unneeded")
 }
 
 func (s *maintenanceStore) Put(runtime.StorageInvocation, core.ObjectKey, io.Reader, core.ObjectPutOptions) (*core.ObjectMetadata, error) {
@@ -141,7 +162,7 @@ func TestSQLiteBlobMaintenanceExpiredUploadClaimRecoveryAndScope(t *testing.T) {
 	if err != nil || len(second.Outcomes) != 1 || second.Outcomes[0].Status != blobreference.MaintenanceDeleted {
 		t.Fatalf("second batch: %#v %v", second, err)
 	}
-	if store.deletes != 1 || store.objects["objects/blob_expired_race"] != "etag-race-new" {
+	if store.deletes != 2 || store.objects["objects/blob_expired_race"] != "etag-race-new" {
 		t.Fatalf("wrong conditional deletion: count=%d", store.deletes)
 	}
 	for key, expected := range map[string]string{
@@ -187,6 +208,113 @@ func TestSQLiteBlobMaintenanceExpiredUploadClaimRecoveryAndScope(t *testing.T) {
 	}
 }
 
+func TestSQLiteBlobMaintenanceRealFileReceiptAndPartialRecovery(t *testing.T) {
+	e := nativeBatchEnvironment(t)
+	catalog, err := blobreference.NewSQLiteCatalog(e.executor.Transport)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := catalog.EnsureSchema(e.ctx); err != nil {
+		t.Fatal(err)
+	}
+	root := filepath.Join(t.TempDir(), "objects")
+	provider, err := blobreference.NewFileObjectStorage(root, []byte("0123456789abcdef0123456789abcdef"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	e.ctx.WithObjectStorage(provider)
+	e.ctx.WithObjectStorageObserver(runtime.ObjectStorageObserverFunc(func(runtime.ObjectStorageEvent) {}))
+	store, err := e.ctx.ObjectStorage("real File expired upload maintenance")
+	if err != nil {
+		t.Fatal(err)
+	}
+	service, err := blobreference.NewSQLiteMaintenanceService(catalog,
+		&maintenancePermission{scope: "tenant-a", allowed: true}, 10)
+	if err != nil {
+		t.Fatal(err)
+	}
+	seed := func(key, version string) {
+		t.Helper()
+		if _, err := e.db.Exec(`INSERT INTO teaql_blob_catalog
+            (key,scope,object_key,content_version,file_name,content_type,size_bytes,status)
+            VALUES (?,'tenant-a',?,?, 'file.pdf','',0,'initiated')`, key, "objects/"+key, version); err != nil {
+			t.Fatal(err)
+		}
+		if _, err := e.db.Exec(`INSERT INTO teaql_blob_upload
+            (upload_id,scope,replay_key,request_hash,key,entity,entity_id,field,file_name,
+             extension,declared_size,expires_unix_ms,state)
+            VALUES (?,'tenant-a',?,?,?,'Asset','1','document','file.pdf','pdf',1,?,'initiated')`,
+			"bu_"+key, "replay_"+key, "request_"+key, key, time.Now().Add(-time.Minute).UnixMilli()); err != nil {
+			t.Fatal(err)
+		}
+	}
+	put := func(name string, mode core.ObjectWriteMode) (core.ObjectKey, *core.ObjectMetadata) {
+		t.Helper()
+		key, _ := core.NewObjectKey("objects/" + name)
+		bytes := []byte("same bytes")
+		options, _ := core.NewObjectPutOptions(int64(len(bytes)), mode)
+		metadata, err := store.PutBytes(key, bytes, options)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return key, metadata
+	}
+	key, _ := put("blob_file_receipt", core.ObjectCreateOnly)
+	seed("blob_file_receipt", "")
+	if _, err := e.db.Exec(`CREATE TRIGGER fail_file_receipt BEFORE UPDATE OF status ON teaql_blob_catalog
+        WHEN NEW.status='deleted' BEGIN SELECT RAISE(ABORT,'receipt failure'); END`); err != nil {
+		t.Fatal(err)
+	}
+	failed, err := service.RunBatch(e.ctx, nil)
+	if err != nil || len(failed.Outcomes) != 1 || failed.Outcomes[0].Status != blobreference.MaintenanceFailed {
+		t.Fatalf("failed receipt: %#v %v", failed, err)
+	}
+	if head, err := store.Head(key); err != nil || head != nil {
+		t.Fatalf("failed receipt did not remove File: %v", err)
+	}
+	if _, err := e.db.Exec(`DROP TRIGGER fail_file_receipt`); err != nil {
+		t.Fatal(err)
+	}
+	retry, err := service.RunBatch(e.ctx, nil)
+	if err != nil || len(retry.Outcomes) != 1 || retry.Outcomes[0].Status != blobreference.MaintenanceAlreadyMissing {
+		t.Fatalf("receipt recovery: %#v %v", retry, err)
+	}
+
+	staleKey, old := put("blob_file_stale", core.ObjectCreateOnly)
+	seed("blob_file_stale", old.ETag())
+	_, newer := put("blob_file_stale", core.ObjectReplace)
+	stale, err := service.RunBatch(e.ctx, nil)
+	if err != nil || len(stale.Outcomes) != 1 || stale.Outcomes[0].Status != blobreference.MaintenanceVersionConflict {
+		t.Fatalf("stale version: %#v %v", stale, err)
+	}
+	if head, err := store.Head(staleKey); err != nil || head == nil || head.ETag() != newer.ETag() {
+		t.Fatalf("new File generation was removed: %v", err)
+	}
+
+	partialKey, partial := put("blob_file_partial", core.ObjectCreateOnly)
+	seed("blob_file_partial", partial.ETag())
+	digest := sha256.Sum256([]byte(partialKey.Value()))
+	hash := hex.EncodeToString(digest[:])
+	// Simulate a crash between removing the pinned data file and its manifest.
+	if err := os.Remove(filepath.Join(root, hash[:2], hash,
+		"data-"+strings.Split(partial.ETag(), ".")[1])); err != nil {
+		t.Fatal(err)
+	}
+	recovered, err := service.RunBatch(e.ctx, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	found := false
+	for _, outcome := range recovered.Outcomes {
+		if outcome.Reference.Key() == "blob_file_partial" && outcome.Status == blobreference.MaintenanceDeleted {
+			found = true
+		}
+	}
+	if !found {
+		t.Fatalf("partially removed File did not recover: %#v", recovered.Outcomes)
+	}
+}
+
 func TestSQLiteBlobMaintenanceRejectsUnfencedStoreAndMissingIndex(t *testing.T) {
 	e := nativeBatchEnvironment(t)
 	catalog, err := blobreference.NewSQLiteCatalog(e.executor.Transport)
@@ -201,14 +329,9 @@ func TestSQLiteBlobMaintenanceRejectsUnfencedStoreAndMissingIndex(t *testing.T) 
 	if err != nil {
 		t.Fatal(err)
 	}
-	fileStore, err := blobreference.NewFileObjectStorage(t.TempDir(), []byte("0123456789abcdef0123456789abcdef"))
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer fileStore.Close()
-	e.ctx.WithObjectStorage(fileStore)
+	e.ctx.WithObjectStorage(&noConditionalStore{})
 	if _, err := service.RunBatch(e.ctx, nil); err == nil || err.Error() != "BLOB_CAPABILITY_MISSING" {
-		t.Fatalf("unfenced File store accepted: %v", err)
+		t.Fatalf("unfenced provider accepted: %v", err)
 	}
 	e.ctx.WithObjectStorage(&maintenanceStore{objects: map[string]string{}})
 	comment := "verify maintenance cannot borrow its own graph SQL owner"

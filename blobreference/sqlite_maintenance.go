@@ -323,30 +323,36 @@ func (s *SQLiteMaintenanceService) collect(actor *runtime.UserContext, scope, ke
 		outcome.Error = "BLOB_CATALOG_FAILED"
 		return outcome
 	}
-	observed, err := store.Head(objectKey)
-	if err != nil {
-		outcome.Error = "BLOB_STORE_FAILED"
+	version := claim.version
+	if version != "" && claim.writtenETag != "" && version != claim.writtenETag {
+		outcome.Error = "BLOB_IDEMPOTENCY_CONFLICT"
 		return outcome
 	}
-	version := claim.version
-	if observed != nil {
-		if observed.ETag() == "" || version != "" && observed.ETag() != version ||
-			claim.writtenETag != "" && observed.ETag() != claim.writtenETag {
-			outcome.Error = "BLOB_IDEMPOTENCY_CONFLICT"
-			return outcome
-		}
-		version = observed.ETag()
-		if _, err := s.authorize(actor, scope); err != nil {
-			outcome.Error = "BLOB_MAINTENANCE_DENIED"
-			return outcome
-		}
-		now, err = s.unixMillis()
-		if err == nil {
-			err = s.capture(actor, scope, claim, version, now)
-		}
+	if version == "" {
+		observed, err := store.Head(objectKey)
 		if err != nil {
-			outcome.Error = err.Error()
+			outcome.Error = "BLOB_STORE_FAILED"
 			return outcome
+		}
+		if observed != nil {
+			if observed.ETag() == "" ||
+				claim.writtenETag != "" && observed.ETag() != claim.writtenETag {
+				outcome.Error = "BLOB_IDEMPOTENCY_CONFLICT"
+				return outcome
+			}
+			version = observed.ETag()
+			if _, err := s.authorize(actor, scope); err != nil {
+				outcome.Error = "BLOB_MAINTENANCE_DENIED"
+				return outcome
+			}
+			now, err = s.unixMillis()
+			if err == nil {
+				err = s.capture(actor, scope, claim, version, now)
+			}
+			if err != nil {
+				outcome.Error = err.Error()
+				return outcome
+			}
 		}
 	}
 	if _, err := s.authorize(actor, scope); err != nil {

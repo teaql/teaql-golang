@@ -5,10 +5,13 @@ import (
 	"crypto/rand"
 	"crypto/sha256"
 	"encoding/hex"
+	"errors"
 	"io"
 	"net/http"
 	"os"
+	"os/exec"
 	"path/filepath"
+	goruntime "runtime"
 	"strconv"
 	"strings"
 	"testing"
@@ -17,6 +20,113 @@ import (
 	"github.com/teaql/teaql-golang/core"
 	"github.com/teaql/teaql-golang/runtime"
 )
+
+func TestFileConditionalDeleteFencesSameByteReplacement(t *testing.T) {
+	root := filepath.Join(t.TempDir(), "objects")
+	secret := []byte("0123456789abcdef0123456789abcdef")
+	first, err := NewFileObjectStorage(root, secret)
+	if err != nil {
+		t.Fatal(err)
+	}
+	second, err := NewFileObjectStorage(root, secret)
+	if err != nil {
+		t.Fatal(err)
+	}
+	writer, _ := runtime.NewUserContext().WithObjectStorage(first).ObjectStorage("write File generation")
+	collector, _ := runtime.NewUserContext().WithObjectStorage(second).ObjectStorage("delete File generation")
+	key, _ := core.NewObjectKey("blob/same-byte-replacement")
+	if missing, err := collector.Head(key); err != nil || missing != nil {
+		t.Fatalf("missing root head: %v", err)
+	}
+	if result, err := collector.DeleteIfVersion(key, "absent"); err != nil || result != runtime.ObjectAlreadyMissing {
+		t.Fatalf("missing root delete: %v %v", result, err)
+	}
+	data := []byte("same bytes")
+	create, _ := core.NewObjectPutOptions(int64(len(data)), core.ObjectCreateOnly)
+	replace, _ := core.NewObjectPutOptions(int64(len(data)), core.ObjectReplace)
+	old, err := writer.PutBytes(key, data, create)
+	if err != nil {
+		t.Fatal(err)
+	}
+	newer, err := writer.PutBytes(key, data, replace)
+	if err != nil || newer.ETag() == old.ETag() {
+		t.Fatalf("same-byte generation: %v", err)
+	}
+	if result, err := collector.DeleteIfVersion(key, old.ETag()); err != nil || result != runtime.ObjectVersionMismatch {
+		t.Fatalf("stale generation deleted: %v %v", result, err)
+	}
+	if result, err := collector.DeleteIfVersion(key, newer.ETag()); err != nil || result != runtime.ObjectDeleted {
+		t.Fatalf("current generation delete: %v %v", result, err)
+	}
+	if result, err := collector.DeleteIfVersion(key, newer.ETag()); err != nil || result != runtime.ObjectAlreadyMissing {
+		t.Fatalf("repeat generation delete: %v %v", result, err)
+	}
+	hash := fileKeyHash(key)
+	version := strings.Split(newer.ETag(), ".")[1]
+	if _, err := os.Stat(filepath.Join(second.directory(hash), "data-"+version)); !errors.Is(err, os.ErrNotExist) {
+		t.Fatalf("current data generation remains: %v", err)
+	}
+}
+
+func TestFileConditionalDeleteWaitsForExternalProcess(t *testing.T) {
+	if goruntime.GOOS != "linux" {
+		t.Skip("Linux flock process gate")
+	}
+	flock, err := exec.LookPath("flock")
+	if err != nil {
+		t.Skip("flock command unavailable")
+	}
+	root := filepath.Join(t.TempDir(), "objects")
+	provider, _ := NewFileObjectStorage(root, []byte("0123456789abcdef0123456789abcdef"))
+	store, _ := runtime.NewUserContext().WithObjectStorage(provider).ObjectStorage("verify external File lock")
+	key, _ := core.NewObjectKey("blob/external-lock")
+	data := []byte("content")
+	options, _ := core.NewObjectPutOptions(int64(len(data)), core.ObjectCreateOnly)
+	written, err := store.PutBytes(key, data, options)
+	if err != nil {
+		t.Fatal(err)
+	}
+	marker := filepath.Join(t.TempDir(), "locked")
+	lockPath := filepath.Join(provider.directory(fileKeyHash(key)), "manifest.lock")
+	cmd := exec.Command(flock, "-x", lockPath, "/bin/sh", "-c", `touch "$1"; sleep 2`, "sh", marker)
+	if err := cmd.Start(); err != nil {
+		t.Fatal(err)
+	}
+	defer func() {
+		if cmd.ProcessState == nil {
+			_ = cmd.Process.Kill()
+			_ = cmd.Wait()
+		}
+	}()
+	for attempt := 0; attempt < 100; attempt++ {
+		if _, err := os.Stat(marker); err == nil {
+			break
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+	if _, err := os.Stat(marker); err != nil {
+		t.Fatal("external lock holder did not start")
+	}
+	done := make(chan error, 1)
+	go func() {
+		result, err := store.DeleteIfVersion(key, written.ETag())
+		if err == nil && result != runtime.ObjectDeleted {
+			err = errors.New("unexpected conditional result")
+		}
+		done <- err
+	}()
+	select {
+	case err := <-done:
+		t.Fatalf("delete passed external lock: %v", err)
+	case <-time.After(100 * time.Millisecond):
+	}
+	if err := cmd.Wait(); err != nil {
+		t.Fatal(err)
+	}
+	if err := <-done; err != nil {
+		t.Fatal(err)
+	}
+}
 
 func TestFileObjectStorageRealBytesAndAuthenticatedHTTP(t *testing.T) {
 	secret := make([]byte, 32)
