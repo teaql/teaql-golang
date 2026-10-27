@@ -38,6 +38,10 @@ type MutationOperation struct {
 	ID              core.Value
 	OriginalVersion *int64
 	ChangedValues   core.Record
+	OldValues       core.Record
+	Guards          core.Record
+	TraceChain      []*core.TraceNode
+	HardDelete      bool
 }
 
 type MutationPlan struct {
@@ -171,6 +175,9 @@ func cloneMutationPlan(plan *MutationPlan) *MutationPlan {
 		copyPlan.Operations[index] = operation
 		copyPlan.Operations[index].ID = core.CloneValue(operation.ID)
 		copyPlan.Operations[index].ChangedValues = core.CloneRecord(operation.ChangedValues)
+		copyPlan.Operations[index].OldValues = core.CloneRecord(operation.OldValues)
+		copyPlan.Operations[index].Guards = core.CloneRecord(operation.Guards)
+		copyPlan.Operations[index].TraceChain = core.CloneTraceNodes(operation.TraceChain)
 		if operation.OriginalVersion != nil {
 			version := *operation.OriginalVersion
 			copyPlan.Operations[index].OriginalVersion = &version
@@ -227,7 +234,7 @@ func MutationPlanFromEntityRoot(root *core.EntityRoot, rootEntity, auditReason s
 		}
 		plan.Operations = append(plan.Operations, MutationOperation{
 			Kind: kind, Entity: key.Entity, ID: key.ID, OriginalVersion: originalVersion,
-			ChangedValues: cloneRecord(values),
+			ChangedValues: core.CloneRecord(values), TraceChain: root.TraceChain(key),
 		})
 	}
 	sort.Slice(plan.Operations, func(left, right int) bool {

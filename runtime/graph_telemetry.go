@@ -13,10 +13,35 @@ import (
 type graphTelemetryTransaction struct {
 	data_service.Transaction
 	context context.Context
+	guard   *preparedProviderGuard
 }
 
 func (t *graphTelemetryTransaction) Mutate(ctx context.Context, request data_service.MutationRequest) (*data_service.MutationResult, error) {
-	return t.Transaction.Mutate(graphMutationContext{Context: ctx, parent: t.context}, request)
+	carrier := graphMutationContext{Context: ctx, parent: t.context}
+	if t.guard != nil {
+		return t.guard.mutate(carrier, request, t.Transaction)
+	}
+	return t.Transaction.Mutate(carrier, request)
+}
+
+func (t *graphTelemetryTransaction) Commit(ctx context.Context) error {
+	if t.guard != nil {
+		if err := t.guard.allowClose(true); err != nil {
+			return err
+		}
+	}
+	if t.guard != nil && ctx.Err() != nil {
+		return ctx.Err()
+	}
+	return t.Transaction.Commit(ctx)
+}
+func (t *graphTelemetryTransaction) Rollback(ctx context.Context) error {
+	if t.guard != nil {
+		if err := t.guard.allowClose(false); err != nil {
+			return err
+		}
+	}
+	return t.Transaction.Rollback(ctx)
 }
 
 // Keep the caller's deadline/cancellation while carrying this transaction's
@@ -110,8 +135,11 @@ func (t *graphStreamIDsFloor) EnsureIdFloor(ctx context.Context, entity string, 
 
 // Go's interface method sets are capability checks in generated libraries.
 // Preserve each optional capability exactly instead of advertising stubs.
-func bindGraphTelemetryTransaction(inner data_service.Transaction, ctx context.Context) data_service.Transaction {
+func bindGraphTelemetryTransaction(inner data_service.Transaction, ctx context.Context, guards ...*preparedProviderGuard) data_service.Transaction {
 	base := &graphTelemetryTransaction{Transaction: inner, context: ctx}
+	if len(guards) != 0 {
+		base.guard = guards[0]
+	}
 	ids, hasID := inner.(graphIDGenerator)
 	floor, hasFloor := inner.(graphIDFloor)
 	if stream, ok := inner.(data_service.StreamQueryExecutor); ok {

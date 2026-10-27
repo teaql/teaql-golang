@@ -20,7 +20,21 @@ func (c *UserContext) validateMutationPlanFields(plan *MutationPlan) error {
 				Message: "Mutation entity is not declared in the installed model",
 			}}}
 		}
+		fields := make(map[string]bool, len(operation.ChangedValues)+len(operation.OldValues)+len(operation.Guards))
 		for field := range operation.ChangedValues {
+			fields[field] = true
+		}
+		for field := range operation.OldValues {
+			if _, changed := operation.ChangedValues[field]; !changed {
+				fields[field] = false
+			}
+		}
+		for field := range operation.Guards {
+			if _, changed := operation.ChangedValues[field]; !changed {
+				fields[field] = false
+			}
+		}
+		for field := range fields {
 			canonical, canonicalErr := core.CanonicalLedgerField(entity, field)
 			storage, storageErr := core.StorageLedgerField(entity, field)
 			if canonicalErr != nil || storageErr != nil || canonical != field || entity.PropertyByName(storage) == nil {
@@ -29,7 +43,7 @@ func (c *UserContext) validateMutationPlanFields(plan *MutationPlan) error {
 					Message: "Mutation fields must use declared canonical model names",
 				}}}
 			}
-			if property := entity.PropertyByName(storage); operation.Kind == core.MutationUpdate && property.ImmutableUpdateRule != "" {
+			if property := entity.PropertyByName(storage); operation.Kind == core.MutationUpdate && fields[field] && property.ImmutableUpdateRule != "" {
 				return &RuntimeError{Type: "Check", CheckResults: []CheckResult{{
 					RuleID: property.ImmutableUpdateRule, EntityType: operation.Entity, CanonicalLocation: Location().Property(field),
 					Message: "This model field is immutable after create",

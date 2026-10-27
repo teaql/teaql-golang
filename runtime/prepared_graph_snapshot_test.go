@@ -36,7 +36,7 @@ func (tx *preparedWriteTransaction) Mutate(_ context.Context, request data_servi
 		return nil, fmt.Errorf("test expected an update, got %T", request)
 	}
 	tx.probe.written = append(tx.probe.written, core.CloneRecord(update.Cmd.Values))
-	return &data_service.MutationResult{}, nil
+	return &data_service.MutationResult{AffectedRows: 1}, nil
 }
 
 // Model the generated prepare -> policy -> save bridge without a database or
@@ -57,7 +57,7 @@ func preparedWrite(t *testing.T, ctx *UserContext, root *core.EntityRoot, key co
 		}
 		root.Set(key, "phone", input.Values["phone"])
 		command := core.NewUpdateCommand(key.Entity, key.ID).Value("phone", root.Change(key)["phone"]).WithExpectedVersion(3)
-		request, err := data_service.NewMutationRequest(&data_service.UpdateMutation{Cmd: command}, "persist exactly the reviewed mutation")
+		request, err := data_service.NewMutationRequest(&data_service.UpdateMutation{Cmd: command}, "submit order")
 		if err != nil {
 			return err
 		}
@@ -127,7 +127,7 @@ func TestGraphCompositionPreparedReferenceResolutionUsesExactTypedAssignment(t *
 		t.Run(fmt.Sprint(wrongParent), func(t *testing.T) {
 			ctx, root := canonicalCheckerContext(), core.NewEntityRoot()
 			ctx.Metadata.(*InMemoryMetadataStore).Register(core.NewEntityDescriptor("Parent").Property(core.NewPropertyDescriptor("id", core.TypeU64).Id()))
-			provider := &graphTransactionProbe{}
+			provider := &preparedProviderProbe{}
 			ctx.InsertResource("dataService", provider)
 			child := core.NewEntityKey("Child", core.ValI64(-3))
 			parent := core.NewEntityKey("Parent", core.ValI64(-1))
@@ -146,7 +146,15 @@ func TestGraphCompositionPreparedReferenceResolutionUsesExactTypedAssignment(t *
 				return MutationPlanFromEntityRoot(root, "Parent", "resolve only the prepared parent"), nil
 			}, func() error {
 				for index, key := range []core.EntityKey{parent, other} {
-					if err := ctx.RekeyPreparedGraphEntity(root, key, core.NewEntityKey("Parent", core.ValU64(uint64(10+index)))); err != nil {
+					id := core.ValU64(uint64(10 + index))
+					if err := ctx.RekeyPreparedGraphEntity(root, key, core.NewEntityKey("Parent", id)); err != nil {
+						return err
+					}
+					request, err := data_service.NewMutationRequest(&data_service.InsertMutation{Cmd: core.NewInsertCommand("Parent").Value("id", id)}, "submit order")
+					if err != nil {
+						return err
+					}
+					if _, err := ctx.GetResource("dataService").(data_service.MutationExecutor).Mutate(ctx, request); err != nil {
 						return err
 					}
 				}
@@ -155,7 +163,18 @@ func TestGraphCompositionPreparedReferenceResolutionUsesExactTypedAssignment(t *
 					id = 11
 				}
 				root.Set(child, "parent", core.ValU64(id))
-				return CheckAndFixGraphEntity(ctx, &CheckAndFixInput{Entity: "Child", Operation: core.MutationInsert, Values: core.Record{"parent_id": core.ValU64(id)}}, root, child)
+				if err := CheckAndFixGraphEntity(ctx, &CheckAndFixInput{Entity: "Child", Operation: core.MutationInsert, Values: core.Record{"parent_id": core.ValU64(id)}}, root, child); err != nil {
+					return err
+				}
+				if err := ctx.RekeyPreparedGraphEntity(root, child, core.NewEntityKey("Child", core.ValU64(12))); err != nil {
+					return err
+				}
+				request, err := data_service.NewMutationRequest(&data_service.InsertMutation{Cmd: core.NewInsertCommand("Child").Value("id", core.ValU64(12)).Value("parent_id", core.ValU64(id))}, "submit order")
+				if err != nil {
+					return err
+				}
+				_, err = ctx.GetResource("dataService").(data_service.MutationExecutor).Mutate(ctx, request)
+				return err
 			})
 			if wrongParent {
 				requirePreparedRejection(t, err, "/parent")

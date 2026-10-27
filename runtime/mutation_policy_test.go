@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/teaql/teaql-golang/core"
+	"github.com/teaql/teaql-golang/data_service"
 )
 
 type testMutationPolicy struct {
@@ -130,13 +131,25 @@ func TestMutationPolicyDenialPrecedesTransactionBegin(t *testing.T) {
 }
 
 func TestAllowedPlannedGraphAttachesGovernanceToAuditAndWarningSinkIsFailOpen(t *testing.T) {
-	probe := &graphTransactionProbe{}
+	probe := &preparedProviderProbe{}
 	warnings := &recordingMutationGovernanceSink{err: errors.New("log storage unavailable")}
 	audits := &MockRawAuditEventSink{}
 	context := NewRuntimeModule().EventSink(audits).IntoContext().WithMutationGovernanceSink(warnings)
 	context.InsertResource("dataService", probe)
 
 	err := context.ExecutePlannedGraphSave(mutationPolicyTestPlan(), func() error {
+		for _, command := range []data_service.MutationRequest{
+			&data_service.UpdateMutation{Cmd: core.NewUpdateCommand("Order", core.ValU64(42)).WithExpectedVersion(7).Value("state", core.ValText("SUBMITTED"))},
+			&data_service.InsertMutation{Cmd: core.NewInsertCommand("OrderLine").Value("id", core.ValU64(99)).Value("quantity", core.ValI64(2))},
+		} {
+			request, err := data_service.NewMutationRequest(command, "submit the order")
+			if err != nil {
+				return err
+			}
+			if _, err = context.GetResource("dataService").(data_service.MutationExecutor).Mutate(context, request); err != nil {
+				return err
+			}
+		}
 		return context.SendEvent(Created("Order", core.Record{"id": core.ValU64(42)}))
 	})
 	if err != nil {

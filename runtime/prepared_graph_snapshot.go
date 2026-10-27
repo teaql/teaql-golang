@@ -2,6 +2,7 @@ package runtime
 
 import (
 	"fmt"
+	"math"
 	"reflect"
 	"sort"
 
@@ -15,6 +16,54 @@ type preparedGraphSnapshot struct {
 	plan        *MutationPlan
 	checks      []preparedGraphCheck
 	assignments map[string]core.EntityKey
+	metadata    map[string]*core.EntityDescriptor
+	lineage     map[string]preparedGraphLineage
+	source      []preparedLedgerEntry
+}
+
+type preparedLedgerEntry struct {
+	owner        core.EntityKey
+	values       core.Record
+	version      *int64
+	trace        []*core.TraceNode
+	new, deleted bool
+}
+
+func preparedValueEqual(left, right core.Value) bool {
+	if !reflect.DeepEqual(left, right) {
+		return false
+	}
+	switch value := left.V.(type) {
+	case float64:
+		return math.Float64bits(value) == math.Float64bits(right.V.(float64))
+	case float32:
+		return math.Float32bits(value) == math.Float32bits(right.V.(float32))
+	case core.Record:
+		for key, item := range value {
+			if !preparedValueEqual(item, right.V.(core.Record)[key]) {
+				return false
+			}
+		}
+	case map[string]any:
+		for key, item := range value {
+			if !preparedValueEqual(core.Value{V: item}, core.Value{V: right.V.(map[string]any)[key]}) {
+				return false
+			}
+		}
+	case []core.Value:
+		for index, item := range value {
+			if !preparedValueEqual(item, right.V.([]core.Value)[index]) {
+				return false
+			}
+		}
+	case []any:
+		for index, item := range value {
+			if !preparedValueEqual(core.Value{V: item}, core.Value{V: right.V.([]any)[index]}) {
+				return false
+			}
+		}
+	}
+	return true
 }
 
 func preparedEntityKey(key core.EntityKey) string {
@@ -62,7 +111,7 @@ func changedPreparedField(expected, actual core.Record) string {
 	for _, field := range ordered {
 		before, beforePresent := expected[field]
 		after, afterPresent := actual[field]
-		if beforePresent != afterPresent || !reflect.DeepEqual(before, after) {
+		if beforePresent != afterPresent || !preparedValueEqual(before, after) {
 			return field
 		}
 	}

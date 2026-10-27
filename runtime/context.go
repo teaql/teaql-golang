@@ -805,19 +805,15 @@ func (c *UserContext) ExecutePlannedGraphSave(plan *MutationPlan, work func() er
 }
 
 func (c *UserContext) executePlannedGraphSave(ctx stdcontext.Context, plan *MutationPlan, work func() error) error {
-	snapshot, err := c.ReviewMutationPlan(plan)
+	var reason *string
+	if plan != nil {
+		reason = &plan.AuditReason
+	}
+	intent, err := core.NewMutationIntent(reason)
 	if err != nil {
 		return err
 	}
-	c.graphSaveMu.Lock()
-	c.activeMutationGovernance = snapshot
-	c.graphSaveMu.Unlock()
-	defer func() {
-		c.graphSaveMu.Lock()
-		c.activeMutationGovernance = nil
-		c.graphSaveMu.Unlock()
-	}()
-	return c.executeGraphSave(ctx, work, false)
+	return c.executePreparedGraphSave(ctx, intent, func() (*MutationPlan, error) { return plan, nil }, work)
 }
 
 // ExecutePreparedGraphSave gives generated root Save methods one governed
@@ -852,7 +848,6 @@ func (c *UserContext) executePreparedGraphSave(ctx stdcontext.Context, intent co
 	}()
 	plan, err := prepare()
 	if err != nil {
-		c.finishGraphPreparation()
 		return err
 	}
 	if plan != nil {
@@ -862,10 +857,9 @@ func (c *UserContext) executePreparedGraphSave(ctx stdcontext.Context, intent co
 			return err
 		}
 	}
-	c.graphSaveMu.Lock()
-	c.preparedGraphSnapshot.sealed = true
-	c.preparedGraphSnapshot.plan = plan
-	c.graphSaveMu.Unlock()
+	if err := c.sealPreparedPlan(plan); err != nil {
+		return err
+	}
 	// A complete, explicit empty prepared plan is a no-op, not an UPDATE.
 	// Keep the traversal callback behind a rejecting provider so a late child
 	// mutation cannot silently escape the sealed empty plan.
@@ -877,7 +871,6 @@ func (c *UserContext) executePreparedGraphSave(ctx stdcontext.Context, intent co
 	}
 	snapshot, err := c.ReviewMutationPlan(plan)
 	if err != nil {
-		c.finishGraphPreparation()
 		return err
 	}
 	c.graphSaveMu.Lock()
@@ -896,7 +889,7 @@ func (c *UserContext) startGraphPreparation() {
 	c.graphSaveMu.Lock()
 	c.graphFixTime = c.BusinessTime()
 	c.currentFixEvidence = nil
-	c.preparedGraphSnapshot = &preparedGraphSnapshot{assignments: make(map[string]core.EntityKey)}
+	c.preparedGraphSnapshot = &preparedGraphSnapshot{assignments: make(map[string]core.EntityKey), metadata: clonePreparedMetadata(c), lineage: make(map[string]preparedGraphLineage)}
 	c.graphSaveMu.Unlock()
 }
 
@@ -938,7 +931,11 @@ func (c *UserContext) executeGraphSave(operationContext stdcontext.Context, work
 	c.graphSaveMu.Lock()
 	provider := c.resources["dataService"]
 	originalIDGenerator, hadIDGenerator := c.resources["idGenerator"]
+	guard := newPreparedProviderGuard(c, c.preparedGraphSnapshot)
 	c.graphSaveMu.Unlock()
+	if guard != nil && !guard.metadataUnchanged() {
+		return preparedMutationChanged(guard.state.plan.RootEntity, "metadata")
+	}
 	executor, ok := provider.(data_service.TransactionExecutor)
 	if !ok {
 		return fmt.Errorf("configured dataService does not support graph transactions")
@@ -948,7 +945,7 @@ func (c *UserContext) executeGraphSave(operationContext stdcontext.Context, work
 		return err
 	}
 	// The carrier follows the actual transaction instead of rewriting c.Context.
-	transaction = bindGraphTelemetryTransaction(transaction, operationContext)
+	transaction = bindGraphTelemetryTransaction(transaction, operationContext, guard)
 	c.graphSaveMu.Lock()
 	c.graphSaveActive = true
 	c.graphCommitActions = nil
@@ -970,6 +967,9 @@ func (c *UserContext) executeGraphSave(operationContext stdcontext.Context, work
 			// gate without a cleanup panic replacing the original panic.
 			func() {
 				defer func() { _ = recover() }()
+				if guard != nil {
+					_ = guard.finishWork(operationContext, preparedIncomplete(guard.state.plan.RootEntity))
+				}
 				_ = transaction.Rollback(operationContext)
 				for index := len(c.graphRollbackActions) - 1; index >= 0; index-- {
 					c.graphRollbackActions[index]()
@@ -994,6 +994,9 @@ func (c *UserContext) executeGraphSave(operationContext stdcontext.Context, work
 	}()
 
 	err = work()
+	if guard != nil {
+		err = guard.finishWork(operationContext, err)
+	}
 	committed := false
 	if err == nil {
 		err = transaction.Commit(operationContext)
@@ -1045,7 +1048,7 @@ func (c *UserContext) LastFixEvidence() []FixEvidence {
 func (c *UserContext) FixTime() time.Time {
 	c.graphSaveMu.Lock()
 	defer c.graphSaveMu.Unlock()
-	if !c.graphFixTime.IsZero() {
+	if c.graphSaveActive || c.preparedGraphSnapshot != nil || !c.graphFixTime.IsZero() {
 		return c.graphFixTime
 	}
 	return c.BusinessTime()
