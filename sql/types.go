@@ -382,10 +382,17 @@ func quotedSqlString(value string) string {
 
 type SqlCompileError struct {
 	Message string
+	Cause   error
 }
 
 func (e *SqlCompileError) Error() string {
 	return e.Message
+}
+
+func (e *SqlCompileError) Unwrap() error { return e.Cause }
+
+func ErrMutationVersion(err error) *SqlCompileError {
+	return &SqlCompileError{Message: err.Error(), Cause: err}
 }
 
 func ErrUnknownEntity(entity string) *SqlCompileError {

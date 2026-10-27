@@ -350,7 +350,37 @@ func (e *SchoolType) Save(context *runtime.UserContext) (*SchoolType, error) {
 // TeaqlPreflightGraph runs Checker/Fix for the complete aggregate before the
 // first provider mutation. It is generated infrastructure, not application API.
 func (e *SchoolType) TeaqlPreflightGraph(context *runtime.UserContext, intent core.MutationIntent) error {
+	if err := intent.Validate(); err != nil { return err }
+	if err := e.TeaqlNormalizeMutationGraph(context); err != nil { return err }
+	if err := context.ValidateGraphMutationVersions(e.root); err != nil { return err }
 	return e.TeaqlPreflightWithinGraph(context, intent, nil)
+}
+
+// Cancel known-baseline equal assignments and attach the complete pending graph
+// before the first Checker, Fix, business-ID allocation or version admission.
+func (e *SchoolType) TeaqlNormalizeMutationGraph(context *runtime.UserContext) error {
+	if e.isNew && e.markedAsDelete { return nil }
+	restoredFields, err := context.DiscardRestoredScalarChanges(e.root, e.EntityKey(), e.loadedSnapshot)
+	if err != nil { return err }
+	for _, field := range restoredFields { delete(e.dirtyFields, field) }
+	for index, child := range e.schoolList.Items() {
+		if child.IsNew() && child.IsMarkedAsDelete() { continue }
+		child.AttachEntityRoot(e.root)
+		parentID := core.ValU64(e.base.Id)
+		if e.base.Id == 0 { parentID = e.ledgerID }
+		child.Base().PutDynamic("school_type_id", parentID)
+		if err := child.TeaqlNormalizeMutationGraph(context); err != nil {
+			var checkError *runtime.RuntimeError
+			if errors.As(err, &checkError) && checkError.Type == "Check" {
+				prefix := runtime.Location().Property("school_list").At(index)
+				prefixed := make([]runtime.CheckResult, len(checkError.CheckResults))
+				for resultIndex, result := range checkError.CheckResults { prefixed[resultIndex] = result.PrefixedBy(prefix) }
+				return &runtime.RuntimeError{Type: "Check", CheckResults: prefixed}
+			}
+			return fmt.Errorf("normalize child from schoolList: %w", err)
+		}
+	}
+	return nil
 }
 
 func (e *SchoolType) TeaqlPreflightWithinGraph(context *runtime.UserContext, intent core.MutationIntent, parent *core.EntityKey) error {

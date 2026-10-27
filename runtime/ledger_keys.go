@@ -98,6 +98,9 @@ func checkerMappingError(entity string, err error) error {
 // carrier stays native while customer callbacks and diagnostics stay canonical.
 // Copy before mapping so rejected aliases cannot partially rewrite its input.
 func (c *UserContext) checkAndFixStorage(input *CheckAndFixInput, ledger *core.EntityRoot, owner core.EntityKey) error {
+	if err := c.validatePreflightLedgerMutationVersions(ledger); err != nil {
+		return err
+	}
 	checked := *input
 	var changed core.Record
 	if ledger != nil {
@@ -130,6 +133,9 @@ func (c *UserContext) checkAndFixStorage(input *CheckAndFixInput, ledger *core.E
 		err = c.checkAndFixWithReferences(&checked, references)
 	}
 	if err != nil {
+		return err
+	}
+	if err := c.validatePreflightLedgerMutationVersions(ledger); err != nil {
 		return err
 	}
 	if checked.Entity != input.Entity || checked.Operation != input.Operation {

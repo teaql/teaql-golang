@@ -155,8 +155,11 @@ func Recovered(entity string, id core.Value, expectedVersion int64) *RawAuditEve
 	}
 }
 
-func RecoveredWithOldValues(entity string, id core.Value, expectedVersion int64, oldValues *core.Record) *RawAuditEvent {
-	recoveredVersion := -expectedVersion + 1
+func RecoveredWithOldValues(entity string, id core.Value, expectedVersion int64, oldValues *core.Record) (*RawAuditEvent, error) {
+	recoveredVersion, err := core.VersionAfterRecovery(expectedVersion)
+	if err != nil {
+		return nil, err
+	}
 	var newValues core.Record
 	if oldValues != nil {
 		newValues = make(core.Record)
@@ -173,7 +176,7 @@ func RecoveredWithOldValues(entity string, id core.Value, expectedVersion int64,
 	event.OldValues = oldValues
 	event.NewValues = &newValues
 	event.Changes = changesForFields(oldValues, &newValues, []string{"version"})
-	return event
+	return event, nil
 }
 
 func SchemaCreated(entity, tableName string, fieldCount int) *RawAuditEvent {

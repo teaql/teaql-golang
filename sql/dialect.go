@@ -508,7 +508,11 @@ func (d *DefaultSqlDialect) CompileUpdate(entity *core.EntityDescriptor, command
 		if versionProperty == nil {
 			return nil, ErrMissingVersionProperty(entity.Name)
 		}
-		d.bindField(&params, core.ValI64(*command.ExpectedVersion+1), entity, versionProperty.Name)
+		next, err := core.VersionAfterUpdate(*command.ExpectedVersion)
+		if err != nil {
+			return nil, ErrMutationVersion(err)
+		}
+		d.bindField(&params, core.ValI64(next), entity, versionProperty.Name)
 		assignments = append(assignments, fmt.Sprintf("%s = %s", d.Dialect.QuoteIdent(versionProperty.ColName), d.Dialect.Placeholder(len(params))))
 	}
 	if len(assignments) == 0 {
@@ -595,7 +599,11 @@ func (d *DefaultSqlDialect) CompileBatchUpdate(entity *core.EntityDescriptor, co
 				d.bindField(&params, id, entity, idProperty.Name)
 				idPh := d.Dialect.Placeholder(len(params))
 
-				d.bindField(&params, core.ValI64(*expVerOpt+1), entity, versionProperty.Name)
+				next, err := core.VersionAfterUpdate(*expVerOpt)
+				if err != nil {
+					return nil, ErrMutationVersion(err)
+				}
+				d.bindField(&params, core.ValI64(next), entity, versionProperty.Name)
 				valPh := d.Dialect.Placeholder(len(params))
 
 				caseParts = append(caseParts, fmt.Sprintf("WHEN %s THEN %s", idPh, valPh))
@@ -659,16 +667,17 @@ func (d *DefaultSqlDialect) CompileDelete(entity *core.EntityDescriptor, command
 	var params []core.Value
 
 	if command.SoftDelete {
-		if command.ExpectedVersion != nil && *command.ExpectedVersion <= 0 {
-			return nil, fmt.Errorf("soft deletion of %s requires a positive original version; use explicit recovery for a tombstone", entity.Name)
-		}
 		versionProperty := entity.VersionProperty()
 		if versionProperty == nil {
 			return nil, ErrMissingVersionProperty(entity.Name)
 		}
 
 		if command.ExpectedVersion != nil {
-			d.bindField(&params, core.ValI64(-(*command.ExpectedVersion + 1)), entity, versionProperty.Name)
+			next, err := core.VersionAfterSoftDelete(*command.ExpectedVersion)
+			if err != nil {
+				return nil, ErrMutationVersion(err)
+			}
+			d.bindField(&params, core.ValI64(next), entity, versionProperty.Name)
 		} else {
 			d.bindField(&params, core.ValI64(-1), entity, versionProperty.Name)
 		}
@@ -725,8 +734,9 @@ func (d *DefaultSqlDialect) CompileDelete(entity *core.EntityDescriptor, command
 
 func (d *DefaultSqlDialect) CompileRecover(entity *core.EntityDescriptor, command *core.RecoverCommand) (*CompiledQuery, error) {
 	d = d.forCompilation()
-	if command.ExpectedVersion >= 0 {
-		return nil, ErrInvalidRecoverVersion(command.ExpectedVersion)
+	next, versionErr := core.VersionAfterRecovery(command.ExpectedVersion)
+	if versionErr != nil {
+		return nil, ErrMutationVersion(versionErr)
 	}
 
 	idProperty := entity.IdProperty()
@@ -739,7 +749,7 @@ func (d *DefaultSqlDialect) CompileRecover(entity *core.EntityDescriptor, comman
 	}
 
 	var params []core.Value
-	d.bindField(&params, core.ValI64(-command.ExpectedVersion+1), entity, versionProperty.Name)
+	d.bindField(&params, core.ValI64(next), entity, versionProperty.Name)
 	d.bindField(&params, command.Id, entity, idProperty.Name)
 	d.bindField(&params, core.ValI64(command.ExpectedVersion), entity, versionProperty.Name)
 

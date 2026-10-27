@@ -184,7 +184,10 @@ func TestRawAuditEventRecovered(t *testing.T) {
 
 func TestRawAuditEventRecoveredWithOldValues(t *testing.T) {
 	oldValues := core.Record{"name": core.ValText("Alice")}
-	event := RecoveredWithOldValues("User", core.ValI64(10), 2, &oldValues)
+	event, err := RecoveredWithOldValues("User", core.ValI64(10), -2, &oldValues)
+	if err != nil {
+		t.Fatal(err)
+	}
 	if event.Kind != RawAuditEventKindRecovered {
 		t.Errorf("Expected Kind Recovered")
 	}
@@ -198,8 +201,8 @@ func TestRawAuditEventRecoveredWithOldValues(t *testing.T) {
 	if change.OldValue != nil {
 		t.Errorf("Expected OldValue nil")
 	}
-	if change.NewValue == nil || change.NewValue.V != int64(-1) {
-		t.Errorf("Expected NewValue -1")
+	if change.NewValue == nil || change.NewValue.V != int64(3) {
+		t.Errorf("Expected NewValue 3")
 	}
 }
 
@@ -394,12 +397,15 @@ func TestDeletedEventEdges(t *testing.T) {
 }
 
 func TestRecoveredWithOldValuesNone(t *testing.T) {
-	event := RecoveredWithOldValues("User", core.ValI64(1), 2, nil)
+	event, err := RecoveredWithOldValues("User", core.ValI64(1), -2, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
 	if event.OldValues != nil {
 		t.Errorf("Expected OldValues nil")
 	}
-	if (*event.NewValues)["version"].V != int64(-1) {
-		t.Errorf("Expected new version -1")
+	if (*event.NewValues)["version"].V != int64(3) {
+		t.Errorf("Expected new version 3")
 	}
 }
 
