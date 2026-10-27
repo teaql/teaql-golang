@@ -143,6 +143,26 @@ func (p *Provider) Delete(i runtime.StorageInvocation, key core.ObjectKey) error
 	_, err := p.client.DeleteObject(i.Context(), &sdk.DeleteObjectInput{Bucket: aws.String(p.bucket), Key: aws.String(key.Value())})
 	return translate(err)
 }
+func (p *Provider) DeleteIfVersion(i runtime.StorageInvocation, key core.ObjectKey, contentVersion string) (runtime.ObjectConditionalDeleteResult, error) {
+	_, err := p.client.DeleteObject(i.Context(), &sdk.DeleteObjectInput{
+		Bucket: aws.String(p.bucket), Key: aws.String(key.Value()), IfMatch: aws.String(contentVersion),
+	})
+	if err == nil {
+		return runtime.ObjectDeleted, nil
+	}
+	var response *smithyhttp.ResponseError
+	if errors.As(err, &response) && (response.HTTPStatusCode() == 404 || response.HTTPStatusCode() == 412) {
+		current, headErr := p.Head(i, key)
+		if headErr != nil {
+			return "", headErr
+		}
+		if current == nil {
+			return runtime.ObjectAlreadyMissing, nil
+		}
+		return runtime.ObjectVersionMismatch, nil
+	}
+	return "", translate(err)
+}
 func (p *Provider) GetReadURL(i runtime.StorageInvocation, key core.ObjectKey, options core.ObjectReadURLOptions) (core.ObjectReadURL, error) {
 	input := &sdk.GetObjectInput{Bucket: aws.String(p.bucket), Key: aws.String(key.Value())}
 	if options.ContentDisposition() != "" {

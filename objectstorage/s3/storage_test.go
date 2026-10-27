@@ -160,6 +160,48 @@ func TestMinioRealSignedRangeAndExpiry(t *testing.T) {
 			t.Fatal("create-only race changed winner bytes", readErr, closeErr)
 		}
 	}
+	if os.Getenv("TEAQL_S3_TEST_CONDITIONAL_DELETE") == "1" {
+		deleteKey, _ := core.NewObjectKey("f4/go/conditional/" + hex.EncodeToString(random))
+		t.Cleanup(func() { _ = storage.Delete(deleteKey) })
+		firstBytes := []byte("first version")
+		firstOptions, _ := core.NewObjectPutOptions(int64(len(firstBytes)), core.ObjectReplace)
+		first, err := storage.PutBytes(deleteKey, firstBytes, firstOptions)
+		if err != nil {
+			t.Fatal("conditional first put", err)
+		}
+		outcome, err := storage.DeleteIfVersion(deleteKey, "\"wrong-etag\"")
+		if err != nil || outcome != runtime.ObjectVersionMismatch {
+			t.Fatal("wrong ETag deleted object", outcome, err)
+		}
+		still, err := storage.Head(deleteKey)
+		if err != nil || still == nil || still.ETag() != first.ETag() {
+			t.Fatal("wrong ETag altered object", err)
+		}
+		replacementBytes := []byte("replacement version")
+		replacementOptions, _ := core.NewObjectPutOptions(int64(len(replacementBytes)), core.ObjectReplace)
+		replaced, err := storage.PutBytes(deleteKey, replacementBytes, replacementOptions)
+		if err != nil || replaced == nil || replaced.ETag() == first.ETag() {
+			t.Fatal("conditional replacement missing", err)
+		}
+		outcome, err = storage.DeleteIfVersion(deleteKey, first.ETag())
+		if err != nil || outcome != runtime.ObjectVersionMismatch {
+			t.Fatal("old ETag deleted replacement", outcome, err)
+		}
+		still, err = storage.Head(deleteKey)
+		if err != nil || still == nil || still.ETag() != replaced.ETag() {
+			t.Fatal("replacement changed after stale delete", err)
+		}
+		outcome, err = storage.DeleteIfVersion(deleteKey, replaced.ETag())
+		if err != nil || outcome != runtime.ObjectDeleted {
+			t.Fatal("matching ETag did not delete", outcome, err)
+		}
+		outcome, err = storage.DeleteIfVersion(deleteKey, replaced.ETag())
+		if err != nil || outcome != runtime.ObjectAlreadyMissing {
+			t.Fatal("missing object not reported", outcome, err)
+		}
+		_, err = storage.DeleteIfVersion(deleteKey, "*")
+		checkCode(t, core.StorageInvalidInput, err)
+	}
 }
 
 func testClient(endpoint string, httpClient *http.Client) *sdk.Client {

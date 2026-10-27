@@ -46,6 +46,21 @@ type ObjectStorageProvider interface {
 	Delete(StorageInvocation, core.ObjectKey) error
 	GetReadURL(StorageInvocation, core.ObjectKey, core.ObjectReadURLOptions) (core.ObjectReadURL, error)
 }
+
+// ObjectStorageConditionalDeleter is optional. Callers must never fall back to
+// an unconditional delete when the provider cannot fence a content version.
+type ObjectStorageConditionalDeleter interface {
+	DeleteIfVersion(StorageInvocation, core.ObjectKey, string) (ObjectConditionalDeleteResult, error)
+}
+
+type ObjectConditionalDeleteResult string
+
+const (
+	ObjectDeleted         ObjectConditionalDeleteResult = "deleted"
+	ObjectAlreadyMissing  ObjectConditionalDeleteResult = "already_missing"
+	ObjectVersionMismatch ObjectConditionalDeleteResult = "version_mismatch"
+)
+
 type ObjectStorageEvent struct {
 	Operation, Comment, TraceID, Outcome string
 	Elapsed                              time.Duration
@@ -235,6 +250,27 @@ func (s *ObjectStorage) Delete(key core.ObjectKey) error {
 	err = sanitizedStorageError(err)
 	r.result(err)
 	return err
+}
+func (s *ObjectStorage) DeleteIfVersion(key core.ObjectKey, contentVersion string) (ObjectConditionalDeleteResult, error) {
+	invocation, receipt := s.start("delete_if_version")
+	if !key.Valid() || strings.TrimSpace(contentVersion) != contentVersion || contentVersion == "" || contentVersion == "*" || len(contentVersion) > 256 || strings.IndexFunc(contentVersion, unicode.IsControl) >= 0 {
+		err := &core.StorageError{Code: core.StorageInvalidInput}
+		receipt.result(err)
+		return "", err
+	}
+	provider, ok := s.provider.(ObjectStorageConditionalDeleter)
+	if !ok {
+		err := &core.StorageError{Code: core.StorageUnsupported}
+		receipt.result(err)
+		return "", err
+	}
+	result, err := provider.DeleteIfVersion(invocation, key, contentVersion)
+	err = sanitizedStorageError(err)
+	if err == nil && result != ObjectDeleted && result != ObjectAlreadyMissing && result != ObjectVersionMismatch {
+		err = &core.StorageError{Code: core.StorageUnavailable}
+	}
+	receipt.result(err)
+	return result, err
 }
 func (s *ObjectStorage) GetReadURL(key core.ObjectKey, options core.ObjectReadURLOptions) (core.ObjectReadURL, error) {
 	invocation, r := s.start("read_url")

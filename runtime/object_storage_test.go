@@ -76,6 +76,15 @@ func TestObjectStorageContextAndFailureCategories(t *testing.T) {
 	requireStorageError(t, core.StorageUnavailable, err)
 }
 
+func TestObjectStorageConditionalDeleteRequiresProviderCapability(t *testing.T) {
+	storage, _ := NewUserContext().WithObjectStorage(&objectStorageStub{}).ObjectStorage("conditional delete")
+	key, _ := core.NewObjectKey("f4/conditional")
+	_, err := storage.DeleteIfVersion(key, "*")
+	requireStorageError(t, core.StorageInvalidInput, err)
+	_, err = storage.DeleteIfVersion(key, "\"etag\"")
+	requireStorageError(t, core.StorageUnsupported, err)
+}
+
 type countedObjectInput struct {
 	io.Reader
 	closes int
