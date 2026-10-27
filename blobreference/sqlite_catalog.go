@@ -23,6 +23,11 @@ type BindingChange struct {
 	Action                       string
 }
 
+type ReadRecord struct {
+	ObjectKey, ContentVersion, FileName, ContentType string
+	SizeBytes                                        int64
+}
+
 // BindingAuthorization must resolve the current trusted scope and permission at bind time.
 type BindingAuthorization interface {
 	Scope(*runtime.UserContext) (string, error)
@@ -122,6 +127,51 @@ func sqlText(value core.Value) (string, bool) {
 
 func sqlQuery(sql string, params ...core.Value) *teaqlsql.CompiledQuery {
 	return &teaqlsql.CompiledQuery{Sql: sql, Params: params}
+}
+
+// CurrentRead rechecks the exact current authorized binding and available catalog row.
+func (c *SQLiteCatalog) CurrentRead(ctx stdcontext.Context, slot runtime.AuthorizedBlobSlot) (ReadRecord, error) {
+	var empty ReadRecord
+	if c == nil || ctx == nil || !validScope(slot.Scope) || !validName(slot.Entity) ||
+		!validEntityID(slot.EntityID) || !validName(slot.Field) || slot.BindingVersion == 0 {
+		return empty, errors.New("BLOB_READ_DENIED")
+	}
+	if _, err := core.ParseBlobRef(slot.Reference.Key()); err != nil {
+		return empty, errors.New("BLOB_READ_DENIED")
+	}
+	rows, err := c.transport.FetchAllSql(ctx, sqlQuery(`SELECT c.object_key,c.content_version,c.file_name,
+        c.content_type,c.size_bytes FROM teaql_blob_binding b
+        JOIN teaql_blob_catalog c ON c.key = b.key
+        WHERE b.scope = ? AND b.entity = ? AND b.entity_id = ? AND b.field = ?
+          AND b.key = ? AND b.version = ?
+          AND c.scope = b.scope AND c.status = 'available'`,
+		core.ValText(slot.Scope), core.ValText(slot.Entity), core.ValText(slot.EntityID),
+		core.ValText(slot.Field), core.ValText(slot.Reference.Key()), core.ValU64(slot.BindingVersion)))
+	if err != nil {
+		return empty, errors.New("BLOB_CATALOG_FAILED")
+	}
+	if len(rows) != 1 {
+		return empty, errors.New("BLOB_READ_DENIED")
+	}
+	row := rows[0]
+	var okay bool
+	record := ReadRecord{}
+	if record.ObjectKey, okay = sqlText(row["object_key"]); !okay || record.ObjectKey == "" {
+		return empty, errors.New("BLOB_CATALOG_FAILED")
+	}
+	if record.ContentVersion, okay = sqlText(row["content_version"]); !okay || record.ContentVersion == "" {
+		return empty, errors.New("BLOB_CATALOG_FAILED")
+	}
+	if record.FileName, okay = sqlText(row["file_name"]); !okay || record.FileName == "" {
+		return empty, errors.New("BLOB_CATALOG_FAILED")
+	}
+	if record.ContentType, okay = sqlText(row["content_type"]); !okay || record.ContentType == "" {
+		return empty, errors.New("BLOB_CATALOG_FAILED")
+	}
+	if record.SizeBytes, okay = row["size_bytes"].TryI64(); !okay || record.SizeBytes < 0 {
+		return empty, errors.New("BLOB_CATALOG_FAILED")
+	}
+	return record, nil
 }
 
 // BindInGraph changes one authoritative target under the caller's physical
