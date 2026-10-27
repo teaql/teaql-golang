@@ -16,3 +16,15 @@ unknown verifier errors are sanitized by the upload service.
 The remaining eight extensions need production verifier adapters. Earlier PDF
 fixture tests prove upload orchestration only. Lifecycle/GC and complete F2–F5
 acceptance remain open.
+
+`NewSQLiteFileGenerationSweepService` is an optional, host-scheduled File
+lifecycle operation. The host must first upgrade every process sharing the
+private File root to the writer-lock protocol and explicitly assert that fact.
+`RunBatch` requires the actor's exact `FileObjectStorage`, current maintenance
+authorization, a trusted scope, and no active graph SQL transaction. It pages
+server-stream catalog rows, including terminal deleted rows, then calls the
+provider's fenced per-key old-generation sweep. A failed key is reported with
+the stable `BLOB_STORE_FAILED` code; the host can retry from the beginning.
+The current data generation stays protected by the provider's writer and
+manifest locks. This service does not collect direct-upload objects or start a
+background worker.
