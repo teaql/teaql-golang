@@ -42,8 +42,8 @@ type MaintenanceBatch struct {
 	Next     *MaintenanceCursor
 }
 
-// SQLiteMaintenanceService runs only when the host explicitly invokes it. It
-// collects expired, uncompleted, unbound server-stream uploads, not full GC.
+// SQLiteMaintenanceService runs only when the host explicitly invokes it.
+// It collects version-fenced server-stream lifecycle rows, not full GC.
 type SQLiteMaintenanceService struct {
 	catalog       *SQLiteCatalog
 	authorization MaintenanceAuthorization
@@ -79,15 +79,18 @@ func (s *SQLiteMaintenanceService) authorize(actor *runtime.UserContext, expecte
 
 func (s *SQLiteMaintenanceService) unixMillis() (int64, error) {
 	value := s.now().UnixMilli()
-	if value < 0 {
+	if !validRetentionTime(value) {
 		return 0, errors.New("BLOB_POLICY_INVALID")
 	}
 	return value, nil
 }
 
-type expiredDeletionRow struct {
-	key, objectKey, version, writtenETag, status, uploadState string
-	expires                                                   int64
+type deletionRow struct {
+	key, objectKey, version, writtenETag, status, uploadState  string
+	policyProfile, uploadMode                                  string
+	expires                                                    int64
+	completedAt, lastUnbound, unboundSeconds, effectiveSeconds *int64
+	retentionFloor                                             *int64
 }
 
 func validDeleteVersion(value string) bool {
@@ -95,9 +98,11 @@ func validDeleteVersion(value string) bool {
 		value == strings.TrimSpace(value) && strings.IndexFunc(value, unicode.IsControl) < 0
 }
 
-func readExpiredDeletionRow(ctx context.Context, sql teaqlsql.SqlTransport,
-	scope, key string) (*expiredDeletionRow, error) {
+func readDeletionRow(ctx context.Context, sql teaqlsql.SqlTransport,
+	scope, key string) (*deletionRow, error) {
 	rows, err := sql.FetchAllSql(ctx, sqlQuery(`SELECT c.key,c.object_key,c.content_version,c.status,
+        c.completed_at_ms,c.last_unbound_at_ms,c.policy_profile,c.upload_mode,
+        c.unbound_retention_seconds,c.effective_unref_seconds,c.retention_floor_until_ms,
         u.state,u.expires_unix_ms,u.written_etag FROM teaql_blob_catalog c
         JOIN teaql_blob_upload u ON u.key=c.key AND u.scope=c.scope
         WHERE c.scope=? AND c.key=?`, core.ValText(scope), core.ValText(key)))
@@ -111,7 +116,7 @@ func readExpiredDeletionRow(ctx context.Context, sql teaqlsql.SqlTransport,
 		return nil, errors.New("BLOB_CATALOG_FAILED")
 	}
 	row := rows[0]
-	result := &expiredDeletionRow{key: key}
+	result := &deletionRow{key: key}
 	var okay bool
 	if result.objectKey, okay = sqlText(row["object_key"]); !okay || result.objectKey == "" {
 		return nil, errors.New("BLOB_CATALOG_FAILED")
@@ -137,13 +142,78 @@ func readExpiredDeletionRow(ctx context.Context, sql teaqlsql.SqlTransport,
 	if result.uploadState == "written" && result.writtenETag == "" {
 		return nil, errors.New("BLOB_CATALOG_FAILED")
 	}
+	if !row["policy_profile"].IsNull() {
+		result.policyProfile, okay = sqlText(row["policy_profile"])
+		if !okay {
+			return nil, errors.New("BLOB_CATALOG_FAILED")
+		}
+	}
+	if !row["upload_mode"].IsNull() {
+		result.uploadMode, okay = sqlText(row["upload_mode"])
+		if !okay {
+			return nil, errors.New("BLOB_CATALOG_FAILED")
+		}
+	}
+	for _, item := range []struct {
+		name string
+		out  **int64
+	}{
+		{"completed_at_ms", &result.completedAt}, {"last_unbound_at_ms", &result.lastUnbound},
+		{"unbound_retention_seconds", &result.unboundSeconds},
+		{"effective_unref_seconds", &result.effectiveSeconds},
+		{"retention_floor_until_ms", &result.retentionFloor},
+	} {
+		if row[item.name].IsNull() {
+			continue
+		}
+		value, valid := row[item.name].TryI64()
+		if !valid {
+			return nil, errors.New("BLOB_CATALOG_FAILED")
+		}
+		*item.out = &value
+	}
 	return result, nil
 }
 
-func eligibleExpired(row *expiredDeletionRow, now int64) bool {
+func eligibleExpired(row *deletionRow, now int64) bool {
 	return row != nil && row.expires <= now &&
 		(row.uploadState == "initiated" || row.uploadState == "written") &&
 		(row.status == "initiated" || row.status == "deleting")
+}
+
+func eligibleForDeletion(row *deletionRow, now int64) bool {
+	if row == nil || !validRetentionTime(now) {
+		return false
+	}
+	if row.uploadState == "initiated" || row.uploadState == "written" {
+		return eligibleExpired(row, now)
+	}
+	if row.uploadState != "completed" || row.uploadMode != "server_stream" ||
+		!validScope(row.policyProfile) || row.completedAt == nil || !validRetentionTime(*row.completedAt) ||
+		row.unboundSeconds == nil || !validRetentionSeconds(*row.unboundSeconds) ||
+		row.effectiveSeconds == nil || !validRetentionSeconds(*row.effectiveSeconds) ||
+		row.lastUnbound != nil && !validRetentionTime(*row.lastUnbound) ||
+		row.retentionFloor != nil && !validRetentionTime(*row.retentionFloor) ||
+		!validDeleteVersion(row.version) || row.version != row.writtenETag {
+		return false
+	}
+	if row.status == "deleting" {
+		return true
+	}
+	var eligibleAt *int64
+	if row.status == "available" {
+		if row.lastUnbound == nil || !validRetentionTime(*row.lastUnbound) {
+			return false
+		}
+		deadline, err := UnreferencedEligibleAt(*row.lastUnbound, *row.effectiveSeconds, row.retentionFloor)
+		if err != nil {
+			return false
+		}
+		eligibleAt = &deadline
+	}
+	collectable, err := RetentionCollectable(row.status, 0, now, nil,
+		row.completedAt, *row.unboundSeconds, eligibleAt)
+	return err == nil && collectable
 }
 
 func countFor(ctx context.Context, sql teaqlsql.SqlTransport, statement string,
@@ -179,11 +249,25 @@ func (s *SQLiteMaintenanceService) candidates(actor *runtime.UserContext, scope,
 	now int64) ([]string, error) {
 	rows, err := s.catalog.transport.FetchAllSql(actor, sqlQuery(`SELECT c.key FROM teaql_blob_catalog c
         JOIN teaql_blob_upload u ON u.key=c.key AND u.scope=c.scope
-        WHERE c.scope=? AND c.key>? AND u.expires_unix_ms<=?
-          AND u.state IN ('initiated','written') AND c.status IN ('initiated','deleting')
+        WHERE c.scope=? AND c.key>? AND (
+          (c.status='deleting' AND (u.state IN ('initiated','written') OR
+            (u.state='completed' AND c.upload_mode='server_stream')))
+          OR (c.status='initiated' AND u.state IN ('initiated','written')
+            AND u.expires_unix_ms<=?)
+          OR (c.status='uploaded_unbound' AND u.state='completed'
+            AND c.upload_mode='server_stream' AND c.completed_at_ms IS NOT NULL
+            AND c.unbound_retention_seconds IS NOT NULL
+            AND c.completed_at_ms+c.unbound_retention_seconds*1000<=?)
+          OR (c.status='available' AND u.state='completed'
+            AND c.upload_mode='server_stream' AND c.last_unbound_at_ms IS NOT NULL
+            AND c.effective_unref_seconds IS NOT NULL
+            AND c.last_unbound_at_ms+c.effective_unref_seconds*1000<=?
+            AND (c.retention_floor_until_ms IS NULL OR c.retention_floor_until_ms<=?))
+        )
           AND NOT EXISTS (SELECT 1 FROM teaql_blob_binding b WHERE b.key=c.key)
         ORDER BY c.key LIMIT ?`, core.ValText(scope), core.ValText(after),
-		core.ValI64(now), core.ValI64(int64(s.batchSize))))
+		core.ValI64(now), core.ValI64(now), core.ValI64(now), core.ValI64(now),
+		core.ValI64(int64(s.batchSize))))
 	if err != nil {
 		return nil, errors.New("BLOB_CATALOG_FAILED")
 	}
@@ -202,11 +286,11 @@ func (s *SQLiteMaintenanceService) candidates(actor *runtime.UserContext, scope,
 }
 
 func (s *SQLiteMaintenanceService) claim(actor *runtime.UserContext, scope, key string,
-	now int64) (*expiredDeletionRow, error) {
-	var claim *expiredDeletionRow
+	now int64) (*deletionRow, error) {
+	var claim *deletionRow
 	err := s.transaction(actor, func(sql teaqlsql.SqlTransport) error {
-		row, err := readExpiredDeletionRow(actor, sql, scope, key)
-		if err != nil || !eligibleExpired(row, now) {
+		row, err := readDeletionRow(actor, sql, scope, key)
+		if err != nil || !eligibleForDeletion(row, now) {
 			return err
 		}
 		bound, err := countFor(actor, sql, `SELECT count(*) AS n FROM teaql_blob_binding WHERE key=?`, key)
@@ -217,9 +301,10 @@ func (s *SQLiteMaintenanceService) claim(actor *runtime.UserContext, scope, key 
 		if err != nil || owners != 1 {
 			return errors.New("BLOB_CATALOG_FAILED")
 		}
-		if row.status == "initiated" {
+		if row.status != "deleting" {
 			changed, err := sql.ExecuteSql(actor, sqlQuery(`UPDATE teaql_blob_catalog SET status='deleting'
-                WHERE key=? AND scope=? AND status='initiated'`, core.ValText(key), core.ValText(scope)))
+				WHERE key=? AND scope=? AND status=?`,
+				core.ValText(key), core.ValText(scope), core.ValText(row.status)))
 			if err != nil || changed != 1 {
 				return errors.New("BLOB_CATALOG_FAILED")
 			}
@@ -231,12 +316,12 @@ func (s *SQLiteMaintenanceService) claim(actor *runtime.UserContext, scope, key 
 }
 
 func (s *SQLiteMaintenanceService) capture(actor *runtime.UserContext, scope string,
-	claim *expiredDeletionRow, version string, now int64) error {
+	claim *deletionRow, version string, now int64) error {
 	if !validDeleteVersion(version) {
 		return errors.New("BLOB_IDEMPOTENCY_CONFLICT")
 	}
 	return s.transaction(actor, func(sql teaqlsql.SqlTransport) error {
-		row, err := readExpiredDeletionRow(actor, sql, scope, claim.key)
+		row, err := readDeletionRow(actor, sql, scope, claim.key)
 		if err != nil {
 			return err
 		}
@@ -263,9 +348,9 @@ func (s *SQLiteMaintenanceService) capture(actor *runtime.UserContext, scope str
 }
 
 func (s *SQLiteMaintenanceService) finish(actor *runtime.UserContext, scope string,
-	claim *expiredDeletionRow, version string, now int64) error {
+	claim *deletionRow, version string, now int64) error {
 	return s.transaction(actor, func(sql teaqlsql.SqlTransport) error {
-		row, err := readExpiredDeletionRow(actor, sql, scope, claim.key)
+		row, err := readDeletionRow(actor, sql, scope, claim.key)
 		if err != nil {
 			return err
 		}
@@ -279,7 +364,7 @@ func (s *SQLiteMaintenanceService) finish(actor *runtime.UserContext, scope stri
 		if err != nil {
 			return err
 		}
-		if row.status != "deleting" || !eligibleExpired(row, now) || bound != 0 {
+		if row.status != "deleting" || !eligibleForDeletion(row, now) || bound != 0 {
 			return errors.New("BLOB_IDEMPOTENCY_CONFLICT")
 		}
 		changed, err := sql.ExecuteSql(actor, sqlQuery(`UPDATE teaql_blob_catalog SET status='deleted'
@@ -401,7 +486,7 @@ func (s *SQLiteMaintenanceService) RunBatch(actor *runtime.UserContext,
 	if err := actor.RequireNoActiveGraphSQL(); err != nil {
 		return batch, err
 	}
-	store, err := actor.ObjectStorage("collect expired Blob upload")
+	store, err := actor.ObjectStorage("collect retained Blob lifecycle")
 	if err != nil || !store.SupportsVersionConditionalDelete() {
 		return batch, errors.New("BLOB_CAPABILITY_MISSING")
 	}

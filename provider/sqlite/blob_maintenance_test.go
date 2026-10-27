@@ -17,12 +17,22 @@ import (
 )
 
 type maintenancePermission struct {
-	scope   string
-	allowed bool
+	scope     string
+	allowed   bool
+	calls     int
+	afterScan func() error
 }
 
 func (p *maintenancePermission) Scope(*runtime.UserContext) (string, error) { return p.scope, nil }
 func (p *maintenancePermission) CanMaintain(*runtime.UserContext, string) (bool, error) {
+	p.calls++
+	if p.calls == 2 && p.afterScan != nil {
+		callback := p.afterScan
+		p.afterScan = nil
+		if err := callback(); err != nil {
+			return false, err
+		}
+	}
 	return p.allowed, nil
 }
 
@@ -312,6 +322,167 @@ func TestSQLiteBlobMaintenanceRealFileReceiptAndPartialRecovery(t *testing.T) {
 	}
 	if !found {
 		t.Fatalf("partially removed File did not recover: %#v", recovered.Outcomes)
+	}
+}
+
+func TestSQLiteBlobMaintenanceRealFileRetentionAndGenerationProtection(t *testing.T) {
+	e := nativeBatchEnvironment(t)
+	catalog, err := blobreference.NewSQLiteCatalog(e.executor.Transport)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := catalog.EnsureSchema(e.ctx); err != nil {
+		t.Fatal(err)
+	}
+	provider, err := blobreference.NewFileObjectStorage(filepath.Join(t.TempDir(), "retained"),
+		[]byte("0123456789abcdef0123456789abcdef"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer provider.Close()
+	e.ctx.WithObjectStorage(provider)
+	e.ctx.WithObjectStorageObserver(runtime.ObjectStorageObserverFunc(func(runtime.ObjectStorageEvent) {}))
+	store, err := e.ctx.ObjectStorage("retained File maintenance")
+	if err != nil {
+		t.Fatal(err)
+	}
+	permission := &maintenancePermission{scope: "tenant-a", allowed: true}
+	service, err := blobreference.NewSQLiteMaintenanceService(catalog, permission, 100)
+	if err != nil {
+		t.Fatal(err)
+	}
+	now := time.Now().UnixMilli()
+	data := []byte("same PDF bytes")
+	put := func(name string, mode core.ObjectWriteMode) (core.ObjectKey, string) {
+		t.Helper()
+		key, _ := core.NewObjectKey("objects/" + name)
+		options, _ := core.NewObjectPutOptions(int64(len(data)), mode)
+		options, _ = options.WithContentType("application/pdf")
+		metadata, err := store.PutBytes(key, data, options)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return key, metadata.ETag()
+	}
+	seed := func(name, status string, completed, lastUnbound, floor any,
+		profile, mode any, unbound, effective any) core.ObjectKey {
+		t.Helper()
+		key, etag := put(name, core.ObjectCreateOnly)
+		if _, err := e.db.Exec(`INSERT INTO teaql_blob_catalog
+			(key,scope,object_key,content_version,file_name,content_type,size_bytes,status,
+			 completed_at_ms,last_unbound_at_ms,policy_profile,upload_mode,
+			 unbound_retention_seconds,effective_unref_seconds,retention_floor_until_ms)
+			VALUES (?,'tenant-a',?,?, 'file.pdf','application/pdf',?,?,?,?,?,?,?,?,?)`,
+			name, key.Value(), etag, len(data), status, completed, lastUnbound, profile,
+			mode, unbound, effective, floor); err != nil {
+			t.Fatal(err)
+		}
+		if _, err := e.db.Exec(`INSERT INTO teaql_blob_upload
+			(upload_id,scope,replay_key,request_hash,key,entity,entity_id,field,file_name,
+			 extension,declared_size,expires_unix_ms,state,written_etag)
+			VALUES (?,'tenant-a',?,?,?,'Asset','1','document','file.pdf','pdf',?,?,'completed',?)`,
+			"bu_"+name, "replay_"+name, "request_"+name, name, len(data), now+60_000, etag); err != nil {
+			t.Fatal(err)
+		}
+		return key
+	}
+	initial := seed("blob_retained_future", "uploaded_unbound", now, nil, nil,
+		"default", "server_stream", 10, 20)
+	if batch, err := service.RunBatch(e.ctx, nil); err != nil || len(batch.Outcomes) != 0 {
+		t.Fatalf("future completion collected: %#v %v", batch, err)
+	}
+	due := seed("blob_retained_due", "uploaded_unbound", now-11_000, nil, nil,
+		"default", "server_stream", 10, 20)
+	floorProtected := seed("blob_retained_floor", "available", now-60_000, now-21_000, now+60_000,
+		"default", "server_stream", 10, 20)
+	active := seed("blob_retained_active", "available", now-60_000, now-60_000, nil,
+		"default", "server_stream", 10, 20)
+	if _, err := e.db.Exec(`INSERT INTO teaql_blob_binding
+		(scope,entity,entity_id,field,key,version) VALUES ('tenant-a','Asset','1','document',?,1)`,
+		"blob_retained_active"); err != nil {
+		t.Fatal(err)
+	}
+	legacy := seed("blob_retained_legacy", "uploaded_unbound", now-60_000, nil, nil,
+		nil, nil, nil, nil)
+	direct := seed("blob_retained_direct", "uploaded_unbound", now-60_000, nil, nil,
+		"default", "direct", 10, 20)
+	stale := seed("blob_retained_stale", "uploaded_unbound", now-60_000, nil, nil,
+		"default", "server_stream", 10, 20)
+	_, newer := put("blob_retained_stale", core.ObjectReplace)
+	receipt := seed("blob_retained_receipt", "uploaded_unbound", now-60_000, nil, nil,
+		"default", "server_stream", 10, 20)
+	if _, err := e.db.Exec(`CREATE TRIGGER reject_retained_receipt BEFORE UPDATE OF status
+		ON teaql_blob_catalog WHEN NEW.status='deleted' AND OLD.key='blob_retained_receipt'
+		BEGIN SELECT RAISE(ABORT,'private fixture detail'); END`); err != nil {
+		t.Fatal(err)
+	}
+	first, err := service.RunBatch(e.ctx, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	outcomes := map[string]blobreference.MaintenanceStatus{}
+	for _, outcome := range first.Outcomes {
+		outcomes[outcome.Reference.Key()] = outcome.Status
+	}
+	if len(outcomes) != 3 || outcomes["blob_retained_due"] != blobreference.MaintenanceDeleted ||
+		outcomes["blob_retained_stale"] != blobreference.MaintenanceVersionConflict ||
+		outcomes["blob_retained_receipt"] != blobreference.MaintenanceFailed {
+		t.Fatalf("wrong retained first outcomes: %#v", outcomes)
+	}
+	if head, err := store.Head(due); err != nil || head != nil {
+		t.Fatalf("expired completion survived: %v %v", head, err)
+	}
+	if head, err := store.Head(stale); err != nil || head == nil || head.ETag() != newer {
+		t.Fatalf("replacement generation lost: %v %v", head, err)
+	}
+	if _, err := e.db.Exec(`DROP TRIGGER reject_retained_receipt`); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := e.db.Exec(`UPDATE teaql_blob_catalog SET retention_floor_until_ms=?
+		WHERE key='blob_retained_floor'`, now-1_000); err != nil {
+		t.Fatal(err)
+	}
+	second, err := service.RunBatch(e.ctx, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	outcomes = map[string]blobreference.MaintenanceStatus{}
+	for _, outcome := range second.Outcomes {
+		outcomes[outcome.Reference.Key()] = outcome.Status
+	}
+	if len(outcomes) != 3 || outcomes["blob_retained_floor"] != blobreference.MaintenanceDeleted ||
+		outcomes["blob_retained_receipt"] != blobreference.MaintenanceAlreadyMissing ||
+		outcomes["blob_retained_stale"] != blobreference.MaintenanceVersionConflict {
+		t.Fatalf("wrong retained recovery outcomes: %#v", outcomes)
+	}
+	for _, key := range []core.ObjectKey{initial, active, legacy, direct, stale} {
+		if head, err := store.Head(key); err != nil || head == nil {
+			t.Fatalf("protected File lost: %s %v", key.Value(), err)
+		}
+	}
+	if head, err := store.Head(floorProtected); err != nil || head != nil {
+		t.Fatalf("expired floor survived: %v %v", head, err)
+	}
+	if head, err := store.Head(receipt); err != nil || head != nil {
+		t.Fatalf("failed receipt retry left File: %v %v", head, err)
+	}
+	race := seed("blob_retained_aaa_race", "uploaded_unbound", now-60_000, nil, nil,
+		"default", "server_stream", 10, 20)
+	permission.calls = 0
+	permission.afterScan = func() error {
+		_, err := e.db.Exec(`INSERT INTO teaql_blob_binding
+			(scope,entity,entity_id,field,key,version)
+			VALUES ('tenant-a','Asset','2','document','blob_retained_aaa_race',1)`)
+		return err
+	}
+	raceBatch, err := service.RunBatch(e.ctx, nil)
+	if err != nil || len(raceBatch.Outcomes) != 2 ||
+		raceBatch.Outcomes[0].Reference.Key() != "blob_retained_aaa_race" ||
+		raceBatch.Outcomes[0].Status != blobreference.MaintenanceNotEligible {
+		t.Fatalf("post-scan binding did not fence claim: %#v %v", raceBatch, err)
+	}
+	if head, err := store.Head(race); err != nil || head == nil {
+		t.Fatalf("post-scan bound File lost: %v %v", head, err)
 	}
 }
 
