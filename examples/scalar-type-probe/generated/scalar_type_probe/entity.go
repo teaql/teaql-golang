@@ -83,6 +83,7 @@ func (e *ScalarTypeProbe) EntityRoot() *core.EntityRoot { return e.root }
 func (e *ScalarTypeProbe) AttachEntityRoot(root *core.EntityRoot) {
 	if root == nil || root == e.root { return }
 	root.MergeFrom(e.root)
+	if root.CompositionError() != nil { return }
 	e.root = root
 }
 
@@ -193,7 +194,7 @@ func (e *ScalarTypeProbe) teaqlFromRecord(record core.Record, captureLoaded bool
 	e.loadState = make(map[string]bool, len(record))
 	e.restrictLoadState = true
 	for field := range record { e.loadState[field] = true }
-	if captureLoaded { e.loadedSnapshot = e.teaqlScalarSnapshot(e.IntoRecord()) }
+	if captureLoaded { e.loadedSnapshot = e.teaqlLoadedScalarSnapshot(e.IntoRecord()) }
 	return nil
 }
 
@@ -201,9 +202,13 @@ func (e *ScalarTypeProbe) teaqlScalarSnapshot(record core.Record) core.LoadedSca
 	return core.NewLoadedScalarSnapshot(record, "id", "type_platform_id", "required_string", "optional_string", "large_text", "required_boolean", "optional_boolean", "required_integer", "optional_integer", "required_long", "optional_long", "required_decimal", "optional_decimal", "required_float", "optional_float", "required_double", "optional_double", "required_date", "optional_date", "required_time", "optional_time", "required_datetime", "optional_datetime", "create_time", "update_time", "version")
 }
 
+func (e *ScalarTypeProbe) teaqlLoadedScalarSnapshot(record core.Record) core.LoadedScalarSnapshot {
+	return core.NewOwnedLoadedScalarSnapshot(e.EntityKey(), e.base.Version, record, "id", "type_platform_id", "required_string", "optional_string", "large_text", "required_boolean", "optional_boolean", "required_integer", "optional_integer", "required_long", "optional_long", "required_decimal", "optional_decimal", "required_float", "optional_float", "required_double", "optional_double", "required_date", "optional_date", "required_time", "optional_time", "required_datetime", "optional_datetime", "create_time", "update_time", "version")
+}
+
 func (e *ScalarTypeProbe) teaqlAcceptPersisted(context *runtime.UserContext, record core.Record) error {
 	if err := e.teaqlFromRecord(record, false); err != nil { return err }
-	committed := e.teaqlScalarSnapshot(record)
+	committed := e.teaqlLoadedScalarSnapshot(record)
 	context.AfterGraphCommit(func() { e.loadedSnapshot = committed })
 	return nil
 }
@@ -367,6 +372,9 @@ func (e *ScalarTypeProbe) Save(context *runtime.UserContext) (*ScalarTypeProbe, 
 // first provider mutation. It is generated infrastructure, not application API.
 func (e *ScalarTypeProbe) TeaqlPreflightGraph(context *runtime.UserContext, intent core.MutationIntent) error {
 	if err := intent.Validate(); err != nil { return err }
+	restoredFields, err := context.DiscardRestoredScalarChanges(e.root, e.EntityKey(), e.loadedSnapshot)
+	if err != nil { return err }
+	for _, field := range restoredFields { delete(e.dirtyFields, field) }
 	if !e.markedAsDelete && (e.isNew || len(e.root.Change(e.EntityKey())) > 0) {
 		if e.isNew {
 		}

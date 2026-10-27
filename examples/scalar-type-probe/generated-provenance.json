@@ -1,10 +1,10 @@
 {
   "schema": "teaql.generated-example-fixture/v1",
-  "generatorCommit": "649970b65eef5894232c75c6506174cc7fb72f86",
-  "generatorSourceContentsSha256": "c2c44f1e1e953ff54062423218f4a21659ef9225400145f6eaa990aeed5204b9",
-  "producerReceiptSha256": "7ab078a41c0ed2f4045150e6066dc13c2037daa7191c3a4e60371b4077cc15ec",
+  "generatorCommit": "96330e65d10f5018f5401b1e243c8fa03915fd7e",
+  "generatorSourceContentsSha256": "42ad666cde71eebf8734e46f4ae294dd90cc0afe93b2be97898c583167e3047e",
+  "producerReceiptSha256": "a869cb30cdd91191943679f42c131e737d09deea2299e624441fe3a8fc0f08d5",
   "evaluationErrors": 0,
-  "producerManifestSha256": "62290b21728f761304e72301c75418e4b2460d380b6be772c88c6c4fde44bc60",
+  "producerManifestSha256": "ed3d00edee2f06d114f9f618e19bb0950a0a8a7d32de44956ec1f47b9b2c8330",
   "modelSha256": "8d3017392ffd00abbc06be2555ced27ac6360e2d05fabc4299e27a5ef8f1c762",
   "files": {
     "type_platform/request.go": "a52202566553601a51104a2c3b2709941811b8d9b878a8a598e0bbe966bb6813",
@@ -23,7 +23,7 @@
     "scalar_type_probe/expression.go": "308ab7e89e86f47e69cc6c315f21fa424bcdded63eb442ee93748d5b6865ca9c",
     "type_platform/checker.go": "d34524d9ccc3e9f7161924149af5e32c7ad204deca31e1d86f1561877c78135e",
     "scalar_type_probe/checker.go": "355e35a675df34683b3c7cfb85abe12a77f2dde6ab027c11c6a1574b2e8c51be",
-    "type_platform/entity.go": "ae3885467427098baaaca62cdb42da4f09ae4d5ec62c2af00e684f97e27d7e18",
-    "scalar_type_probe/entity.go": "2c9598f228a8bd1caec7e6f8d060d4445e4b22890d8201fad72fd26599118eb4"
+    "type_platform/entity.go": "3e1c0983684f486424cff2a4fa331d4374387a08845ad57a71ac3e48bc3fdcd3",
+    "scalar_type_probe/entity.go": "16de14217499b9eceed8df6281521704b6a4e98a0029f133f08fe62d4612ce52"
   }
 }

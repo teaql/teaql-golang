@@ -153,6 +153,7 @@ func (e *CustomerOrder) EntityRoot() *core.EntityRoot { return e.root }
 func (e *CustomerOrder) AttachEntityRoot(root *core.EntityRoot) {
 	if root == nil || root == e.root { return }
 	root.MergeFrom(e.root)
+	if root.CompositionError() != nil { return }
 	e.root = root
 		for _, child := range e.orderItemList.Items() { child.AttachEntityRoot(root) }
 		for _, child := range e.paymentList.Items() { child.AttachEntityRoot(root) }
@@ -224,7 +225,7 @@ func (e *CustomerOrder) teaqlFromRecord(record core.Record, captureLoaded bool) 
 	e.loadState = make(map[string]bool, len(record))
 	e.restrictLoadState = true
 	for field := range record { e.loadState[field] = true }
-	if captureLoaded { e.loadedSnapshot = e.teaqlScalarSnapshot(e.IntoRecord()) }
+	if captureLoaded { e.loadedSnapshot = e.teaqlLoadedScalarSnapshot(e.IntoRecord()) }
 	return nil
 }
 
@@ -232,9 +233,13 @@ func (e *CustomerOrder) teaqlScalarSnapshot(record core.Record) core.LoadedScala
 	return core.NewLoadedScalarSnapshot(record, "id", "platform_id", "order_number", "description", "version")
 }
 
+func (e *CustomerOrder) teaqlLoadedScalarSnapshot(record core.Record) core.LoadedScalarSnapshot {
+	return core.NewOwnedLoadedScalarSnapshot(e.EntityKey(), e.base.Version, record, "id", "platform_id", "order_number", "description", "version")
+}
+
 func (e *CustomerOrder) teaqlAcceptPersisted(context *runtime.UserContext, record core.Record) error {
 	if err := e.teaqlFromRecord(record, false); err != nil { return err }
-	committed := e.teaqlScalarSnapshot(record)
+	committed := e.teaqlLoadedScalarSnapshot(record)
 	context.AfterGraphCommit(func() { e.loadedSnapshot = committed })
 	return nil
 }
@@ -431,6 +436,9 @@ func (e *CustomerOrder) Save(context *runtime.UserContext) (*CustomerOrder, erro
 // first provider mutation. It is generated infrastructure, not application API.
 func (e *CustomerOrder) TeaqlPreflightGraph(context *runtime.UserContext, intent core.MutationIntent) error {
 	if err := intent.Validate(); err != nil { return err }
+	restoredFields, err := context.DiscardRestoredScalarChanges(e.root, e.EntityKey(), e.loadedSnapshot)
+	if err != nil { return err }
+	for _, field := range restoredFields { delete(e.dirtyFields, field) }
 	if !e.markedAsDelete && (e.isNew || len(e.root.Change(e.EntityKey())) > 0) {
 		if e.isNew {
 		}
