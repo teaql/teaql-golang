@@ -429,6 +429,52 @@ func (s *SQLiteUploadService) Complete(actor *runtime.UserContext, id string) (c
 	if err != nil {
 		return empty, err
 	}
+	if row.State == "completed" {
+		if len(row.WrittenSHA256) != 64 || row.WrittenETag == "" {
+			return empty, uploadError("BLOB_UPLOAD_INCOMPLETE")
+		}
+		if _, err := hex.DecodeString(row.WrittenSHA256); err != nil {
+			return empty, uploadError("BLOB_UPLOAD_INCOMPLETE")
+		}
+		records, err := s.catalog.transport.FetchAllSql(actor, sqlQuery(`SELECT object_key,content_version,
+            content_type,size_bytes,status FROM teaql_blob_catalog WHERE key=? AND scope=?`,
+			core.ValText(row.Key), core.ValText(row.Scope)))
+		if err != nil || len(records) != 1 {
+			return empty, uploadError("BLOB_UPLOAD_INCOMPLETE")
+		}
+		record := records[0]
+		location, locationOK := sqlText(record["object_key"])
+		version, versionOK := sqlText(record["content_version"])
+		contentType, contentTypeOK := sqlText(record["content_type"])
+		status, statusOK := sqlText(record["status"])
+		size, sizeOK := record["size_bytes"].TryI64()
+		mime, mimeOK := core.BlobMIMEForExtension(row.Extension)
+		if !locationOK || !versionOK || !contentTypeOK || !statusOK || !sizeOK || !mimeOK ||
+			(status != "uploaded_unbound" && status != "available") ||
+			version != row.WrittenETag || contentType != mime || size != row.DeclaredSize {
+			return empty, uploadError("BLOB_UPLOAD_INCOMPLETE")
+		}
+		key, err := core.NewObjectKey(location)
+		if err != nil {
+			return empty, uploadError("BLOB_UPLOAD_INCOMPLETE")
+		}
+		store, err := actor.ObjectStorage("recheck completed Blob upload")
+		if err != nil {
+			return empty, uploadError("BLOB_STORE_FAILED")
+		}
+		metadata, err := store.Head(key)
+		if err != nil || metadata == nil || metadata.Size() != size || metadata.ETag() != version {
+			return empty, uploadError("BLOB_UPLOAD_INCOMPLETE")
+		}
+		input := UploadInput{FileName: row.FileName, DeclaredSize: size, DeclaredContentType: mime}
+		if _, err := s.current(actor, UploadTarget{row.Entity, row.EntityID, row.Field}, "Confirm", input, row.Scope); err != nil {
+			return empty, err
+		}
+		if s.now().UnixMilli() >= row.ExpiresUnixMs {
+			return empty, uploadError("BLOB_UPLOAD_EXPIRED")
+		}
+		return core.ParseBlobRef(row.Key)
+	}
 	if row.State != "written" || row.WrittenSHA256 == "" || row.WrittenETag == "" {
 		return empty, uploadError("BLOB_UPLOAD_INCOMPLETE")
 	}

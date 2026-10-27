@@ -127,6 +127,15 @@ func TestSQLiteBlobUploadRequiresRealBytesAndFullVerificationBeforeBinding(t *te
 	if err != nil || reference.Key() != session.Reference.Key() || verifier.calls != 1 {
 		t.Fatalf("verified confirmation: %v calls=%d", err, verifier.calls)
 	}
+	replayed, err := service.Complete(e.ctx, session.ID)
+	if err != nil || replayed != reference || verifier.calls != 1 {
+		t.Fatalf("completed replay: %v calls=%d", err, verifier.calls)
+	}
+	permission.allowed = false
+	if _, err := service.Complete(e.ctx, session.ID); err == nil || err.Error() != "BLOB_UPLOAD_DENIED" {
+		t.Fatalf("revoked completed replay accepted: %v", err)
+	}
+	permission.allowed = true
 	if err := e.db.QueryRow("SELECT status FROM teaql_blob_catalog WHERE key=?", reference.Key()).Scan(&status); err != nil || status != "uploaded_unbound" {
 		t.Fatalf("verified state: %s %v", status, err)
 	}
@@ -147,6 +156,30 @@ func TestSQLiteBlobUploadRequiresRealBytesAndFullVerificationBeforeBinding(t *te
 	}
 	if err := e.db.QueryRow("SELECT status FROM teaql_blob_catalog WHERE key=?", reference.Key()).Scan(&status); err != nil || status != "available" {
 		t.Fatalf("bound status: %s %v", status, err)
+	}
+	replayed, err = service.Complete(e.ctx, session.ID)
+	if err != nil || replayed != reference || verifier.calls != 1 {
+		t.Fatalf("bound completed replay: %v calls=%d", err, verifier.calls)
+	}
+	var originalLocation string
+	if err := e.db.QueryRow("SELECT object_key FROM teaql_blob_catalog WHERE key=?", reference.Key()).Scan(&originalLocation); err != nil {
+		t.Fatal(err)
+	}
+	originalKey, err := core.NewObjectKey(originalLocation)
+	if err != nil {
+		t.Fatal(err)
+	}
+	originalStorage, err := e.ctx.ObjectStorage("test completed generation replacement")
+	if err != nil {
+		t.Fatal(err)
+	}
+	originalReplace, _ := core.NewObjectPutOptions(int64(len(data)), core.ObjectReplace)
+	originalReplace, _ = originalReplace.WithContentType("application/pdf")
+	if _, err := originalStorage.PutBytes(originalKey, data, originalReplace); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := service.Complete(e.ctx, session.ID); err == nil || err.Error() != "BLOB_UPLOAD_INCOMPLETE" {
+		t.Fatalf("replaced completed generation replayed: %v", err)
 	}
 	second, err := service.Begin(e.ctx, target, input, "request-2")
 	if err != nil {
