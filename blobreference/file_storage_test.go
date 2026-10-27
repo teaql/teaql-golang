@@ -2,6 +2,7 @@ package blobreference
 
 import (
 	"bytes"
+	"context"
 	"crypto/rand"
 	"crypto/sha256"
 	"encoding/hex"
@@ -14,12 +15,101 @@ import (
 	goruntime "runtime"
 	"strconv"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
 	"github.com/teaql/teaql-golang/core"
 	"github.com/teaql/teaql-golang/runtime"
 )
+
+type pausedFileSource struct {
+	io.Reader
+	started chan struct{}
+	proceed chan struct{}
+	once    sync.Once
+}
+
+func (s *pausedFileSource) Read(buffer []byte) (int, error) {
+	s.once.Do(func() { close(s.started) })
+	<-s.proceed
+	return s.Reader.Read(buffer)
+}
+
+func (s *pausedFileSource) Close() error { return nil }
+
+func TestFileGenerationSweepWaitsForWriterAndPreservesCurrent(t *testing.T) {
+	root := filepath.Join(t.TempDir(), "objects")
+	secret := []byte("0123456789abcdef0123456789abcdef")
+	first, _ := NewFileObjectStorage(root, secret)
+	second, _ := NewFileObjectStorage(root, secret)
+	writer, _ := runtime.NewUserContext().WithObjectStorage(first).ObjectStorage("write File generations")
+	key, _ := core.NewObjectKey("blob/generation-sweep")
+	data := []byte("same bytes")
+	create, _ := core.NewObjectPutOptions(int64(len(data)), core.ObjectCreateOnly)
+	replace, _ := core.NewObjectPutOptions(int64(len(data)), core.ObjectReplace)
+	old, err := writer.PutBytes(key, data, create)
+	if err != nil {
+		t.Fatal(err)
+	}
+	newer, err := writer.PutBytes(key, data, replace)
+	if err != nil || newer.ETag() == old.ETag() {
+		t.Fatalf("replace: %v", err)
+	}
+	oldPath := filepath.Join(second.directory(fileKeyHash(key)), "data-"+strings.Split(old.ETag(), ".")[1])
+	if _, err := os.Stat(oldPath); err != nil {
+		t.Fatal(err)
+	}
+	source := &pausedFileSource{Reader: bytes.NewReader(data), started: make(chan struct{}), proceed: make(chan struct{})}
+	defer func() {
+		select {
+		case <-source.proceed:
+		default:
+			close(source.proceed)
+		}
+	}()
+	written := make(chan *core.ObjectMetadata, 1)
+	writeErrors := make(chan error, 1)
+	go func() { value, err := writer.Put(key, source, replace); written <- value; writeErrors <- err }()
+	select {
+	case <-source.started:
+	case <-time.After(5 * time.Second):
+		t.Fatal("writer did not start")
+	}
+	swept := make(chan int, 1)
+	sweepErrors := make(chan error, 1)
+	go func() {
+		count, err := second.SweepOldGenerations(context.Background(), key)
+		swept <- count
+		sweepErrors <- err
+	}()
+	select {
+	case <-swept:
+		t.Fatal("sweep passed in-flight writer")
+	case <-time.After(100 * time.Millisecond):
+	}
+	if _, err := os.Stat(oldPath); err != nil {
+		t.Fatalf("old data disappeared during write: %v", err)
+	}
+	close(source.proceed)
+	current := <-written
+	if err := <-writeErrors; err != nil {
+		t.Fatal(err)
+	}
+	if count, err := <-swept, <-sweepErrors; err != nil || count != 2 {
+		t.Fatalf("sweep: %d %v", count, err)
+	}
+	head, err := second.Head(runtime.StorageInvocation{}, key)
+	if err != nil || head.ETag() != current.ETag() {
+		t.Fatalf("current generation: %v", err)
+	}
+	if count, err := second.SweepOldGenerations(context.Background(), key); err != nil || count != 0 {
+		t.Fatalf("repeat: %d %v", count, err)
+	}
+	if _, err := os.Stat(oldPath); !errors.Is(err, os.ErrNotExist) {
+		t.Fatalf("old generation remains: %v", err)
+	}
+}
 
 func TestFileConditionalDeleteFencesSameByteReplacement(t *testing.T) {
 	root := filepath.Join(t.TempDir(), "objects")

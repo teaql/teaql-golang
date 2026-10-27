@@ -43,7 +43,7 @@ type fileTicket struct {
 
 // FileObjectStorage is an optional server-owned store. The configured root must
 // be a private directory whose parent cannot be changed by untrusted users.
-// Old immutable data generations remain until an explicit collector is installed.
+// Old immutable data generations may be swept explicitly by a host.
 type FileObjectStorage struct {
 	root     string
 	secret   [32]byte
@@ -93,8 +93,8 @@ func (s *FileObjectStorage) directory(hash string) string {
 	return filepath.Join(s.root, hash[:2], hash)
 }
 
-func (s *FileObjectStorage) lockManifest(ctx context.Context, hash string) (func(), error) {
-	path := filepath.Join(s.directory(hash), "manifest.lock")
+func (s *FileObjectStorage) lockFile(ctx context.Context, hash, name string) (func(), error) {
+	path := filepath.Join(s.directory(hash), name)
 	file, err := os.OpenFile(path, os.O_CREATE|os.O_RDWR, 0600)
 	if err != nil {
 		return nil, fileStorageError(core.StorageIO)
@@ -132,6 +132,10 @@ func (s *FileObjectStorage) lockManifest(ctx context.Context, hash string) (func
 		case <-ticker.C:
 		}
 	}
+}
+
+func (s *FileObjectStorage) lockManifest(ctx context.Context, hash string) (func(), error) {
+	return s.lockFile(ctx, hash, "manifest.lock")
 }
 
 func (s *FileObjectStorage) privateRoot() error {
@@ -194,6 +198,13 @@ func (s *FileObjectStorage) Put(invocation runtime.StorageInvocation, key core.O
 	if err := os.MkdirAll(directory, 0700); err != nil {
 		return nil, fileStorageError(core.StorageIO)
 	}
+	// A generation sweep takes this persistent lock before the manifest lock.
+	// Hold it from data creation through publication and failure cleanup.
+	unlockWriter, err := s.lockFile(invocation.Context(), hash, "writer.lock")
+	if err != nil {
+		return nil, err
+	}
+	defer unlockWriter()
 	version, err := randomFileVersion()
 	if err != nil {
 		return nil, err
@@ -419,6 +430,67 @@ func (s *FileObjectStorage) DeleteIfVersion(invocation runtime.StorageInvocation
 		return "", fileStorageError(core.StorageIO)
 	}
 	return runtime.ObjectDeleted, nil
+}
+
+// SweepOldGenerations removes inaccessible immutable data for one known key.
+// The host must first upgrade every process using this private root to a
+// writer-lock-capable version. Scheduling and retry remain host responsibilities.
+func (s *FileObjectStorage) SweepOldGenerations(ctx context.Context, key core.ObjectKey) (int, error) {
+	if s == nil || !key.Valid() {
+		return 0, fileStorageError(core.StorageInvalidInput)
+	}
+	if _, err := os.Lstat(s.root); errors.Is(err, os.ErrNotExist) {
+		return 0, nil
+	}
+	if err := s.privateRoot(); err != nil {
+		return 0, err
+	}
+	hash := fileKeyHash(key)
+	directory := s.directory(hash)
+	if _, err := os.Lstat(directory); errors.Is(err, os.ErrNotExist) {
+		return 0, nil
+	} else if err != nil {
+		return 0, fileStorageError(core.StorageUnavailable)
+	}
+	unlockWriter, err := s.lockFile(ctx, hash, "writer.lock")
+	if err != nil {
+		return 0, err
+	}
+	defer unlockWriter()
+	unlockManifest, err := s.lockManifest(ctx, hash)
+	if err != nil {
+		return 0, err
+	}
+	defer unlockManifest()
+	manifest, err := s.manifest(hash)
+	if err != nil {
+		return 0, err
+	}
+	current := ""
+	if manifest != nil {
+		current = "data-" + manifest.Version
+	}
+	entries, err := os.ReadDir(directory)
+	if err != nil {
+		return 0, fileStorageError(core.StorageIO)
+	}
+	removed := 0
+	for _, entry := range entries {
+		name := entry.Name()
+		if name == current || !strings.HasPrefix(name, "data-") || !validFileVersion(strings.TrimPrefix(name, "data-")) {
+			continue
+		}
+		path := filepath.Join(directory, name)
+		info, err := os.Lstat(path)
+		if err != nil || !info.Mode().IsRegular() {
+			return removed, fileStorageError(core.StorageUnavailable)
+		}
+		if err := os.Remove(path); err != nil {
+			return removed, fileStorageError(core.StorageIO)
+		}
+		removed++
+	}
+	return removed, nil
 }
 
 func (s *FileObjectStorage) seal(ticket fileTicket) (string, error) {
