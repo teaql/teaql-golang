@@ -25,7 +25,7 @@ func (p customerPolicy) Review(_ *runtime.UserContext, plan *runtime.MutationPla
 	return runtime.AllowMutation()
 }
 
-type transactionProbe struct{ begins, commits int }
+type transactionProbe struct{ begins, commits, mutations int }
 
 func (p *transactionProbe) Capabilities() data_service.DataServiceCapabilities {
 	return data_service.DataServiceCapabilities{Transaction: true}
@@ -43,7 +43,12 @@ func (*probeTx) Capabilities() data_service.DataServiceCapabilities {
 func (*probeTx) Query(context.Context, *data_service.QueryRequest) (*data_service.QueryResult, error) {
 	return &data_service.QueryResult{}, nil
 }
-func (*probeTx) Mutate(context.Context, data_service.MutationRequest) (*data_service.MutationResult, error) {
+func (t *probeTx) Mutate(_ context.Context, request data_service.MutationRequest) (*data_service.MutationResult, error) {
+	insert, ok := request.(*data_service.InsertMutation)
+	if !ok || insert.Cmd.Entity != "Customer" || insert.Cmd.Values["id"] != core.ValU64(7) || insert.Cmd.Values["email"] != core.ValText("approved@example.com") {
+		return nil, fmt.Errorf("provider did not receive the reviewed customer insert")
+	}
+	t.owner.mutations++
 	return &data_service.MutationResult{AffectedRows: 1}, nil
 }
 func (t *probeTx) Commit(context.Context) error { t.owner.commits++; return nil }
@@ -78,7 +83,19 @@ func main() {
 		}))
 	ctx.InsertResource("dataService", provider)
 
-	if err := ctx.ExecutePlannedGraphSave(plan("approved@example.com"), func() error { return nil }); err != nil {
+	approved := plan("approved@example.com")
+	if err := ctx.ExecutePlannedGraphSave(approved, func() error {
+		command := core.NewInsertCommand("Customer").Value("id", approved.Operations[0].ID)
+		for field, value := range approved.Operations[0].ChangedValues {
+			command.Value(field, value)
+		}
+		request, err := data_service.NewMutationRequest(&data_service.InsertMutation{Cmd: command}, approved.AuditReason)
+		if err != nil {
+			return err
+		}
+		_, err = ctx.GetResource("dataService").(data_service.MutationExecutor).Mutate(ctx, request)
+		return err
+	}); err != nil {
 		panic(err)
 	}
 	beforeDenied := provider.begins
@@ -91,5 +108,8 @@ func main() {
 	if provider.begins != beforeDenied {
 		panic("denied mutation started a transaction")
 	}
-	fmt.Printf("MUTATION_POLICY_PASS allowed_commits=%d denied_transaction_begins=0\n", provider.commits)
+	if provider.mutations != 1 || provider.commits != 1 {
+		panic("allowed policy did not apply exactly its reviewed plan")
+	}
+	fmt.Printf("MUTATION_POLICY_PASS allowed_commits=%d denied_transaction_begins=0 allowed_mutations=%d\n", provider.commits, provider.mutations)
 }
