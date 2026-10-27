@@ -169,7 +169,8 @@ func (ViewPreparationService) Prepare(context *UserContext, result any, options 
 		if !ok || missingSPI(blob) {
 			return view, viewError("BLOB_CAPABILITY_MISSING")
 		}
-		urls, projectErr := blob.ProjectBatch(context, graph, expiry)
+		ceiling := expiry
+		urls, projectErr := blob.ProjectBatch(context, graph, ceiling)
 		if projectErr != nil {
 			return view, projectErr
 		}
@@ -179,7 +180,7 @@ func (ViewPreparationService) Prepare(context *UserContext, result any, options 
 		for index, signed := range urls {
 			parsed, parseErr := url.Parse(signed.URL)
 			if parseErr != nil || parsed.Host == "" || (parsed.Scheme != "http" && parsed.Scheme != "https") ||
-				!signed.ExpiresAt.After(time.Now()) || (!expiry.IsZero() && signed.ExpiresAt.After(expiry)) {
+				!signed.ExpiresAt.After(time.Now()) || (!ceiling.IsZero() && signed.ExpiresAt.After(ceiling)) {
 				return view, viewError("BLOB_SIGN_FAILED")
 			}
 			presentation, err = replaceViewPath(presentation, graph.BlobSlots[index].Path, signed.URL)

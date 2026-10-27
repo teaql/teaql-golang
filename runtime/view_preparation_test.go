@@ -71,6 +71,46 @@ func TestViewPreparationOrdersCurrentAuthorizationSecureDocumentAndBlobProjectio
 	}
 }
 
+func TestViewPreparationAcceptsIndependentURLLifetimesBelowOriginalCeiling(t *testing.T) {
+	first, err := core.ParseBlobRef("blob_asset_1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	second, err := core.ParseBlobRef("blob_asset_2")
+	if err != nil {
+		t.Fatal(err)
+	}
+	ceiling := time.Now().Add(90 * time.Second)
+	firstExpiry := time.Now().Add(20 * time.Second)
+	secondExpiry := time.Now().Add(40 * time.Second)
+	context := NewUserContext()
+	context.InsertResource("responseGraphAuthorizer", viewAuthorizerFunc(func(_ *UserContext, _ any, _ ViewOptions) (AuthorizedResponseGraph, error) {
+		return AuthorizedResponseGraph{Presentation: map[string]any{"first": first, "second": second},
+			BlobSlots: []AuthorizedBlobSlot{
+				{Path: []any{"first"}, Entity: "Asset", EntityID: "1", Field: "first", Scope: "tenant-a", BindingVersion: 4, Reference: first},
+				{Path: []any{"second"}, Entity: "Asset", EntityID: "1", Field: "second", Scope: "tenant-a", BindingVersion: 5, Reference: second},
+			}}, nil
+	}))
+	context.InsertResource("blobResponseContributor", blobViewFunc(func(_ *UserContext, _ AuthorizedResponseGraph, supplied time.Time) ([]ProjectedBlobURL, error) {
+		if !supplied.Equal(ceiling) {
+			t.Fatal("original ceiling was not forwarded")
+		}
+		return []ProjectedBlobURL{
+			{URL: "https://files.example.invalid/first", ExpiresAt: firstExpiry},
+			{URL: "https://files.example.invalid/second", ExpiresAt: secondExpiry},
+		}, nil
+	}))
+	view, err := (ViewPreparationService{}).Prepare(context, nil,
+		ViewOptions{Mode: "ordinary", BusinessOutcome: "read_only", ExpiresAt: ceiling})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !view.ExpiresAt.Equal(firstExpiry) ||
+		view.Presentation.(map[string]any)["second"] != "https://files.example.invalid/second" {
+		t.Fatal("URL lifetimes were incorrectly ordered")
+	}
+}
+
 func TestViewPreparationFailsClosedWithoutLeakingRawKeyOrRepeatingCommittedWork(t *testing.T) {
 	reference, err := core.ParseBlobRef("blob_private_canary")
 	if err != nil {
