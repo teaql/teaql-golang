@@ -1,6 +1,7 @@
 package blobreference
 
 import (
+	"bytes"
 	"context"
 	"crypto/rand"
 	"crypto/sha256"
@@ -385,6 +386,41 @@ type hashingReadCloser struct {
 	eof    bool
 }
 
+func recoverExistingUpload(store *runtime.ObjectStorage, key core.ObjectKey, source *hashingReadCloser,
+	row uploadRow, mime string) (*core.ObjectMetadata, error) {
+	if !source.eof || source.count != row.DeclaredSize {
+		return nil, uploadError("BLOB_STORE_FAILED")
+	}
+	before, err := store.Head(key)
+	if err != nil || before == nil || before.Size() != source.count ||
+		before.ContentType() != mime || before.ETag() == "" {
+		return nil, uploadError("BLOB_STORE_FAILED")
+	}
+	content, err := store.Get(key)
+	if err != nil || content == nil {
+		return nil, uploadError("BLOB_STORE_FAILED")
+	}
+	stored := content.Metadata()
+	if stored.Size() != before.Size() || stored.ETag() != before.ETag() ||
+		stored.ContentType() != mime {
+		_ = content.Close()
+		return nil, uploadError("BLOB_STORE_FAILED")
+	}
+	digest := sha256.New()
+	count, copyErr := io.Copy(digest, io.LimitReader(content.Stream(), source.count+1))
+	closeErr := content.Close()
+	if copyErr != nil || closeErr != nil || count != source.count ||
+		!bytes.Equal(digest.Sum(nil), source.digest.Sum(nil)) {
+		return nil, uploadError("BLOB_STORE_FAILED")
+	}
+	after, err := store.Head(key)
+	if err != nil || after == nil || after.Size() != before.Size() ||
+		after.ETag() != before.ETag() || after.ContentType() != mime {
+		return nil, uploadError("BLOB_STORE_FAILED")
+	}
+	return before, nil
+}
+
 func (r *hashingReadCloser) Read(p []byte) (int, error) {
 	n, err := r.ReadCloser.Read(p)
 	if n > 0 {
@@ -461,7 +497,14 @@ func (s *SQLiteUploadService) Write(actor *runtime.UserContext, id string, sourc
 		}
 		metadata, err := store.Put(key, reader, options)
 		if err != nil {
-			return uploadError("BLOB_STORE_FAILED")
+			var storage *core.StorageError
+			if !errors.As(err, &storage) || storage.Code != core.StorageConflict {
+				return uploadError("BLOB_STORE_FAILED")
+			}
+			metadata, err = recoverExistingUpload(store, key, reader, row, mime)
+			if err != nil {
+				return err
+			}
 		}
 		if _, err := s.currentOnLease(actor, sql, target, "Write", input, row.Scope); err != nil {
 			return err

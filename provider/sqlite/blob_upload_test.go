@@ -298,3 +298,84 @@ func TestSQLiteBlobUploadExpiredReplayCannotRecoverOldSession(t *testing.T) {
 		t.Fatalf("expired session wrote bytes: %v", err)
 	}
 }
+
+func TestSQLiteBlobUploadRetryRecoversOnlyIdenticalFileAfterJournalRollback(t *testing.T) {
+	e := nativeBatchEnvironment(t)
+	catalog, err := blobreference.NewSQLiteCatalog(e.executor.Transport)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := catalog.EnsureSchema(e.ctx); err != nil {
+		t.Fatal(err)
+	}
+	secret := make([]byte, 32)
+	if _, err := rand.Read(secret); err != nil {
+		t.Fatal(err)
+	}
+	provider, err := blobreference.NewFileObjectStorage(filepath.Join(t.TempDir(), "private"), secret)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer provider.Close()
+	e.ctx.WithObjectStorage(provider)
+	e.ctx.WithObjectStorageObserver(runtime.ObjectStorageObserverFunc(func(runtime.ObjectStorageEvent) {}))
+	verifier := &fixturePDFVerifier{}
+	service, err := blobreference.NewSQLiteUploadService(catalog,
+		&uploadPermission{scope: "tenant-a", allowed: true}, verifier, 10_000, 15*time.Minute)
+	if err != nil {
+		t.Fatal(err)
+	}
+	data := []byte("%PDF-1.7\nrecover committed File content\n%%EOF")
+	session, err := service.Begin(e.ctx,
+		blobreference.UploadTarget{Entity: "Customer", EntityID: "1", Field: "document"},
+		blobreference.UploadInput{FileName: "report.pdf", DeclaredSize: int64(len(data))},
+		"recovery-request")
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, err = e.db.Exec(`CREATE TRIGGER reject_upload_write BEFORE UPDATE ON teaql_blob_upload
+		WHEN NEW.state='written' BEGIN SELECT RAISE(ABORT, 'injected'); END`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := service.Write(e.ctx, session.ID, io.NopCloser(bytes.NewReader(data))); err == nil || err.Error() != "BLOB_CATALOG_FAILED" {
+		t.Fatalf("injected journal failure: %v", err)
+	}
+	var location, state string
+	if err := e.db.QueryRow(`SELECT c.object_key,u.state FROM teaql_blob_upload u
+		JOIN teaql_blob_catalog c ON c.key=u.key WHERE u.upload_id=?`, session.ID).
+		Scan(&location, &state); err != nil || state != "initiated" {
+		t.Fatalf("journal rollback: %v %s", err, state)
+	}
+	key, err := core.NewObjectKey(location)
+	if err != nil {
+		t.Fatal(err)
+	}
+	store, err := e.ctx.ObjectStorage("check recovery candidate")
+	if err != nil {
+		t.Fatal(err)
+	}
+	stable, err := store.Head(key)
+	if err != nil || stable == nil || stable.Size() != int64(len(data)) {
+		t.Fatalf("stored object: %v", err)
+	}
+	if _, err := e.db.Exec("DROP TRIGGER reject_upload_write"); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := service.Write(e.ctx, session.ID,
+		io.NopCloser(bytes.NewReader(bytes.Repeat([]byte{'x'}, len(data))))); err == nil || err.Error() != "BLOB_STORE_FAILED" {
+		t.Fatalf("different bytes adopted: %v", err)
+	}
+	count, err := service.Write(e.ctx, session.ID, io.NopCloser(bytes.NewReader(data)))
+	if err != nil || count != int64(len(data)) {
+		t.Fatalf("identical retry: %d %v", count, err)
+	}
+	after, err := store.Head(key)
+	if err != nil || after == nil || after.ETag() != stable.ETag() {
+		t.Fatalf("generation changed: %v", err)
+	}
+	reference, err := service.Complete(e.ctx, session.ID)
+	if err != nil || reference.Key() != session.Reference.Key() || verifier.calls != 1 {
+		t.Fatalf("recovered confirmation: %v calls=%d", err, verifier.calls)
+	}
+}
