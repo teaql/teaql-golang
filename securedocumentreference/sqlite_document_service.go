@@ -50,9 +50,22 @@ type CurrentBoundDocument struct {
 type VerifiedDocumentBlobSelection struct {
 	Target          BlobSelectionTarget
 	Reference       core.BlobRef
+	RowKey          string
 	EntityID        string
 	ExpectedVersion int64
 	NextVersion     int64
+}
+
+type DocumentBlobSelectionClaim struct {
+	Target    BlobSelectionTarget
+	Reference core.BlobRef
+}
+
+// Resolve a sealed client key after the application has persisted its child on
+// the same SQL lease. The service checks the returned row against both snapshots.
+type SQLiteDocumentNewBlobSelectionHost interface {
+	ResolveNewBlobSelection(stdcontext.Context, *runtime.UserContext, BoundDocumentSnapshot,
+		SubmittedDocumentCommand, DocumentBlobSelectionClaim, teaqlsql.SqlTransport) (string, string, error)
 }
 
 // Optional host extension: persist the model field and invoke the actual Blob
@@ -140,8 +153,8 @@ func copyDocumentBody(body map[string]any) (map[string]any, error) {
 
 func verifiedDocumentSelections(protocol *ContextBoundReferenceRuntime,
 	principal TrustedReferencePrincipal, issued BoundDocumentSnapshot,
-	submitted SubmittedDocumentCommand) ([]VerifiedDocumentBlobSelection, error) {
-	result := make([]VerifiedDocumentBlobSelection, 0, len(submitted.BlobSelections))
+	submitted SubmittedDocumentCommand) ([]DocumentBlobSelectionClaim, error) {
+	result := make([]DocumentBlobSelectionClaim, 0, len(submitted.BlobSelections))
 	seen := make(map[string]bool)
 	for _, selection := range submitted.BlobSelections {
 		target := BlobSelectionTarget{Scope: issued.Snapshot.Scope,
@@ -157,35 +170,80 @@ func verifiedDocumentSelections(protocol *ContextBoundReferenceRuntime,
 		if err != nil {
 			return nil, err
 		}
-		if target.Kind != "EXISTING_ROW" {
-			return nil, errors.New("DOCUMENT_CAPABILITY_MISSING")
-		}
-		var row *DocumentEntitySnapshot
-		var binding *DocumentBlobBindingSnapshot
-		for i := range issued.Snapshot.Entities {
-			if issued.Snapshot.Entities[i].RowKey == target.TargetKey {
-				row = &issued.Snapshot.Entities[i]
-				break
-			}
-		}
-		for i := range issued.Bindings {
-			if issued.Bindings[i].RowKey == target.TargetKey &&
-				issued.Bindings[i].CanonicalField == target.CanonicalField {
-				binding = &issued.Bindings[i]
-				break
-			}
-		}
-		if row == nil || binding == nil || row.Identity.EntityType != target.TargetEntity ||
-			!binding.Writable || binding.BindingVersion >= math.MaxInt64 {
-			return nil, errors.New("DOCUMENT_PROJECTION_VIOLATION")
-		}
-		result = append(result, VerifiedDocumentBlobSelection{Target: target,
-			Reference:       claim.Document.Reference,
-			EntityID:        strconv.FormatUint(row.Identity.ID, 10),
-			ExpectedVersion: int64(binding.BindingVersion),
-			NextVersion:     int64(binding.BindingVersion) + 1})
+		result = append(result, DocumentBlobSelectionClaim{Target: target,
+			Reference: claim.Document.Reference})
 	}
 	return result, nil
+}
+
+func mapExistingBlobSelection(issued BoundDocumentSnapshot,
+	selection DocumentBlobSelectionClaim) (VerifiedDocumentBlobSelection, error) {
+	target := selection.Target
+	var row *DocumentEntitySnapshot
+	var binding *DocumentBlobBindingSnapshot
+	for i := range issued.Snapshot.Entities {
+		if issued.Snapshot.Entities[i].RowKey == target.TargetKey {
+			row = &issued.Snapshot.Entities[i]
+			break
+		}
+	}
+	for i := range issued.Bindings {
+		if issued.Bindings[i].RowKey == target.TargetKey &&
+			issued.Bindings[i].CanonicalField == target.CanonicalField {
+			binding = &issued.Bindings[i]
+			break
+		}
+	}
+	if row == nil || binding == nil || row.Identity.EntityType != target.TargetEntity ||
+		!binding.Writable || binding.BindingVersion >= math.MaxInt64 {
+		return VerifiedDocumentBlobSelection{}, errors.New("DOCUMENT_PROJECTION_VIOLATION")
+	}
+	return VerifiedDocumentBlobSelection{Target: target, Reference: selection.Reference,
+		RowKey: target.TargetKey, EntityID: strconv.FormatUint(row.Identity.ID, 10),
+		ExpectedVersion: int64(binding.BindingVersion),
+		NextVersion:     int64(binding.BindingVersion) + 1}, nil
+}
+
+func mapNewBlobSelection(issued BoundDocumentSnapshot, selection DocumentBlobSelectionClaim,
+	rowKey, entityID string) (VerifiedDocumentBlobSelection, error) {
+	id, err := strconv.ParseUint(entityID, 10, 64)
+	if !documentText(rowKey, 16384) || err != nil || id == 0 ||
+		strconv.FormatUint(id, 10) != entityID {
+		return VerifiedDocumentBlobSelection{}, errors.New("DOCUMENT_PROJECTION_VIOLATION")
+	}
+	for _, row := range issued.Snapshot.Entities {
+		if row.RowKey == rowKey {
+			return VerifiedDocumentBlobSelection{}, errors.New("DOCUMENT_PROJECTION_VIOLATION")
+		}
+	}
+	return VerifiedDocumentBlobSelection{Target: selection.Target, Reference: selection.Reference,
+		RowKey: rowKey, EntityID: entityID, ExpectedVersion: 0, NextVersion: 1}, nil
+}
+
+func validNewBlobSelectionChild(issued, after BoundDocumentSnapshot,
+	selection VerifiedDocumentBlobSelection) bool {
+	for _, row := range after.Snapshot.Entities {
+		if row.RowKey != selection.RowKey || row.Identity.EntityType != selection.Target.TargetEntity ||
+			strconv.FormatUint(row.Identity.ID, 10) != selection.EntityID ||
+			!includes(row.WritableFields, selection.Target.CanonicalField) {
+			continue
+		}
+		for _, relation := range after.Snapshot.Relations {
+			if relation.Completeness != "COMPLETE" || !relation.Writable ||
+				!includes(relation.AllowedMutations, "CREATE_CHILD") ||
+				!includes(relation.RowKeys, selection.RowKey) {
+				continue
+			}
+			for _, previous := range issued.Snapshot.Relations {
+				if previous.Name == relation.Name && previous.Completeness == "COMPLETE" &&
+					previous.Writable && includes(previous.AllowedMutations, "CREATE_CHILD") &&
+					!includes(previous.RowKeys, selection.RowKey) {
+					return true
+				}
+			}
+		}
+	}
+	return false
 }
 
 func (s *SQLiteContextBoundDocumentService) Open(ctx stdcontext.Context,
@@ -316,10 +374,40 @@ func (s *SQLiteContextBoundDocumentService) Accept(ctx stdcontext.Context,
 				if len(selections) > 0 && !supported {
 					return DocumentCommandReceipt{}, errors.New("DOCUMENT_CAPABILITY_MISSING")
 				}
+				resolver, hasResolver := s.host.(SQLiteDocumentNewBlobSelectionHost)
+				for _, selection := range selections {
+					if selection.Target.Kind == "NEW_CLIENT_KEY" && !hasResolver {
+						return DocumentCommandReceipt{}, errors.New("DOCUMENT_CAPABILITY_MISSING")
+					}
+				}
 				if e = s.host.Apply(ctx, actor, issued, submitted, sql); e != nil {
 					return DocumentCommandReceipt{}, e
 				}
+				mapped := make([]VerifiedDocumentBlobSelection, 0, len(selections))
+				mappedTargets := make(map[string]bool)
 				for _, selection := range selections {
+					var bound VerifiedDocumentBlobSelection
+					if selection.Target.Kind == "EXISTING_ROW" {
+						bound, e = mapExistingBlobSelection(issued, selection)
+					} else {
+						var rowKey, entityID string
+						rowKey, entityID, e = resolver.ResolveNewBlobSelection(ctx, actor,
+							issued, submitted, selection, sql)
+						if e == nil {
+							bound, e = mapNewBlobSelection(issued, selection, rowKey, entityID)
+						}
+					}
+					if e != nil {
+						return DocumentCommandReceipt{}, e
+					}
+					pair := bound.RowKey + "\x00" + bound.Target.CanonicalField
+					if mappedTargets[pair] {
+						return DocumentCommandReceipt{}, errors.New("DOCUMENT_COMMAND_INVALID")
+					}
+					mappedTargets[pair] = true
+					mapped = append(mapped, bound)
+				}
+				for _, selection := range mapped {
 					if e = binder.BindBlobSelection(ctx, actor, graph, selection, sql); e != nil {
 						return DocumentCommandReceipt{}, e
 					}
@@ -338,10 +426,10 @@ func (s *SQLiteContextBoundDocumentService) Accept(ctx stdcontext.Context,
 					nextScope.AggregateRevision < scope.AggregateRevision {
 					return DocumentCommandReceipt{}, errors.New("DOCUMENT_PROJECTION_VIOLATION")
 				}
-				for _, selection := range selections {
+				for _, selection := range mapped {
 					matched := false
 					for _, binding := range after.Document.Bindings {
-						if binding.RowKey == selection.Target.TargetKey &&
+						if binding.RowKey == selection.RowKey &&
 							binding.CanonicalField == selection.Target.CanonicalField &&
 							binding.EntityType == selection.Target.TargetEntity &&
 							binding.StableKey != nil && *binding.StableKey == selection.Reference.Key() &&
@@ -351,6 +439,10 @@ func (s *SQLiteContextBoundDocumentService) Accept(ctx stdcontext.Context,
 						}
 					}
 					if !matched {
+						return DocumentCommandReceipt{}, errors.New("DOCUMENT_PROJECTION_VIOLATION")
+					}
+					if selection.Target.Kind == "NEW_CLIENT_KEY" &&
+						!validNewBlobSelectionChild(issued, after.Document, selection) {
 						return DocumentCommandReceipt{}, errors.New("DOCUMENT_PROJECTION_VIOLATION")
 					}
 				}
