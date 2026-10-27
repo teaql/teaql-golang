@@ -184,6 +184,18 @@ func (e *EntityDescriptor) PropertyByName(name string) *PropertyDescriptor {
 	return nil
 }
 
+func (e *EntityDescriptor) HasBlobFields() bool {
+	if e == nil {
+		return false
+	}
+	for _, property := range e.Properties {
+		if property.DataType == TypeBlobRef || property.BlobSpec != nil {
+			return true
+		}
+	}
+	return false
+}
+
 func (e *EntityDescriptor) RelationByName(name string) *RelationDescriptor {
 	for _, r := range e.Relations {
 		if r.Name == name {

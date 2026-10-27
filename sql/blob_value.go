@@ -6,6 +6,8 @@ import (
 	"github.com/teaql/teaql-golang/core"
 )
 
+var errBlobCapabilityMissing = errors.New("BLOB_CAPABILITY_MISSING")
+
 // A modeled Blob column accepts only a trusted typed reference or an allowed null.
 // A raw Key string, including one received through a generic request, is never a bind credential.
 func validateBlobMutationValue(entity *core.EntityDescriptor, property *core.PropertyDescriptor, value core.Value) error {

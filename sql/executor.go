@@ -675,6 +675,10 @@ func (t *SqlDataServiceTransaction) Mutate(context stdcontext.Context, request d
 	}
 	plan, err := executor.prepareMutation(captured)
 	if err != nil {
+		if errors.Is(err, errBlobCapabilityMissing) {
+			t.rollbackOnly = err
+			t.audits.deliveries = nil
+		}
 		return nil, err
 	}
 	context, mutation := ds.StartMutationOperation(context)
