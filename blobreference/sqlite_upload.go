@@ -41,6 +41,10 @@ type UploadAuthorization interface {
 	Scope(*runtime.UserContext) (string, error)
 	Field(*runtime.UserContext, UploadTarget) (core.BlobFieldSpec, error)
 	Authorize(*runtime.UserContext, UploadTarget, string, UploadInput) error
+	// CurrentOnLease must resolve scope, modeled field and action permission
+	// through this physical SQL owner (or trusted in-memory state). A host must
+	// not reacquire the ordinary SQLite pool while its only connection is held.
+	CurrentOnLease(*runtime.UserContext, teaqlsql.SqlTransport, UploadTarget, string, UploadInput) (string, core.BlobFieldSpec, error)
 }
 
 // ContentVerifier must parse and consume every byte. Storage metadata and client MIME
@@ -56,6 +60,10 @@ type SQLiteUploadService struct {
 	maximumBytes  int64
 	lease         time.Duration
 	now           func() time.Time
+}
+
+type immediateSQLTransport interface {
+	BeginImmediateSql(context.Context) (teaqlsql.SqlTransactionTransportTx, error)
 }
 
 type uploadRow struct {
@@ -74,6 +82,9 @@ func NewSQLiteUploadService(catalog *SQLiteCatalog, authorization UploadAuthoriz
 		return nil, uploadError("BLOB_POLICY_INVALID")
 	}
 	if _, okay := catalog.transport.(teaqlsql.SqlTransactionTransport); !okay {
+		return nil, uploadError("BLOB_TRANSACTION_REQUIRED")
+	}
+	if _, okay := catalog.transport.(immediateSQLTransport); !okay {
 		return nil, uploadError("BLOB_TRANSACTION_REQUIRED")
 	}
 	return &SQLiteUploadService{catalog, authorization, verifier, maximumBytes, lease, time.Now}, nil
@@ -112,11 +123,40 @@ func (s *SQLiteUploadService) current(actor *runtime.UserContext, target UploadT
 		return "", uploadError("BLOB_REFERENCE_INVALID")
 	}
 	scope, err := s.authorization.Scope(actor)
-	if err != nil || !validScope(scope) || expectedScope != "" && scope != expectedScope {
+	if err != nil {
 		return "", uploadError("BLOB_UPLOAD_DENIED")
 	}
 	field, err := s.authorization.Field(actor, target)
-	if err != nil || field.Entity != target.Entity || field.Field != target.Field {
+	if err != nil {
+		return "", uploadError("BLOB_UPLOAD_DENIED")
+	}
+	scope, err = validateUploadCurrent(scope, field, target, input, expectedScope)
+	if err != nil {
+		return "", err
+	}
+	if err := s.authorization.Authorize(actor, target, action, input); err != nil {
+		return "", uploadError("BLOB_UPLOAD_DENIED")
+	}
+	return scope, nil
+}
+
+func (s *SQLiteUploadService) currentOnLease(actor *runtime.UserContext, sql teaqlsql.SqlTransport,
+	target UploadTarget, action string, input UploadInput, expectedScope string) (string, error) {
+	if actor == nil || sql == nil || !validName(target.Entity) || !validName(target.Field) ||
+		target.EntityID != "" && !validEntityID(target.EntityID) {
+		return "", uploadError("BLOB_REFERENCE_INVALID")
+	}
+	scope, field, err := s.authorization.CurrentOnLease(actor, sql, target, action, input)
+	if err != nil {
+		return "", uploadError("BLOB_UPLOAD_DENIED")
+	}
+	return validateUploadCurrent(scope, field, target, input, expectedScope)
+}
+
+func validateUploadCurrent(scope string, field core.BlobFieldSpec, target UploadTarget,
+	input UploadInput, expectedScope string) (string, error) {
+	if !validScope(scope) || expectedScope != "" && scope != expectedScope ||
+		field.Entity != target.Entity || field.Field != target.Field {
 		return "", uploadError("BLOB_UPLOAD_DENIED")
 	}
 	extension := strings.ToLower(input.FileName[strings.LastIndex(input.FileName, ".")+1:])
@@ -129,9 +169,6 @@ func (s *SQLiteUploadService) current(actor *runtime.UserContext, target UploadT
 	}
 	if !allowed {
 		return "", uploadError("BLOB_FORMAT_NOT_ALLOWED")
-	}
-	if err := s.authorization.Authorize(actor, target, action, input); err != nil {
-		return "", uploadError("BLOB_UPLOAD_DENIED")
 	}
 	return scope, nil
 }
@@ -154,6 +191,22 @@ func requestHash(target UploadTarget, input UploadInput) string {
 func (s *SQLiteUploadService) transaction(ctx context.Context, work func(teaqlsql.SqlTransport) error) error {
 	owner := s.catalog.transport.(teaqlsql.SqlTransactionTransport)
 	tx, err := owner.BeginSql(ctx)
+	if err != nil {
+		return uploadError("BLOB_CATALOG_FAILED")
+	}
+	defer tx.RollbackSql(ctx)
+	if err := work(tx); err != nil {
+		return err
+	}
+	if err := tx.CommitSql(ctx); err != nil {
+		return uploadError("BLOB_CATALOG_FAILED")
+	}
+	return nil
+}
+
+func (s *SQLiteUploadService) transactionImmediate(ctx context.Context, work func(teaqlsql.SqlTransport) error) error {
+	owner := s.catalog.transport.(immediateSQLTransport)
+	tx, err := owner.BeginImmediateSql(ctx)
 	if err != nil {
 		return uploadError("BLOB_CATALOG_FAILED")
 	}
@@ -204,7 +257,7 @@ func (s *SQLiteUploadService) Begin(actor *runtime.UserContext, target UploadTar
 			if !idOK || !keyOK || !expiryOK || parseErr != nil {
 				return uploadError("BLOB_CATALOG_FAILED")
 			}
-			if _, err := s.current(actor, target, "Begin", normalized, scope); err != nil {
+			if _, err := s.currentOnLease(actor, sql, target, "Begin", normalized, scope); err != nil {
 				return err
 			}
 			if s.now().UnixMilli() >= expiry {
@@ -228,7 +281,7 @@ func (s *SQLiteUploadService) Begin(actor *runtime.UserContext, target UploadTar
 		reference, _ := core.ParseBlobRef("blob_" + keyToken)
 		id := "bu_" + token
 		expiry := s.now().Add(s.lease).UnixMilli()
-		if _, err := s.current(actor, target, "Begin", normalized, scope); err != nil {
+		if _, err := s.currentOnLease(actor, sql, target, "Begin", normalized, scope); err != nil {
 			return err
 		}
 		if _, err := sql.ExecuteSql(actor, sqlQuery(`INSERT INTO teaql_blob_catalog
@@ -374,26 +427,53 @@ func (s *SQLiteUploadService) Write(actor *runtime.UserContext, id string, sourc
 		return 0, uploadError("BLOB_FORMAT_NOT_ALLOWED")
 	}
 	reader := &hashingReadCloser{ReadCloser: source, digest: sha256.New()}
-	metadata, err := store.Put(key, reader, options)
-	if err != nil {
-		return 0, uploadError("BLOB_STORE_FAILED")
-	}
 	input := UploadInput{FileName: row.FileName, DeclaredSize: row.DeclaredSize}
-	if _, err := s.current(actor, UploadTarget{row.Entity, row.EntityID, row.Field}, "Write", input, row.Scope); err != nil {
-		return 0, err
-	}
-	if s.now().UnixMilli() >= row.ExpiresUnixMs {
-		return 0, uploadError("BLOB_UPLOAD_EXPIRED")
-	}
-	if !reader.eof || reader.count != row.DeclaredSize || metadata.Size() != reader.count || metadata.ETag() == "" {
-		return 0, uploadError("BLOB_UPLOAD_INCOMPLETE")
-	}
-	hash := hex.EncodeToString(reader.digest.Sum(nil))
-	err = s.transaction(actor, func(sql teaqlsql.SqlTransport) error {
+	target := UploadTarget{row.Entity, row.EntityID, row.Field}
+	err = s.transactionImmediate(actor, func(sql teaqlsql.SqlTransport) error {
+		current, err := sql.FetchAllSql(actor, sqlQuery(`SELECT state,key,expires_unix_ms FROM teaql_blob_upload
+            WHERE upload_id=? AND scope=?`, core.ValText(id), core.ValText(row.Scope)))
+		if err != nil {
+			return uploadError("BLOB_CATALOG_FAILED")
+		}
+		catalog, err := sql.FetchAllSql(actor, sqlQuery(`SELECT object_key,status FROM teaql_blob_catalog
+            WHERE key=? AND scope=?`, core.ValText(row.Key), core.ValText(row.Scope)))
+		if err != nil {
+			return uploadError("BLOB_CATALOG_FAILED")
+		}
+		if len(current) != 1 || len(catalog) != 1 {
+			return uploadError("BLOB_IDEMPOTENCY_CONFLICT")
+		}
+		state, stateOK := sqlText(current[0]["state"])
+		currentKey, keyOK := sqlText(current[0]["key"])
+		expiry, expiryOK := current[0]["expires_unix_ms"].TryI64()
+		location, locationOK := sqlText(catalog[0]["object_key"])
+		status, statusOK := sqlText(catalog[0]["status"])
+		if !stateOK || !keyOK || !expiryOK || !locationOK || !statusOK || state != "initiated" ||
+			currentKey != row.Key || expiry != row.ExpiresUnixMs || location != key.Value() || status != "initiated" {
+			return uploadError("BLOB_IDEMPOTENCY_CONFLICT")
+		}
+		if _, err := s.currentOnLease(actor, sql, target, "Write", input, row.Scope); err != nil {
+			return err
+		}
 		now := s.now().UnixMilli()
 		if now >= row.ExpiresUnixMs {
 			return uploadError("BLOB_UPLOAD_EXPIRED")
 		}
+		metadata, err := store.Put(key, reader, options)
+		if err != nil {
+			return uploadError("BLOB_STORE_FAILED")
+		}
+		if _, err := s.currentOnLease(actor, sql, target, "Write", input, row.Scope); err != nil {
+			return err
+		}
+		now = s.now().UnixMilli()
+		if now >= row.ExpiresUnixMs {
+			return uploadError("BLOB_UPLOAD_EXPIRED")
+		}
+		if !reader.eof || reader.count != row.DeclaredSize || metadata.Size() != reader.count || metadata.ETag() == "" {
+			return uploadError("BLOB_UPLOAD_INCOMPLETE")
+		}
+		hash := hex.EncodeToString(reader.digest.Sum(nil))
 		affected, err := sql.ExecuteSql(actor, sqlQuery(`UPDATE teaql_blob_upload SET state='written',
 			written_sha256=?,written_etag=? WHERE upload_id=? AND scope=? AND state='initiated'
 			AND expires_unix_ms > ? AND EXISTS (SELECT 1 FROM teaql_blob_catalog
@@ -491,46 +571,85 @@ func (s *SQLiteUploadService) Complete(actor *runtime.UserContext, id string) (c
 	if err != nil {
 		return empty, err
 	}
-	store, err := actor.ObjectStorage("verify Blob upload")
-	if err != nil {
-		return empty, uploadError("BLOB_STORE_FAILED")
-	}
-	before, err := store.Head(key)
-	if err != nil || before == nil || before.Size() != row.DeclaredSize || before.ETag() != row.WrittenETag {
-		return empty, uploadError("BLOB_UPLOAD_INCOMPLETE")
-	}
-	content, err := store.Get(key)
-	if err != nil {
-		return empty, uploadError("BLOB_UPLOAD_INCOMPLETE")
-	}
-	defer content.Close()
-	if content.Metadata().Size() != before.Size() || content.Metadata().ETag() != before.ETag() {
-		return empty, uploadError("BLOB_UPLOAD_INCOMPLETE")
-	}
-	reader := &verifyingReader{source: content.Stream(), digest: sha256.New(), max: s.maximumBytes}
-	verified, err := s.verifier.Verify(reader, row.Extension, s.maximumBytes)
-	if err != nil {
-		return empty, uploadError("BLOB_UPLOAD_INCOMPLETE")
-	}
-	digest := hex.EncodeToString(reader.digest.Sum(nil))
-	mime, _ := core.BlobMIMEForExtension(row.Extension)
-	if !reader.eof || reader.count != before.Size() || verified.SizeBytes != reader.count ||
-		verified.SHA256 != digest || verified.SHA256 != row.WrittenSHA256 || verified.ContentType != mime {
-		return empty, uploadError("BLOB_UPLOAD_INCOMPLETE")
-	}
-	after, err := store.Head(key)
-	if err != nil || after == nil || after.Size() != before.Size() || after.ETag() != before.ETag() {
-		return empty, uploadError("BLOB_UPLOAD_INCOMPLETE")
-	}
-	input := UploadInput{FileName: row.FileName, DeclaredSize: row.DeclaredSize, DeclaredContentType: verified.ContentType}
-	if _, err := s.current(actor, UploadTarget{row.Entity, row.EntityID, row.Field}, "Confirm", input, row.Scope); err != nil {
-		return empty, err
-	}
-	if s.now().UnixMilli() >= row.ExpiresUnixMs {
-		return empty, uploadError("BLOB_UPLOAD_EXPIRED")
-	}
-	err = s.transaction(actor, func(sql teaqlsql.SqlTransport) error {
+	target := UploadTarget{row.Entity, row.EntityID, row.Field}
+	input := UploadInput{FileName: row.FileName, DeclaredSize: row.DeclaredSize}
+	replay := false
+	err = s.transactionImmediate(actor, func(sql teaqlsql.SqlTransport) error {
+		current, err := sql.FetchAllSql(actor, sqlQuery(`SELECT state,key,expires_unix_ms,written_sha256,written_etag
+            FROM teaql_blob_upload WHERE upload_id=? AND scope=?`, core.ValText(id), core.ValText(row.Scope)))
+		if err != nil {
+			return uploadError("BLOB_CATALOG_FAILED")
+		}
+		catalog, err := sql.FetchAllSql(actor, sqlQuery(`SELECT object_key,status FROM teaql_blob_catalog
+            WHERE key=? AND scope=?`, core.ValText(row.Key), core.ValText(row.Scope)))
+		if err != nil {
+			return uploadError("BLOB_CATALOG_FAILED")
+		}
+		if len(current) != 1 || len(catalog) != 1 {
+			return uploadError("BLOB_IDEMPOTENCY_CONFLICT")
+		}
+		state, stateOK := sqlText(current[0]["state"])
+		currentKey, keyOK := sqlText(current[0]["key"])
+		expiry, expiryOK := current[0]["expires_unix_ms"].TryI64()
+		writtenSHA, shaOK := sqlText(current[0]["written_sha256"])
+		writtenETag, etagOK := sqlText(current[0]["written_etag"])
+		if stateOK && keyOK && expiryOK && shaOK && etagOK && state == "completed" &&
+			currentKey == row.Key && expiry == row.ExpiresUnixMs &&
+			writtenSHA == row.WrittenSHA256 && writtenETag == row.WrittenETag {
+			replay = true
+			return nil
+		}
+		location, locationOK := sqlText(catalog[0]["object_key"])
+		status, statusOK := sqlText(catalog[0]["status"])
+		if !stateOK || !keyOK || !expiryOK || !shaOK || !etagOK || !locationOK || !statusOK ||
+			state != "written" || currentKey != row.Key || expiry != row.ExpiresUnixMs ||
+			writtenSHA != row.WrittenSHA256 || writtenETag != row.WrittenETag ||
+			location != key.Value() || status != "initiated" {
+			return uploadError("BLOB_IDEMPOTENCY_CONFLICT")
+		}
+		if _, err := s.currentOnLease(actor, sql, target, "Confirm", input, row.Scope); err != nil {
+			return err
+		}
 		now := s.now().UnixMilli()
+		if now >= row.ExpiresUnixMs {
+			return uploadError("BLOB_UPLOAD_EXPIRED")
+		}
+		store, err := actor.ObjectStorage("verify Blob upload")
+		if err != nil {
+			return uploadError("BLOB_STORE_FAILED")
+		}
+		before, err := store.Head(key)
+		if err != nil || before == nil || before.Size() != row.DeclaredSize || before.ETag() != row.WrittenETag {
+			return uploadError("BLOB_UPLOAD_INCOMPLETE")
+		}
+		content, err := store.Get(key)
+		if err != nil {
+			return uploadError("BLOB_UPLOAD_INCOMPLETE")
+		}
+		defer content.Close()
+		if content.Metadata().Size() != before.Size() || content.Metadata().ETag() != before.ETag() {
+			return uploadError("BLOB_UPLOAD_INCOMPLETE")
+		}
+		reader := &verifyingReader{source: content.Stream(), digest: sha256.New(), max: s.maximumBytes}
+		verified, err := s.verifier.Verify(reader, row.Extension, s.maximumBytes)
+		if err != nil {
+			return uploadError("BLOB_UPLOAD_INCOMPLETE")
+		}
+		digest := hex.EncodeToString(reader.digest.Sum(nil))
+		mime, _ := core.BlobMIMEForExtension(row.Extension)
+		if !reader.eof || reader.count != before.Size() || verified.SizeBytes != reader.count ||
+			verified.SHA256 != digest || verified.SHA256 != row.WrittenSHA256 || verified.ContentType != mime {
+			return uploadError("BLOB_UPLOAD_INCOMPLETE")
+		}
+		after, err := store.Head(key)
+		if err != nil || after == nil || after.Size() != before.Size() || after.ETag() != before.ETag() {
+			return uploadError("BLOB_UPLOAD_INCOMPLETE")
+		}
+		input.DeclaredContentType = verified.ContentType
+		if _, err := s.currentOnLease(actor, sql, target, "Confirm", input, row.Scope); err != nil {
+			return err
+		}
+		now = s.now().UnixMilli()
 		if now >= row.ExpiresUnixMs {
 			return uploadError("BLOB_UPLOAD_EXPIRED")
 		}
@@ -558,6 +677,9 @@ func (s *SQLiteUploadService) Complete(actor *runtime.UserContext, id string) (c
 	})
 	if err != nil {
 		return empty, err
+	}
+	if replay {
+		return s.Complete(actor, id)
 	}
 	return core.ParseBlobRef(row.Key)
 }

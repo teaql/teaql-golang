@@ -15,6 +15,7 @@ import (
 	"github.com/teaql/teaql-golang/blobreference"
 	"github.com/teaql/teaql-golang/core"
 	"github.com/teaql/teaql-golang/runtime"
+	teaqlsql "github.com/teaql/teaql-golang/sql"
 )
 
 type uploadPermission struct {
@@ -33,6 +34,19 @@ func (p *uploadPermission) Authorize(_ *runtime.UserContext, target blobreferenc
 		return errors.New("revoked")
 	}
 	return nil
+}
+
+func (p *uploadPermission) CurrentOnLease(actor *runtime.UserContext, _ teaqlsql.SqlTransport,
+	target blobreference.UploadTarget, action string, input blobreference.UploadInput) (string, core.BlobFieldSpec, error) {
+	scope, err := p.Scope(actor)
+	if err != nil {
+		return "", core.BlobFieldSpec{}, err
+	}
+	field, err := p.Field(actor, target)
+	if err != nil {
+		return "", core.BlobFieldSpec{}, err
+	}
+	return scope, field, p.Authorize(actor, target, action, input)
 }
 
 // This test-only parser proves full-byte verifier orchestration, not production PDF parsing.
