@@ -23,6 +23,12 @@ const maxCommandBytes = 256000
 type SubmittedDocumentCommand struct {
 	BusinessID, DocumentToken, CommandID string
 	Body                                 map[string]any
+	// Non-nil selections are part of the durable replay digest.
+	BlobSelections []DocumentBlobSelectionSubmission
+}
+
+type DocumentBlobSelectionSubmission struct {
+	Token, TargetEntity, CanonicalField, Kind, TargetKey string
 }
 
 type DocumentCommandReceipt struct {
@@ -175,14 +181,30 @@ func prepareDocumentCommand(command SubmittedDocumentCommand) (string, Submitted
 	if err := canonicalBody(command.Body, 0, &remaining); err != nil {
 		return "", empty, err
 	}
-	encoded, err := json.Marshal([]any{command.BusinessID, command.DocumentToken,
-		command.CommandID, command.Body})
+	if len(command.BlobSelections) > 100 {
+		return "", empty, errors.New("DOCUMENT_COMMAND_INVALID")
+	}
+	for _, selection := range command.BlobSelections {
+		if !documentText(selection.Token, maxCommandBytes) ||
+			!documentText(selection.TargetEntity, 16384) ||
+			!documentText(selection.CanonicalField, 16384) ||
+			!documentText(selection.TargetKey, 16384) ||
+			(selection.Kind != "EXISTING_ROW" && selection.Kind != "NEW_CLIENT_KEY") {
+			return "", empty, errors.New("DOCUMENT_COMMAND_INVALID")
+		}
+	}
+	// Preserve four-element hashes for receipts written before selection support.
+	parts := []any{command.BusinessID, command.DocumentToken, command.CommandID, command.Body}
+	if command.BlobSelections != nil {
+		parts = append(parts, command.BlobSelections)
+	}
+	encoded, err := json.Marshal(parts)
 	if err != nil || len(encoded) > maxCommandBytes {
 		return "", empty, errors.New("DOCUMENT_COMMAND_INVALID")
 	}
 	digest := sha256.Sum256(encoded)
 	var values []json.RawMessage
-	if err := json.Unmarshal(encoded, &values); err != nil || len(values) != 4 {
+	if err := json.Unmarshal(encoded, &values); err != nil || len(values) != len(parts) {
 		return "", empty, errors.New("DOCUMENT_COMMAND_INVALID")
 	}
 	var snapshot map[string]any
@@ -191,9 +213,15 @@ func prepareDocumentCommand(command SubmittedDocumentCommand) (string, Submitted
 	if err := decoder.Decode(&snapshot); err != nil {
 		return "", empty, errors.New("DOCUMENT_COMMAND_INVALID")
 	}
+	var selections []DocumentBlobSelectionSubmission
+	if len(values) == 5 {
+		if err := json.Unmarshal(values[4], &selections); err != nil || selections == nil {
+			return "", empty, errors.New("DOCUMENT_COMMAND_INVALID")
+		}
+	}
 	return hex.EncodeToString(digest[:]), SubmittedDocumentCommand{
 		BusinessID: command.BusinessID, DocumentToken: command.DocumentToken,
-		CommandID: command.CommandID, Body: snapshot}, nil
+		CommandID: command.CommandID, Body: snapshot, BlobSelections: selections}, nil
 }
 
 func documentScopeHash(scope ReferenceDocumentScope) (string, error) {

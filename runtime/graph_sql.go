@@ -20,6 +20,18 @@ func (h *GraphSQLHandle) BelongsTo(context *UserContext) bool {
 	return h != nil && h.context == context
 }
 
+// IsCurrentFor checks an already borrowed graph SQL lease without borrowing a
+// second time. A trusted module still must use the lease supplied by its host.
+func (h *GraphSQLHandle) IsCurrentFor(context *UserContext) bool {
+	if context == nil || !h.BelongsTo(context) {
+		return false
+	}
+	context.graphSaveMu.Lock()
+	defer context.graphSaveMu.Unlock()
+	return context.graphSaveActive && context.graphSQLHandle == h &&
+		context.graphSQLTransaction != nil
+}
+
 func (h *GraphSQLHandle) WithSQL(work func(teaql_sql.SqlTransport) error) error {
 	if h == nil || h.context == nil || work == nil {
 		return errors.New("BLOB_TRANSACTION_REQUIRED")

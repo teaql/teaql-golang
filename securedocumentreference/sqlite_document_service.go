@@ -6,6 +6,8 @@ import (
 	"encoding/json"
 	"errors"
 	"io"
+	"math"
+	"strconv"
 	"time"
 
 	"github.com/teaql/teaql-golang/core"
@@ -43,6 +45,21 @@ type CurrentBoundDocument struct {
 	Document BoundDocumentSnapshot
 	Body     map[string]any
 	Lifetime time.Duration
+}
+
+type VerifiedDocumentBlobSelection struct {
+	Target          BlobSelectionTarget
+	Reference       core.BlobRef
+	EntityID        string
+	ExpectedVersion int64
+	NextVersion     int64
+}
+
+// Optional host extension: persist the model field and invoke the actual Blob
+// catalog on graph. Its result is checked against the post-mutation projection.
+type SQLiteDocumentBlobSelectionHost interface {
+	BindBlobSelection(stdcontext.Context, *runtime.UserContext, *runtime.GraphSQLHandle,
+		VerifiedDocumentBlobSelection, teaqlsql.SqlTransport) error
 }
 
 // SQLiteContextBoundDocumentHost owns the model-specific projection and allowed mutation plan.
@@ -119,6 +136,56 @@ func copyDocumentBody(body map[string]any) (map[string]any, error) {
 		return nil, errors.New("DOCUMENT_PROJECTION_VIOLATION")
 	}
 	return copy, nil
+}
+
+func verifiedDocumentSelections(protocol *ContextBoundReferenceRuntime,
+	principal TrustedReferencePrincipal, issued BoundDocumentSnapshot,
+	submitted SubmittedDocumentCommand) ([]VerifiedDocumentBlobSelection, error) {
+	result := make([]VerifiedDocumentBlobSelection, 0, len(submitted.BlobSelections))
+	seen := make(map[string]bool)
+	for _, selection := range submitted.BlobSelections {
+		target := BlobSelectionTarget{Scope: issued.Snapshot.Scope,
+			TargetEntity: selection.TargetEntity, CanonicalField: selection.CanonicalField,
+			Kind: selection.Kind, TargetKey: selection.TargetKey, CommandID: submitted.CommandID}
+		pair := target.TargetKey + "\x00" + target.CanonicalField
+		if seen[pair] {
+			return nil, errors.New("DOCUMENT_COMMAND_INVALID")
+		}
+		seen[pair] = true
+		claim, err := protocol.ConsumeBlobSelection(principal, submitted.DocumentToken,
+			selection.Token, target)
+		if err != nil {
+			return nil, err
+		}
+		if target.Kind != "EXISTING_ROW" {
+			return nil, errors.New("DOCUMENT_CAPABILITY_MISSING")
+		}
+		var row *DocumentEntitySnapshot
+		var binding *DocumentBlobBindingSnapshot
+		for i := range issued.Snapshot.Entities {
+			if issued.Snapshot.Entities[i].RowKey == target.TargetKey {
+				row = &issued.Snapshot.Entities[i]
+				break
+			}
+		}
+		for i := range issued.Bindings {
+			if issued.Bindings[i].RowKey == target.TargetKey &&
+				issued.Bindings[i].CanonicalField == target.CanonicalField {
+				binding = &issued.Bindings[i]
+				break
+			}
+		}
+		if row == nil || binding == nil || row.Identity.EntityType != target.TargetEntity ||
+			!binding.Writable || binding.BindingVersion >= math.MaxInt64 {
+			return nil, errors.New("DOCUMENT_PROJECTION_VIOLATION")
+		}
+		result = append(result, VerifiedDocumentBlobSelection{Target: target,
+			Reference:       claim.Document.Reference,
+			EntityID:        strconv.FormatUint(row.Identity.ID, 10),
+			ExpectedVersion: int64(binding.BindingVersion),
+			NextVersion:     int64(binding.BindingVersion) + 1})
+	}
+	return result, nil
 }
 
 func (s *SQLiteContextBoundDocumentService) Open(ctx stdcontext.Context,
@@ -241,8 +308,21 @@ func (s *SQLiteContextBoundDocumentService) Accept(ctx stdcontext.Context,
 				if e != nil || !bytes.Equal(currentBytes, issuedBytes) {
 					return DocumentCommandReceipt{}, errors.New("DOCUMENT_REVISION_CONFLICT")
 				}
+				selections, e := verifiedDocumentSelections(s.module.Protocol, principal, issued, submitted)
+				if e != nil {
+					return DocumentCommandReceipt{}, e
+				}
+				binder, supported := s.host.(SQLiteDocumentBlobSelectionHost)
+				if len(selections) > 0 && !supported {
+					return DocumentCommandReceipt{}, errors.New("DOCUMENT_CAPABILITY_MISSING")
+				}
 				if e = s.host.Apply(ctx, actor, issued, submitted, sql); e != nil {
 					return DocumentCommandReceipt{}, e
+				}
+				for _, selection := range selections {
+					if e = binder.BindBlobSelection(ctx, actor, graph, selection, sql); e != nil {
+						return DocumentCommandReceipt{}, e
+					}
 				}
 				after, e := s.host.Load(ctx, actor, submitted.BusinessID, sql)
 				if e != nil {
@@ -257,6 +337,22 @@ func (s *SQLiteContextBoundDocumentService) Accept(ctx stdcontext.Context,
 					nextScope.AggregateType != scope.AggregateType || nextScope.Purpose != scope.Purpose ||
 					nextScope.AggregateRevision < scope.AggregateRevision {
 					return DocumentCommandReceipt{}, errors.New("DOCUMENT_PROJECTION_VIOLATION")
+				}
+				for _, selection := range selections {
+					matched := false
+					for _, binding := range after.Document.Bindings {
+						if binding.RowKey == selection.Target.TargetKey &&
+							binding.CanonicalField == selection.Target.CanonicalField &&
+							binding.EntityType == selection.Target.TargetEntity &&
+							binding.StableKey != nil && *binding.StableKey == selection.Reference.Key() &&
+							binding.BindingVersion == uint64(selection.NextVersion) {
+							matched = true
+							break
+						}
+					}
+					if !matched {
+						return DocumentCommandReceipt{}, errors.New("DOCUMENT_PROJECTION_VIOLATION")
+					}
 				}
 				if e = s.host.Authorize(ctx, actor, principal, nextScope, sql); e != nil {
 					return DocumentCommandReceipt{}, errors.New("DOCUMENT_AUTHORIZATION_REQUIRED")

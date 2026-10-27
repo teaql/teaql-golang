@@ -10,6 +10,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/teaql/teaql-golang/blobreference"
 	"github.com/teaql/teaql-golang/core"
 	"github.com/teaql/teaql-golang/runtime"
 	document "github.com/teaql/teaql-golang/securedocumentreference"
@@ -20,6 +21,7 @@ type sqliteDocumentHost struct {
 	principal   document.TrustedReferencePrincipal
 	presentFail bool
 	mutations   int
+	catalog     *blobreference.SQLiteCatalog
 }
 
 func (h *sqliteDocumentHost) Principal(*runtime.UserContext) (document.TrustedReferencePrincipal, error) {
@@ -45,8 +47,12 @@ func (h *sqliteDocumentHost) Authorize(ctx stdcontext.Context, _ *runtime.UserCo
 
 func (h *sqliteDocumentHost) Load(ctx stdcontext.Context, _ *runtime.UserContext,
 	businessID string, sql teaqlsql.SqlTransport) (document.CurrentBoundDocument, error) {
+	projection := "SELECT id,version,quantity FROM document_order WHERE business_id = ?"
+	if h.catalog != nil {
+		projection = "SELECT id,version,quantity,blob_key FROM document_order WHERE business_id = ?"
+	}
 	rows, err := sql.FetchAllSql(ctx, &teaqlsql.CompiledQuery{
-		Sql:    "SELECT id,version,quantity FROM document_order WHERE business_id = ?",
+		Sql:    projection,
 		Params: []core.Value{core.ValText(businessID)},
 	})
 	if err != nil || len(rows) != 1 {
@@ -68,10 +74,66 @@ func (h *sqliteDocumentHost) Load(ctx stdcontext.Context, _ *runtime.UserContext
 			WritableFields: []string{"quantity"}, AllowedMutations: []string{"UPDATE"},
 		}},
 	}
+	var bindings []document.DocumentBlobBindingSnapshot
+	if h.catalog != nil {
+		bound, err := sql.FetchAllSql(ctx, &teaqlsql.CompiledQuery{Sql: `SELECT key,version
+			FROM teaql_blob_binding WHERE scope=? AND entity=? AND entity_id=? AND field=?`,
+			Params: []core.Value{core.ValText("merchant:7"), core.ValText("Order"),
+				core.ValText("10"), core.ValText("attachment")}})
+		if err != nil || len(bound) > 1 {
+			return document.CurrentBoundDocument{}, errors.New("bad binding")
+		}
+		var stable *string
+		var bindingVersion uint64
+		if len(bound) == 1 {
+			value, ok := bound[0]["version"].TryI64()
+			if !ok || value < 0 {
+				return document.CurrentBoundDocument{}, errors.New("bad binding version")
+			}
+			bindingVersion = uint64(value)
+			if key, ok := bound[0]["key"].V.(string); ok {
+				stable = &key
+			}
+		}
+		businessKey, _ := rows[0]["blob_key"].V.(string)
+		if (stable == nil && businessKey != "") ||
+			(stable != nil && *stable != businessKey) {
+			return document.CurrentBoundDocument{}, errors.New("business binding mismatch")
+		}
+		snapshot.Entities[0].LoadedFields = []string{"attachment", "quantity"}
+		snapshot.Entities[0].WritableFields = []string{"attachment", "quantity"}
+		bindings = []document.DocumentBlobBindingSnapshot{{RowKey: "order:10",
+			CanonicalField: "attachment", EntityType: "Order", StableKey: stable,
+			BindingVersion: bindingVersion, Nullable: true, Writable: true}}
+	}
 	return document.CurrentBoundDocument{
-		Document: document.BoundDocumentSnapshot{Snapshot: snapshot},
+		Document: document.BoundDocumentSnapshot{Snapshot: snapshot, Bindings: bindings},
 		Body:     map[string]any{"quantity": quantity}, Lifetime: 5 * time.Minute,
 	}, nil
+}
+
+func (h *sqliteDocumentHost) BindBlobSelection(ctx stdcontext.Context, actor *runtime.UserContext,
+	graph *runtime.GraphSQLHandle, selection document.VerifiedDocumentBlobSelection,
+	sql teaqlsql.SqlTransport) error {
+	if h.catalog == nil || selection.Target.TargetEntity != "Order" ||
+		selection.Target.TargetKey != "order:10" || selection.Target.CanonicalField != "attachment" ||
+		selection.EntityID != "10" {
+		return errors.New("BLOB_BIND_DENIED")
+	}
+	affected, err := sql.ExecuteSql(ctx, &teaqlsql.CompiledQuery{
+		Sql:    "UPDATE document_order SET blob_key=? WHERE id=?",
+		Params: []core.Value{core.ValText(selection.Reference.Key()), core.ValI64(10)}})
+	if err != nil || affected != 1 {
+		return errors.New("BLOB_BIND_DENIED")
+	}
+	ref := selection.Reference
+	_, err = h.catalog.BindOnGraphLease(ctx, graph, actor, sql,
+		blobreference.BindingChange{Target: blobreference.BindingTarget{
+			Entity: "Order", EntityID: "10", Field: "attachment"},
+			Next: &ref, ExpectedVersion: selection.ExpectedVersion,
+			NextVersion: selection.NextVersion, Action: "Update", ExpectedScope: "merchant:7"},
+		&catalogPermission{scope: "merchant:7", allowed: true})
+	return err
 }
 
 func (h *sqliteDocumentHost) Apply(ctx stdcontext.Context, _ *runtime.UserContext,

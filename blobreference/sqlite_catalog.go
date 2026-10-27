@@ -211,6 +211,22 @@ func (c *SQLiteCatalog) BindInGraph(ctx stdcontext.Context, graph *runtime.Graph
 	return change.NextVersion, nil
 }
 
+// BindOnGraphLease is for a trusted host already executing inside the graph's
+// physical SQL callback (for example, a secure-document command journal).
+// It must receive that callback's lease; borrowing again would deadlock the
+// SQL transaction owner. A failure must propagate to the enclosing callback.
+func (c *SQLiteCatalog) BindOnGraphLease(ctx stdcontext.Context, graph *runtime.GraphSQLHandle,
+	actor *runtime.UserContext, lease teaqlsql.SqlTransport,
+	change BindingChange, authorization BindingAuthorization) (int64, error) {
+	if graph == nil || !graph.IsCurrentFor(actor) || lease == nil {
+		return 0, errors.New("BLOB_TRANSACTION_REQUIRED")
+	}
+	if err := c.bindWithTransport(ctx, lease, actor, change, authorization); err != nil {
+		return 0, err
+	}
+	return change.NextVersion, nil
+}
+
 // bindWithTransport is used by the owner-scoped native mutation lease and the
 // explicit graph handle. It cannot commit or roll back the caller's transaction.
 func (c *SQLiteCatalog) bindWithTransport(ctx stdcontext.Context, transport teaqlsql.SqlTransport,
