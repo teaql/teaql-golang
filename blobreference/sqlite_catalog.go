@@ -1,0 +1,225 @@
+// Package blobreference contains the optional Blob catalog, independent of the base runtime.
+package blobreference
+
+import (
+	stdcontext "context"
+	"errors"
+	"strconv"
+	"strings"
+	"unicode"
+	"unicode/utf8"
+
+	"github.com/teaql/teaql-golang/core"
+	"github.com/teaql/teaql-golang/runtime"
+	teaqlsql "github.com/teaql/teaql-golang/sql"
+)
+
+type BindingTarget struct{ Entity, EntityID, Field string }
+
+type BindingChange struct {
+	Target                       BindingTarget
+	Next                         *core.BlobRef
+	ExpectedVersion, NextVersion int64
+	Action                       string
+}
+
+// BindingAuthorization must resolve the current trusted scope and permission at bind time.
+type BindingAuthorization interface {
+	Scope(*runtime.UserContext) (string, error)
+	Authorize(*runtime.UserContext, BindingTarget, *core.BlobRef, *core.BlobRef, string) error
+}
+
+type SQLiteCatalog struct{ transport teaqlsql.SqlTransport }
+
+func NewSQLiteCatalog(transport teaqlsql.SqlTransport) (*SQLiteCatalog, error) {
+	if transport == nil {
+		return nil, errors.New("BLOB_CAPABILITY_MISSING")
+	}
+	return &SQLiteCatalog{transport: transport}, nil
+}
+
+// EnsureSchema is an explicit host migration action, never part of module installation.
+func (c *SQLiteCatalog) EnsureSchema(ctx stdcontext.Context) error {
+	for _, statement := range []string{
+		`CREATE TABLE IF NOT EXISTS teaql_blob_catalog (
+            key TEXT PRIMARY KEY, scope TEXT NOT NULL, object_key TEXT NOT NULL,
+            content_version TEXT NOT NULL, file_name TEXT NOT NULL,
+            content_type TEXT NOT NULL, size_bytes BIGINT NOT NULL,
+            status TEXT NOT NULL CHECK (status IN
+              ('initiated','uploaded_unbound','available','deleting','deleted'))
+        )`,
+		`CREATE TABLE IF NOT EXISTS teaql_blob_binding (
+            scope TEXT NOT NULL, entity TEXT NOT NULL, entity_id TEXT NOT NULL,
+            field TEXT NOT NULL, key TEXT, version BIGINT NOT NULL,
+            PRIMARY KEY (scope,entity,entity_id,field),
+            FOREIGN KEY (key) REFERENCES teaql_blob_catalog(key)
+        )`,
+		`CREATE INDEX IF NOT EXISTS teaql_blob_binding_key ON teaql_blob_binding(key)`,
+	} {
+		if _, err := c.transport.ExecuteSql(ctx, &teaqlsql.CompiledQuery{Sql: statement}); err != nil {
+			return errors.New("BLOB_CATALOG_FAILED")
+		}
+	}
+	return nil
+}
+
+func (c *SQLiteCatalog) ValidateSchema(ctx stdcontext.Context) error {
+	for _, statement := range []string{
+		`SELECT key, scope, object_key, content_version, file_name, content_type, size_bytes, status FROM teaql_blob_catalog WHERE 1 = 0`,
+		`SELECT scope, entity, entity_id, field, key, version FROM teaql_blob_binding WHERE 1 = 0`,
+	} {
+		if _, err := c.transport.FetchAllSql(ctx, &teaqlsql.CompiledQuery{Sql: statement}); err != nil {
+			return errors.New("BLOB_SCHEMA_MISSING")
+		}
+	}
+	rows, err := c.transport.FetchAllSql(ctx, &teaqlsql.CompiledQuery{Sql: `PRAGMA table_info(teaql_blob_binding)`})
+	if err != nil {
+		return errors.New("BLOB_SCHEMA_MISSING")
+	}
+	keyNullable, versionRequired := false, false
+	for _, row := range rows {
+		name, _ := sqlText(row["name"])
+		notNull, _ := row["notnull"].TryI64()
+		if name == "key" {
+			keyNullable = notNull == 0
+		}
+		if name == "version" {
+			versionRequired = notNull == 1
+		}
+	}
+	if !keyNullable || !versionRequired {
+		return errors.New("BLOB_SCHEMA_MISSING")
+	}
+	return nil
+}
+
+func validScope(value string) bool {
+	return value != "" && len(value) <= 256 && utf8.ValidString(value) &&
+		value == strings.TrimSpace(value) && strings.IndexFunc(value, unicode.IsControl) < 0
+}
+
+func validName(value string) bool {
+	return value != "" && utf8.RuneCountInString(value) <= 128 &&
+		utf8.ValidString(value) && value == strings.TrimSpace(value) &&
+		strings.IndexFunc(value, unicode.IsControl) < 0
+}
+
+func validEntityID(value string) bool {
+	id, err := strconv.ParseUint(value, 10, 64)
+	return err == nil && id > 0 && strconv.FormatUint(id, 10) == value
+}
+
+func sqlText(value core.Value) (string, bool) {
+	switch item := value.V.(type) {
+	case string:
+		return item, true
+	case []byte:
+		return string(item), true
+	default:
+		return "", false
+	}
+}
+
+func sqlQuery(sql string, params ...core.Value) *teaqlsql.CompiledQuery {
+	return &teaqlsql.CompiledQuery{Sql: sql, Params: params}
+}
+
+// BindInGraph changes one authoritative target under the caller's physical
+// graph transaction. Any failure poisons that graph even if its caller catches it.
+func (c *SQLiteCatalog) BindInGraph(ctx stdcontext.Context, graph *runtime.GraphSQLHandle,
+	actor *runtime.UserContext, change BindingChange, authorization BindingAuthorization) (int64, error) {
+	if graph == nil {
+		return 0, errors.New("BLOB_TRANSACTION_REQUIRED")
+	}
+	err := graph.WithSQL(func(transport teaqlsql.SqlTransport) error {
+		if !graph.BelongsTo(actor) {
+			return errors.New("BLOB_BIND_DENIED")
+		}
+		if c == nil || ctx == nil || actor == nil || authorization == nil ||
+			!validName(change.Target.Entity) || !validEntityID(change.Target.EntityID) ||
+			!validName(change.Target.Field) || change.ExpectedVersion < 0 ||
+			change.NextVersion <= change.ExpectedVersion ||
+			(change.Action != "Create" && change.Action != "Update" && change.Action != "Delete") {
+			return errors.New("BLOB_REFERENCE_INVALID")
+		}
+		if change.Next != nil {
+			if _, err := core.ParseBlobRef(change.Next.Key()); err != nil {
+				return errors.New("BLOB_REFERENCE_INVALID")
+			}
+		}
+		scope, err := authorization.Scope(actor)
+		if err != nil || !validScope(scope) {
+			return errors.New("BLOB_BIND_DENIED")
+		}
+		identity := []core.Value{core.ValText(scope), core.ValText(change.Target.Entity),
+			core.ValText(change.Target.EntityID), core.ValText(change.Target.Field)}
+		rows, err := transport.FetchAllSql(ctx, sqlQuery(`SELECT key, version FROM teaql_blob_binding
+            WHERE scope = ? AND entity = ? AND entity_id = ? AND field = ?`, identity...))
+		if err != nil {
+			return errors.New("BLOB_CATALOG_FAILED")
+		}
+		if len(rows) > 1 {
+			return errors.New("BLOB_CATALOG_FAILED")
+		}
+		version := int64(0)
+		var previous *core.BlobRef
+		if len(rows) == 1 {
+			var okay bool
+			version, okay = rows[0]["version"].TryI64()
+			if !okay || version < 0 {
+				return errors.New("BLOB_CATALOG_FAILED")
+			}
+			if rows[0]["key"].V != nil {
+				key, valid := sqlText(rows[0]["key"])
+				if !valid {
+					return errors.New("BLOB_CATALOG_FAILED")
+				}
+				parsed, parseErr := core.ParseBlobRef(key)
+				if parseErr != nil {
+					return errors.New("BLOB_CATALOG_FAILED")
+				}
+				previous = &parsed
+			}
+		}
+		if version != change.ExpectedVersion {
+			return errors.New("BLOB_BIND_DENIED")
+		}
+		if err := authorization.Authorize(actor, change.Target, previous, change.Next, change.Action); err != nil {
+			return errors.New("BLOB_BIND_DENIED")
+		}
+		key := core.ValNull()
+		if change.Next != nil {
+			key = core.ValText(change.Next.Key())
+			eligible, queryErr := transport.FetchAllSql(ctx, sqlQuery(`SELECT key FROM teaql_blob_catalog
+                WHERE key = ? AND scope = ? AND status = 'available'`, key, core.ValText(scope)))
+			if queryErr != nil {
+				return errors.New("BLOB_CATALOG_FAILED")
+			}
+			if len(eligible) != 1 {
+				return errors.New("BLOB_BIND_DENIED")
+			}
+		}
+		var affected uint64
+		if len(rows) == 1 {
+			affected, err = transport.ExecuteSql(ctx, sqlQuery(`UPDATE teaql_blob_binding SET key = ?, version = ?
+                WHERE scope = ? AND entity = ? AND entity_id = ? AND field = ? AND version = ?`,
+				append([]core.Value{key, core.ValI64(change.NextVersion)},
+					append(identity, core.ValI64(version))...)...))
+		} else {
+			affected, err = transport.ExecuteSql(ctx, sqlQuery(`INSERT INTO teaql_blob_binding
+                (scope, entity, entity_id, field, key, version) VALUES (?, ?, ?, ?, ?, ?)`,
+				append(identity, key, core.ValI64(change.NextVersion))...))
+		}
+		if err != nil {
+			return errors.New("BLOB_CATALOG_FAILED")
+		}
+		if affected != 1 {
+			return errors.New("BLOB_BIND_DENIED")
+		}
+		return nil
+	})
+	if err != nil {
+		return 0, err
+	}
+	return change.NextVersion, nil
+}

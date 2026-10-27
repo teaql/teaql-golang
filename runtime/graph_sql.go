@@ -15,6 +15,11 @@ type physicalSQLModuleOwner interface {
 // commit, and a retained handle stops working when that graph ends.
 type GraphSQLHandle struct{ context *UserContext }
 
+// BelongsTo checks the trusted invocation context without exposing its owner.
+func (h *GraphSQLHandle) BelongsTo(context *UserContext) bool {
+	return h != nil && h.context == context
+}
+
 func (h *GraphSQLHandle) WithSQL(work func(teaql_sql.SqlTransport) error) error {
 	if h == nil || h.context == nil || work == nil {
 		return errors.New("BLOB_TRANSACTION_REQUIRED")
