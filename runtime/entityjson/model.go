@@ -64,6 +64,11 @@ type Document interface {
 	LoadedJSONFields() core.Record
 }
 
+// QueryPropertyDocument exposes an explicitly captured, output-only projection.
+// Unknown loaded fields and arbitrary private dynamic state remain excluded.
+// Parsing a JSON document never populates these properties or mutation intent.
+type QueryPropertyDocument interface{ JSONQueryProperties() core.Record }
+
 type Limits struct{ MaxBytes, MaxDepth int }
 
 type Error struct {
@@ -667,6 +672,59 @@ func (m *Model) writeEntity(w *writer, entityType string, value any, profile run
 		}
 		if err := m.writeValue(w, field, value, profile, childLocation, childPath, depth+1, active); err != nil {
 			return err
+		}
+	}
+	if projected, ok := value.(QueryPropertyDocument); ok {
+		properties := projected.JSONQueryProperties()
+		keys := make([]string, 0, len(properties))
+		for name := range properties {
+			keys = append(keys, name)
+		}
+		sort.Strings(keys)
+		for _, name := range keys {
+			childLocation, childPath := location.Property(name), pointer(path, name)
+			_, collision := s.byKey[name]
+			for _, names := range s.names {
+				if _, known := names[name]; known {
+					collision = true
+				}
+			}
+			for _, field := range s.fields {
+				if field.RelationName != "" && name == field.RelationName {
+					collision = true
+				}
+			}
+			if collision {
+				return failure("WIRE_QUERY_PROPERTY_COLLISION", childLocation, childPath)
+			}
+			if !first {
+				if err := w.add(",", childLocation, childPath); err != nil {
+					return err
+				}
+			}
+			first = false
+			if err := w.quoted(name, childLocation, childPath); err != nil {
+				return err
+			}
+			if err := w.add(":", childLocation, childPath); err != nil {
+				return err
+			}
+			var err error
+			switch raw := properties[name].V.(type) {
+			case decimal.Decimal:
+				// Reuse bounded Decimal validation before formatting an exponent.
+				err = m.writeValue(w, Field{Kind: Decimal}, properties[name], profile, childLocation, childPath, depth+1, active)
+			case float32:
+				if math.IsNaN(float64(raw)) || math.IsInf(float64(raw), 0) {
+					return failure("WIRE_INVALID_TYPE", childLocation, childPath)
+				}
+				err = w.add(strconv.FormatFloat(float64(raw), 'g', -1, 32), childLocation, childPath)
+			default:
+				err = m.writeJSON(w, raw, childLocation, childPath, depth+1)
+			}
+			if err != nil {
+				return err
+			}
 		}
 	}
 	return w.add("}", location, path)

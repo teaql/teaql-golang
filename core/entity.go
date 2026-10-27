@@ -70,6 +70,7 @@ type BaseEntityData struct {
 	Version            int64
 	Dynamic            Record
 	RelationFacets     RelationFacetResults
+	queryProperties    Record
 	identityProjection bool
 	idLoaded           bool
 	versionLoaded      bool
@@ -102,6 +103,19 @@ func (b *BaseEntityData) GetDynamic(key string) (Value, bool) {
 	val, ok := b.Dynamic[key]
 	return val, ok
 }
+
+// CaptureQueryProperties retains only explicitly selected, read-only result
+// aliases. It is independent of modeled fields, private dynamic state and any
+// mutation ledger. Hydration supplies the selected aliases, never wire input.
+func (b *BaseEntityData) CaptureQueryProperties(values Record) {
+	if len(values) == 0 {
+		b.queryProperties = nil
+		return
+	}
+	b.queryProperties = CloneRecord(values)
+}
+
+func (b *BaseEntityData) QueryProperties() Record { return CloneRecord(b.queryProperties) }
 
 func (b *BaseEntityData) DynamicI64(key string) (int64, bool) {
 	if val, ok := b.GetDynamic(key); ok {
