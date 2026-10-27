@@ -91,7 +91,7 @@ func TestSQLiteBlobCatalogBindingSharesNativeBusinessGraphAndRejectsStaleOrRevok
 	if _, err := e.db.Exec(`INSERT INTO teaql_blob_catalog
         (key,scope,object_key,content_version,file_name,content_type,size_bytes,status)
         VALUES (?,?,?,?,?,?,?,?)`, reference.Key(), "tenant-a", "objects/1", "v1",
-		"asset.pdf", "application/pdf", 7, "available"); err != nil {
+		"asset.pdf", "application/pdf", 7, "uploaded_unbound"); err != nil {
 		t.Fatal(err)
 	}
 	permission := &catalogPermission{scope: "tenant-a", allowed: true}
@@ -137,6 +137,11 @@ func TestSQLiteBlobCatalogBindingSharesNativeBusinessGraphAndRejectsStaleOrRevok
 	if err := e.db.QueryRow(`SELECT key,version FROM teaql_blob_binding`).Scan(&key, &version); err != nil ||
 		key != reference.Key() || version != 1 {
 		t.Fatalf("wrong current binding: %s %d %v", key, version, err)
+	}
+	var state string
+	if err := e.db.QueryRow(`SELECT status FROM teaql_blob_catalog WHERE key = ?`,
+		reference.Key()).Scan(&state); err != nil || state != "available" {
+		t.Fatalf("bind did not promote catalog: %s %v", state, err)
 	}
 
 	rollback := change
@@ -225,6 +230,10 @@ func TestSQLiteBlobCatalogBindingSharesNativeBusinessGraphAndRejectsStaleOrRevok
 		nullable != nil || version != 2 {
 		t.Fatalf("tombstone not persisted: %v %d %v", nullable, version, err)
 	}
+	if err := e.db.QueryRow(`SELECT status FROM teaql_blob_catalog WHERE key = ?`,
+		reference.Key()).Scan(&state); err != nil || state != "uploaded_unbound" {
+		t.Fatalf("unbind did not return catalog to unbound: %s %v", state, err)
+	}
 	rebind := change
 	rebind.Action, rebind.ExpectedVersion, rebind.NextVersion = "Update", 2, 3
 	err = e.ctx.ExecuteGraphSaveWithSQL(intent, func(graph *runtime.GraphSQLHandle) error {
@@ -237,6 +246,43 @@ func TestSQLiteBlobCatalogBindingSharesNativeBusinessGraphAndRejectsStaleOrRevok
 	if err := e.db.QueryRow(`SELECT key,version FROM teaql_blob_binding`).Scan(&key, &version); err != nil ||
 		key != reference.Key() || version != 3 {
 		t.Fatalf("rebind failed: %s %d %v", key, version, err)
+	}
+	if err := e.db.QueryRow(`SELECT status FROM teaql_blob_catalog WHERE key = ?`,
+		reference.Key()).Scan(&state); err != nil || state != "available" {
+		t.Fatalf("rebind did not promote catalog: %s %v", state, err)
+	}
+	second := change
+	second.Target.EntityID = "2"
+	if err := e.ctx.ExecuteGraphSaveWithSQL(intent, func(graph *runtime.GraphSQLHandle) error {
+		if _, err := e.ctx.GetResource("dataService").(ds.MutationExecutor).Mutate(e.ctx, business(2)); err != nil {
+			return err
+		}
+		_, err := catalog.BindInGraph(ctx, graph, e.ctx, second, permission)
+		return err
+	}); err != nil {
+		t.Fatal(err)
+	}
+	clear.ExpectedVersion, clear.NextVersion = 3, 4
+	if err := e.ctx.ExecuteGraphSaveWithSQL(intent, func(graph *runtime.GraphSQLHandle) error {
+		_, err := catalog.BindInGraph(ctx, graph, e.ctx, clear, permission)
+		return err
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if err := e.db.QueryRow(`SELECT status FROM teaql_blob_catalog WHERE key = ?`,
+		reference.Key()).Scan(&state); err != nil || state != "available" {
+		t.Fatalf("one of two unbinds hid the remaining binding: %s %v", state, err)
+	}
+	clear.Target.EntityID, clear.ExpectedVersion, clear.NextVersion = "2", 1, 2
+	if err := e.ctx.ExecuteGraphSaveWithSQL(intent, func(graph *runtime.GraphSQLHandle) error {
+		_, err := catalog.BindInGraph(ctx, graph, e.ctx, clear, permission)
+		return err
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if err := e.db.QueryRow(`SELECT status FROM teaql_blob_catalog WHERE key = ?`,
+		reference.Key()).Scan(&state); err != nil || state != "uploaded_unbound" {
+		t.Fatalf("final unbind did not return catalog to unbound: %s %v", state, err)
 	}
 }
 

@@ -241,7 +241,8 @@ func (c *SQLiteCatalog) BindInGraph(ctx stdcontext.Context, graph *runtime.Graph
 		if change.Next != nil {
 			key = core.ValText(change.Next.Key())
 			eligible, queryErr := transport.FetchAllSql(ctx, sqlQuery(`SELECT key FROM teaql_blob_catalog
-                WHERE key = ? AND scope = ? AND status = 'available'`, key, core.ValText(scope)))
+				WHERE key = ? AND scope = ? AND status IN ('uploaded_unbound','available')`,
+				key, core.ValText(scope)))
 			if queryErr != nil {
 				return errors.New("BLOB_CATALOG_FAILED")
 			}
@@ -265,6 +266,27 @@ func (c *SQLiteCatalog) BindInGraph(ctx stdcontext.Context, graph *runtime.Graph
 		}
 		if affected != 1 {
 			return errors.New("BLOB_BIND_DENIED")
+		}
+		if change.Next != nil {
+			promoted, promoteErr := transport.ExecuteSql(ctx, sqlQuery(`UPDATE teaql_blob_catalog
+				SET status = 'available' WHERE key = ? AND scope = ?
+				AND status IN ('uploaded_unbound','available')`,
+				core.ValText(change.Next.Key()), core.ValText(scope)))
+			if promoteErr != nil {
+				return errors.New("BLOB_CATALOG_FAILED")
+			}
+			if promoted != 1 {
+				return errors.New("BLOB_BIND_DENIED")
+			}
+		}
+		if previous != nil && (change.Next == nil || previous.Key() != change.Next.Key()) {
+			_, releaseErr := transport.ExecuteSql(ctx, sqlQuery(`UPDATE teaql_blob_catalog
+				SET status = 'uploaded_unbound' WHERE key = ? AND scope = ? AND status = 'available'
+				AND NOT EXISTS (SELECT 1 FROM teaql_blob_binding WHERE key = ?)`,
+				core.ValText(previous.Key()), core.ValText(scope), core.ValText(previous.Key())))
+			if releaseErr != nil {
+				return errors.New("BLOB_CATALOG_FAILED")
+			}
 		}
 		return nil
 	})
