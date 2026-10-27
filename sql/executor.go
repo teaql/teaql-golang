@@ -64,10 +64,11 @@ type SqlTransaction interface {
 }
 
 type SqlDataServiceExecutor struct {
-	Dialect        SqlDialect
-	Transport      SqlTransport
-	SchemaProvider ds.SchemaProvider
-	transactional  bool
+	Dialect         SqlDialect
+	Transport       SqlTransport
+	SchemaProvider  ds.SchemaProvider
+	transactional   bool
+	blobParticipant BlobMutationParticipant
 }
 
 func NewSqlDataServiceExecutor(dialect SqlDialect, transport SqlTransport, schemaProvider ds.SchemaProvider) *SqlDataServiceExecutor {
@@ -323,10 +324,17 @@ func (e *SqlDataServiceExecutor) mutatePrepared(context stdcontext.Context, requ
 	entityName := leaf.entityName
 	defaultDialect := &DefaultSqlDialect{Dialect: e.Dialect}
 	compiled := leaf.query
+	var err error
+	var blobBefore core.Record
+	if entityDesc.HasBlobFields() {
+		blobBefore, err = e.readBlobPreimage(context, request, entityDesc)
+		if err != nil {
+			return nil, err
+		}
+	}
 
 	statementParent := context
 	context, statement := ds.StartSQLStatement(context, e.Dialect.Kind().String(), leaf.operation)
-	var err error
 	completed := false
 	defer func() { ds.FinishSQLStatement(statement, err, completed) }()
 	start := time.Now()
@@ -421,6 +429,21 @@ func (e *SqlDataServiceExecutor) mutatePrepared(context stdcontext.Context, requ
 			return nil, fmt.Errorf("persisted %s record could not be read back", entityName)
 		}
 		result.PersistedRecord = rows[0]
+	}
+	if entityDesc.HasBlobFields() && affectedRows == 1 {
+		lease := &physicalSQLLease{transport: e.Transport}
+		atomic.StoreUint32(&lease.active, 1)
+		applyErr := func() error {
+			defer atomic.StoreUint32(&lease.active, 0)
+			return e.blobParticipant.ApplyBlobMutation(context, lease, e.Dialect.Kind(),
+				request, result, entityDesc, blobBefore)
+		}()
+		if applyErr == nil && atomic.LoadUint32(&lease.failed) != 0 {
+			applyErr = errors.New("GRAPH_TRANSACTION_ROLLBACK_ONLY")
+		}
+		if applyErr != nil {
+			return nil, applyErr
+		}
 	}
 	if audits != nil {
 		if err := audits.capture(context, request, result); err != nil {
@@ -551,6 +574,7 @@ func (e *SqlDataServiceExecutor) Begin(context stdcontext.Context) (ds.Transacti
 		Dialect:        e.Dialect,
 		Transport:      tx,
 		SchemaProvider: e.SchemaProvider,
+		blobScope:      blobScopeFrom(context),
 	}, nil
 }
 
@@ -558,6 +582,7 @@ type SqlDataServiceTransaction struct {
 	Dialect        SqlDialect
 	Transport      SqlTransactionTransportTx
 	SchemaProvider ds.SchemaProvider
+	blobScope      *blobParticipantScope
 	mu             sync.Mutex
 	closed         bool
 	rollbackOnly   error
@@ -656,6 +681,11 @@ func (t *SqlDataServiceTransaction) Mutate(context stdcontext.Context, request d
 	if t.rollbackOnly != nil {
 		return nil, fmt.Errorf("transaction requires rollback after a failed mutation: %w", t.rollbackOnly)
 	}
+	if t.blobScope != blobScopeFrom(context) {
+		t.rollbackOnly = errors.New("BLOB_BIND_DENIED")
+		t.audits.deliveries = nil
+		return nil, t.rollbackOnly
+	}
 	defer func() {
 		if failure := recover(); failure != nil {
 			t.rollbackOnly = errors.New("transaction mutation panicked")
@@ -669,13 +699,20 @@ func (t *SqlDataServiceTransaction) Mutate(context stdcontext.Context, request d
 		SchemaProvider: t.SchemaProvider,
 		transactional:  true,
 	}
+	if t.blobScope != nil {
+		executor.blobParticipant = t.blobScope.participant
+	}
 	captured, err := ds.CaptureMutationRequest(request)
 	if err != nil {
+		if executor.blobParticipant != nil {
+			t.rollbackOnly = err
+			t.audits.deliveries = nil
+		}
 		return nil, err
 	}
 	plan, err := executor.prepareMutation(captured)
 	if err != nil {
-		if errors.Is(err, errBlobCapabilityMissing) {
+		if executor.blobParticipant != nil || errors.Is(err, errBlobCapabilityMissing) {
 			t.rollbackOnly = err
 			t.audits.deliveries = nil
 		}

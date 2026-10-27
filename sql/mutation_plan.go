@@ -68,9 +68,8 @@ func (e *SqlDataServiceExecutor) prepareMutation(request ds.MutationRequest) (*s
 		if entity == nil {
 			return fmt.Errorf("unknown entity %s", name)
 		}
-		// A typed Blob business row must not commit without its same-owner catalog
-		// participant. The participant SPI is still under construction, so fail closed.
-		if entity.HasBlobFields() {
+		// A typed Blob business row must use the same physical owner as its catalog.
+		if entity.HasBlobFields() && (!e.transactional || e.blobParticipant == nil) {
 			return errBlobCapabilityMissing
 		}
 		dialect := &DefaultSqlDialect{Dialect: e.Dialect}

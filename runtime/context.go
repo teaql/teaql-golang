@@ -13,6 +13,7 @@ import (
 	"github.com/teaql/teaql-golang/core"
 	"github.com/teaql/teaql-golang/data_service"
 	"github.com/teaql/teaql-golang/internal/mutationaudit"
+	teaql_sql "github.com/teaql/teaql-golang/sql"
 )
 
 type ContinuousPageCursor struct {
@@ -912,8 +913,16 @@ func (c *UserContext) executeGraphSave(operationContext stdcontext.Context, work
 	}
 	c.graphSaveMu.Lock()
 	provider := c.resources["dataService"]
+	blobResource := c.resources["blobMutationParticipant"]
 	originalIDGenerator, hadIDGenerator := c.resources["idGenerator"]
 	c.graphSaveMu.Unlock()
+	if blobResource != nil {
+		participant, okay := blobResource.(teaql_sql.BlobMutationParticipant)
+		if !okay {
+			return errors.New("BLOB_CAPABILITY_MISSING")
+		}
+		operationContext = teaql_sql.WithBlobMutationParticipant(operationContext, participant, c)
+	}
 	executor, ok := provider.(data_service.TransactionExecutor)
 	if !ok {
 		return fmt.Errorf("configured dataService does not support graph transactions")

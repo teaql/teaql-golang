@@ -21,6 +21,11 @@ type BindingChange struct {
 	Next                         *core.BlobRef
 	ExpectedVersion, NextVersion int64
 	Action                       string
+	// Native mutations require the stored pre-write business value and a
+	// pre-existing binding on update/delete. Explicit graph callers may omit it.
+	RequirePrevious  bool
+	ExpectedPrevious *core.BlobRef
+	ExpectedScope    string
 }
 
 type ReadRecord struct {
@@ -198,113 +203,129 @@ func (c *SQLiteCatalog) BindInGraph(ctx stdcontext.Context, graph *runtime.Graph
 		if !graph.BelongsTo(actor) {
 			return errors.New("BLOB_BIND_DENIED")
 		}
-		if c == nil || ctx == nil || actor == nil || authorization == nil ||
-			!validName(change.Target.Entity) || !validEntityID(change.Target.EntityID) ||
-			!validName(change.Target.Field) || change.ExpectedVersion < 0 ||
-			change.NextVersion <= change.ExpectedVersion ||
-			(change.Action != "Create" && change.Action != "Update" && change.Action != "Delete") {
-			return errors.New("BLOB_REFERENCE_INVALID")
-		}
-		if change.Next != nil {
-			if _, err := core.ParseBlobRef(change.Next.Key()); err != nil {
-				return errors.New("BLOB_REFERENCE_INVALID")
-			}
-		}
-		scope, err := authorization.Scope(actor)
-		if err != nil || !validScope(scope) {
-			return errors.New("BLOB_BIND_DENIED")
-		}
-		identity := []core.Value{core.ValText(scope), core.ValText(change.Target.Entity),
-			core.ValText(change.Target.EntityID), core.ValText(change.Target.Field)}
-		rows, err := transport.FetchAllSql(ctx, sqlQuery(`SELECT key, version FROM teaql_blob_binding
-            WHERE scope = ? AND entity = ? AND entity_id = ? AND field = ?`, identity...))
-		if err != nil {
-			return errors.New("BLOB_CATALOG_FAILED")
-		}
-		if len(rows) > 1 {
-			return errors.New("BLOB_CATALOG_FAILED")
-		}
-		version := int64(0)
-		var previous *core.BlobRef
-		if len(rows) == 1 {
-			var okay bool
-			version, okay = rows[0]["version"].TryI64()
-			if !okay || version < 0 {
-				return errors.New("BLOB_CATALOG_FAILED")
-			}
-			if rows[0]["key"].V != nil {
-				key, valid := sqlText(rows[0]["key"])
-				if !valid {
-					return errors.New("BLOB_CATALOG_FAILED")
-				}
-				parsed, parseErr := core.ParseBlobRef(key)
-				if parseErr != nil {
-					return errors.New("BLOB_CATALOG_FAILED")
-				}
-				previous = &parsed
-			}
-		}
-		if version != change.ExpectedVersion {
-			return errors.New("BLOB_BIND_DENIED")
-		}
-		if err := authorization.Authorize(actor, change.Target, previous, change.Next, change.Action); err != nil {
-			return errors.New("BLOB_BIND_DENIED")
-		}
-		key := core.ValNull()
-		if change.Next != nil {
-			key = core.ValText(change.Next.Key())
-			eligible, queryErr := transport.FetchAllSql(ctx, sqlQuery(`SELECT key FROM teaql_blob_catalog
-				WHERE key = ? AND scope = ? AND status IN ('uploaded_unbound','available')`,
-				key, core.ValText(scope)))
-			if queryErr != nil {
-				return errors.New("BLOB_CATALOG_FAILED")
-			}
-			if len(eligible) != 1 {
-				return errors.New("BLOB_BIND_DENIED")
-			}
-		}
-		var affected uint64
-		if len(rows) == 1 {
-			affected, err = transport.ExecuteSql(ctx, sqlQuery(`UPDATE teaql_blob_binding SET key = ?, version = ?
-                WHERE scope = ? AND entity = ? AND entity_id = ? AND field = ? AND version = ?`,
-				append([]core.Value{key, core.ValI64(change.NextVersion)},
-					append(identity, core.ValI64(version))...)...))
-		} else {
-			affected, err = transport.ExecuteSql(ctx, sqlQuery(`INSERT INTO teaql_blob_binding
-                (scope, entity, entity_id, field, key, version) VALUES (?, ?, ?, ?, ?, ?)`,
-				append(identity, key, core.ValI64(change.NextVersion))...))
-		}
-		if err != nil {
-			return errors.New("BLOB_CATALOG_FAILED")
-		}
-		if affected != 1 {
-			return errors.New("BLOB_BIND_DENIED")
-		}
-		if change.Next != nil {
-			promoted, promoteErr := transport.ExecuteSql(ctx, sqlQuery(`UPDATE teaql_blob_catalog
-				SET status = 'available' WHERE key = ? AND scope = ?
-				AND status IN ('uploaded_unbound','available')`,
-				core.ValText(change.Next.Key()), core.ValText(scope)))
-			if promoteErr != nil {
-				return errors.New("BLOB_CATALOG_FAILED")
-			}
-			if promoted != 1 {
-				return errors.New("BLOB_BIND_DENIED")
-			}
-		}
-		if previous != nil && (change.Next == nil || previous.Key() != change.Next.Key()) {
-			_, releaseErr := transport.ExecuteSql(ctx, sqlQuery(`UPDATE teaql_blob_catalog
-				SET status = 'uploaded_unbound' WHERE key = ? AND scope = ? AND status = 'available'
-				AND NOT EXISTS (SELECT 1 FROM teaql_blob_binding WHERE key = ?)`,
-				core.ValText(previous.Key()), core.ValText(scope), core.ValText(previous.Key())))
-			if releaseErr != nil {
-				return errors.New("BLOB_CATALOG_FAILED")
-			}
-		}
-		return nil
+		return c.bindWithTransport(ctx, transport, actor, change, authorization)
 	})
 	if err != nil {
 		return 0, err
 	}
 	return change.NextVersion, nil
+}
+
+// bindWithTransport is used by the owner-scoped native mutation lease and the
+// explicit graph handle. It cannot commit or roll back the caller's transaction.
+func (c *SQLiteCatalog) bindWithTransport(ctx stdcontext.Context, transport teaqlsql.SqlTransport,
+	actor *runtime.UserContext, change BindingChange, authorization BindingAuthorization) error {
+	if c == nil || ctx == nil || actor == nil || authorization == nil ||
+		!validName(change.Target.Entity) || !validEntityID(change.Target.EntityID) ||
+		!validName(change.Target.Field) || change.ExpectedVersion < 0 ||
+		change.NextVersion <= change.ExpectedVersion ||
+		(change.Action != "Create" && change.Action != "Update" && change.Action != "Delete") {
+		return errors.New("BLOB_REFERENCE_INVALID")
+	}
+	if change.Next != nil {
+		if _, err := core.ParseBlobRef(change.Next.Key()); err != nil {
+			return errors.New("BLOB_REFERENCE_INVALID")
+		}
+	}
+	scope, err := authorization.Scope(actor)
+	if err != nil || !validScope(scope) {
+		return errors.New("BLOB_BIND_DENIED")
+	}
+	if change.ExpectedScope != "" && scope != change.ExpectedScope {
+		return errors.New("BLOB_BIND_DENIED")
+	}
+	identity := []core.Value{core.ValText(scope), core.ValText(change.Target.Entity),
+		core.ValText(change.Target.EntityID), core.ValText(change.Target.Field)}
+	rows, err := transport.FetchAllSql(ctx, sqlQuery(`SELECT key, version FROM teaql_blob_binding
+            WHERE scope = ? AND entity = ? AND entity_id = ? AND field = ?`, identity...))
+	if err != nil {
+		return errors.New("BLOB_CATALOG_FAILED")
+	}
+	if len(rows) > 1 {
+		return errors.New("BLOB_CATALOG_FAILED")
+	}
+	version := int64(0)
+	var previous *core.BlobRef
+	if len(rows) == 1 {
+		var okay bool
+		version, okay = rows[0]["version"].TryI64()
+		if !okay || version < 0 {
+			return errors.New("BLOB_CATALOG_FAILED")
+		}
+		if rows[0]["key"].V != nil {
+			key, valid := sqlText(rows[0]["key"])
+			if !valid {
+				return errors.New("BLOB_CATALOG_FAILED")
+			}
+			parsed, parseErr := core.ParseBlobRef(key)
+			if parseErr != nil {
+				return errors.New("BLOB_CATALOG_FAILED")
+			}
+			previous = &parsed
+		}
+	}
+	if version != change.ExpectedVersion {
+		return errors.New("BLOB_BIND_DENIED")
+	}
+	if change.RequirePrevious {
+		if len(rows) != 1 || (previous == nil) != (change.ExpectedPrevious == nil) ||
+			previous != nil && previous.Key() != change.ExpectedPrevious.Key() {
+			return errors.New("BLOB_BIND_DENIED")
+		}
+	}
+	if err := authorization.Authorize(actor, change.Target, previous, change.Next, change.Action); err != nil {
+		return errors.New("BLOB_BIND_DENIED")
+	}
+	key := core.ValNull()
+	if change.Next != nil {
+		key = core.ValText(change.Next.Key())
+		eligible, queryErr := transport.FetchAllSql(ctx, sqlQuery(`SELECT key FROM teaql_blob_catalog
+				WHERE key = ? AND scope = ? AND status IN ('uploaded_unbound','available')`,
+			key, core.ValText(scope)))
+		if queryErr != nil {
+			return errors.New("BLOB_CATALOG_FAILED")
+		}
+		if len(eligible) != 1 {
+			return errors.New("BLOB_BIND_DENIED")
+		}
+	}
+	var affected uint64
+	if len(rows) == 1 {
+		affected, err = transport.ExecuteSql(ctx, sqlQuery(`UPDATE teaql_blob_binding SET key = ?, version = ?
+                WHERE scope = ? AND entity = ? AND entity_id = ? AND field = ? AND version = ?`,
+			append([]core.Value{key, core.ValI64(change.NextVersion)},
+				append(identity, core.ValI64(version))...)...))
+	} else {
+		affected, err = transport.ExecuteSql(ctx, sqlQuery(`INSERT INTO teaql_blob_binding
+                (scope, entity, entity_id, field, key, version) VALUES (?, ?, ?, ?, ?, ?)`,
+			append(identity, key, core.ValI64(change.NextVersion))...))
+	}
+	if err != nil {
+		return errors.New("BLOB_CATALOG_FAILED")
+	}
+	if affected != 1 {
+		return errors.New("BLOB_BIND_DENIED")
+	}
+	if change.Next != nil {
+		promoted, promoteErr := transport.ExecuteSql(ctx, sqlQuery(`UPDATE teaql_blob_catalog
+				SET status = 'available' WHERE key = ? AND scope = ?
+				AND status IN ('uploaded_unbound','available')`,
+			core.ValText(change.Next.Key()), core.ValText(scope)))
+		if promoteErr != nil {
+			return errors.New("BLOB_CATALOG_FAILED")
+		}
+		if promoted != 1 {
+			return errors.New("BLOB_BIND_DENIED")
+		}
+	}
+	if previous != nil && (change.Next == nil || previous.Key() != change.Next.Key()) {
+		_, releaseErr := transport.ExecuteSql(ctx, sqlQuery(`UPDATE teaql_blob_catalog
+				SET status = 'uploaded_unbound' WHERE key = ? AND scope = ? AND status = 'available'
+				AND NOT EXISTS (SELECT 1 FROM teaql_blob_binding WHERE key = ?)`,
+			core.ValText(previous.Key()), core.ValText(scope), core.ValText(previous.Key())))
+		if releaseErr != nil {
+			return errors.New("BLOB_CATALOG_FAILED")
+		}
+	}
+	return nil
 }
