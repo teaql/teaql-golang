@@ -169,7 +169,8 @@ func cloneMutationPlan(plan *MutationPlan) *MutationPlan {
 	copyPlan.Operations = make([]MutationOperation, len(plan.Operations))
 	for index, operation := range plan.Operations {
 		copyPlan.Operations[index] = operation
-		copyPlan.Operations[index].ChangedValues = cloneRecord(operation.ChangedValues)
+		copyPlan.Operations[index].ID = core.CloneValue(operation.ID)
+		copyPlan.Operations[index].ChangedValues = core.CloneRecord(operation.ChangedValues)
 		if operation.OriginalVersion != nil {
 			version := *operation.OriginalVersion
 			copyPlan.Operations[index].OriginalVersion = &version
@@ -357,6 +358,9 @@ func (c *UserContext) ReviewMutationPlan(input *MutationPlan) (*MutationGovernan
 		c.emitMutationGovernanceWarning(snapshot, code)
 	}
 	if err := validateLedgerComposition(plan.ledger); err != nil {
+		return nil, err
+	}
+	if err := validateReviewedLedger(plan); err != nil {
 		return nil, err
 	}
 	return cloneMutationGovernance(snapshot), nil

@@ -321,6 +321,7 @@ type UserContext struct {
 	graphCommitActions                []func() error
 	graphRollbackActions              []func()
 	graphFixTime                      time.Time
+	preparedGraphSnapshot             *preparedGraphSnapshot
 	businessClockMu                   sync.RWMutex
 	businessClock                     BusinessClock
 	currentFixEvidence                []FixEvidence
@@ -861,6 +862,10 @@ func (c *UserContext) executePreparedGraphSave(ctx stdcontext.Context, intent co
 			return err
 		}
 	}
+	c.graphSaveMu.Lock()
+	c.preparedGraphSnapshot.sealed = true
+	c.preparedGraphSnapshot.plan = plan
+	c.graphSaveMu.Unlock()
 	// A complete, explicit empty prepared plan is a no-op, not an UPDATE.
 	// Keep the traversal callback behind a rejecting provider so a late child
 	// mutation cannot silently escape the sealed empty plan.
@@ -891,6 +896,7 @@ func (c *UserContext) startGraphPreparation() {
 	c.graphSaveMu.Lock()
 	c.graphFixTime = c.BusinessTime()
 	c.currentFixEvidence = nil
+	c.preparedGraphSnapshot = &preparedGraphSnapshot{assignments: make(map[string]core.EntityKey)}
 	c.graphSaveMu.Unlock()
 }
 
@@ -899,6 +905,7 @@ func (c *UserContext) finishGraphPreparation() {
 	c.graphFixTime = time.Time{}
 	c.lastFixEvidence = append([]FixEvidence(nil), c.currentFixEvidence...)
 	c.currentFixEvidence = nil
+	c.preparedGraphSnapshot = nil
 	c.graphSaveMu.Unlock()
 }
 
@@ -982,6 +989,7 @@ func (c *UserContext) executeGraphSave(operationContext stdcontext.Context, work
 		c.graphFixTime = time.Time{}
 		c.lastFixEvidence = append([]FixEvidence(nil), c.currentFixEvidence...)
 		c.currentFixEvidence = nil
+		c.preparedGraphSnapshot = nil
 		c.graphSaveMu.Unlock()
 	}()
 

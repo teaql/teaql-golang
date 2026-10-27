@@ -110,8 +110,8 @@ func (c *UserContext) checkAndFixStorage(input *CheckAndFixInput, ledger *core.E
 			checked.changedFields[field] = true
 		}
 	}
-	checked.Values = cloneRecord(input.Values)
-	checked.OldValues = cloneRecord(input.OldValues)
+	checked.Values = core.CloneRecord(input.Values)
+	checked.OldValues = core.CloneRecord(input.OldValues)
 	if err := c.mapCheckerInput(&checked, true); err != nil {
 		return checkerMappingError(input.Entity, err)
 	}
@@ -125,12 +125,18 @@ func (c *UserContext) checkAndFixStorage(input *CheckAndFixInput, ledger *core.E
 		checked.Values[field] = core.CloneValue(value)
 	}
 	references := c.captureDeferredReferences(&checked, ledger, owner)
-	err := c.checkAndFixWithReferences(&checked, references)
+	replayed, err := c.replayPreparedCheck(&checked, ledger, owner)
+	if err == nil && !replayed {
+		err = c.checkAndFixWithReferences(&checked, references)
+	}
 	if err != nil {
 		return err
 	}
 	if checked.Entity != input.Entity || checked.Operation != input.Operation {
 		return err
+	}
+	if !replayed {
+		c.rememberPreparedCheck(&checked, ledger, owner)
 	}
 	if mappingErr := c.mapCheckerInput(&checked, false); mappingErr != nil {
 		return checkerMappingError(input.Entity, mappingErr)
