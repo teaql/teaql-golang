@@ -6,6 +6,7 @@ import (
 	"errors"
 	"strconv"
 	"strings"
+	"time"
 	"unicode"
 	"unicode/utf8"
 
@@ -39,13 +40,16 @@ type BindingAuthorization interface {
 	Authorize(*runtime.UserContext, BindingTarget, *core.BlobRef, *core.BlobRef, string) error
 }
 
-type SQLiteCatalog struct{ transport teaqlsql.SqlTransport }
+type SQLiteCatalog struct {
+	transport teaqlsql.SqlTransport
+	now       func() time.Time
+}
 
 func NewSQLiteCatalog(transport teaqlsql.SqlTransport) (*SQLiteCatalog, error) {
 	if transport == nil {
 		return nil, errors.New("BLOB_CAPABILITY_MISSING")
 	}
-	return &SQLiteCatalog{transport: transport}, nil
+	return &SQLiteCatalog{transport: transport, now: time.Now}, nil
 }
 
 // EnsureSchema is an explicit host migration action, never part of module installation.
@@ -55,6 +59,9 @@ func (c *SQLiteCatalog) EnsureSchema(ctx stdcontext.Context) error {
             key TEXT PRIMARY KEY, scope TEXT NOT NULL, object_key TEXT NOT NULL,
             content_version TEXT NOT NULL, file_name TEXT NOT NULL,
             content_type TEXT NOT NULL, size_bytes BIGINT NOT NULL,
+            completed_at_ms BIGINT, last_unbound_at_ms BIGINT,
+            policy_profile TEXT, upload_mode TEXT, unbound_retention_seconds BIGINT,
+            effective_unref_seconds BIGINT, retention_floor_until_ms BIGINT,
             status TEXT NOT NULL CHECK (status IN
               ('initiated','uploaded_unbound','available','deleting','deleted'))
         )`,
@@ -81,12 +88,48 @@ func (c *SQLiteCatalog) EnsureSchema(ctx stdcontext.Context) error {
 			return errors.New("BLOB_CATALOG_FAILED")
 		}
 	}
+	for _, column := range []struct{ name, kind string }{
+		{"completed_at_ms", "BIGINT"}, {"last_unbound_at_ms", "BIGINT"},
+		{"policy_profile", "TEXT"}, {"upload_mode", "TEXT"},
+		{"unbound_retention_seconds", "BIGINT"}, {"effective_unref_seconds", "BIGINT"},
+		{"retention_floor_until_ms", "BIGINT"},
+	} {
+		rows, err := c.transport.FetchAllSql(ctx, sqlQuery("PRAGMA table_info(teaql_blob_catalog)"))
+		if err != nil {
+			return errors.New("BLOB_CATALOG_FAILED")
+		}
+		present := false
+		for _, row := range rows {
+			name, _ := sqlText(row["name"])
+			present = present || name == column.name
+		}
+		if present {
+			continue
+		}
+		if _, err := c.transport.ExecuteSql(ctx, sqlQuery("ALTER TABLE teaql_blob_catalog ADD COLUMN "+column.name+" "+column.kind)); err != nil {
+			current, queryErr := c.transport.FetchAllSql(ctx, sqlQuery("PRAGMA table_info(teaql_blob_catalog)"))
+			if queryErr != nil {
+				return errors.New("BLOB_CATALOG_FAILED")
+			}
+			added := false
+			for _, row := range current {
+				name, _ := sqlText(row["name"])
+				added = added || name == column.name
+			}
+			if !added {
+				return errors.New("BLOB_CATALOG_FAILED")
+			}
+		}
+	}
 	return nil
 }
 
 func (c *SQLiteCatalog) ValidateSchema(ctx stdcontext.Context) error {
 	for _, statement := range []string{
-		`SELECT key, scope, object_key, content_version, file_name, content_type, size_bytes, status FROM teaql_blob_catalog WHERE 1 = 0`,
+		`SELECT key, scope, object_key, content_version, file_name, content_type, size_bytes,
+            completed_at_ms, last_unbound_at_ms, policy_profile, upload_mode,
+            unbound_retention_seconds, effective_unref_seconds, retention_floor_until_ms,
+            status FROM teaql_blob_catalog WHERE 1 = 0`,
 		`SELECT scope, entity, entity_id, field, key, version FROM teaql_blob_binding WHERE 1 = 0`,
 		`SELECT upload_id, scope, replay_key, request_hash, key, entity, entity_id,
             field, file_name, extension, declared_size, expires_unix_ms, state,
@@ -345,7 +388,7 @@ func (c *SQLiteCatalog) bindWithTransport(ctx stdcontext.Context, transport teaq
 	}
 	if change.Next != nil {
 		promoted, promoteErr := transport.ExecuteSql(ctx, sqlQuery(`UPDATE teaql_blob_catalog
-				SET status = 'available' WHERE key = ? AND scope = ?
+				SET status = 'available', last_unbound_at_ms = NULL WHERE key = ? AND scope = ?
 				AND status IN ('uploaded_unbound','available')`,
 			core.ValText(change.Next.Key()), core.ValText(scope)))
 		if promoteErr != nil {
@@ -356,10 +399,15 @@ func (c *SQLiteCatalog) bindWithTransport(ctx stdcontext.Context, transport teaq
 		}
 	}
 	if previous != nil && (change.Next == nil || previous.Key() != change.Next.Key()) {
+		now := c.now().UnixMilli()
+		if !validRetentionTime(now) {
+			return errors.New("BLOB_POLICY_INVALID")
+		}
 		_, releaseErr := transport.ExecuteSql(ctx, sqlQuery(`UPDATE teaql_blob_catalog
-				SET status = 'uploaded_unbound' WHERE key = ? AND scope = ? AND status = 'available'
+				SET last_unbound_at_ms = ? WHERE key = ? AND scope = ? AND status = 'available'
 				AND NOT EXISTS (SELECT 1 FROM teaql_blob_binding WHERE key = ?)`,
-			core.ValText(previous.Key()), core.ValText(scope), core.ValText(previous.Key())))
+			core.ValI64(now), core.ValText(previous.Key()),
+			core.ValText(scope), core.ValText(previous.Key())))
 		if releaseErr != nil {
 			return errors.New("BLOB_CATALOG_FAILED")
 		}

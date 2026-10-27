@@ -25,6 +25,16 @@ type uploadPermission struct {
 	extensions []string
 }
 
+type policyUploadPermission struct {
+	*uploadPermission
+	policy blobreference.RetentionPolicy
+}
+
+func (p *policyUploadPermission) CurrentPolicyOnLease(_ *runtime.UserContext,
+	_ teaqlsql.SqlTransport, _ blobreference.UploadTarget) (blobreference.RetentionPolicy, error) {
+	return p.policy, nil
+}
+
 func (p *uploadPermission) Scope(*runtime.UserContext) (string, error) { return p.scope, nil }
 func (p *uploadPermission) Field(_ *runtime.UserContext, target blobreference.UploadTarget) (core.BlobFieldSpec, error) {
 	extensions := p.extensions
@@ -124,6 +134,82 @@ func (p *uploadPermission) CurrentOnLease(actor *runtime.UserContext, _ teaqlsql
 		return "", core.BlobFieldSpec{}, err
 	}
 	return scope, field, p.Authorize(actor, target, action, input)
+}
+
+func TestSQLiteBlobUploadSnapshotsTrustedRetentionAndCompletionTime(t *testing.T) {
+	e := nativeBatchEnvironment(t)
+	catalog, err := blobreference.NewSQLiteCatalog(e.executor.Transport)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := catalog.EnsureSchema(e.ctx); err != nil {
+		t.Fatal(err)
+	}
+	secret := make([]byte, 32)
+	if _, err := rand.Read(secret); err != nil {
+		t.Fatal(err)
+	}
+	store, err := blobreference.NewFileObjectStorage(filepath.Join(t.TempDir(), "retained"), secret)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer store.Close()
+	e.ctx.WithObjectStorage(store)
+	e.ctx.WithObjectStorageObserver(runtime.ObjectStorageObserverFunc(func(runtime.ObjectStorageEvent) {}))
+	initial, err := blobreference.NewRetentionPolicy("default", "server_stream", 10, 20, 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	permission := &policyUploadPermission{uploadPermission: &uploadPermission{
+		scope: "tenant-a", allowed: true}, policy: initial}
+	service, err := blobreference.NewSQLiteUploadService(catalog, permission,
+		&fixturePDFVerifier{}, 10_000, 15*time.Minute)
+	if err != nil {
+		t.Fatal(err)
+	}
+	data := []byte("%PDF-1.7\nretained bytes\n%%EOF")
+	target := blobreference.UploadTarget{Entity: "Customer", EntityID: "1", Field: "document"}
+	input := blobreference.UploadInput{FileName: "report.pdf", DeclaredSize: int64(len(data))}
+	begin, err := service.Begin(e.ctx, target, input, "retention-policy")
+	if err != nil {
+		t.Fatal(err)
+	}
+	shorter, err := blobreference.NewRetentionPolicy("shorter", "server_stream", 1, 2, 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	permission.policy = shorter
+	replay, err := service.Begin(e.ctx, target, input, "retention-policy")
+	if err != nil || replay.ID != begin.ID {
+		t.Fatalf("policy replay changed upload identity: %v", err)
+	}
+	var profile, mode string
+	var unbound, unreferenced int64
+	if err := e.db.QueryRow(`SELECT policy_profile,upload_mode,unbound_retention_seconds,
+		effective_unref_seconds FROM teaql_blob_catalog WHERE key=?`, begin.Reference.Key()).
+		Scan(&profile, &mode, &unbound, &unreferenced); err != nil ||
+		profile != "default" || mode != "server_stream" || unbound != 10 || unreferenced != 20 {
+		t.Fatalf("policy snapshot shortened: %s %s %d %d %v", profile, mode, unbound, unreferenced, err)
+	}
+	if _, err := service.Write(e.ctx, begin.ID, io.NopCloser(bytes.NewReader(data))); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := service.Complete(e.ctx, begin.ID); err != nil {
+		t.Fatal(err)
+	}
+	var completed int64
+	if err := e.db.QueryRow(`SELECT completed_at_ms FROM teaql_blob_catalog WHERE key=?`,
+		begin.Reference.Key()).Scan(&completed); err != nil || completed <= 0 {
+		t.Fatalf("missing trusted completion time: %d %v", completed, err)
+	}
+	if _, err := service.Complete(e.ctx, begin.ID); err != nil {
+		t.Fatal(err)
+	}
+	var after int64
+	if err := e.db.QueryRow(`SELECT completed_at_ms FROM teaql_blob_catalog WHERE key=?`,
+		begin.Reference.Key()).Scan(&after); err != nil || after != completed {
+		t.Fatalf("completion replay changed deadline: %d %d %v", completed, after, err)
+	}
 }
 
 // This test-only parser proves full-byte verifier orchestration, not production PDF parsing.

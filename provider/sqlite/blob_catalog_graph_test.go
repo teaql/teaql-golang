@@ -235,9 +235,10 @@ func TestSQLiteBlobCatalogBindingSharesNativeBusinessGraphAndRejectsStaleOrRevok
 		nullable != nil || version != 2 {
 		t.Fatalf("tombstone not persisted: %v %d %v", nullable, version, err)
 	}
-	if err := e.db.QueryRow(`SELECT status FROM teaql_blob_catalog WHERE key = ?`,
-		reference.Key()).Scan(&state); err != nil || state != "uploaded_unbound" {
-		t.Fatalf("unbind did not return catalog to unbound: %s %v", state, err)
+	var lastUnbound any
+	if err := e.db.QueryRow(`SELECT status,last_unbound_at_ms FROM teaql_blob_catalog WHERE key = ?`,
+		reference.Key()).Scan(&state, &lastUnbound); err != nil || state != "available" || lastUnbound == nil {
+		t.Fatalf("unbind did not preserve available history and time: %s %v %v", state, lastUnbound, err)
 	}
 	rebind := change
 	rebind.Action, rebind.ExpectedVersion, rebind.NextVersion = "Update", 2, 3
@@ -252,9 +253,9 @@ func TestSQLiteBlobCatalogBindingSharesNativeBusinessGraphAndRejectsStaleOrRevok
 		key != reference.Key() || version != 3 {
 		t.Fatalf("rebind failed: %s %d %v", key, version, err)
 	}
-	if err := e.db.QueryRow(`SELECT status FROM teaql_blob_catalog WHERE key = ?`,
-		reference.Key()).Scan(&state); err != nil || state != "available" {
-		t.Fatalf("rebind did not promote catalog: %s %v", state, err)
+	if err := e.db.QueryRow(`SELECT status,last_unbound_at_ms FROM teaql_blob_catalog WHERE key = ?`,
+		reference.Key()).Scan(&state, &lastUnbound); err != nil || state != "available" || lastUnbound != nil {
+		t.Fatalf("rebind did not clear last-unbind time: %s %v %v", state, lastUnbound, err)
 	}
 	second := change
 	second.Target.EntityID = "2"
@@ -285,9 +286,9 @@ func TestSQLiteBlobCatalogBindingSharesNativeBusinessGraphAndRejectsStaleOrRevok
 	}); err != nil {
 		t.Fatal(err)
 	}
-	if err := e.db.QueryRow(`SELECT status FROM teaql_blob_catalog WHERE key = ?`,
-		reference.Key()).Scan(&state); err != nil || state != "uploaded_unbound" {
-		t.Fatalf("final unbind did not return catalog to unbound: %s %v", state, err)
+	if err := e.db.QueryRow(`SELECT status,last_unbound_at_ms FROM teaql_blob_catalog WHERE key = ?`,
+		reference.Key()).Scan(&state, &lastUnbound); err != nil || state != "available" || lastUnbound == nil {
+		t.Fatalf("final unbind did not preserve available history and time: %s %v %v", state, lastUnbound, err)
 	}
 }
 
@@ -308,6 +309,44 @@ func TestSQLiteBlobCatalogRejectsOldNotNullBindingKeySchema(t *testing.T) {
 	}
 	if err := catalog.ValidateSchema(stdcontext.Background()); err == nil || err.Error() != "BLOB_SCHEMA_MISSING" {
 		t.Fatalf("old key NOT NULL schema accepted: %v", err)
+	}
+}
+
+func TestSQLiteBlobCatalogMigratesOldTimeAndPolicyFactsWithoutInventingDeadlines(t *testing.T) {
+	e := nativeBatchEnvironment(t)
+	if _, err := e.db.Exec(`CREATE TABLE teaql_blob_catalog (
+		key TEXT PRIMARY KEY, scope TEXT NOT NULL, object_key TEXT NOT NULL,
+		content_version TEXT NOT NULL, file_name TEXT NOT NULL,
+		content_type TEXT NOT NULL, size_bytes BIGINT NOT NULL, status TEXT NOT NULL)`); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := e.db.Exec(`INSERT INTO teaql_blob_catalog VALUES
+		('blob_legacy','tenant-a','objects/legacy','v1','legacy.pdf','application/pdf',1,'uploaded_unbound')`); err != nil {
+		t.Fatal(err)
+	}
+	catalog, err := blobreference.NewSQLiteCatalog(e.executor.Transport)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for i := 0; i < 2; i++ {
+		if err := catalog.EnsureSchema(e.ctx); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := catalog.ValidateSchema(e.ctx); err != nil {
+		t.Fatal(err)
+	}
+	var completed, unbound, profile, mode, duration, effective, floor any
+	if err := e.db.QueryRow(`SELECT completed_at_ms,last_unbound_at_ms,policy_profile,
+		upload_mode,unbound_retention_seconds,effective_unref_seconds,retention_floor_until_ms
+		FROM teaql_blob_catalog WHERE key='blob_legacy'`).Scan(
+		&completed, &unbound, &profile, &mode, &duration, &effective, &floor); err != nil {
+		t.Fatal(err)
+	}
+	if completed != nil || unbound != nil || profile != nil || mode != nil ||
+		duration != nil || effective != nil || floor != nil {
+		t.Fatalf("old row acquired invented retention facts: %v %v %v %v %v %v %v",
+			completed, unbound, profile, mode, duration, effective, floor)
 	}
 }
 

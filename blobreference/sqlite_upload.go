@@ -48,6 +48,13 @@ type UploadAuthorization interface {
 	CurrentOnLease(*runtime.UserContext, teaqlsql.SqlTransport, UploadTarget, string, UploadInput) (string, core.BlobFieldSpec, error)
 }
 
+// UploadPolicyAuthorization is optional for older hosts. A host that provides
+// it must resolve the current modeled policy on the same physical SQL lease.
+// Rows created without it keep NULL policy facts and cannot enter retention GC.
+type UploadPolicyAuthorization interface {
+	CurrentPolicyOnLease(*runtime.UserContext, teaqlsql.SqlTransport, UploadTarget) (RetentionPolicy, error)
+}
+
 // ContentVerifier must parse and consume every byte. Storage metadata and client MIME
 // are not acceptable implementations of this interface.
 type ContentVerifier interface {
@@ -152,6 +159,22 @@ func (s *SQLiteUploadService) currentOnLease(actor *runtime.UserContext, sql tea
 		return "", uploadError("BLOB_UPLOAD_DENIED")
 	}
 	return validateUploadCurrent(scope, field, target, input, expectedScope)
+}
+
+func (s *SQLiteUploadService) policyOnLease(actor *runtime.UserContext, sql teaqlsql.SqlTransport,
+	target UploadTarget) (*RetentionPolicy, error) {
+	provider, okay := s.authorization.(UploadPolicyAuthorization)
+	if !okay {
+		return nil, nil
+	}
+	policy, err := provider.CurrentPolicyOnLease(actor, sql, target)
+	if err != nil || !policy.Valid() {
+		return nil, uploadError("BLOB_POLICY_INVALID")
+	}
+	if policy.UploadMode() != "server_stream" {
+		return nil, uploadError("BLOB_CAPABILITY_MISSING")
+	}
+	return &policy, nil
 }
 
 func validateUploadCurrent(scope string, field core.BlobFieldSpec, target UploadTarget,
@@ -285,11 +308,24 @@ func (s *SQLiteUploadService) Begin(actor *runtime.UserContext, target UploadTar
 		if _, err := s.currentOnLease(actor, sql, target, "Begin", normalized, scope); err != nil {
 			return err
 		}
+		policy, err := s.policyOnLease(actor, sql, target)
+		if err != nil {
+			return err
+		}
+		profile, mode, unbound, unreferenced := core.ValNull(), core.ValNull(), core.ValNull(), core.ValNull()
+		if policy != nil {
+			profile = core.ValText(policy.Profile())
+			mode = core.ValText(policy.UploadMode())
+			unbound = core.ValI64(policy.UnboundRetentionSeconds())
+			unreferenced = core.ValI64(policy.UnreferencedRetentionSeconds())
+		}
 		if _, err := sql.ExecuteSql(actor, sqlQuery(`INSERT INTO teaql_blob_catalog
-            (key,scope,object_key,content_version,file_name,content_type,size_bytes,status)
-            VALUES (?,?,?,?,?,?,?,?)`, core.ValText(reference.Key()), core.ValText(scope),
+            (key,scope,object_key,content_version,file_name,content_type,size_bytes,status,
+             policy_profile,upload_mode,unbound_retention_seconds,effective_unref_seconds)
+            VALUES (?,?,?,?,?,?,?,?,?,?,?,?)`, core.ValText(reference.Key()), core.ValText(scope),
 			core.ValText("blob/"+objectToken), core.ValText(""), core.ValText(normalized.FileName),
-			core.ValText(""), core.ValI64(0), core.ValText("initiated"))); err != nil {
+			core.ValText(""), core.ValI64(0), core.ValText("initiated"),
+			profile, mode, unbound, unreferenced)); err != nil {
 			return uploadError("BLOB_CATALOG_FAILED")
 		}
 		if _, err := sql.ExecuteSql(actor, sqlQuery(`INSERT INTO teaql_blob_upload
@@ -798,8 +834,10 @@ func (s *SQLiteUploadService) Complete(actor *runtime.UserContext, id string) (c
 			return uploadError("BLOB_IDEMPOTENCY_CONFLICT")
 		}
 		affected, err = sql.ExecuteSql(actor, sqlQuery(`UPDATE teaql_blob_catalog SET content_version=?,
-            content_type=?,size_bytes=?,status='uploaded_unbound' WHERE key=? AND scope=? AND status='initiated'`,
-			core.ValText(row.WrittenETag), core.ValText(verified.ContentType), core.ValI64(reader.count),
+            content_type=?,size_bytes=?,completed_at_ms=?,status='uploaded_unbound'
+            WHERE key=? AND scope=? AND status='initiated'`,
+			core.ValText(row.WrittenETag), core.ValText(verified.ContentType),
+			core.ValI64(reader.count), core.ValI64(now),
 			core.ValText(row.Key), core.ValText(row.Scope)))
 		if err != nil {
 			return uploadError("BLOB_CATALOG_FAILED")
