@@ -762,6 +762,11 @@ func (s *SQLiteUploadService) Complete(actor *runtime.UserContext, id string) (c
 		reader := &verifyingReader{source: content.Stream(), digest: sha256.New(), max: s.maximumBytes}
 		verified, err := s.verifier.Verify(reader, row.Extension, s.maximumBytes)
 		if err != nil {
+			switch err.Error() {
+			case "BLOB_FORMAT_NOT_ALLOWED", "BLOB_SIZE_EXCEEDED",
+				"BLOB_VERIFICATION_BUSY", "BLOB_CAPABILITY_MISSING":
+				return uploadError(err.Error())
+			}
 			return uploadError("BLOB_UPLOAD_INCOMPLETE")
 		}
 		digest := hex.EncodeToString(reader.digest.Sum(nil))

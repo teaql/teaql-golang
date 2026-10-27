@@ -7,6 +7,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"io"
+	"os"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -19,13 +20,89 @@ import (
 )
 
 type uploadPermission struct {
-	scope   string
-	allowed bool
+	scope      string
+	allowed    bool
+	extensions []string
 }
 
 func (p *uploadPermission) Scope(*runtime.UserContext) (string, error) { return p.scope, nil }
 func (p *uploadPermission) Field(_ *runtime.UserContext, target blobreference.UploadTarget) (core.BlobFieldSpec, error) {
-	return core.NewBlobFieldSpec("Customer", "document", []string{"pdf"}, true, "default")
+	extensions := p.extensions
+	if len(extensions) == 0 {
+		extensions = []string{"pdf"}
+	}
+	return core.NewBlobFieldSpec("Customer", "document", extensions, true, "default")
+}
+
+func TestSQLiteBlobUploadWithRealJPEGDecoder(t *testing.T) {
+	e := nativeBatchEnvironment(t)
+	catalog, err := blobreference.NewSQLiteCatalog(e.executor.Transport)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := catalog.EnsureSchema(e.ctx); err != nil {
+		t.Fatal(err)
+	}
+	secret := make([]byte, 32)
+	if _, err := rand.Read(secret); err != nil {
+		t.Fatal(err)
+	}
+	store, err := blobreference.NewFileObjectStorage(filepath.Join(t.TempDir(), "images"), secret)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer store.Close()
+	e.ctx.WithObjectStorage(store)
+	e.ctx.WithObjectStorageObserver(runtime.ObjectStorageObserverFunc(func(runtime.ObjectStorageEvent) {}))
+	verifier, err := blobreference.NewImageContentVerifier(10000, 100<<20, 2)
+	if err != nil {
+		t.Fatal(err)
+	}
+	service, err := blobreference.NewSQLiteUploadService(catalog,
+		&uploadPermission{scope: "tenant-a", allowed: true, extensions: []string{"jpg"}},
+		verifier, 10000, 15*time.Minute)
+	if err != nil {
+		t.Fatal(err)
+	}
+	data, err := os.ReadFile(filepath.Join("..", "..", "blobreference", "testdata", "sample.jpg"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	target := blobreference.UploadTarget{Entity: "Customer", EntityID: "1", Field: "document"}
+	good, err := service.Begin(e.ctx, target,
+		blobreference.UploadInput{FileName: "picture.jpg", DeclaredSize: int64(len(data))}, "real-image")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := service.Write(e.ctx, good.ID, io.NopCloser(bytes.NewReader(data))); err != nil {
+		t.Fatal(err)
+	}
+	if reference, err := service.Complete(e.ctx, good.ID); err != nil || reference != good.Reference {
+		t.Fatalf("verified JPEG did not promote: %v", err)
+	}
+	var state, mime string
+	var size int64
+	if err := e.db.QueryRow("SELECT status,content_type,size_bytes FROM teaql_blob_catalog WHERE key=?",
+		good.Reference.Key()).Scan(&state, &mime, &size); err != nil ||
+		state != "uploaded_unbound" || mime != "image/jpeg" || size != int64(len(data)) {
+		t.Fatalf("wrong verified catalog facts: %s %s %d %v", state, mime, size, err)
+	}
+	truncated := data[:len(data)-12]
+	bad, err := service.Begin(e.ctx, target,
+		blobreference.UploadInput{FileName: "truncated.jpg", DeclaredSize: int64(len(truncated))}, "broken-image")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := service.Write(e.ctx, bad.ID, io.NopCloser(bytes.NewReader(truncated))); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := service.Complete(e.ctx, bad.ID); err == nil || err.Error() != "BLOB_FORMAT_NOT_ALLOWED" {
+		t.Fatalf("truncated JPEG accepted: %v", err)
+	}
+	if err := e.db.QueryRow("SELECT status FROM teaql_blob_catalog WHERE key=?",
+		bad.Reference.Key()).Scan(&state); err != nil || state != "initiated" {
+		t.Fatalf("invalid upload promoted: %s %v", state, err)
+	}
 }
 func (p *uploadPermission) Authorize(_ *runtime.UserContext, target blobreference.UploadTarget,
 	action string, input blobreference.UploadInput) error {
