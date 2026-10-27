@@ -129,7 +129,7 @@ func (s *FileObjectStorage) manifest(hash string) (*fileManifest, error) {
 
 func (s *FileObjectStorage) metadata(key core.ObjectKey, manifest *fileManifest) (*core.ObjectMetadata, error) {
 	return core.NewObjectMetadata(key, manifest.Size, manifest.ContentType,
-		manifest.SHA256, &manifest.Modified, manifest.Metadata)
+		manifest.SHA256+"."+manifest.Version, &manifest.Modified, manifest.Metadata)
 }
 
 func (s *FileObjectStorage) Put(invocation runtime.StorageInvocation, key core.ObjectKey,
@@ -466,7 +466,7 @@ func (s *FileObjectStorage) serve(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", manifest.ContentType)
 	w.Header().Set("Cache-Control", "private, no-store")
 	w.Header().Set("X-Content-Type-Options", "nosniff")
-	w.Header().Set("ETag", `"`+manifest.SHA256+`"`)
+	w.Header().Set("ETag", `"`+manifest.SHA256+"."+manifest.Version+`"`)
 	w.Header().Set("Accept-Ranges", "bytes")
 	if ticket.Disposition != "" {
 		w.Header().Set("Content-Disposition", ticket.Disposition)

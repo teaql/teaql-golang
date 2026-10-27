@@ -49,8 +49,16 @@ func TestFileObjectStorageRealBytesAndAuthenticatedHTTP(t *testing.T) {
 	}
 	metadata, err := storage.PutBytes(key, data, create)
 	digest := sha256.Sum256(data)
-	if err != nil || metadata.Size() != int64(len(data)) || metadata.ETag() != hex.EncodeToString(digest[:]) {
+	if err != nil || metadata.Size() != int64(len(data)) ||
+		!strings.HasPrefix(metadata.ETag(), hex.EncodeToString(digest[:])+".") {
 		t.Fatalf("put metadata: %v %v", metadata, err)
+	}
+	sameBytes, _ := core.NewObjectPutOptions(int64(len(data)), core.ObjectReplace)
+	sameBytes, _ = sameBytes.WithContentType("application/pdf")
+	sameGeneration, err := storage.PutBytes(key, data, sameBytes)
+	if err != nil || sameGeneration.ETag() == metadata.ETag() ||
+		!strings.HasPrefix(sameGeneration.ETag(), hex.EncodeToString(digest[:])+".") {
+		t.Fatalf("same-byte replacement reused generation ETag: %v", err)
 	}
 	head, err := storage.Head(key)
 	if err != nil || head == nil || head.Size() != int64(len(data)) {
