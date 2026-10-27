@@ -1,10 +1,32 @@
 package core
 
 import (
+	"encoding/json"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 )
+
+func TestLoadedEmptySmartListRetainsArrayJSONShape(t *testing.T) {
+	loaded := NewSmartList[Record](nil)
+	if !loaded.IsLoaded || len(loaded.Data) != 0 {
+		t.Fatal("loaded empty collection lost its state")
+	}
+	payload, err := json.Marshal(loaded)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var wire map[string]json.RawMessage
+	if err := json.Unmarshal(payload, &wire); err != nil {
+		t.Fatal(err)
+	}
+	if string(wire["Data"]) != "[]" {
+		t.Fatal("loaded empty collection became null", string(payload))
+	}
+	if EmptySmartList[Record]().IsLoaded {
+		t.Fatal("NotLoaded became a loaded empty collection")
+	}
+}
 
 type TestItem struct {
 	Id    uint64

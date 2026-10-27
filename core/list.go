@@ -24,6 +24,11 @@ func EmptySmartList[T any]() *SmartList[T] {
 }
 
 func NewSmartList[T any](data []T) *SmartList[T] {
+	// A loaded empty collection is [], not JSON null. NotLoaded is carried
+	// separately by IsLoaded; nil backing storage must not change wire shape.
+	if data == nil {
+		data = make([]T, 0)
+	}
 	return &SmartList[T]{
 		Data:         data,
 		Aggregations: make(Record),
@@ -74,7 +79,7 @@ func (s *SmartList[T]) MergeBy(incoming []T, keyFn func(T) any) {
 	for i, item := range s.Data {
 		positions[keyFn(item)] = i
 	}
-	
+
 	for _, item := range incoming {
 		k := keyFn(item)
 		if idx, ok := positions[k]; ok {
@@ -278,4 +283,3 @@ func Versions[T VersionedEntity](s *SmartList[T]) []int64 {
 	}
 	return versions
 }
-
