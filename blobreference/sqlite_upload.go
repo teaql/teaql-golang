@@ -421,6 +421,60 @@ func recoverExistingUpload(store *runtime.ObjectStorage, key core.ObjectKey, sou
 	return before, nil
 }
 
+func replayCommittedWrite(store *runtime.ObjectStorage, key core.ObjectKey, source *hashingReadCloser,
+	row uploadRow, mime, recordedSHA, recordedETag string) error {
+	if len(recordedSHA) != 64 || recordedETag == "" {
+		return uploadError("BLOB_IDEMPOTENCY_CONFLICT")
+	}
+	if _, err := hex.DecodeString(recordedSHA); err != nil {
+		return uploadError("BLOB_IDEMPOTENCY_CONFLICT")
+	}
+	_, err := io.Copy(io.Discard, io.LimitReader(source, row.DeclaredSize+1))
+	if err != nil {
+		return uploadError("BLOB_STORE_FAILED")
+	}
+	if !source.eof || source.count != row.DeclaredSize ||
+		hex.EncodeToString(source.digest.Sum(nil)) != recordedSHA {
+		return uploadError("BLOB_IDEMPOTENCY_CONFLICT")
+	}
+	before, err := store.Head(key)
+	if err != nil {
+		return uploadError("BLOB_STORE_FAILED")
+	}
+	if before == nil || before.Size() != source.count || before.ETag() != recordedETag ||
+		before.ContentType() != mime {
+		return uploadError("BLOB_IDEMPOTENCY_CONFLICT")
+	}
+	content, err := store.Get(key)
+	if err != nil || content == nil {
+		return uploadError("BLOB_STORE_FAILED")
+	}
+	stored := content.Metadata()
+	if stored.Size() != before.Size() || stored.ETag() != before.ETag() ||
+		stored.ContentType() != mime {
+		_ = content.Close()
+		return uploadError("BLOB_IDEMPOTENCY_CONFLICT")
+	}
+	digest := sha256.New()
+	count, copyErr := io.Copy(digest, io.LimitReader(content.Stream(), source.count+1))
+	closeErr := content.Close()
+	if copyErr != nil || closeErr != nil {
+		return uploadError("BLOB_STORE_FAILED")
+	}
+	if count != source.count || hex.EncodeToString(digest.Sum(nil)) != recordedSHA {
+		return uploadError("BLOB_IDEMPOTENCY_CONFLICT")
+	}
+	after, err := store.Head(key)
+	if err != nil {
+		return uploadError("BLOB_STORE_FAILED")
+	}
+	if after == nil || after.Size() != before.Size() || after.ETag() != before.ETag() ||
+		after.ContentType() != mime {
+		return uploadError("BLOB_IDEMPOTENCY_CONFLICT")
+	}
+	return nil
+}
+
 func (r *hashingReadCloser) Read(p []byte) (int, error) {
 	n, err := r.ReadCloser.Read(p)
 	if n > 0 {
@@ -441,9 +495,6 @@ func (s *SQLiteUploadService) Write(actor *runtime.UserContext, id string, sourc
 	row, err := s.row(actor, id, "Write")
 	if err != nil {
 		return 0, err
-	}
-	if row.State != "initiated" {
-		return 0, uploadError("BLOB_IDEMPOTENCY_CONFLICT")
 	}
 	key, err := s.objectKey(actor, row)
 	if err != nil {
@@ -466,12 +517,12 @@ func (s *SQLiteUploadService) Write(actor *runtime.UserContext, id string, sourc
 	input := UploadInput{FileName: row.FileName, DeclaredSize: row.DeclaredSize}
 	target := UploadTarget{row.Entity, row.EntityID, row.Field}
 	err = s.transactionImmediate(actor, func(sql teaqlsql.SqlTransport) error {
-		current, err := sql.FetchAllSql(actor, sqlQuery(`SELECT state,key,expires_unix_ms FROM teaql_blob_upload
+		current, err := sql.FetchAllSql(actor, sqlQuery(`SELECT state,key,expires_unix_ms,written_sha256,written_etag FROM teaql_blob_upload
             WHERE upload_id=? AND scope=?`, core.ValText(id), core.ValText(row.Scope)))
 		if err != nil {
 			return uploadError("BLOB_CATALOG_FAILED")
 		}
-		catalog, err := sql.FetchAllSql(actor, sqlQuery(`SELECT object_key,status FROM teaql_blob_catalog
+		catalog, err := sql.FetchAllSql(actor, sqlQuery(`SELECT object_key,status,content_version,content_type,size_bytes FROM teaql_blob_catalog
             WHERE key=? AND scope=?`, core.ValText(row.Key), core.ValText(row.Scope)))
 		if err != nil {
 			return uploadError("BLOB_CATALOG_FAILED")
@@ -484,8 +535,43 @@ func (s *SQLiteUploadService) Write(actor *runtime.UserContext, id string, sourc
 		expiry, expiryOK := current[0]["expires_unix_ms"].TryI64()
 		location, locationOK := sqlText(catalog[0]["object_key"])
 		status, statusOK := sqlText(catalog[0]["status"])
-		if !stateOK || !keyOK || !expiryOK || !locationOK || !statusOK || state != "initiated" ||
-			currentKey != row.Key || expiry != row.ExpiresUnixMs || location != key.Value() || status != "initiated" {
+		if !stateOK || !keyOK || !expiryOK || !locationOK || !statusOK ||
+			currentKey != row.Key || expiry != row.ExpiresUnixMs || location != key.Value() {
+			return uploadError("BLOB_IDEMPOTENCY_CONFLICT")
+		}
+		if state == "written" || state == "completed" {
+			recordedSHA, shaOK := sqlText(current[0]["written_sha256"])
+			recordedETag, etagOK := sqlText(current[0]["written_etag"])
+			if !shaOK || !etagOK || state == "written" && status != "initiated" {
+				return uploadError("BLOB_IDEMPOTENCY_CONFLICT")
+			}
+			if state == "completed" {
+				version, versionOK := sqlText(catalog[0]["content_version"])
+				contentType, contentTypeOK := sqlText(catalog[0]["content_type"])
+				size, sizeOK := catalog[0]["size_bytes"].TryI64()
+				if (status != "uploaded_unbound" && status != "available") || !versionOK ||
+					!contentTypeOK || !sizeOK || version != recordedETag || contentType != mime || size != row.DeclaredSize {
+					return uploadError("BLOB_IDEMPOTENCY_CONFLICT")
+				}
+			}
+			if _, err := s.currentOnLease(actor, sql, target, "Write", input, row.Scope); err != nil {
+				return err
+			}
+			if s.now().UnixMilli() >= row.ExpiresUnixMs {
+				return uploadError("BLOB_UPLOAD_EXPIRED")
+			}
+			if err := replayCommittedWrite(store, key, reader, row, mime, recordedSHA, recordedETag); err != nil {
+				return err
+			}
+			if _, err := s.currentOnLease(actor, sql, target, "Write", input, row.Scope); err != nil {
+				return err
+			}
+			if s.now().UnixMilli() >= row.ExpiresUnixMs {
+				return uploadError("BLOB_UPLOAD_EXPIRED")
+			}
+			return nil
+		}
+		if state != "initiated" || status != "initiated" {
 			return uploadError("BLOB_IDEMPOTENCY_CONFLICT")
 		}
 		if _, err := s.currentOnLease(actor, sql, target, "Write", input, row.Scope); err != nil {

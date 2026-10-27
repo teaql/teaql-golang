@@ -2,6 +2,7 @@ package sqlite
 
 import (
 	"bytes"
+	"context"
 	"crypto/rand"
 	"database/sql"
 	"errors"
@@ -57,6 +58,50 @@ type pausedUploadStore struct {
 	entered chan struct{}
 	release chan struct{}
 	puts    int32
+}
+
+type countingUploadStore struct {
+	runtime.ObjectStorageProvider
+	puts int32
+}
+
+type failedReplaySource struct{}
+
+func (failedReplaySource) Read([]byte) (int, error) {
+	return 0, errors.New("PRIVATE-REPLAY-SOURCE-CANARY")
+}
+
+func (s *countingUploadStore) Put(invocation runtime.StorageInvocation, key core.ObjectKey,
+	content io.Reader, options core.ObjectPutOptions) (*core.ObjectMetadata, error) {
+	atomic.AddInt32(&s.puts, 1)
+	return s.ObjectStorageProvider.Put(invocation, key, content, options)
+}
+
+type postCommitUploadTransport struct {
+	teaqlsql.SqlTransactionTransport
+	immediate interface {
+		BeginImmediateSql(context.Context) (teaqlsql.SqlTransactionTransportTx, error)
+	}
+	fail int32
+}
+
+type postCommitUploadTx struct {
+	teaqlsql.SqlTransactionTransportTx
+}
+
+func (t *postCommitUploadTx) CommitSql(ctx context.Context) error {
+	if err := t.SqlTransactionTransportTx.CommitSql(ctx); err != nil {
+		return err
+	}
+	return errors.New("PRIVATE-COMMIT-CANARY")
+}
+
+func (t *postCommitUploadTransport) BeginImmediateSql(ctx context.Context) (teaqlsql.SqlTransactionTransportTx, error) {
+	tx, err := t.immediate.BeginImmediateSql(ctx)
+	if err != nil || !atomic.CompareAndSwapInt32(&t.fail, 1, 0) {
+		return tx, err
+	}
+	return &postCommitUploadTx{tx}, nil
 }
 
 func (s *pausedUploadStore) Put(invocation runtime.StorageInvocation, key core.ObjectKey,
@@ -232,14 +277,110 @@ func TestSQLiteBlobUploadWriteHoldsOwnerAcrossFileIOOnAnotherConnection(t *testi
 	}
 	select {
 	case err := <-secondResult:
-		if err == nil || err.Error() != "BLOB_IDEMPOTENCY_CONFLICT" {
-			t.Fatalf("second writer failed to recheck post-lock row: %v", err)
+		if err != nil {
+			t.Fatalf("same-content writer failed to replay after owner released: %v", err)
 		}
 	case <-time.After(5 * time.Second):
 		t.Fatal("second writer did not finish")
 	}
 	if atomic.LoadInt32(&store.puts) != 1 {
 		t.Fatalf("File put repeated: %d", atomic.LoadInt32(&store.puts))
+	}
+}
+
+func TestSQLiteBlobUploadWriteCommitUnknownReplaysOnlySameBytesAndGeneration(t *testing.T) {
+	e := nativeBatchEnvironment(t)
+	base := e.executor.Transport.(teaqlsql.SqlTransactionTransport)
+	transport := &postCommitUploadTransport{SqlTransactionTransport: base,
+		immediate: e.executor.Transport.(interface {
+			BeginImmediateSql(context.Context) (teaqlsql.SqlTransactionTransportTx, error)
+		})}
+	catalog, err := blobreference.NewSQLiteCatalog(transport)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := catalog.EnsureSchema(e.ctx); err != nil {
+		t.Fatal(err)
+	}
+	secret := make([]byte, 32)
+	if _, err := rand.Read(secret); err != nil {
+		t.Fatal(err)
+	}
+	file, err := blobreference.NewFileObjectStorage(filepath.Join(t.TempDir(), "private"), secret)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer file.Close()
+	provider := &countingUploadStore{ObjectStorageProvider: file}
+	e.ctx.WithObjectStorage(provider).WithObjectStorageObserver(runtime.ObjectStorageObserverFunc(func(runtime.ObjectStorageEvent) {}))
+	permission, verifier := &uploadPermission{scope: "tenant-a", allowed: true}, &fixturePDFVerifier{}
+	service, err := blobreference.NewSQLiteUploadService(catalog, permission, verifier, 10_000, time.Minute)
+	if err != nil {
+		t.Fatal(err)
+	}
+	data := []byte("%PDF-1.7\nSQL commit succeeded, reply lost\n%%EOF")
+	target := blobreference.UploadTarget{Entity: "Customer", EntityID: "1", Field: "document"}
+	session, err := service.Begin(e.ctx, target,
+		blobreference.UploadInput{FileName: "report.pdf", DeclaredSize: int64(len(data))}, "unknown-write")
+	if err != nil {
+		t.Fatal(err)
+	}
+	atomic.StoreInt32(&transport.fail, 1)
+	if _, err := service.Write(e.ctx, session.ID, io.NopCloser(bytes.NewReader(data))); err == nil || err.Error() != "BLOB_CATALOG_FAILED" {
+		t.Fatalf("committed write reply loss: %v", err)
+	}
+	var state, catalogState, location, etag string
+	if err := e.db.QueryRow(`SELECT u.state,c.status,c.object_key,u.written_etag FROM teaql_blob_upload u
+		JOIN teaql_blob_catalog c ON c.key=u.key WHERE u.upload_id=?`, session.ID).
+		Scan(&state, &catalogState, &location, &etag); err != nil ||
+		state != "written" || catalogState != "initiated" || etag == "" {
+		t.Fatalf("committed journal: %v", err)
+	}
+	if atomic.LoadInt32(&provider.puts) != 1 {
+		t.Fatal("first File put missing")
+	}
+	permission.allowed = false
+	if _, err := service.Write(e.ctx, session.ID, io.NopCloser(bytes.NewReader(data))); err == nil || err.Error() != "BLOB_UPLOAD_DENIED" {
+		t.Fatalf("revoked retry: %v", err)
+	}
+	permission.allowed = true
+	if _, err := service.Write(e.ctx, session.ID,
+		io.NopCloser(bytes.NewReader(bytes.Repeat([]byte{'x'}, len(data))))); err == nil || err.Error() != "BLOB_IDEMPOTENCY_CONFLICT" {
+		t.Fatalf("changed bytes accepted: %v", err)
+	}
+	if _, err := service.Write(e.ctx, session.ID, io.NopCloser(failedReplaySource{})); err == nil || err.Error() != "BLOB_STORE_FAILED" {
+		t.Fatalf("source failure exposed private text: %v", err)
+	}
+	if _, err := service.Write(e.ctx, session.ID, io.NopCloser(bytes.NewReader(data[:len(data)-1]))); err == nil || err.Error() != "BLOB_IDEMPOTENCY_CONFLICT" {
+		t.Fatalf("short source accepted: %v", err)
+	}
+	count, err := service.Write(e.ctx, session.ID, io.NopCloser(bytes.NewReader(data)))
+	if err != nil || count != int64(len(data)) || atomic.LoadInt32(&provider.puts) != 1 {
+		t.Fatalf("same-content write replay: %d %v", count, err)
+	}
+	ref, err := service.Complete(e.ctx, session.ID)
+	if err != nil || ref != session.Reference || verifier.calls != 1 {
+		t.Fatalf("confirmation after replay: %v", err)
+	}
+	count, err = service.Write(e.ctx, session.ID, io.NopCloser(bytes.NewReader(data)))
+	if err != nil || count != int64(len(data)) || verifier.calls != 1 || atomic.LoadInt32(&provider.puts) != 1 {
+		t.Fatalf("completed write replay: %d %v", count, err)
+	}
+	key, err := core.NewObjectKey(location)
+	if err != nil {
+		t.Fatal(err)
+	}
+	storage, err := e.ctx.ObjectStorage("replace stored generation")
+	if err != nil {
+		t.Fatal(err)
+	}
+	replace, _ := core.NewObjectPutOptions(int64(len(data)), core.ObjectReplace)
+	replace, _ = replace.WithContentType("application/pdf")
+	if _, err := storage.PutBytes(key, data, replace); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := service.Write(e.ctx, session.ID, io.NopCloser(bytes.NewReader(data))); err == nil || err.Error() != "BLOB_IDEMPOTENCY_CONFLICT" {
+		t.Fatalf("replaced generation accepted: %v", err)
 	}
 }
 
