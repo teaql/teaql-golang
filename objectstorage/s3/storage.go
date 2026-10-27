@@ -17,6 +17,7 @@ import (
 	"strconv"
 	"strings"
 	"time"
+	"unicode"
 )
 
 type Provider struct {
@@ -144,6 +145,9 @@ func (p *Provider) Delete(i runtime.StorageInvocation, key core.ObjectKey) error
 	return translate(err)
 }
 func (p *Provider) DeleteIfVersion(i runtime.StorageInvocation, key core.ObjectKey, contentVersion string) (runtime.ObjectConditionalDeleteResult, error) {
+	if !key.Valid() || strings.TrimSpace(contentVersion) != contentVersion || contentVersion == "" || contentVersion == "*" || len(contentVersion) > 256 || strings.IndexFunc(contentVersion, unicode.IsControl) >= 0 {
+		return "", &core.StorageError{Code: core.StorageInvalidInput}
+	}
 	_, err := p.client.DeleteObject(i.Context(), &sdk.DeleteObjectInput{
 		Bucket: aws.String(p.bucket), Key: aws.String(key.Value()), IfMatch: aws.String(contentVersion),
 	})
