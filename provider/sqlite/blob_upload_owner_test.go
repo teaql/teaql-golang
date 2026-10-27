@@ -358,6 +358,19 @@ func TestSQLiteBlobUploadWriteCommitUnknownReplaysOnlySameBytesAndGeneration(t *
 	if err != nil || count != int64(len(data)) || atomic.LoadInt32(&provider.puts) != 1 {
 		t.Fatalf("same-content write replay: %d %v", count, err)
 	}
+	atomic.StoreInt32(&transport.fail, 1)
+	if _, err := service.Complete(e.ctx, session.ID); err == nil || err.Error() != "BLOB_CATALOG_FAILED" {
+		t.Fatalf("committed confirmation reply loss: %v", err)
+	}
+	if err := e.db.QueryRow(`SELECT state FROM teaql_blob_upload WHERE upload_id=?`, session.ID).
+		Scan(&state); err != nil || state != "completed" {
+		t.Fatalf("committed confirmation journal: %v %s", err, state)
+	}
+	permission.allowed = false
+	if _, err := service.Complete(e.ctx, session.ID); err == nil || err.Error() != "BLOB_UPLOAD_DENIED" {
+		t.Fatalf("revoked confirmation replay: %v", err)
+	}
+	permission.allowed = true
 	ref, err := service.Complete(e.ctx, session.ID)
 	if err != nil || ref != session.Reference || verifier.calls != 1 {
 		t.Fatalf("confirmation after replay: %v", err)
