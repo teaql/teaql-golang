@@ -355,6 +355,10 @@ func (e *SchoolType) TeaqlPreflightGraph(context *runtime.UserContext, intent co
 
 func (e *SchoolType) TeaqlPreflightWithinGraph(context *runtime.UserContext, intent core.MutationIntent, parent *core.EntityKey) error {
 	if err := intent.Validate(); err != nil { return err }
+	if e.isNew && e.markedAsDelete {
+		if parent == nil { return fmt.Errorf("cancelled new root %s: create-then-delete has no persisted entity to return", e.EntityName()) }
+		return nil
+	}
 	if err := context.PrepareGraphMutationLineage(e.root, e.EntityKey(), parent, intent, e.comment); err != nil { return err }
 	restoredFields, err := context.DiscardRestoredScalarChanges(e.root, e.EntityKey(), e.loadedSnapshot)
 	if err != nil { return err }
@@ -404,6 +408,7 @@ func (e *SchoolType) TeaqlPreflightWithinGraph(context *runtime.UserContext, int
 		if checkErr != nil { return checkErr }
 	}
 	for index, child := range e.schoolList.Items() {
+		if child.IsNew() && child.IsMarkedAsDelete() { continue }
 		child.AttachEntityRoot(e.root)
 		parentID := core.ValU64(e.base.Id)
 		if e.base.Id == 0 { parentID = e.ledgerID }
@@ -465,6 +470,10 @@ func (e *SchoolType) teaqlRegisterGraphOutcome(context *runtime.UserContext, sna
 // packages after the public root Save has opened the graph transaction.
 func (e *SchoolType) TeaqlSaveWithinGraph(context *runtime.UserContext, intent core.MutationIntent, parentScope *core.MutationTraceScope, privacy *data_service.MutationPrivacy) (*SchoolType, error) {
 	if err := intent.Validate(); err != nil { return nil, err }
+	if e.isNew && e.markedAsDelete {
+		if parentScope == nil { return nil, fmt.Errorf("cancelled new root %s: create-then-delete has no persisted entity to return", e.EntityName()) }
+		return e, nil
+	}
 	// Reached but unchanged entities are ancestry, not writes. Their changed
 	// descendants still participate without requiring a complete parent projection.
 	if !e.isNew && !e.markedAsDelete && len(e.root.Change(e.EntityKey())) == 0 {
@@ -628,6 +637,7 @@ func (e *SchoolType) TeaqlSaveWithinGraph(context *runtime.UserContext, intent c
 
 func (e *SchoolType) saveCascade(context *runtime.UserContext, intent core.MutationIntent, scope *core.MutationTraceScope, privacy *data_service.MutationPrivacy) error {
 	for index, child := range e.schoolList.Items() {
+		if child.IsNew() && child.IsMarkedAsDelete() { continue }
 		child.AttachEntityRoot(e.root)
 		child.Base().PutDynamic("school_type_id", core.ValU64(e.base.Id))
 		if _, err := child.TeaqlSaveWithinGraph(context, intent, scope, privacy); err != nil {

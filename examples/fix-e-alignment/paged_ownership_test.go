@@ -1,6 +1,7 @@
 package fixe
 
 import (
+	"database/sql"
 	"encoding/json"
 	"fmt"
 	"testing"
@@ -12,10 +13,13 @@ import (
 
 func verifyPageStreamOwnership(t *testing.T, context *runtime.UserContext, idA, idB uint64) {
 	t.Helper()
-	before, err := lib.Q.PurchaseOrders().Limit(20).Comment("Inspect the page ownership fixture").
-		Purpose("Establish the bounded exact total").ExecuteForList(context)
+	before, err := lib.Q.PurchaseOrders().Limit(1).Count().Comment("Inspect the page ownership fixture").
+		Purpose("Establish the exact total without treating a bounded page as a census").ExecuteForList(context)
 	if err != nil {
 		t.Fatal(err)
+	}
+	if before.TotalCount == nil {
+		t.Fatal("exact baseline count was not returned")
 	}
 	sentinel := lib.Q.PurchaseOrders().Comment("Prepare the page-offset sentinel").
 		Purpose("Exercise a genuine nonzero page offset").NewEntity(context)
@@ -23,7 +27,11 @@ func verifyPageStreamOwnership(t *testing.T, context *runtime.UserContext, idA, 
 	if _, err := sentinel.AuditAs("Save the synthetic page sentinel").Save(context); err != nil {
 		t.Fatal(err)
 	}
-	expectedTotal := uint64(len(before.Data) + 1)
+	expectedTotal := *before.TotalCount + 1
+	var physicalTotal uint64
+	if err := context.GetResource("db").(*sql.DB).QueryRow("SELECT COUNT(*) FROM purchase_order_data WHERE version >= 1").Scan(&physicalTotal); err != nil || physicalTotal != expectedTotal {
+		t.Fatal("page baseline disagrees with the independent physical count", err, physicalTotal, expectedTotal)
+	}
 	exercise := func(rows []*purchase_order.PurchaseOrder, label, previous, next string, version int64) {
 		var a, b *purchase_order.PurchaseOrder
 		for _, row := range rows {
@@ -86,7 +94,7 @@ func verifyPageStreamOwnership(t *testing.T, context *runtime.UserContext, idA, 
 	}
 	exercise(page.Data, "a nonzero-offset page", "5550401", "5550402", 2)
 	var rows []*purchase_order.PurchaseOrder
-	err = lib.Q.PurchaseOrders().OrderByIdAsc().Limit(20).Comment("Stream independent roots across single-row chunks").
+	err = lib.Q.PurchaseOrders().OrderByIdDesc().Limit(3).Comment("Stream the three latest independent roots across single-row chunks").
 		Purpose("Verify cross-chunk deferred-save ownership").ExecuteForStream(context, 1, func(row *purchase_order.PurchaseOrder) error {
 		rows = append(rows, row)
 		return nil
@@ -94,8 +102,8 @@ func verifyPageStreamOwnership(t *testing.T, context *runtime.UserContext, idA, 
 	if err != nil {
 		t.Fatal(err)
 	}
-	if uint64(len(rows)) != expectedTotal {
-		t.Fatal("stream lost rows")
+	if len(rows) != 3 {
+		t.Fatal("bounded stream lost one of its three requested roots")
 	}
 	exercise(rows, "a fully consumed scalar stream", "5550402", "5550403", 3)
 	data, err := json.Marshal(map[string]any{"language": "go", "passed": true,

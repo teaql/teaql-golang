@@ -317,6 +317,10 @@ func (e *OrderSearchPreset) TeaqlPreflightGraph(context *runtime.UserContext, in
 
 func (e *OrderSearchPreset) TeaqlPreflightWithinGraph(context *runtime.UserContext, intent core.MutationIntent, parent *core.EntityKey) error {
 	if err := intent.Validate(); err != nil { return err }
+	if e.isNew && e.markedAsDelete {
+		if parent == nil { return fmt.Errorf("cancelled new root %s: create-then-delete has no persisted entity to return", e.EntityName()) }
+		return nil
+	}
 	if err := context.PrepareGraphMutationLineage(e.root, e.EntityKey(), parent, intent, e.comment); err != nil { return err }
 	restoredFields, err := context.DiscardRestoredScalarChanges(e.root, e.EntityKey(), e.loadedSnapshot)
 	if err != nil { return err }
@@ -422,6 +426,10 @@ func (e *OrderSearchPreset) teaqlRegisterGraphOutcome(context *runtime.UserConte
 // packages after the public root Save has opened the graph transaction.
 func (e *OrderSearchPreset) TeaqlSaveWithinGraph(context *runtime.UserContext, intent core.MutationIntent, parentScope *core.MutationTraceScope, privacy *data_service.MutationPrivacy) (*OrderSearchPreset, error) {
 	if err := intent.Validate(); err != nil { return nil, err }
+	if e.isNew && e.markedAsDelete {
+		if parentScope == nil { return nil, fmt.Errorf("cancelled new root %s: create-then-delete has no persisted entity to return", e.EntityName()) }
+		return e, nil
+	}
 	// Reached but unchanged entities are ancestry, not writes. Their changed
 	// descendants still participate without requiring a complete parent projection.
 	if !e.isNew && !e.markedAsDelete && len(e.root.Change(e.EntityKey())) == 0 {

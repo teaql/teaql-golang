@@ -30,9 +30,10 @@ func TestGeneratedIndependentNewAndBatchRoots(t *testing.T) {
 	if err := lib.EnsureSchema(context); err != nil {
 		t.Fatal(err)
 	}
-	before, err := lib.Q.PurchaseOrders().Limit(20).Comment("Inspect existing ownership fixture roots").
-		Purpose("Repeat generated ownership without deleting prior data").ExecuteForList(context)
-	if err != nil {
+	// A bounded result list is not a table count. Other examples and prior
+	// unreset rounds may legitimately contain more than twenty rows.
+	var before int
+	if err := db.QueryRow("SELECT COUNT(*) FROM purchase_order_data").Scan(&before); err != nil {
 		t.Fatal(err)
 	}
 	a := lib.Q.PurchaseOrders().Comment("Prepare the first independent owner").
@@ -45,9 +46,13 @@ func TestGeneratedIndependentNewAndBatchRoots(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	initial, err := lib.Q.PurchaseOrders().Limit(20).Comment("Inspect the first independent save").
+	initial, err := lib.Q.PurchaseOrders().WithIdIs(savedA.Id()).Limit(1).Comment("Inspect the first independent save").
 		Purpose("Verify the unsaved new owner did not leak into persistence").ExecuteForList(context)
-	if err != nil || len(initial.Data) != len(before.Data)+1 {
+	var afterA int
+	if err := db.QueryRow("SELECT COUNT(*) FROM purchase_order_data").Scan(&afterA); err != nil {
+		t.Fatal(err)
+	}
+	if err != nil || len(initial.Data) != 1 || afterA != before+1 {
 		t.Fatalf("saving A must not persist new B: %v", err)
 	}
 	foundA := false
@@ -61,9 +66,13 @@ func TestGeneratedIndependentNewAndBatchRoots(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	batch, err := lib.Q.PurchaseOrders().Limit(20).Comment("Load both owners in one bounded batch").
+	batch, err := lib.Q.PurchaseOrders().WithContactPhoneIn([]string{"5550300", "5550400"}).Limit(20).Comment("Load both owners in one bounded batch").
 		Purpose("Verify independently saveable list roots retain distinct mutation boundaries").ExecuteForList(context)
-	if err != nil || len(batch.Data) != len(before.Data)+2 {
+	var afterB int
+	if err := db.QueryRow("SELECT COUNT(*) FROM purchase_order_data").Scan(&afterB); err != nil {
+		t.Fatal(err)
+	}
+	if err != nil || len(batch.Data) != 2 || afterB != before+2 {
 		t.Fatalf("missing independent batch owners: %v", err)
 	}
 	var ownerA, ownerB *purchase_order.PurchaseOrder
