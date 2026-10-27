@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/teaql/teaql-golang/core"
@@ -561,6 +562,63 @@ type SqlDataServiceTransaction struct {
 	closed         bool
 	rollbackOnly   error
 	audits         transactionAudits
+}
+
+type physicalSQLLease struct {
+	transport SqlTransport
+	active    uint32
+	failed    uint32
+}
+
+func (l *physicalSQLLease) FetchAllSql(ctx stdcontext.Context, query *CompiledQuery) ([]core.Record, error) {
+	if atomic.LoadUint32(&l.active) == 0 {
+		return nil, errors.New("BLOB_TRANSACTION_REQUIRED")
+	}
+	rows, err := l.transport.FetchAllSql(ctx, query)
+	if err != nil {
+		atomic.StoreUint32(&l.failed, 1)
+	}
+	return rows, err
+}
+
+func (l *physicalSQLLease) ExecuteSql(ctx stdcontext.Context, query *CompiledQuery) (uint64, error) {
+	if atomic.LoadUint32(&l.active) == 0 {
+		return 0, errors.New("BLOB_TRANSACTION_REQUIRED")
+	}
+	count, err := l.transport.ExecuteSql(ctx, query)
+	if err != nil {
+		atomic.StoreUint32(&l.failed, 1)
+	}
+	return count, err
+}
+
+// WithPhysicalSQL lends the owning SQL transaction to a trusted optional module.
+// A callback failure poisons the transaction even when the caller catches it.
+// The lease cannot commit, roll back, or be used after the callback returns.
+func (t *SqlDataServiceTransaction) WithPhysicalSQL(work func(SqlTransport) error) (err error) {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	if t.closed || t.rollbackOnly != nil || work == nil {
+		return errors.New("BLOB_TRANSACTION_REQUIRED")
+	}
+	lease := &physicalSQLLease{transport: t.Transport}
+	atomic.StoreUint32(&lease.active, 1)
+	defer atomic.StoreUint32(&lease.active, 0)
+	defer func() {
+		if recovered := recover(); recovered != nil {
+			t.rollbackOnly = errors.New("physical SQL module panicked")
+			t.audits.deliveries = nil
+			panic(recovered)
+		}
+		if err == nil && atomic.LoadUint32(&lease.failed) != 0 {
+			err = errors.New("GRAPH_TRANSACTION_ROLLBACK_ONLY")
+		}
+		if err != nil {
+			t.rollbackOnly = err
+			t.audits.deliveries = nil
+		}
+	}()
+	return work(lease)
 }
 
 func (t *SqlDataServiceTransaction) Capabilities() ds.DataServiceCapabilities {

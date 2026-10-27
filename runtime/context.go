@@ -319,6 +319,8 @@ type UserContext struct {
 	graphSaveGate                     sync.Mutex
 	graphSaveMu                       sync.Mutex
 	graphSaveActive                   bool
+	graphSQLHandle                    *GraphSQLHandle
+	graphSQLTransaction               physicalSQLModuleOwner
 	graphCommitActions                []func() error
 	graphRollbackActions              []func()
 	graphFixTime                      time.Time
@@ -920,10 +922,13 @@ func (c *UserContext) executeGraphSave(operationContext stdcontext.Context, work
 	if err != nil {
 		return err
 	}
+	physicalSQL, _ := transaction.(physicalSQLModuleOwner)
 	// The carrier follows the actual transaction instead of rewriting c.Context.
 	transaction = bindGraphTelemetryTransaction(transaction, operationContext)
 	c.graphSaveMu.Lock()
 	c.graphSaveActive = true
+	c.graphSQLTransaction = physicalSQL
+	c.graphSQLHandle = &GraphSQLHandle{context: c}
 	c.graphCommitActions = nil
 	c.graphRollbackActions = nil
 	if !preparationStarted {
@@ -957,6 +962,8 @@ func (c *UserContext) executeGraphSave(operationContext stdcontext.Context, work
 			delete(c.resources, "idGenerator")
 		}
 		c.graphSaveActive = false
+		c.graphSQLHandle = nil
+		c.graphSQLTransaction = nil
 		c.graphCommitActions = nil
 		c.graphRollbackActions = nil
 		c.graphFixTime = time.Time{}
