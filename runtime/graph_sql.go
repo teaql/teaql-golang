@@ -15,6 +15,20 @@ type physicalSQLModuleOwner interface {
 // commit, and a retained handle stops working when that graph ends.
 type GraphSQLHandle struct{ context *UserContext }
 
+// RequireNoActiveGraphSQL prevents maintenance from waiting on its own graph
+// SQL owner while crossing the object-store boundary.
+func (c *UserContext) RequireNoActiveGraphSQL() error {
+	if c == nil {
+		return errors.New("BLOB_TRANSACTION_REQUIRED")
+	}
+	c.graphSaveMu.Lock()
+	defer c.graphSaveMu.Unlock()
+	if c.graphSaveActive && c.graphSQLTransaction != nil {
+		return errors.New("BLOB_TRANSACTION_REQUIRED")
+	}
+	return nil
+}
+
 // BelongsTo checks the trusted invocation context without exposing its owner.
 func (h *GraphSQLHandle) BelongsTo(context *UserContext) bool {
 	return h != nil && h.context == context

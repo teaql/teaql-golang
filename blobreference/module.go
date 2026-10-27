@@ -11,10 +11,11 @@ import (
 // service and authorized view projector into a host context without I/O.
 // Schema migration remains an explicit deployment operation.
 type BlobReferenceModule struct {
-	Catalog  *SQLiteCatalog
-	Upload   *SQLiteUploadService
-	Read     *SQLiteReadContributor
-	Mutation *SQLiteMutationParticipant
+	Catalog     *SQLiteCatalog
+	Upload      *SQLiteUploadService
+	Read        *SQLiteReadContributor
+	Mutation    *SQLiteMutationParticipant
+	Maintenance *SQLiteMaintenanceService
 }
 
 type blobCapability struct {
@@ -34,6 +35,10 @@ func (c *blobCapability) ValidateReady(context *runtime.UserContext) error {
 	if c.module.Read.Authorize == nil || c.module.Upload.authorization == nil || c.module.Upload.verifier == nil {
 		return errors.New("BLOB_CAPABILITY_MISSING")
 	}
+	if c.module.Maintenance != nil && (c.module.Maintenance.catalog != c.module.Catalog ||
+		context.GetResource("blobMaintenanceService") != c.module.Maintenance) {
+		return errors.New("BLOB_CAPABILITY_MISSING")
+	}
 	if err := c.module.Catalog.ValidateSchema(context); err != nil {
 		return err
 	}
@@ -49,6 +54,9 @@ func (m *BlobReferenceModule) Install(context *runtime.UserContext) error {
 		context.GetResource("blobResponseContributor") != nil || context.GetResource("blobUploadService") != nil || context.GetResource("blobMutationParticipant") != nil || context.GetResource("teaql.runtime.capability:blob.v1") != nil {
 		return errors.New("BLOB_CAPABILITY_MISSING")
 	}
+	if m.Maintenance != nil && (m.Maintenance.catalog != m.Catalog || context.GetResource("blobMaintenanceService") != nil) {
+		return errors.New("BLOB_CAPABILITY_MISSING")
+	}
 	capability := &blobCapability{module: m, context: context}
 	if err := context.InstallRuntimeCapability(capability); err != nil {
 		return errors.New("BLOB_CAPABILITY_MISSING")
@@ -56,6 +64,9 @@ func (m *BlobReferenceModule) Install(context *runtime.UserContext) error {
 	context.InsertResource("blobResponseContributor", m.Read)
 	context.InsertResource("blobUploadService", m.Upload)
 	context.InsertResource("blobMutationParticipant", m.Mutation)
+	if m.Maintenance != nil {
+		context.InsertResource("blobMaintenanceService", m.Maintenance)
+	}
 	return nil
 }
 
@@ -68,6 +79,16 @@ func (m *BlobReferenceModule) Ready(context *runtime.UserContext) error {
 		return errors.New("BLOB_CAPABILITY_MISSING")
 	}
 	return capability.ValidateReady(context)
+}
+
+// WithMaintenance enables host-scheduled cleanup without scheduling it or
+// changing the existing upload, read, and graph mutation installation.
+func (m *BlobReferenceModule) WithMaintenance(service *SQLiteMaintenanceService) (*BlobReferenceModule, error) {
+	if m == nil || service == nil || service.catalog != m.Catalog {
+		return nil, errors.New("BLOB_CAPABILITY_MISSING")
+	}
+	m.Maintenance = service
+	return m, nil
 }
 
 // NewBlobReferenceModule checks assembly coherence before passive installation.

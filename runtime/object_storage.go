@@ -251,6 +251,10 @@ func (s *ObjectStorage) Delete(key core.ObjectKey) error {
 	r.result(err)
 	return err
 }
+func (s *ObjectStorage) SupportsVersionConditionalDelete() bool {
+	_, ok := s.provider.(ObjectStorageConditionalDeleter)
+	return ok
+}
 func (s *ObjectStorage) DeleteIfVersion(key core.ObjectKey, contentVersion string) (ObjectConditionalDeleteResult, error) {
 	invocation, receipt := s.start("delete_if_version")
 	if !key.Valid() || strings.TrimSpace(contentVersion) != contentVersion || contentVersion == "" || contentVersion == "*" || len(contentVersion) > 256 || strings.IndexFunc(contentVersion, unicode.IsControl) >= 0 {

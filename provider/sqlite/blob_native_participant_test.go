@@ -65,6 +65,14 @@ func TestModeledBlobNativeMutationSharesSQLiteOwner(t *testing.T) {
 		&catalogReadPermission{allowed: true}, 30*time.Second); err == nil {
 		t.Fatal("module accepted missing native bind authorization")
 	}
+	maintenance, err := blobreference.NewSQLiteMaintenanceService(catalog,
+		&maintenancePermission{scope: "tenant-a", allowed: true}, 10)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := module.WithMaintenance(maintenance); err != nil {
+		t.Fatal(err)
+	}
 	store, err := blobreference.NewFileObjectStorage(filepath.Join(t.TempDir(), "storage"), []byte("0123456789abcdef0123456789abcdef"))
 	if err != nil {
 		t.Fatal(err)
@@ -76,6 +84,9 @@ func TestModeledBlobNativeMutationSharesSQLiteOwner(t *testing.T) {
 	}
 	if err := module.Ready(actor); err != nil {
 		t.Fatal(err)
+	}
+	if actor.GetResource("blobMaintenanceService") != maintenance {
+		t.Fatal("optional maintenance resource was not installed")
 	}
 	seed := func(key string) core.BlobRef {
 		t.Helper()

@@ -65,6 +65,7 @@ func (c *SQLiteCatalog) EnsureSchema(ctx stdcontext.Context) error {
             FOREIGN KEY (key) REFERENCES teaql_blob_catalog(key)
         )`,
 		`CREATE INDEX IF NOT EXISTS teaql_blob_binding_key ON teaql_blob_binding(key)`,
+		`CREATE UNIQUE INDEX IF NOT EXISTS teaql_blob_catalog_object_key ON teaql_blob_catalog(object_key)`,
 		`CREATE TABLE IF NOT EXISTS teaql_blob_upload (
             upload_id TEXT PRIMARY KEY, scope TEXT NOT NULL, replay_key TEXT NOT NULL,
             request_hash TEXT NOT NULL, key TEXT NOT NULL, entity TEXT NOT NULL,
@@ -111,6 +112,26 @@ func (c *SQLiteCatalog) ValidateSchema(ctx stdcontext.Context) error {
 		}
 	}
 	if !keyNullable || !versionRequired {
+		return errors.New("BLOB_SCHEMA_MISSING")
+	}
+	indexes, err := c.transport.FetchAllSql(ctx, sqlQuery(`PRAGMA index_list(teaql_blob_catalog)`))
+	if err != nil {
+		return errors.New("BLOB_SCHEMA_MISSING")
+	}
+	uniqueObjectKey := false
+	for _, row := range indexes {
+		name, _ := sqlText(row["name"])
+		isUnique, _ := row["unique"].TryI64()
+		if name == "teaql_blob_catalog_object_key" && isUnique == 1 {
+			uniqueObjectKey = true
+		}
+	}
+	columns, err := c.transport.FetchAllSql(ctx, sqlQuery(`PRAGMA index_info(teaql_blob_catalog_object_key)`))
+	if err != nil || !uniqueObjectKey || len(columns) != 1 {
+		return errors.New("BLOB_SCHEMA_MISSING")
+	}
+	name, _ := sqlText(columns[0]["name"])
+	if name != "object_key" {
 		return errors.New("BLOB_SCHEMA_MISSING")
 	}
 	return nil
