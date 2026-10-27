@@ -33,6 +33,7 @@ type EntityRoot struct {
 	deletedKeys      map[string]EntityKey
 	traceChains      map[string][]*TraceNode
 	traceKeys        map[string]EntityKey
+	compositionError *LedgerVersionConflict
 }
 
 func NewEntityRoot() *EntityRoot {
@@ -93,6 +94,32 @@ func (r *EntityRoot) Change(key EntityKey) Record {
 func (r *EntityRoot) DiscardFields(key EntityKey, observed Record) []string {
 	r.mu.Lock()
 	defer r.mu.Unlock()
+	return r.discardFieldsLocked(key, observed)
+}
+
+// DiscardFieldsAtVersion authorizes baseline cancellation and the final version
+// check under the same lock. A version replaced after comparison cannot erase
+// the pending edit, even if its value still equals the earlier observation.
+func (r *EntityRoot) DiscardFieldsAtVersion(key EntityKey, version int64, observed Record) ([]string, error) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	if r.compositionError != nil {
+		return nil, copyLedgerVersionConflict(r.compositionError)
+	}
+	current, known := r.originalVersions[key.mapKey()]
+	if !known {
+		return nil, nil
+	}
+	if current != version {
+		return nil, &LedgerVersionConflict{Key: key, TargetVersion: current, SourceVersion: version}
+	}
+	return r.discardFieldsLocked(key, observed), nil
+}
+
+func (r *EntityRoot) discardFieldsLocked(key EntityKey, observed Record) []string {
+	if r.compositionError != nil {
+		return nil
+	}
 	id := key.mapKey()
 	if _, fresh := r.newKeys[id]; fresh {
 		return nil
@@ -120,26 +147,7 @@ func (r *EntityRoot) DiscardFields(key EntityKey, observed Record) []string {
 }
 
 func (r *EntityRoot) MergeFrom(other *EntityRoot) {
-	if other == nil || other == r {
-		return
-	}
-	for _, key := range other.Keys() {
-		for field, value := range other.Change(key) {
-			r.Set(key, field, value)
-		}
-		if version, ok := other.OriginalVersion(key); ok {
-			r.SetOriginalVersion(key, version)
-		}
-		if other.IsNew(key) {
-			r.MarkAsNew(key)
-		}
-		if other.IsDeleted(key) {
-			r.MarkAsDeleted(key)
-		}
-		if trace := other.TraceChain(key); len(trace) != 0 {
-			r.SetTraceChain(key, trace)
-		}
-	}
+	_ = r.mergeFrom(other, true)
 }
 
 func (r *EntityRoot) Keys() []EntityKey {

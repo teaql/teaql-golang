@@ -120,6 +120,13 @@ func TestRestorationDoesNotCancelNewDeletedOrForeignBaseline(t *testing.T) {
 			root.Set(key, "phone", core.ValText("same"))
 			snapshot := core.NewOwnedLoadedScalarSnapshot(owner, version, core.Record{"phone": core.ValText("same")}, "phone")
 			removed, err := ctx.DiscardRestoredScalarChanges(root, key, snapshot)
+			if mode == "other-version" {
+				requireLedgerVersionRejection(t, err)
+				if len(removed) != 0 || len(root.Change(key)) != 1 {
+					t.Fatal("a conflicting baseline consumed pending intent")
+				}
+				return
+			}
 			if err != nil || len(removed) != 0 || len(root.Change(key)) != 1 {
 				t.Fatal("unproven restoration was cancelled", err)
 			}

@@ -46,6 +46,8 @@ type MutationPlan struct {
 	RootEntity  string
 	AuditReason string
 	Operations  []MutationOperation
+	// Invocation-local validation reference; Context never owns this ledger.
+	ledger *core.EntityRoot
 }
 
 type MutationVerdict string
@@ -187,9 +189,11 @@ func cloneRecord(record core.Record) core.Record {
 // MutationPlanFromEntityRoot snapshots the complete shared mutation ledger
 // after generated Checker/Fix preflight. It deliberately omits unchanged
 // loaded entities and create-then-delete entities that have no persistence
-// effect. The returned plan is detached from the live ledger.
+// effect. Operation values are detached from the live ledger; a private,
+// invocation-local reference revalidates composition before provider entry.
 func MutationPlanFromEntityRoot(root *core.EntityRoot, rootEntity, auditReason string) *MutationPlan {
 	plan := &MutationPlan{
+		ledger:      root,
 		RequestKey:  strings.TrimSpace(rootEntity) + ".saveGraph",
 		RootEntity:  strings.TrimSpace(rootEntity),
 		AuditReason: auditReason,
@@ -290,6 +294,9 @@ func (c *UserContext) ReviewMutationPlan(input *MutationPlan) (*MutationGovernan
 	if input == nil || strings.TrimSpace(input.RequestKey) == "" || strings.TrimSpace(input.RootEntity) == "" {
 		return nil, &RuntimeError{Type: "MutationPolicy", Message: "mutation plan requires request key and root entity"}
 	}
+	if err := validateLedgerComposition(input.ledger); err != nil {
+		return nil, err
+	}
 	if err := c.validateMutationPlanFields(input); err != nil {
 		return nil, err
 	}
@@ -348,6 +355,9 @@ func (c *UserContext) ReviewMutationPlan(input *MutationPlan) (*MutationGovernan
 	}
 	for _, code := range snapshot.WarningCodes {
 		c.emitMutationGovernanceWarning(snapshot, code)
+	}
+	if err := validateLedgerComposition(plan.ledger); err != nil {
+		return nil, err
 	}
 	return cloneMutationGovernance(snapshot), nil
 }

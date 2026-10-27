@@ -99,10 +99,9 @@ func checkerMappingError(entity string, err error) error {
 // Copy before mapping so rejected aliases cannot partially rewrite its input.
 func (c *UserContext) checkAndFixStorage(input *CheckAndFixInput, ledger *core.EntityRoot, owner core.EntityKey) error {
 	checked := *input
-	checked.Values = cloneRecord(input.Values)
-	checked.OldValues = cloneRecord(input.OldValues)
+	var changed core.Record
 	if ledger != nil {
-		changed := ledger.Change(owner)
+		changed = ledger.Change(owner)
 		if err := c.validateMutationPlanFields(&MutationPlan{Operations: []MutationOperation{{Kind: input.Operation, Entity: input.Entity, ID: owner.ID, ChangedValues: changed}}}); err != nil {
 			return err
 		}
@@ -111,11 +110,25 @@ func (c *UserContext) checkAndFixStorage(input *CheckAndFixInput, ledger *core.E
 			checked.changedFields[field] = true
 		}
 	}
+	checked.Values = cloneRecord(input.Values)
+	checked.OldValues = cloneRecord(input.OldValues)
 	if err := c.mapCheckerInput(&checked, true); err != nil {
 		return checkerMappingError(input.Entity, err)
 	}
+	// The receiving object may still carry its loaded snapshot after an explicit
+	// compatible composition. The final canonical ledger is the mutation source;
+	// OldValues remain original-state evidence and must never receive this overlay.
+	if len(changed) > 0 && checked.Values == nil {
+		checked.Values = make(core.Record, len(changed))
+	}
+	for field, value := range changed {
+		checked.Values[field] = core.CloneValue(value)
+	}
 	references := c.captureDeferredReferences(&checked, ledger, owner)
 	err := c.checkAndFixWithReferences(&checked, references)
+	if err != nil {
+		return err
+	}
 	if checked.Entity != input.Entity || checked.Operation != input.Operation {
 		return err
 	}

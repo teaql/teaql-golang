@@ -14,6 +14,9 @@ func (c *UserContext) DiscardRestoredScalarChanges(root *core.EntityRoot, key co
 	if root == nil {
 		return nil, fmt.Errorf("mutation ledger is required")
 	}
+	if err := validateLedgerComposition(root); err != nil {
+		return nil, err
+	}
 	changed := root.Change(key)
 	kind := core.MutationUpdate
 	if root.IsNew(key) {
@@ -32,6 +35,9 @@ func (c *UserContext) DiscardRestoredScalarChanges(root *core.EntityRoot, key co
 	if !known {
 		return nil, nil
 	}
+	if baselineVersion, owned := snapshot.OriginalVersionFor(key); owned && baselineVersion != version {
+		return nil, ledgerCompositionError(&core.LedgerVersionConflict{Key: key, TargetVersion: version, SourceVersion: baselineVersion})
+	}
 	entity := c.Entity(key.Entity)
 	if entity == nil {
 		return nil, nil
@@ -45,7 +51,10 @@ func (c *UserContext) DiscardRestoredScalarChanges(root *core.EntityRoot, key co
 	if err != nil {
 		return nil, err
 	}
-	removed := root.DiscardFields(key, canonical)
+	removed, err := root.DiscardFieldsAtVersion(key, version, canonical)
+	if err != nil {
+		return nil, ledgerCompositionError(err)
+	}
 	fields := make([]string, 0, len(removed))
 	for _, field := range removed {
 		stored, err := core.StorageLedgerField(entity, field)

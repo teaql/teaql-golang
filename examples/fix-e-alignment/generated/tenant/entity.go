@@ -125,6 +125,7 @@ func (e *Tenant) EntityRoot() *core.EntityRoot { return e.root }
 func (e *Tenant) AttachEntityRoot(root *core.EntityRoot) {
 	if root == nil || root == e.root { return }
 	root.MergeFrom(e.root)
+	if root.CompositionError() != nil { return }
 	e.root = root
 		for _, child := range e.purchaseOrderList.Items() { child.AttachEntityRoot(root) }
 		for _, child := range e.orderItemList.Items() { child.AttachEntityRoot(root) }

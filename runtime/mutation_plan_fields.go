@@ -6,6 +6,9 @@ import "github.com/teaql/teaql-golang/core"
 // Mapping provider aliases here would conceal a malformed ledger from policy.
 // Derived properties have no writable model slot. Reading them is unaffected.
 func (c *UserContext) validateMutationPlanFields(plan *MutationPlan) error {
+	if err := validateOperationVersions(plan); err != nil {
+		return err
+	}
 	if c.Metadata == nil || len(c.Metadata.AllEntities()) == 0 {
 		return nil // Unmodeled low-level runtimes retain their existing contract.
 	}

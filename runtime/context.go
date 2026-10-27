@@ -857,6 +857,9 @@ func (c *UserContext) executePreparedGraphSave(ctx stdcontext.Context, intent co
 	if plan != nil {
 		plan = cloneMutationPlan(plan)
 		plan.AuditReason = intent.AuditReason()
+		if err := validateLedgerComposition(plan.ledger); err != nil {
+			return err
+		}
 	}
 	// A complete, explicit empty prepared plan is a no-op, not an UPDATE.
 	// Keep the traversal callback behind a rejecting provider so a late child

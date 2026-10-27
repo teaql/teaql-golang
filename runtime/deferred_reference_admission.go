@@ -13,6 +13,9 @@ func CheckAndFixGraphEntity(context *UserContext, input *CheckAndFixInput, ledge
 	if context == nil {
 		return fmt.Errorf("UserContext is required")
 	}
+	if err := validateLedgerComposition(ledger); err != nil {
+		return err
+	}
 	if input == nil {
 		return nil
 	}

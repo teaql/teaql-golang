@@ -26,6 +26,15 @@ func (s LoadedScalarSnapshot) Values() Record { return CloneRecord(s.values) }
 func (LoadedScalarSnapshot) String() string   { return "<loaded scalar snapshot>" }
 func (LoadedScalarSnapshot) GoString() string { return "<loaded scalar snapshot>" }
 
+// OriginalVersionFor exposes only the authoritative typed-owner provenance.
+// An unowned privacy snapshot or another identity is never a version source.
+func (s LoadedScalarSnapshot) OriginalVersionFor(key EntityKey) (int64, bool) {
+	if s.owner == nil || s.owner.key.mapKey() != key.mapKey() {
+		return 0, false
+	}
+	return s.owner.version, true
+}
+
 // NewOwnedLoadedScalarSnapshot captures authoritative loaded values together
 // with their typed identity and optimistic version. Unsupported, cyclic or
 // over-budget values are deliberately not usable as equality evidence.
