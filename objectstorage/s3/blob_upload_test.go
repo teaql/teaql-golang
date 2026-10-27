@@ -56,6 +56,10 @@ func (p *s3UploadPermission) CurrentOnLease(actor *runtime.UserContext, _ teaqls
 	}
 	return scope, field, p.Authorize(actor, target, action, input)
 }
+func (*s3UploadPermission) CurrentPolicyOnLease(*runtime.UserContext, teaqlsql.SqlTransport,
+	blobreference.UploadTarget) (blobreference.RetentionPolicy, error) {
+	return blobreference.NewRetentionPolicy("default", "server_stream", 86400, 604800, 3600)
+}
 
 // The test parser consumes the complete object; production format detection is a separate gate.
 type s3PDFVerifier struct{ calls int }
@@ -94,6 +98,10 @@ func (s3BindingPermission) Authorize(_ *runtime.UserContext, target blobreferenc
 		return errors.New("denied")
 	}
 	return nil
+}
+func (s3BindingPermission) CurrentPolicyOnLease(*runtime.UserContext, teaqlsql.SqlTransport,
+	blobreference.BindingTarget) (blobreference.RetentionPolicy, error) {
+	return blobreference.NewRetentionPolicy("default", "server_stream", 86400, 604800, 3600)
 }
 
 type s3ReadPermission struct{ allowed bool }
