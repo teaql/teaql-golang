@@ -216,7 +216,11 @@ func prepareDocumentCommand(command SubmittedDocumentCommand) (string, Submitted
 		}
 		parts = append(parts, canonical)
 	}
-	encoded, err := json.Marshal(parts)
+	var output bytes.Buffer
+	encoder := json.NewEncoder(&output)
+	encoder.SetEscapeHTML(false)
+	err := encoder.Encode(parts)
+	encoded := literalDocumentJSONSeparators(bytes.TrimSuffix(output.Bytes(), []byte("\n")))
 	if err != nil || len(encoded) > maxCommandBytes {
 		return "", empty, errors.New("DOCUMENT_COMMAND_INVALID")
 	}
@@ -242,12 +246,34 @@ func prepareDocumentCommand(command SubmittedDocumentCommand) (string, Submitted
 		CommandID: command.CommandID, Body: snapshot, BlobSelections: selections}, nil
 }
 
-func legacyDocumentSelectionHash(command SubmittedDocumentCommand) (string, error) {
-	if command.BlobSelections == nil {
-		return "", nil
+// encoding/json still escapes U+2028/U+2029 with HTML escaping disabled.
+// Normalize only actual escaped separators, not literal backslash-u text.
+func literalDocumentJSONSeparators(encoded []byte) []byte {
+	out := make([]byte, 0, len(encoded))
+	for i := 0; i < len(encoded); i++ {
+		if i+6 <= len(encoded) && encoded[i] == '\\' && encoded[i+1] == 'u' &&
+			encoded[i+2] == '2' && encoded[i+3] == '0' && encoded[i+4] == '2' &&
+			(encoded[i+5] == '8' || encoded[i+5] == '9') {
+			preceding := 0
+			for j := i - 1; j >= 0 && encoded[j] == '\\'; j-- {
+				preceding++
+			}
+			if preceding%2 == 0 {
+				out = append(out, 0xe2, 0x80, 0xa8+encoded[i+5]-'8')
+				i += 5
+				continue
+			}
+		}
+		out = append(out, encoded[i])
 	}
-	parts := []any{command.BusinessID, command.DocumentToken, command.CommandID,
-		command.Body, command.BlobSelections}
+	return out
+}
+
+func legacyDocumentCommandHash(command SubmittedDocumentCommand) (string, error) {
+	parts := []any{command.BusinessID, command.DocumentToken, command.CommandID, command.Body}
+	if command.BlobSelections != nil {
+		parts = append(parts, command.BlobSelections)
+	}
 	encoded, err := json.Marshal(parts)
 	if err != nil || len(encoded) > maxCommandBytes {
 		return "", errors.New("DOCUMENT_COMMAND_INVALID")
@@ -336,7 +362,7 @@ func (j *SQLiteDocumentCommandJournal) ApplyInGraph(ctx stdcontext.Context,
 			if !ok1 || !ok2 || !ok3 || !ok4 {
 				return errors.New("DOCUMENT_CATALOG_FAILED")
 			}
-			legacyHash, legacyErr := legacyDocumentSelectionHash(frozen)
+			legacyHash, legacyErr := legacyDocumentCommandHash(frozen)
 			if legacyErr != nil || (hash != requestHash && hash != legacyHash) {
 				return errors.New("DOCUMENT_REPLAY_CONFLICT")
 			}
