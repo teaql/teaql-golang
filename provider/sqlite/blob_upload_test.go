@@ -117,6 +117,87 @@ func TestSQLiteBlobUploadWithRealJPEGDecoder(t *testing.T) {
 	}
 }
 
+func TestSQLiteBlobUploadWithRealOfficeParser(t *testing.T) {
+	for _, entry := range []struct{ extension, mime string }{
+		{"docx", "application/vnd.openxmlformats-officedocument.wordprocessingml.document"},
+		{"xlsx", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"},
+	} {
+		t.Run(entry.extension, func(t *testing.T) {
+			e := nativeBatchEnvironment(t)
+			catalog, err := blobreference.NewSQLiteCatalog(e.executor.Transport)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if err := catalog.EnsureSchema(e.ctx); err != nil {
+				t.Fatal(err)
+			}
+			secret := make([]byte, 32)
+			if _, err := rand.Read(secret); err != nil {
+				t.Fatal(err)
+			}
+			store, err := blobreference.NewFileObjectStorage(filepath.Join(t.TempDir(), "office"), secret)
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer store.Close()
+			e.ctx.WithObjectStorage(store)
+			e.ctx.WithObjectStorageObserver(runtime.ObjectStorageObserverFunc(func(runtime.ObjectStorageEvent) {}))
+			verifier, err := blobreference.NewOfficeContentVerifier(10000, 100<<20, 1000, 200000, 2)
+			if err != nil {
+				t.Fatal(err)
+			}
+			service, err := blobreference.NewSQLiteUploadService(catalog,
+				&uploadPermission{scope: "tenant-a", allowed: true, extensions: []string{entry.extension}},
+				verifier, 10000, 15*time.Minute)
+			if err != nil {
+				t.Fatal(err)
+			}
+			data, err := os.ReadFile(filepath.Join("..", "..", "blobreference", "testdata",
+				"sample."+entry.extension))
+			if err != nil {
+				t.Fatal(err)
+			}
+			target := blobreference.UploadTarget{Entity: "Customer", EntityID: "1", Field: "document"}
+			good, err := service.Begin(e.ctx, target,
+				blobreference.UploadInput{FileName: "sample." + entry.extension, DeclaredSize: int64(len(data))},
+				"real-office-"+entry.extension)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if _, err := service.Write(e.ctx, good.ID, io.NopCloser(bytes.NewReader(data))); err != nil {
+				t.Fatal(err)
+			}
+			if reference, err := service.Complete(e.ctx, good.ID); err != nil || reference != good.Reference {
+				t.Fatalf("verified Office package did not promote: %v", err)
+			}
+			var state, mime string
+			var size int64
+			if err := e.db.QueryRow("SELECT status,content_type,size_bytes FROM teaql_blob_catalog WHERE key=?",
+				good.Reference.Key()).Scan(&state, &mime, &size); err != nil ||
+				state != "uploaded_unbound" || mime != entry.mime || size != int64(len(data)) {
+				t.Fatalf("wrong Office catalog facts: %s %s %d %v", state, mime, size, err)
+			}
+			truncated := data[:len(data)-12]
+			bad, err := service.Begin(e.ctx, target,
+				blobreference.UploadInput{FileName: "broken." + entry.extension,
+					DeclaredSize: int64(len(truncated))}, "broken-office-"+entry.extension)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if _, err := service.Write(e.ctx, bad.ID, io.NopCloser(bytes.NewReader(truncated))); err != nil {
+				t.Fatal(err)
+			}
+			if _, err := service.Complete(e.ctx, bad.ID); err == nil || err.Error() != "BLOB_FORMAT_NOT_ALLOWED" {
+				t.Fatalf("truncated Office package accepted: %v", err)
+			}
+			if err := e.db.QueryRow("SELECT status FROM teaql_blob_catalog WHERE key=?",
+				bad.Reference.Key()).Scan(&state); err != nil || state != "initiated" {
+				t.Fatalf("invalid Office upload promoted: %s %v", state, err)
+			}
+		})
+	}
+}
+
 func TestSQLiteBlobUploadWithRealMediaDecoder(t *testing.T) {
 	if goRuntime.GOOS != "linux" {
 		t.Skip("Linux prlimit media verifier")

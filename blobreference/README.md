@@ -24,16 +24,26 @@ seconds. The verifier hashes original bytes and reports `audio/mpeg` or
 `video/mp4`. This is format validation, not malware scanning. Its readiness
 check is called by `BlobReferenceModule.Ready` when that verifier is installed.
 
-To accept both image and media formats through one upload service, the host
-constructs `NewCompositeContentVerifier` with separate image and media
+`NewOfficeContentVerifier` is a separate standard-library DOCX/XLSX parser. It
+requires a complete ZIP central directory and fully reads every member with
+CRC checks under compressed input, expanded-byte, part, XML-element, depth and
+concurrency limits. It rejects duplicate or traversal part names, XML
+directives/entities, malformed XML, mismatched Office content types and main
+relationships; DOCX needs a Word document body, while XLSX needs a workbook
+whose sheet IDs resolve to real worksheet roots. It hashes the original package
+and reports the verified DOCX/XLSX MIME. This checks OOXML package structure,
+not macros, malware or every application-level Office constraint.
+
+To accept several formats through one upload service, the host
+constructs `NewCompositeContentVerifier` with separate image, media and Office
 `ContentVerifierRoute` groups, then passes the composite to
 `NewSQLiteUploadService`. Duplicate, invalid and nil routes fail at assembly;
 unregistered extensions fail before reading the source. Its explicit readiness
 check forwards to each configured parser. This router does not load optional
 parsers or expand the set of implemented formats.
 
-The remaining five extensions (DOC/DOCX/XLS/XLSX/PDF) need production verifier
-adapters. Earlier PDF fixture tests prove upload orchestration only.
+The remaining three extensions (DOC/XLS/PDF) need production verifier adapters.
+Earlier PDF fixture tests prove upload orchestration only.
 Lifecycle/GC and complete F2–F5 acceptance remain open.
 
 `NewSQLiteFileGenerationSweepService` is an optional, host-scheduled File
