@@ -855,7 +855,11 @@ func (s *SQLiteUploadService) Complete(actor *runtime.UserContext, id string) (c
 		if err != nil {
 			return uploadError("BLOB_UPLOAD_INCOMPLETE")
 		}
-		defer content.Close()
+		defer func() {
+			if content != nil {
+				_ = content.Close()
+			}
+		}()
 		if content.Metadata().Size() != before.Size() || content.Metadata().ETag() != before.ETag() {
 			return uploadError("BLOB_UPLOAD_INCOMPLETE")
 		}
@@ -873,6 +877,11 @@ func (s *SQLiteUploadService) Complete(actor *runtime.UserContext, id string) (c
 		mime, _ := core.BlobMIMEForExtension(row.Extension)
 		if !reader.eof || reader.count != before.Size() || verified.SizeBytes != reader.count ||
 			verified.SHA256 != digest || verified.SHA256 != row.WrittenSHA256 || verified.ContentType != mime {
+			return uploadError("BLOB_UPLOAD_INCOMPLETE")
+		}
+		closeErr := content.Close()
+		content = nil
+		if closeErr != nil {
 			return uploadError("BLOB_UPLOAD_INCOMPLETE")
 		}
 		after, err := store.Head(key)

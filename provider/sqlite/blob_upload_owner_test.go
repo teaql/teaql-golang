@@ -57,6 +57,35 @@ type countingUploadStore struct {
 	puts int32
 }
 
+type failingCloseUploadStore struct {
+	runtime.ObjectStorageProvider
+	failClose bool
+}
+
+type closeErrorUploadReader struct {
+	io.ReadCloser
+	fail bool
+}
+
+func (r *closeErrorUploadReader) Close() error {
+	if err := r.ReadCloser.Close(); err != nil {
+		return err
+	}
+	if r.fail {
+		return errors.New("PRIVATE-OBJECT-CLOSE-CANARY")
+	}
+	return nil
+}
+
+func (s *failingCloseUploadStore) Get(invocation runtime.StorageInvocation, key core.ObjectKey) (*runtime.ObjectContent, error) {
+	content, err := s.ObjectStorageProvider.Get(invocation, key)
+	if err != nil || content == nil {
+		return content, err
+	}
+	return runtime.NewObjectContent(content.Metadata(),
+		&closeErrorUploadReader{ReadCloser: content.Stream(), fail: s.failClose}), nil
+}
+
 type failedReplaySource struct{}
 
 func (failedReplaySource) Read([]byte) (int, error) {
@@ -206,6 +235,60 @@ func TestSQLiteBlobUploadUsesCurrentSQLPermissionOnTheBorrowedLease(t *testing.T
 	}
 	if _, err := service.Complete(e.ctx, session.ID); err == nil || err.Error() != "BLOB_UPLOAD_DENIED" {
 		t.Fatalf("revoked completed replay accepted: %v", err)
+	}
+}
+
+func TestSQLiteBlobUploadConfirmRejectsStorageCloseFailure(t *testing.T) {
+	e := nativeBatchEnvironment(t)
+	catalog, err := blobreference.NewSQLiteCatalog(e.executor.Transport)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := catalog.EnsureSchema(e.ctx); err != nil {
+		t.Fatal(err)
+	}
+	secret := make([]byte, 32)
+	if _, err := rand.Read(secret); err != nil {
+		t.Fatal(err)
+	}
+	file, err := blobreference.NewFileObjectStorage(filepath.Join(t.TempDir(), "private"), secret)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer file.Close()
+	store := &failingCloseUploadStore{ObjectStorageProvider: file, failClose: true}
+	e.ctx.WithObjectStorage(store).WithObjectStorageObserver(
+		runtime.ObjectStorageObserverFunc(func(runtime.ObjectStorageEvent) {}))
+	service, err := blobreference.NewSQLiteUploadService(catalog,
+		&uploadPermission{scope: "tenant-a", allowed: true}, &fixturePDFVerifier{}, 10_000, time.Minute)
+	if err != nil {
+		t.Fatal(err)
+	}
+	data := []byte("%PDF-1.7\nclose failure must not promote\n%%EOF")
+	target := blobreference.UploadTarget{Entity: "Customer", EntityID: "1", Field: "document"}
+	session, err := service.Begin(e.ctx, target,
+		blobreference.UploadInput{FileName: "report.pdf", DeclaredSize: int64(len(data))}, "close-failure")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := service.Write(e.ctx, session.ID, io.NopCloser(bytes.NewReader(data))); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := service.Complete(e.ctx, session.ID); err == nil || err.Error() != "BLOB_UPLOAD_INCOMPLETE" {
+		t.Fatalf("storage close failure promoted upload: %v", err)
+	}
+	var state, status string
+	if err := e.db.QueryRow(`SELECT u.state,c.status FROM teaql_blob_upload u
+		JOIN teaql_blob_catalog c ON c.key=u.key WHERE u.upload_id=?`, session.ID).
+		Scan(&state, &status); err != nil {
+		t.Fatal(err)
+	}
+	if state != "written" || status != "initiated" {
+		t.Fatalf("close failure changed committed state: %s/%s", state, status)
+	}
+	store.failClose = false
+	if result, err := service.Complete(e.ctx, session.ID); err != nil || result != session.Reference {
+		t.Fatalf("confirmation did not recover after close failure: %v", err)
 	}
 }
 
