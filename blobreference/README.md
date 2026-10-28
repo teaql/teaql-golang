@@ -34,15 +34,26 @@ whose sheet IDs resolve to real worksheet roots. It hashes the original package
 and reports the verified DOCX/XLSX MIME. This checks OOXML package structure,
 not macros, malware or every application-level Office constraint.
 
+`NewPDFContentVerifier` is a separate Linux-only PDF adapter. The host supplies
+absolute paths to patched `pdfinfo`, `pdftoppm` and `prlimit` binaries, plus
+input, page, rendered-output and concurrency limits. It checks the PDF envelope,
+requires an unencrypted page count within policy, renders every page through
+stdin to bounded 64-pixel PNG output and decodes every resulting image. Each
+child has CPU and address-space limits and the verification has a wall timeout;
+document bytes and rendered pages are not written to scratch. It hashes the
+original PDF and reports `application/pdf`. This validates decodability within
+the configured limits; it is not malware scanning or a universal PDF conformance
+check. The host must call readiness before accepting uploads.
+
 To accept several formats through one upload service, the host
-constructs `NewCompositeContentVerifier` with separate image, media and Office
+constructs `NewCompositeContentVerifier` with separate image, media, Office and PDF
 `ContentVerifierRoute` groups, then passes the composite to
 `NewSQLiteUploadService`. Duplicate, invalid and nil routes fail at assembly;
 unregistered extensions fail before reading the source. Its explicit readiness
 check forwards to each configured parser. This router does not load optional
 parsers or expand the set of implemented formats.
 
-The remaining three extensions (DOC/XLS/PDF) need production verifier adapters.
+The remaining two extensions (DOC/XLS) need production verifier adapters.
 Earlier PDF fixture tests prove upload orchestration only.
 Lifecycle/GC and complete F2–F5 acceptance remain open.
 

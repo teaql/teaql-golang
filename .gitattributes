@@ -1,1 +1,2 @@
 test-vectors/*.tsv whitespace=-blank-at-eol
+blobreference/testdata/*.pdf binary

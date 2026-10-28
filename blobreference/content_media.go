@@ -45,16 +45,18 @@ func NewMediaContentVerifier(ffprobePath, ffmpegPath, prlimitPath string,
 }
 
 type cappedOutput struct {
-	bytes.Buffer
+	buffer  bytes.Buffer
 	maximum int
 }
 
 func (out *cappedOutput) Write(data []byte) (int, error) {
-	if len(data) > out.maximum-out.Len() {
-		return 0, errors.New("media probe output limit")
+	if len(data) > out.maximum-out.buffer.Len() {
+		return 0, errors.New("parser output limit")
 	}
-	return out.Buffer.Write(data)
+	return out.buffer.Write(data)
 }
+
+func (out *cappedOutput) Bytes() []byte { return out.buffer.Bytes() }
 
 func (v *MediaContentVerifier) execute(binary string, arguments []string,
 	input []byte, timeout time.Duration) ([]byte, error) {

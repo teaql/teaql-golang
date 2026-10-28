@@ -198,6 +198,87 @@ func TestSQLiteBlobUploadWithRealOfficeParser(t *testing.T) {
 	}
 }
 
+func TestSQLiteBlobUploadWithRealPDFParser(t *testing.T) {
+	if goRuntime.GOOS != "linux" {
+		t.Skip("Linux prlimit PDF verifier")
+	}
+	info, infoErr := exec.LookPath("pdfinfo")
+	render, renderErr := exec.LookPath("pdftoppm")
+	limit, limitErr := exec.LookPath("prlimit")
+	if infoErr != nil || renderErr != nil || limitErr != nil {
+		t.Skip("host Poppler and prlimit command-line tools required")
+	}
+	e := nativeBatchEnvironment(t)
+	catalog, err := blobreference.NewSQLiteCatalog(e.executor.Transport)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := catalog.EnsureSchema(e.ctx); err != nil {
+		t.Fatal(err)
+	}
+	secret := make([]byte, 32)
+	if _, err := rand.Read(secret); err != nil {
+		t.Fatal(err)
+	}
+	store, err := blobreference.NewFileObjectStorage(filepath.Join(t.TempDir(), "pdf"), secret)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer store.Close()
+	e.ctx.WithObjectStorage(store)
+	e.ctx.WithObjectStorageObserver(runtime.ObjectStorageObserverFunc(func(runtime.ObjectStorageEvent) {}))
+	verifier, err := blobreference.NewPDFContentVerifier(info, render, limit,
+		10_000, 100, 4<<20, 2)
+	if err != nil {
+		t.Fatal(err)
+	}
+	service, err := blobreference.NewSQLiteUploadService(catalog,
+		&uploadPermission{scope: "tenant-a", allowed: true, extensions: []string{"pdf"}},
+		verifier, 10_000, 15*time.Minute)
+	if err != nil {
+		t.Fatal(err)
+	}
+	data, err := os.ReadFile(filepath.Join("..", "..", "blobreference", "testdata", "sample.pdf"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	target := blobreference.UploadTarget{Entity: "Customer", EntityID: "1", Field: "document"}
+	good, err := service.Begin(e.ctx, target,
+		blobreference.UploadInput{FileName: "sample.pdf", DeclaredSize: int64(len(data))}, "real-pdf")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := service.Write(e.ctx, good.ID, io.NopCloser(bytes.NewReader(data))); err != nil {
+		t.Fatal(err)
+	}
+	if reference, err := service.Complete(e.ctx, good.ID); err != nil || reference != good.Reference {
+		t.Fatalf("verified PDF did not promote: %v", err)
+	}
+	var state, mime string
+	var size int64
+	if err := e.db.QueryRow("SELECT status,content_type,size_bytes FROM teaql_blob_catalog WHERE key=?",
+		good.Reference.Key()).Scan(&state, &mime, &size); err != nil || state != "uploaded_unbound" ||
+		mime != "application/pdf" || size != int64(len(data)) {
+		t.Fatalf("wrong PDF catalog facts: %s %s %d %v", state, mime, size, err)
+	}
+	truncated := data[:len(data)-12]
+	bad, err := service.Begin(e.ctx, target,
+		blobreference.UploadInput{FileName: "broken.pdf", DeclaredSize: int64(len(truncated))}, "broken-pdf")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := service.Write(e.ctx, bad.ID, io.NopCloser(bytes.NewReader(truncated))); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := service.Complete(e.ctx, bad.ID); err == nil || err.Error() != "BLOB_FORMAT_NOT_ALLOWED" {
+		t.Fatalf("truncated PDF accepted: %v", err)
+	}
+	if err := e.db.QueryRow("SELECT status FROM teaql_blob_catalog WHERE key=?",
+		bad.Reference.Key()).Scan(&state); err != nil || state != "initiated" {
+		t.Fatalf("invalid PDF upload promoted: %s %v", state, err)
+	}
+}
+
 func TestSQLiteBlobUploadWithRealMediaDecoder(t *testing.T) {
 	if goRuntime.GOOS != "linux" {
 		t.Skip("Linux prlimit media verifier")

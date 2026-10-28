@@ -136,6 +136,9 @@ func TestRealSQLiteBlobUploadThroughS3(t *testing.T) {
 		t.Skip("explicit S3-compatible Blob upload gate required")
 	}
 	t.Run("fixture-pdf", func(t *testing.T) { runSQLiteBlobUploadThroughS3(t, "fixture") })
+	if os.Getenv("TEAQL_S3_TEST_REAL_PDF") == "1" {
+		t.Run("real-pdf", func(t *testing.T) { runSQLiteBlobUploadThroughS3(t, "pdf") })
+	}
 	if os.Getenv("TEAQL_S3_TEST_REAL_IMAGE") == "1" {
 		t.Run("real-jpeg", func(t *testing.T) { runSQLiteBlobUploadThroughS3(t, "image") })
 	}
@@ -198,7 +201,26 @@ func runSQLiteBlobUploadThroughS3(t *testing.T, mode string) {
 	var parser blobreference.ContentVerifier = &s3PDFVerifier{}
 	data := []byte("%PDF-1.7\nreal S3 Blob upload\n%%EOF")
 	fileName, contentType := "report.pdf", "application/pdf"
-	if mode == "image" {
+	if mode == "pdf" {
+		if goRuntime.GOOS != "linux" {
+			t.Skip("Linux prlimit PDF verifier")
+		}
+		info, infoErr := exec.LookPath("pdfinfo")
+		render, renderErr := exec.LookPath("pdftoppm")
+		limit, limitErr := exec.LookPath("prlimit")
+		if infoErr != nil || renderErr != nil || limitErr != nil {
+			t.Skip("host Poppler and prlimit command-line tools required")
+		}
+		parser, err = blobreference.NewPDFContentVerifier(info, render, limit, 10_000, 100, 4<<20, 2)
+		if err != nil {
+			t.Fatal(err)
+		}
+		data, err = os.ReadFile(filepath.Join("..", "..", "blobreference", "testdata", "sample.pdf"))
+		if err != nil {
+			t.Fatal(err)
+		}
+		fileName = "sample.pdf"
+	} else if mode == "image" {
 		permission.extensions = []string{"jpg"}
 		parser, err = blobreference.NewImageContentVerifier(10_000, 100<<20, 2)
 		if err != nil {
