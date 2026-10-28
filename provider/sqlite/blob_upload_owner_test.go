@@ -88,6 +88,14 @@ func (t *postCommitUploadTx) CommitSql(ctx context.Context) error {
 	return errors.New("PRIVATE-COMMIT-CANARY")
 }
 
+func (t *postCommitUploadTransport) BeginSql(ctx context.Context) (teaqlsql.SqlTransactionTransportTx, error) {
+	tx, err := t.SqlTransactionTransport.BeginSql(ctx)
+	if err != nil || !atomic.CompareAndSwapInt32(&t.fail, 1, 0) {
+		return tx, err
+	}
+	return &postCommitUploadTx{tx}, nil
+}
+
 func (t *postCommitUploadTransport) BeginImmediateSql(ctx context.Context) (teaqlsql.SqlTransactionTransportTx, error) {
 	tx, err := t.immediate.BeginImmediateSql(ctx)
 	if err != nil || !atomic.CompareAndSwapInt32(&t.fail, 1, 0) {
@@ -318,10 +326,32 @@ func TestSQLiteBlobUploadWriteCommitUnknownReplaysOnlySameBytesAndGeneration(t *
 	}
 	data := []byte("%PDF-1.7\nSQL commit succeeded, reply lost\n%%EOF")
 	target := blobreference.UploadTarget{Entity: "Customer", EntityID: "1", Field: "document"}
-	session, err := service.Begin(e.ctx, target,
-		blobreference.UploadInput{FileName: "report.pdf", DeclaredSize: int64(len(data))}, "unknown-write")
+	input := blobreference.UploadInput{FileName: "report.pdf", DeclaredSize: int64(len(data))}
+	atomic.StoreInt32(&transport.fail, 1)
+	if _, err := service.Begin(e.ctx, target, input, "unknown-write"); err == nil || err.Error() != "BLOB_CATALOG_FAILED" {
+		t.Fatalf("committed begin reply loss: %v", err)
+	}
+	var begunID, begunKey string
+	var begunExpiry int64
+	if err := e.db.QueryRow(`SELECT upload_id,key,expires_ms FROM teaql_blob_upload
+		WHERE scope='tenant-a' AND replay_key='unknown-write'`).Scan(&begunID, &begunKey, &begunExpiry); err != nil {
+		t.Fatal(err)
+	}
+	permission.allowed = false
+	if _, err := service.Begin(e.ctx, target, input, "unknown-write"); err == nil || err.Error() != "BLOB_UPLOAD_DENIED" {
+		t.Fatalf("revoked begin replay: %v", err)
+	}
+	permission.allowed = true
+	if _, err := service.Begin(e.ctx, target,
+		blobreference.UploadInput{FileName: "changed.pdf", DeclaredSize: int64(len(data))}, "unknown-write"); err == nil || err.Error() != "BLOB_IDEMPOTENCY_CONFLICT" {
+		t.Fatalf("changed begin replay: %v", err)
+	}
+	session, err := service.Begin(e.ctx, target, input, "unknown-write")
 	if err != nil {
 		t.Fatal(err)
+	}
+	if session.ID != begunID || session.Reference.Key() != begunKey || session.ExpiresAt.UnixMilli() != begunExpiry {
+		t.Fatalf("begin replay did not preserve committed session")
 	}
 	atomic.StoreInt32(&transport.fail, 1)
 	if _, err := service.Write(e.ctx, session.ID, io.NopCloser(bytes.NewReader(data))); err == nil || err.Error() != "BLOB_CATALOG_FAILED" {
