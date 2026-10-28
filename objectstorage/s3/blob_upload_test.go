@@ -146,6 +146,13 @@ func TestRealSQLiteBlobUploadThroughS3(t *testing.T) {
 			})
 		}
 	}
+	if os.Getenv("TEAQL_S3_TEST_REAL_OFFICE") == "1" {
+		for _, extension := range []string{"docx", "xlsx"} {
+			t.Run("real-"+extension, func(t *testing.T) {
+				runSQLiteBlobUploadThroughS3(t, extension)
+			})
+		}
+	}
 }
 
 func runSQLiteBlobUploadThroughS3(t *testing.T, mode string) {
@@ -202,6 +209,22 @@ func runSQLiteBlobUploadThroughS3(t *testing.T, mode string) {
 			t.Fatal(err)
 		}
 		fileName, contentType = "sample.jpg", "image/jpeg"
+	} else if mode == "docx" || mode == "xlsx" {
+		permission.extensions = []string{mode}
+		parser, err = blobreference.NewOfficeContentVerifier(10_000, 100<<20, 1000, 200000, 2)
+		if err != nil {
+			t.Fatal(err)
+		}
+		data, err = os.ReadFile(filepath.Join("..", "..", "blobreference", "testdata",
+			"sample."+mode))
+		if err != nil {
+			t.Fatal(err)
+		}
+		fileName = "sample." + mode
+		contentType = "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+		if mode == "xlsx" {
+			contentType = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+		}
 	} else if mode == "mp3" || mode == "mp4" {
 		if goRuntime.GOOS != "linux" {
 			t.Skip("Linux prlimit media verifier")
