@@ -2,6 +2,9 @@ package sqlite
 
 import (
 	stdcontext "context"
+	"crypto/sha256"
+	"encoding/hex"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"strings"
@@ -45,6 +48,10 @@ func TestSQLiteDocumentCommandJournalCommitsAndReplaysOnCurrentGraph(t *testing.
 	command := securedocumentreference.SubmittedDocumentCommand{
 		BusinessID: "ORD-10", DocumentToken: "tqd2.fixture", CommandID: "command-1",
 		Body: map[string]any{"quantity": 3, "note": "ok"},
+		BlobSelections: []securedocumentreference.DocumentBlobSelectionSubmission{{
+			Token: "tqs1.fixture", TargetEntity: "OrderItem", CanonicalField: "attachment",
+			Kind: "EXISTING_ROW", TargetKey: "item:0",
+		}},
 	}
 	comment := "accept protected document command"
 	intent, err := core.NewMutationIntent(&comment)
@@ -110,6 +117,20 @@ func TestSQLiteDocumentCommandJournalCommitsAndReplaysOnCurrentGraph(t *testing.
 	second, replayed, err := apply(command)
 	if err != nil || !replayed || second != first || mutations != 1 {
 		t.Fatalf("same command was not durable replay: receipt=%+v replay=%v attempts=%d err=%v", second, replayed, mutations, err)
+	}
+	legacyRequest, err := json.Marshal([]any{command.BusinessID, command.DocumentToken,
+		command.CommandID, command.Body, command.BlobSelections})
+	if err != nil {
+		t.Fatal(err)
+	}
+	oldDigest := sha256.Sum256(legacyRequest)
+	if _, err := e.db.Exec("UPDATE teaql_document_command_receipt SET request_hash=?",
+		hex.EncodeToString(oldDigest[:])); err != nil {
+		t.Fatal(err)
+	}
+	if receipt, wasReplay, err := apply(command); err != nil || !wasReplay || receipt != first || mutations != 1 {
+		t.Fatalf("historical selection hash did not replay: receipt=%+v replay=%v attempts=%d err=%v",
+			receipt, wasReplay, mutations, err)
 	}
 	changed := command
 	changed.Body = map[string]any{"note": "ok", "quantity": 4}

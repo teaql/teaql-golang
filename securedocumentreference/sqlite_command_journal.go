@@ -31,6 +31,16 @@ type DocumentBlobSelectionSubmission struct {
 	Token, TargetEntity, CanonicalField, Kind, TargetKey string
 }
 
+// The command digest uses the same lower-camel selection keys as the shared
+// reference wire. The public submission shape remains independent of JSON tags.
+type canonicalDocumentSelection struct {
+	CanonicalField string `json:"canonicalField"`
+	Kind           string `json:"kind"`
+	TargetEntity   string `json:"targetEntity"`
+	TargetKey      string `json:"targetKey"`
+	Token          string `json:"token"`
+}
+
 type DocumentCommandReceipt struct {
 	PreviousRevision, NewRevision int64
 	Response                      string
@@ -196,7 +206,15 @@ func prepareDocumentCommand(command SubmittedDocumentCommand) (string, Submitted
 	// Preserve four-element hashes for receipts written before selection support.
 	parts := []any{command.BusinessID, command.DocumentToken, command.CommandID, command.Body}
 	if command.BlobSelections != nil {
-		parts = append(parts, command.BlobSelections)
+		canonical := make([]canonicalDocumentSelection, len(command.BlobSelections))
+		for index, selection := range command.BlobSelections {
+			canonical[index] = canonicalDocumentSelection{
+				CanonicalField: selection.CanonicalField, Kind: selection.Kind,
+				TargetEntity: selection.TargetEntity, TargetKey: selection.TargetKey,
+				Token: selection.Token,
+			}
+		}
+		parts = append(parts, canonical)
 	}
 	encoded, err := json.Marshal(parts)
 	if err != nil || len(encoded) > maxCommandBytes {
@@ -222,6 +240,20 @@ func prepareDocumentCommand(command SubmittedDocumentCommand) (string, Submitted
 	return hex.EncodeToString(digest[:]), SubmittedDocumentCommand{
 		BusinessID: command.BusinessID, DocumentToken: command.DocumentToken,
 		CommandID: command.CommandID, Body: snapshot, BlobSelections: selections}, nil
+}
+
+func legacyDocumentSelectionHash(command SubmittedDocumentCommand) (string, error) {
+	if command.BlobSelections == nil {
+		return "", nil
+	}
+	parts := []any{command.BusinessID, command.DocumentToken, command.CommandID,
+		command.Body, command.BlobSelections}
+	encoded, err := json.Marshal(parts)
+	if err != nil || len(encoded) > maxCommandBytes {
+		return "", errors.New("DOCUMENT_COMMAND_INVALID")
+	}
+	digest := sha256.Sum256(encoded)
+	return hex.EncodeToString(digest[:]), nil
 }
 
 func documentScopeHash(scope ReferenceDocumentScope) (string, error) {
@@ -304,7 +336,8 @@ func (j *SQLiteDocumentCommandJournal) ApplyInGraph(ctx stdcontext.Context,
 			if !ok1 || !ok2 || !ok3 || !ok4 {
 				return errors.New("DOCUMENT_CATALOG_FAILED")
 			}
-			if hash != requestHash {
+			legacyHash, legacyErr := legacyDocumentSelectionHash(frozen)
+			if legacyErr != nil || (hash != requestHash && hash != legacyHash) {
 				return errors.New("DOCUMENT_REPLAY_CONFLICT")
 			}
 			receipt, err = checkedDocumentReceipt(DocumentCommandReceipt{previous, next, response})
