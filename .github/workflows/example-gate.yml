@@ -25,6 +25,11 @@ jobs:
       - name: Optional standard telemetry regression
         working-directory: telemetry/standard
         run: go test -race ./...
+      - name: Optional S3 provider regression
+        working-directory: objectstorage/s3
+        run: |
+          go test -race ./...
+          go vet ./...
       - name: Start dedicated S3 example fixture
         run: |
           docker run -d --name teaql-go-example-s3 \
