@@ -45,15 +45,27 @@ original PDF and reports `application/pdf`. This validates decodability within
 the configured limits; it is not malware scanning or a universal PDF conformance
 check. The host must call readiness before accepting uploads.
 
+`NewLegacyOfficeContentVerifier` is an optional Linux-only DOC/XLS adapter. The
+host supplies trusted, patched LibreOffice (`soffice`), `bwrap` and `prlimit`
+executables and a private, canonical, owner-only (`0700`) scratch directory.
+It checks the original CFB header and sector layout, then converts each file to
+DOCX/XLSX inside a bubblewrap namespace with no network, read-only system
+directories and only a per-upload private writable scratch. The subprocess has
+CPU, memory, file-size and wall-clock limits; the output is checked by the
+bounded OOXML verifier. Successful results retain the original DOC/XLS bytes,
+SHA-256 and MIME (`application/msword` or `application/vnd.ms-excel`). The host
+must call readiness before accepting uploads and cleanly provision bubblewrap
+user namespaces. This validates decodability and OOXML output within configured
+limits; it does not promise malware or macro detection.
+
 To accept several formats through one upload service, the host
-constructs `NewCompositeContentVerifier` with separate image, media, Office and PDF
+constructs `NewCompositeContentVerifier` with separate image, media, Office, legacy Office and PDF
 `ContentVerifierRoute` groups, then passes the composite to
 `NewSQLiteUploadService`. Duplicate, invalid and nil routes fail at assembly;
 unregistered extensions fail before reading the source. Its explicit readiness
 check forwards to each configured parser. This router does not load optional
 parsers or expand the set of implemented formats.
 
-The remaining two extensions (DOC/XLS) need production verifier adapters.
 Earlier PDF fixture tests prove upload orchestration only.
 Lifecycle/GC and complete F2–F5 acceptance remain open.
 

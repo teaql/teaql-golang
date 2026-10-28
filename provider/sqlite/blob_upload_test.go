@@ -198,6 +198,104 @@ func TestSQLiteBlobUploadWithRealOfficeParser(t *testing.T) {
 	}
 }
 
+func TestSQLiteBlobUploadWithRealLegacyOfficeParser(t *testing.T) {
+	if goRuntime.GOOS != "linux" {
+		t.Skip("Linux bubblewrap legacy Office verifier")
+	}
+	soffice, sofficeErr := exec.LookPath("soffice")
+	bwrap, bwrapErr := exec.LookPath("bwrap")
+	prlimit, prlimitErr := exec.LookPath("prlimit")
+	if sofficeErr != nil || bwrapErr != nil || prlimitErr != nil {
+		t.Skip("host LibreOffice, bubblewrap and prlimit required")
+	}
+	for _, entry := range []struct{ extension, mime string }{
+		{"doc", "application/msword"}, {"xls", "application/vnd.ms-excel"},
+	} {
+		t.Run(entry.extension, func(t *testing.T) {
+			e := nativeBatchEnvironment(t)
+			catalog, err := blobreference.NewSQLiteCatalog(e.executor.Transport)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if err := catalog.EnsureSchema(e.ctx); err != nil {
+				t.Fatal(err)
+			}
+			secret := make([]byte, 32)
+			if _, err := rand.Read(secret); err != nil {
+				t.Fatal(err)
+			}
+			store, err := blobreference.NewFileObjectStorage(filepath.Join(t.TempDir(), "legacy-office"), secret)
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer store.Close()
+			e.ctx.WithObjectStorage(store)
+			e.ctx.WithObjectStorageObserver(runtime.ObjectStorageObserverFunc(func(runtime.ObjectStorageEvent) {}))
+			scratch := t.TempDir()
+			if err := os.Chmod(scratch, 0700); err != nil {
+				t.Fatal(err)
+			}
+			verifier, err := blobreference.NewLegacyOfficeContentVerifier(soffice, bwrap, prlimit,
+				scratch, 100_000, 100_000, 2)
+			if err != nil {
+				t.Fatal(err)
+			}
+			service, err := blobreference.NewSQLiteUploadService(catalog,
+				&uploadPermission{scope: "tenant-a", allowed: true, extensions: []string{entry.extension}},
+				verifier, 100_000, 15*time.Minute)
+			if err != nil {
+				t.Fatal(err)
+			}
+			data, err := os.ReadFile(filepath.Join("..", "..", "blobreference", "testdata", "sample."+entry.extension))
+			if err != nil {
+				t.Fatal(err)
+			}
+			target := blobreference.UploadTarget{Entity: "Customer", EntityID: "1", Field: "document"}
+			good, err := service.Begin(e.ctx, target,
+				blobreference.UploadInput{FileName: "sample." + entry.extension, DeclaredSize: int64(len(data))},
+				"real-legacy-office-"+entry.extension)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if _, err := service.Write(e.ctx, good.ID, io.NopCloser(bytes.NewReader(data))); err != nil {
+				t.Fatal(err)
+			}
+			if reference, err := service.Complete(e.ctx, good.ID); err != nil || reference != good.Reference {
+				t.Fatalf("verified legacy Office did not promote: %v", err)
+			}
+			var state, mime, digest string
+			var size int64
+			originalDigest := sha256.Sum256(data)
+			if err := e.db.QueryRow("SELECT status,content_type,size_bytes FROM teaql_blob_catalog WHERE key=?",
+				good.Reference.Key()).Scan(&state, &mime, &size); err != nil ||
+				state != "uploaded_unbound" || mime != entry.mime || size != int64(len(data)) {
+				t.Fatalf("wrong legacy Office catalog facts: %s %s %d %v", state, mime, size, err)
+			}
+			if err := e.db.QueryRow("SELECT written_sha256 FROM teaql_blob_upload WHERE upload_id=?", good.ID).
+				Scan(&digest); err != nil || digest != hex.EncodeToString(originalDigest[:]) {
+				t.Fatalf("wrong legacy Office upload digest: %s %v", digest, err)
+			}
+			broken := data[:len(data)-12]
+			bad, err := service.Begin(e.ctx, target,
+				blobreference.UploadInput{FileName: "broken." + entry.extension, DeclaredSize: int64(len(broken))},
+				"broken-legacy-office-"+entry.extension)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if _, err := service.Write(e.ctx, bad.ID, io.NopCloser(bytes.NewReader(broken))); err != nil {
+				t.Fatal(err)
+			}
+			if _, err := service.Complete(e.ctx, bad.ID); err == nil || err.Error() != "BLOB_FORMAT_NOT_ALLOWED" {
+				t.Fatalf("truncated legacy Office accepted: %v", err)
+			}
+			if err := e.db.QueryRow("SELECT status FROM teaql_blob_catalog WHERE key=?",
+				bad.Reference.Key()).Scan(&state); err != nil || state != "initiated" {
+				t.Fatalf("invalid legacy Office promoted: %s %v", state, err)
+			}
+		})
+	}
+}
+
 func TestSQLiteBlobUploadWithRealPDFParser(t *testing.T) {
 	if goRuntime.GOOS != "linux" {
 		t.Skip("Linux prlimit PDF verifier")

@@ -156,6 +156,13 @@ func TestRealSQLiteBlobUploadThroughS3(t *testing.T) {
 			})
 		}
 	}
+	if os.Getenv("TEAQL_S3_TEST_REAL_LEGACY_OFFICE") == "1" {
+		for _, extension := range []string{"doc", "xls"} {
+			t.Run("real-"+extension, func(t *testing.T) {
+				runSQLiteBlobUploadThroughS3(t, extension)
+			})
+		}
+	}
 }
 
 func runSQLiteBlobUploadThroughS3(t *testing.T, mode string) {
@@ -246,6 +253,35 @@ func runSQLiteBlobUploadThroughS3(t *testing.T, mode string) {
 		contentType = "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
 		if mode == "xlsx" {
 			contentType = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+		}
+	} else if mode == "doc" || mode == "xls" {
+		if goRuntime.GOOS != "linux" {
+			t.Skip("Linux bubblewrap legacy Office verifier")
+		}
+		soffice, sofficeErr := exec.LookPath("soffice")
+		bwrap, bwrapErr := exec.LookPath("bwrap")
+		prlimit, prlimitErr := exec.LookPath("prlimit")
+		if sofficeErr != nil || bwrapErr != nil || prlimitErr != nil {
+			t.Skip("host LibreOffice, bubblewrap and prlimit required")
+		}
+		scratch := t.TempDir()
+		if err := os.Chmod(scratch, 0700); err != nil {
+			t.Fatal(err)
+		}
+		permission.extensions = []string{mode}
+		parser, err = blobreference.NewLegacyOfficeContentVerifier(soffice, bwrap, prlimit,
+			scratch, 100_000, 100_000, 2)
+		if err != nil {
+			t.Fatal(err)
+		}
+		data, err = os.ReadFile(filepath.Join("..", "..", "blobreference", "testdata",
+			"sample."+mode))
+		if err != nil {
+			t.Fatal(err)
+		}
+		fileName, contentType = "sample."+mode, "application/msword"
+		if mode == "xls" {
+			contentType = "application/vnd.ms-excel"
 		}
 	} else if mode == "mp3" || mode == "mp4" {
 		if goRuntime.GOOS != "linux" {
