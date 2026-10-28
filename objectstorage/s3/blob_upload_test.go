@@ -28,8 +28,9 @@ import (
 )
 
 type s3UploadPermission struct {
-	allowed    bool
-	extensions []string
+	allowed        bool
+	extensions     []string
+	shortRetention bool
 }
 
 func (*s3UploadPermission) Scope(*runtime.UserContext) (string, error) {
@@ -58,8 +59,11 @@ func (p *s3UploadPermission) CurrentOnLease(actor *runtime.UserContext, _ teaqls
 	}
 	return scope, field, p.Authorize(actor, target, action, input)
 }
-func (*s3UploadPermission) CurrentPolicyOnLease(*runtime.UserContext, teaqlsql.SqlTransport,
+func (p *s3UploadPermission) CurrentPolicyOnLease(*runtime.UserContext, teaqlsql.SqlTransport,
 	blobreference.UploadTarget) (blobreference.RetentionPolicy, error) {
+	if p.shortRetention {
+		return blobreference.NewRetentionPolicy("default", "server_stream", 86400, 3, 3)
+	}
 	return blobreference.NewRetentionPolicy("default", "server_stream", 86400, 604800, 3600)
 }
 
@@ -88,22 +92,38 @@ func (v *s3CountingVerifier) Verify(reader io.Reader, extension string, maximum 
 	return v.inner.Verify(reader, extension, maximum)
 }
 
-type s3BindingPermission struct{}
+type s3BindingPermission struct {
+	reference      core.BlobRef
+	shortRetention bool
+}
 
 func (s3BindingPermission) Scope(*runtime.UserContext) (string, error) {
 	return "f4-s3-upload", nil
 }
-func (s3BindingPermission) Authorize(_ *runtime.UserContext, target blobreference.BindingTarget,
-	_ *core.BlobRef, next *core.BlobRef, action string) error {
+func (p s3BindingPermission) Authorize(_ *runtime.UserContext, target blobreference.BindingTarget,
+	previous *core.BlobRef, next *core.BlobRef, action string) error {
 	if target.Entity != "Asset" || target.EntityID != "1" || target.Field != "document" ||
-		next == nil || action != "Create" {
+		!(action == "Create" && previous == nil && next != nil && *next == p.reference ||
+			action == "Update" && previous != nil && *previous == p.reference && next == nil) {
 		return errors.New("denied")
 	}
 	return nil
 }
-func (s3BindingPermission) CurrentPolicyOnLease(*runtime.UserContext, teaqlsql.SqlTransport,
+func (p s3BindingPermission) CurrentPolicyOnLease(*runtime.UserContext, teaqlsql.SqlTransport,
 	blobreference.BindingTarget) (blobreference.RetentionPolicy, error) {
+	if p.shortRetention {
+		return blobreference.NewRetentionPolicy("default", "server_stream", 86400, 3, 3)
+	}
 	return blobreference.NewRetentionPolicy("default", "server_stream", 86400, 604800, 3600)
+}
+
+type s3UploadMaintenanceAuthorization struct{}
+
+func (s3UploadMaintenanceAuthorization) Scope(*runtime.UserContext) (string, error) {
+	return "f4-s3-upload", nil
+}
+func (s3UploadMaintenanceAuthorization) CanMaintain(*runtime.UserContext, string) (bool, error) {
+	return true, nil
 }
 
 type s3ReadPermission struct{ allowed bool }
@@ -140,7 +160,9 @@ func TestRealSQLiteBlobUploadThroughS3(t *testing.T) {
 		t.Run("real-pdf", func(t *testing.T) { runSQLiteBlobUploadThroughS3(t, "pdf") })
 	}
 	if os.Getenv("TEAQL_S3_TEST_REAL_IMAGE") == "1" {
-		t.Run("real-jpeg", func(t *testing.T) { runSQLiteBlobUploadThroughS3(t, "image") })
+		for _, mode := range []string{"image", "jpeg", "png"} {
+			t.Run("real-"+mode, func(t *testing.T) { runSQLiteBlobUploadThroughS3(t, mode) })
+		}
 	}
 	if os.Getenv("TEAQL_S3_TEST_REAL_MEDIA") == "1" {
 		for _, extension := range []string{"mp3", "mp4"} {
@@ -227,17 +249,28 @@ func runSQLiteBlobUploadThroughS3(t *testing.T, mode string) {
 			t.Fatal(err)
 		}
 		fileName = "sample.pdf"
-	} else if mode == "image" {
-		permission.extensions = []string{"jpg"}
+	} else if mode == "image" || mode == "jpeg" || mode == "png" {
+		extension := "jpg"
+		if mode != "image" {
+			extension = mode
+		}
+		permission.extensions = []string{extension}
 		parser, err = blobreference.NewImageContentVerifier(10_000, 100<<20, 2)
 		if err != nil {
 			t.Fatal(err)
 		}
-		data, err = os.ReadFile(filepath.Join("..", "..", "blobreference", "testdata", "sample.jpg"))
+		fixture := "jpg"
+		if mode == "png" {
+			fixture = "png"
+		}
+		data, err = os.ReadFile(filepath.Join("..", "..", "blobreference", "testdata", "sample."+fixture))
 		if err != nil {
 			t.Fatal(err)
 		}
-		fileName, contentType = "sample.jpg", "image/jpeg"
+		fileName, contentType = "sample."+extension, "image/jpeg"
+		if mode == "png" {
+			contentType = "image/png"
+		}
 	} else if mode == "docx" || mode == "xlsx" {
 		permission.extensions = []string{mode}
 		parser, err = blobreference.NewOfficeContentVerifier(10_000, 100<<20, 1000, 200000, 2)
@@ -310,6 +343,8 @@ func runSQLiteBlobUploadThroughS3(t *testing.T, mode string) {
 			contentType = "video/mp4"
 		}
 	}
+	endToEndGC := os.Getenv("TEAQL_S3_TEST_END_TO_END_GC") == "1"
+	permission.shortRetention = endToEndGC
 	verifier := &s3CountingVerifier{inner: parser}
 	service, err := blobreference.NewSQLiteUploadService(catalog, permission, verifier, 10_000, 15*time.Minute)
 	if err != nil {
@@ -393,7 +428,7 @@ func runSQLiteBlobUploadThroughS3(t *testing.T, mode string) {
 		_, err := catalog.BindInGraph(actor, graph, actor, blobreference.BindingChange{
 			Target: blobreference.BindingTarget{Entity: "Asset", EntityID: "1", Field: "document"},
 			Next:   &session.Reference, ExpectedVersion: 0, NextVersion: 1, Action: "Create",
-		}, s3BindingPermission{})
+		}, s3BindingPermission{reference: session.Reference, shortRetention: endToEndGC})
 		return err
 	})
 	if err != nil {
@@ -458,4 +493,85 @@ func runSQLiteBlobUploadThroughS3(t *testing.T, mode string) {
 		denied.BusinessState != "committed" {
 		t.Fatal("stale S3 Blob binding projected", err)
 	}
+	if !endToEndGC {
+		return
+	}
+	permissionForBinding := s3BindingPermission{reference: session.Reference, shortRetention: true}
+	err = actor.ExecuteGraphSaveWithSQL(intent, func(graph *runtime.GraphSQLHandle) error {
+		if err := graph.WithSQL(func(lease teaqlsql.SqlTransport) error {
+			affected, err := lease.ExecuteSql(context.Background(), &teaqlsql.CompiledQuery{
+				Sql:    "UPDATE asset SET document=NULL WHERE id=? AND document=?",
+				Params: []core.Value{core.ValI64(1), core.ValText(session.Reference.Key())},
+			})
+			if err != nil {
+				return err
+			}
+			if affected != 1 {
+				return errors.New("business row did not clear")
+			}
+			return nil
+		}); err != nil {
+			return err
+		}
+		_, err := catalog.BindInGraph(actor, graph, actor, blobreference.BindingChange{
+			Target:          blobreference.BindingTarget{Entity: "Asset", EntityID: "1", Field: "document"},
+			ExpectedVersion: 1, NextVersion: 2, Action: "Update", RequirePrevious: true,
+			ExpectedPrevious: &session.Reference,
+		}, permissionForBinding)
+		return err
+	})
+	if err != nil {
+		t.Fatal("S3 Blob graph unbind", err)
+	}
+	var businessValue, bindingKey stdsql.NullString
+	var bindingVersion, lastUnbound, effective, floor int64
+	if err := db.QueryRow("SELECT document FROM asset WHERE id=1").Scan(&businessValue); err != nil || businessValue.Valid {
+		t.Fatal("S3 Blob business field remains after graph unbind", err)
+	}
+	if err := db.QueryRow(`SELECT key,version FROM teaql_blob_binding
+		WHERE scope='f4-s3-upload' AND entity='Asset' AND entity_id='1' AND field='document'`).
+		Scan(&bindingKey, &bindingVersion); err != nil || bindingKey.Valid || bindingVersion != 2 {
+		t.Fatal("S3 Blob binding tombstone mismatch", err)
+	}
+	if err := db.QueryRow(`SELECT status,last_unbound_at_ms,effective_unref_seconds,
+		retention_floor_until_ms FROM teaql_blob_catalog WHERE key=?`, session.Reference.Key()).
+		Scan(&status, &lastUnbound, &effective, &floor); err != nil || status != "available" ||
+		lastUnbound <= 0 || effective != 3 || floor <= 0 {
+		t.Fatal("S3 Blob last-unbound retention facts mismatch", err)
+	}
+	graphAuthorizer.version = 1
+	_, err = (runtime.ViewPreparationService{}).Prepare(actor, nil, options)
+	if !errors.As(err, &denied) || denied.Code != "BLOB_READ_DENIED" {
+		t.Fatal("unbound S3 Blob stale view projected", err)
+	}
+	maintenance, err := blobreference.NewSQLiteMaintenanceService(catalog, s3UploadMaintenanceAuthorization{}, 10)
+	if err != nil {
+		t.Fatal(err)
+	}
+	deadline, err := blobreference.UnreferencedEligibleAt(lastUnbound, effective, &floor)
+	if err != nil {
+		t.Fatal(err)
+	}
+	before, err := maintenance.RunBatch(actor, nil)
+	if err != nil || len(before.Outcomes) != 0 {
+		t.Fatalf("S3 Blob collected before last-unbound deadline: %#v %v", before, err)
+	}
+	if head, err := store.Head(key); err != nil || head == nil {
+		t.Fatal("S3 Blob missing before retention deadline", err)
+	}
+	if delay := time.Until(time.UnixMilli(deadline)); delay > 0 {
+		time.Sleep(delay + 10*time.Millisecond)
+	}
+	after, err := maintenance.RunBatch(actor, nil)
+	if err != nil || len(after.Outcomes) != 1 || after.Outcomes[0].Status != blobreference.MaintenanceDeleted ||
+		after.Outcomes[0].Reference != session.Reference {
+		t.Fatalf("S3 Blob last-unbound collection: %#v %v", after, err)
+	}
+	if head, err := store.Head(key); err != nil || head != nil {
+		t.Fatal("S3 Blob remains after retention deadline", err)
+	}
+	if err := db.QueryRow("SELECT status FROM teaql_blob_catalog WHERE key=?", session.Reference.Key()).Scan(&status); err != nil || status != "deleted" {
+		t.Fatal("S3 Blob catalog did not mark deleted", err)
+	}
+	t.Logf("PASS Go %s S3 upload/confirm/graph bind/authorized view/unbind/retention GC", mode)
 }
