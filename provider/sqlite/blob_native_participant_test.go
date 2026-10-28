@@ -1,7 +1,9 @@
 package sqlite
 
 import (
+	"context"
 	"database/sql"
+	"errors"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -218,5 +220,73 @@ func TestModeledBlobNativeMutationSharesSQLiteOwner(t *testing.T) {
 	}
 	if err := db.QueryRow("SELECT COUNT(*) FROM asset_data WHERE id=5").Scan(&count); err != nil || count != 0 {
 		t.Fatalf("foreign actor business row survived: %d %v", count, err)
+	}
+
+	ledgerRef := seed("blob_native_ledger")
+	if err := transport.EnsureIdFloor(context.Background(), "Asset", 5); err != nil {
+		t.Fatal(err)
+	}
+	saveAllocated := func(abort bool) (uint64, error) {
+		id, err := transport.NextId(context.Background(), "Asset")
+		if err != nil {
+			return 0, err
+		}
+		ledger := core.NewEntityRoot()
+		provisional := core.NewEntityKey("Asset", core.ValI64(-1))
+		ledger.MarkAsNew(provisional)
+		ledger.Set(provisional, "document", core.ValBlobRef(ledgerRef))
+		reason := "save allocated ledger Blob"
+		intent, err := core.NewMutationIntent(&reason)
+		if err != nil {
+			return 0, err
+		}
+		err = actor.ExecuteGraphSave(intent, func() error {
+			actual := core.NewEntityKey("Asset", core.ValU64(id))
+			ledger.Rekey(provisional, actual)
+			if !ledger.IsNew(actual) || ledger.Change(actual)["document"] != core.ValBlobRef(ledgerRef) {
+				return errors.New("allocated ledger key lost Blob")
+			}
+			request, requestErr := ds.NewMutationRequest(&ds.InsertMutation{Cmd: core.NewInsertCommand("Asset").
+				Value("id", core.ValU64(id)).Value("version", core.ValI64(1)).
+				Value("document", ledger.Change(actual)["document"])}, reason)
+			if requestErr != nil {
+				return requestErr
+			}
+			if _, mutationErr := actor.GetResource("dataService").(ds.MutationExecutor).Mutate(actor, request); mutationErr != nil {
+				return mutationErr
+			}
+			if abort {
+				return errors.New("outer owner rejected")
+			}
+			return nil
+		})
+		return id, err
+	}
+	abortedID, err := saveAllocated(true)
+	if err == nil || err.Error() != "outer owner rejected" {
+		t.Fatalf("outer rollback was not observed: %v", err)
+	}
+	if err := db.QueryRow("SELECT COUNT(*) FROM asset_data WHERE id=?", abortedID).Scan(&count); err != nil || count != 0 {
+		t.Fatalf("aborted business row survived: %d %v", count, err)
+	}
+	if err := db.QueryRow("SELECT COUNT(*) FROM teaql_blob_binding WHERE key=?", ledgerRef.Key()).Scan(&count); err != nil || count != 0 {
+		t.Fatalf("aborted Blob binding survived: %d %v", count, err)
+	}
+	var status string
+	if err := db.QueryRow("SELECT status FROM teaql_blob_catalog WHERE key=?", ledgerRef.Key()).Scan(&status); err != nil || status != "uploaded_unbound" {
+		t.Fatalf("aborted catalog promotion survived: %q %v", status, err)
+	}
+	committedID, err := saveAllocated(false)
+	if err != nil {
+		t.Fatalf("allocated ledger retry: %v", err)
+	}
+	if err := db.QueryRow("SELECT document FROM asset_data WHERE id=?", committedID).Scan(&business); err != nil || business != ledgerRef.Key() {
+		t.Fatalf("allocated business row: %q %v", business, err)
+	}
+	if err := db.QueryRow("SELECT key FROM teaql_blob_binding WHERE entity_id=?", committedID).Scan(&business); err != nil || business != ledgerRef.Key() {
+		t.Fatalf("allocated Blob binding: %q %v", business, err)
+	}
+	if err := db.QueryRow("SELECT status FROM teaql_blob_catalog WHERE key=?", ledgerRef.Key()).Scan(&status); err != nil || status != "available" {
+		t.Fatalf("committed catalog status: %q %v", status, err)
 	}
 }
