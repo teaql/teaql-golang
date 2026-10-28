@@ -7,7 +7,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/s3 v1.114.3
 	github.com/aws/smithy-go v1.28.5
 	github.com/mattn/go-sqlite3 v1.14.16
-	github.com/teaql/teaql-golang v0.3.1
+	github.com/teaql/teaql-golang v0.3.2
 )
 
 require (

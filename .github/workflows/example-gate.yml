@@ -14,6 +14,8 @@ jobs:
       TEAQL_S3_SECRET_KEY: teaql-go-example-ci-fixture-only
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - name: Install example verification tools
         run: sudo apt-get update && sudo apt-get install -y ripgrep
       - uses: actions/setup-go@v5
@@ -30,6 +32,8 @@ jobs:
         run: |
           go test -race ./...
           go vet ./...
+      - name: Verify matching local reference module candidates
+        run: python3 scripts/verify-reference-module-candidates.py
       - name: Start dedicated S3 example fixture
         run: |
           docker run -d --name teaql-go-example-s3 \
