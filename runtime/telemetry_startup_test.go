@@ -76,12 +76,14 @@ func TestTelemetryStartupDefersFactoryAndSharesPipelineAcrossContexts(t *testing
 	input := telemetryTestEnvironment("http://localhost:4318")
 	input[TelemetryServiceNameEnvironment] = t.Name()
 	first := initializeStandardTelemetry(input)
+	t.Cleanup(func() { _ = first.Shutdown(context.Background()) })
 	second := initializeStandardTelemetry(input)
 	if first != second || atomic.LoadInt32(&calls) != 1 {
 		t.Fatal("SDK must not be constructed per context")
 	}
 	_ = first.Shutdown(context.Background())
 	third := initializeStandardTelemetry(input)
+	t.Cleanup(func() { _ = third.Shutdown(context.Background()) })
 	if third == first || atomic.LoadInt32(&calls) != 2 {
 		t.Fatal("a closed pipeline must not be reused")
 	}

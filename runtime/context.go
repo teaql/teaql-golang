@@ -886,8 +886,11 @@ func (c *UserContext) executePreparedGraphSave(ctx stdcontext.Context, intent co
 }
 
 func (c *UserContext) startGraphPreparation() {
+	// BusinessClock is an application SPI. Do not call it while holding the
+	// state mutex: it may panic or inspect Context diagnostics itself.
+	now := c.BusinessTime()
 	c.graphSaveMu.Lock()
-	c.graphFixTime = c.BusinessTime()
+	c.graphFixTime = now
 	c.currentFixEvidence = nil
 	c.preparedGraphSnapshot = &preparedGraphSnapshot{assignments: make(map[string]core.EntityKey), metadata: clonePreparedMetadata(c), lineage: make(map[string]preparedGraphLineage)}
 	c.graphSaveMu.Unlock()
@@ -946,21 +949,10 @@ func (c *UserContext) executeGraphSave(operationContext stdcontext.Context, work
 	}
 	// The carrier follows the actual transaction instead of rewriting c.Context.
 	transaction = bindGraphTelemetryTransaction(transaction, operationContext, guard)
-	c.graphSaveMu.Lock()
-	c.graphSaveActive = true
-	c.graphCommitActions = nil
-	c.graphRollbackActions = nil
-	if !preparationStarted {
-		c.graphFixTime = c.BusinessTime()
-		c.currentFixEvidence = nil
-	}
-	c.resources["dataService"] = transaction
-	if _, ok := transaction.(interface{ GenerateId(string) (uint64, error) }); ok {
-		c.resources["idGenerator"] = transaction
-	}
-	c.graphSaveMu.Unlock()
-	transactionOwnsPreparation = true
 	transactionFinished := false
+	// Own the returned transaction before invoking another customer callback.
+	// Clock capture can panic before any active-graph fields have been installed.
+	transactionOwnsPreparation = true
 	defer func() {
 		if !transactionFinished {
 			// A business/provider panic must roll back and release the shared save
@@ -992,6 +984,23 @@ func (c *UserContext) executeGraphSave(operationContext stdcontext.Context, work
 		c.preparedGraphSnapshot = nil
 		c.graphSaveMu.Unlock()
 	}()
+	var now time.Time
+	if !preparationStarted {
+		now = c.BusinessTime()
+	}
+	c.graphSaveMu.Lock()
+	c.graphSaveActive = true
+	c.graphCommitActions = nil
+	c.graphRollbackActions = nil
+	if !preparationStarted {
+		c.graphFixTime = now
+		c.currentFixEvidence = nil
+	}
+	c.resources["dataService"] = transaction
+	if _, ok := transaction.(interface{ GenerateId(string) (uint64, error) }); ok {
+		c.resources["idGenerator"] = transaction
+	}
+	c.graphSaveMu.Unlock()
 
 	err = work()
 	if guard != nil {
@@ -1047,10 +1056,12 @@ func (c *UserContext) LastFixEvidence() []FixEvidence {
 // current standalone mutation time.
 func (c *UserContext) FixTime() time.Time {
 	c.graphSaveMu.Lock()
-	defer c.graphSaveMu.Unlock()
 	if c.graphSaveActive || c.preparedGraphSnapshot != nil || !c.graphFixTime.IsZero() {
-		return c.graphFixTime
+		now := c.graphFixTime
+		c.graphSaveMu.Unlock()
+		return now
 	}
+	c.graphSaveMu.Unlock()
 	return c.BusinessTime()
 }
 
