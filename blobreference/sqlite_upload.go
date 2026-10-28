@@ -205,11 +205,18 @@ func uploadToken() (string, error) {
 	return base64.RawURLEncoding.EncodeToString(value), nil
 }
 
-func requestHash(target UploadTarget, input UploadInput) string {
-	encoded, _ := json.Marshal([]any{target.Entity, target.EntityID, target.Field,
-		input.FileName, input.DeclaredSize, input.DeclaredContentType})
+func requestHashes(target UploadTarget, input UploadInput) (string, string) {
+	parts := []any{target.Entity, target.EntityID, target.Field,
+		input.FileName, input.DeclaredSize, input.DeclaredContentType}
+	var canonical bytes.Buffer
+	encoder := json.NewEncoder(&canonical)
+	encoder.SetEscapeHTML(false)
+	_ = encoder.Encode(parts) // bytes.Buffer cannot fail.
+	encoded := bytes.TrimSuffix(canonical.Bytes(), []byte("\n"))
 	digest := sha256.Sum256(encoded)
-	return hex.EncodeToString(digest[:])
+	legacy, _ := json.Marshal(parts)
+	legacyDigest := sha256.Sum256(legacy)
+	return hex.EncodeToString(digest[:]), hex.EncodeToString(legacyDigest[:])
 }
 
 func (s *SQLiteUploadService) transaction(ctx context.Context, work func(teaqlsql.SqlTransport) error) error {
@@ -258,7 +265,7 @@ func (s *SQLiteUploadService) Begin(actor *runtime.UserContext, target UploadTar
 	if err != nil {
 		return empty, err
 	}
-	digest := requestHash(target, normalized)
+	digest, legacyDigest := requestHashes(target, normalized)
 	var result UploadSession
 	err = s.transaction(actor, func(sql teaqlsql.SqlTransport) error {
 		rows, err := sql.FetchAllSql(actor, sqlQuery(`SELECT upload_id,key,request_hash,expires_ms
@@ -271,7 +278,7 @@ func (s *SQLiteUploadService) Begin(actor *runtime.UserContext, target UploadTar
 		}
 		if len(rows) == 1 {
 			oldHash, okay := sqlText(rows[0]["request_hash"])
-			if !okay || oldHash != digest {
+			if !okay || oldHash != digest && oldHash != legacyDigest {
 				return uploadError("BLOB_IDEMPOTENCY_CONFLICT")
 			}
 			id, idOK := sqlText(rows[0]["upload_id"])

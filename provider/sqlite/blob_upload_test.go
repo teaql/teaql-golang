@@ -5,6 +5,7 @@ import (
 	"crypto/rand"
 	"crypto/sha256"
 	"encoding/hex"
+	"encoding/json"
 	"errors"
 	"io"
 	"os"
@@ -629,7 +630,7 @@ func TestSQLiteBlobLegacyUploadLeaseMigrationPreservesReplay(t *testing.T) {
 		t.Fatal(err)
 	}
 	target := blobreference.UploadTarget{Entity: "Customer", EntityID: "1", Field: "document"}
-	input := blobreference.UploadInput{FileName: "report.pdf", DeclaredSize: 42,
+	input := blobreference.UploadInput{FileName: "报告 & review.pdf", DeclaredSize: 42,
 		DeclaredContentType: "application/pdf"}
 	created, err := service.Begin(e.ctx, target, input, "before-migration")
 	if err != nil {
@@ -656,6 +657,17 @@ func TestSQLiteBlobLegacyUploadLeaseMigrationPreservesReplay(t *testing.T) {
 		if _, err := e.db.Exec(statement); err != nil {
 			t.Fatal(err)
 		}
+	}
+	legacyBytes, err := json.Marshal([]any{"Customer", "1", "document",
+		"报告 & review.pdf", 42, "application/pdf"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	legacyDigest := sha256.Sum256(legacyBytes)
+	legacyHash := hex.EncodeToString(legacyDigest[:])
+	if _, err := e.db.Exec(`UPDATE teaql_blob_upload SET request_hash=? WHERE upload_id=?`,
+		legacyHash, created.ID); err != nil {
+		t.Fatal(err)
 	}
 	if err := catalog.ValidateSchema(e.ctx); err == nil {
 		t.Fatal("old Go lease schema unexpectedly accepted")
@@ -685,6 +697,12 @@ func TestSQLiteBlobLegacyUploadLeaseMigrationPreservesReplay(t *testing.T) {
 			canonical != session.ExpiresAt.UnixMilli() || legacy != canonical {
 			t.Fatalf("migrated or new lease values disagree: %d %d %v", canonical, legacy, err)
 		}
+	}
+	var currentHash string
+	if err := e.db.QueryRow(`SELECT request_hash FROM teaql_blob_upload WHERE upload_id=?`,
+		fresh.ID).Scan(&currentHash); err != nil ||
+		currentHash != "4561d17052606f622a9f182ffb0841a7c25327a82becabbddf189117fdb99a80" {
+		t.Fatalf("new Go request hash differs from shared UTF-8 vector: %v", err)
 	}
 }
 
