@@ -91,7 +91,7 @@ func TestRealS3ExpiredBlobMaintenance(t *testing.T) {
 		}
 		if _, err := db.Exec(`INSERT INTO teaql_blob_upload
             (upload_id,scope,replay_key,request_hash,key,entity,entity_id,field,file_name,
-             extension,declared_size,expires_unix_ms,state,written_etag)
+             extension,declared_size,expires_ms,state,written_etag)
             VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)`, "bu_"+suffix, "tenant-a", "replay_"+suffix,
 			"hash_"+suffix, reference, "Asset", "1", "document", "file.pdf", "pdf", len(bytes),
 			time.Now().Add(-time.Minute).UnixMilli(), "written", created.ETag()); err != nil {
@@ -229,7 +229,7 @@ func TestRealS3CompletedBlobRetention(t *testing.T) {
 		}
 		if _, err := db.Exec(`INSERT INTO teaql_blob_upload
             (upload_id,scope,replay_key,request_hash,key,entity,entity_id,field,file_name,
-             extension,declared_size,expires_unix_ms,state,written_etag)
+             extension,declared_size,expires_ms,state,written_etag)
             VALUES (?,?,?,?,?,'Asset','1','document','file.pdf','pdf',?,?,'completed',?)`,
 			"bu_"+reference, "tenant-a", "replay_"+reference, "hash_"+reference,
 			reference, len(bytes), now-1000, created.ETag()); err != nil {

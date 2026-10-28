@@ -84,7 +84,8 @@ func (c *SQLiteCatalog) EnsureSchema(ctx stdcontext.Context) error {
             request_hash TEXT NOT NULL, key TEXT NOT NULL, entity TEXT NOT NULL,
             entity_id TEXT NOT NULL, field TEXT NOT NULL, file_name TEXT NOT NULL,
             extension TEXT NOT NULL, declared_size BIGINT NOT NULL,
-            expires_unix_ms BIGINT NOT NULL, state TEXT NOT NULL CHECK
+            expires_ms BIGINT NOT NULL, expires_unix_ms BIGINT,
+            state TEXT NOT NULL CHECK
               (state IN ('initiated','written','completed')),
             written_sha256 TEXT, written_etag TEXT,
             UNIQUE(scope,replay_key), FOREIGN KEY(key) REFERENCES teaql_blob_catalog(key)
@@ -127,6 +128,50 @@ func (c *SQLiteCatalog) EnsureSchema(ctx stdcontext.Context) error {
 			}
 		}
 	}
+	// Preserve the pre-interoperability Go lease value while reading the
+	// shared expires_ms ABI. New writes fill both columns for mixed-version hosts.
+	for _, column := range []string{"expires_ms", "expires_unix_ms"} {
+		rows, err := c.transport.FetchAllSql(ctx, sqlQuery("PRAGMA table_info(teaql_blob_upload)"))
+		if err != nil {
+			return errors.New("BLOB_CATALOG_FAILED")
+		}
+		present := false
+		for _, row := range rows {
+			name, _ := sqlText(row["name"])
+			present = present || name == column
+		}
+		if !present {
+			if _, err := c.transport.ExecuteSql(ctx, sqlQuery(
+				"ALTER TABLE teaql_blob_upload ADD COLUMN "+column+" BIGINT")); err != nil {
+				current, queryErr := c.transport.FetchAllSql(ctx,
+					sqlQuery("PRAGMA table_info(teaql_blob_upload)"))
+				if queryErr != nil {
+					return errors.New("BLOB_CATALOG_FAILED")
+				}
+				added := false
+				for _, row := range current {
+					name, _ := sqlText(row["name"])
+					added = added || name == column
+				}
+				if !added {
+					return errors.New("BLOB_CATALOG_FAILED")
+				}
+			}
+		}
+	}
+	if _, err := c.transport.ExecuteSql(ctx, sqlQuery(`UPDATE teaql_blob_upload
+        SET expires_ms=expires_unix_ms WHERE expires_ms IS NULL AND expires_unix_ms IS NOT NULL`)); err != nil {
+		return errors.New("BLOB_CATALOG_FAILED")
+	}
+	missing, err := c.transport.FetchAllSql(ctx, sqlQuery(`SELECT COUNT(*) AS missing
+        FROM teaql_blob_upload WHERE expires_ms IS NULL`))
+	if err != nil || len(missing) != 1 {
+		return errors.New("BLOB_CATALOG_FAILED")
+	}
+	count, okay := missing[0]["missing"].TryI64()
+	if !okay || count != 0 {
+		return errors.New("BLOB_CATALOG_FAILED")
+	}
 	return nil
 }
 
@@ -138,7 +183,7 @@ func (c *SQLiteCatalog) ValidateSchema(ctx stdcontext.Context) error {
             status FROM teaql_blob_catalog WHERE 1 = 0`,
 		`SELECT scope, entity, entity_id, field, key, version FROM teaql_blob_binding WHERE 1 = 0`,
 		`SELECT upload_id, scope, replay_key, request_hash, key, entity, entity_id,
-            field, file_name, extension, declared_size, expires_unix_ms, state,
+            field, file_name, extension, declared_size, expires_ms, state,
             written_sha256, written_etag FROM teaql_blob_upload WHERE 1 = 0`,
 	} {
 		if _, err := c.transport.FetchAllSql(ctx, &teaqlsql.CompiledQuery{Sql: statement}); err != nil {

@@ -127,7 +127,7 @@ func TestSQLiteBlobMaintenanceExpiredUploadClaimRecoveryAndScope(t *testing.T) {
 		}
 		if _, err := e.db.Exec(`INSERT INTO teaql_blob_upload
             (upload_id,scope,replay_key,request_hash,key,entity,entity_id,field,file_name,
-             extension,declared_size,expires_unix_ms,state,written_etag)
+             extension,declared_size,expires_ms,state,written_etag)
             VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)`, "bu_"+key, scope, "replay_"+key, "request_"+key,
 			key, "Asset", "1", "document", "file.pdf", "pdf", 1, expiry, state, writtenETag); err != nil {
 			t.Fatal(err)
@@ -252,7 +252,7 @@ func TestSQLiteBlobMaintenanceRealFileReceiptAndPartialRecovery(t *testing.T) {
 		}
 		if _, err := e.db.Exec(`INSERT INTO teaql_blob_upload
             (upload_id,scope,replay_key,request_hash,key,entity,entity_id,field,file_name,
-             extension,declared_size,expires_unix_ms,state)
+             extension,declared_size,expires_ms,state)
             VALUES (?,'tenant-a',?,?,?,'Asset','1','document','file.pdf','pdf',1,?,'initiated')`,
 			"bu_"+key, "replay_"+key, "request_"+key, key, time.Now().Add(-time.Minute).UnixMilli()); err != nil {
 			t.Fatal(err)
@@ -379,7 +379,7 @@ func TestSQLiteBlobMaintenanceRealFileRetentionAndGenerationProtection(t *testin
 		}
 		if _, err := e.db.Exec(`INSERT INTO teaql_blob_upload
 			(upload_id,scope,replay_key,request_hash,key,entity,entity_id,field,file_name,
-			 extension,declared_size,expires_unix_ms,state,written_etag)
+			 extension,declared_size,expires_ms,state,written_etag)
 			VALUES (?,'tenant-a',?,?,?,'Asset','1','document','file.pdf','pdf',?,?,'completed',?)`,
 			"bu_"+name, "replay_"+name, "request_"+name, name, len(data), now+60_000, etag); err != nil {
 			t.Fatal(err)

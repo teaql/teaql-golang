@@ -613,6 +613,81 @@ type fixturePDFVerifier struct {
 	calls int
 }
 
+func TestSQLiteBlobLegacyUploadLeaseMigrationPreservesReplay(t *testing.T) {
+	e := nativeBatchEnvironment(t)
+	catalog, err := blobreference.NewSQLiteCatalog(e.executor.Transport)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := catalog.EnsureSchema(e.ctx); err != nil {
+		t.Fatal(err)
+	}
+	service, err := blobreference.NewSQLiteUploadService(catalog,
+		&uploadPermission{scope: "tenant-a", allowed: true}, &fixturePDFVerifier{},
+		10_000, 15*time.Minute)
+	if err != nil {
+		t.Fatal(err)
+	}
+	target := blobreference.UploadTarget{Entity: "Customer", EntityID: "1", Field: "document"}
+	input := blobreference.UploadInput{FileName: "report.pdf", DeclaredSize: 42,
+		DeclaredContentType: "application/pdf"}
+	created, err := service.Begin(e.ctx, target, input, "before-migration")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, statement := range []string{
+		`CREATE TABLE teaql_blob_upload_legacy (
+            upload_id TEXT PRIMARY KEY, scope TEXT NOT NULL, replay_key TEXT NOT NULL,
+            request_hash TEXT NOT NULL, key TEXT NOT NULL, entity TEXT NOT NULL,
+            entity_id TEXT NOT NULL, field TEXT NOT NULL, file_name TEXT NOT NULL,
+            extension TEXT NOT NULL, declared_size BIGINT NOT NULL,
+            expires_unix_ms BIGINT NOT NULL, state TEXT NOT NULL,
+            written_sha256 TEXT, written_etag TEXT, UNIQUE(scope,replay_key),
+            FOREIGN KEY(key) REFERENCES teaql_blob_catalog(key))`,
+		`INSERT INTO teaql_blob_upload_legacy
+            (upload_id,scope,replay_key,request_hash,key,entity,entity_id,field,file_name,
+             extension,declared_size,expires_unix_ms,state,written_sha256,written_etag)
+            SELECT upload_id,scope,replay_key,request_hash,key,entity,entity_id,field,file_name,
+              extension,declared_size,expires_ms,state,written_sha256,written_etag
+            FROM teaql_blob_upload`,
+		`DROP TABLE teaql_blob_upload`,
+		`ALTER TABLE teaql_blob_upload_legacy RENAME TO teaql_blob_upload`,
+	} {
+		if _, err := e.db.Exec(statement); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := catalog.ValidateSchema(e.ctx); err == nil {
+		t.Fatal("old Go lease schema unexpectedly accepted")
+	}
+	if err := catalog.EnsureSchema(e.ctx); err != nil {
+		t.Fatal(err)
+	}
+	if err := catalog.EnsureSchema(e.ctx); err != nil {
+		t.Fatal(err)
+	}
+	if err := catalog.ValidateSchema(e.ctx); err != nil {
+		t.Fatal(err)
+	}
+	replay, err := service.Begin(e.ctx, target, input, "before-migration")
+	if err != nil || replay.ID != created.ID || replay.Reference != created.Reference ||
+		!replay.ExpiresAt.Equal(created.ExpiresAt) {
+		t.Fatalf("migrated replay changed session: %v", err)
+	}
+	fresh, err := service.Begin(e.ctx, target, input, "after-migration")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, session := range []blobreference.UploadSession{created, fresh} {
+		var canonical, legacy int64
+		if err := e.db.QueryRow(`SELECT expires_ms,expires_unix_ms FROM teaql_blob_upload
+            WHERE upload_id=?`, session.ID).Scan(&canonical, &legacy); err != nil ||
+			canonical != session.ExpiresAt.UnixMilli() || legacy != canonical {
+			t.Fatalf("migrated or new lease values disagree: %d %d %v", canonical, legacy, err)
+		}
+	}
+}
+
 func (v *fixturePDFVerifier) Verify(reader io.Reader, extension string, maximum int64) (blobreference.VerifiedContent, error) {
 	v.calls++
 	if v.early {

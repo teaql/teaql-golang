@@ -261,7 +261,7 @@ func (s *SQLiteUploadService) Begin(actor *runtime.UserContext, target UploadTar
 	digest := requestHash(target, normalized)
 	var result UploadSession
 	err = s.transaction(actor, func(sql teaqlsql.SqlTransport) error {
-		rows, err := sql.FetchAllSql(actor, sqlQuery(`SELECT upload_id,key,request_hash,expires_unix_ms
+		rows, err := sql.FetchAllSql(actor, sqlQuery(`SELECT upload_id,key,request_hash,expires_ms
             FROM teaql_blob_upload WHERE scope = ? AND replay_key = ?`, core.ValText(scope), core.ValText(replayKey)))
 		if err != nil {
 			return uploadError("BLOB_CATALOG_FAILED")
@@ -276,7 +276,7 @@ func (s *SQLiteUploadService) Begin(actor *runtime.UserContext, target UploadTar
 			}
 			id, idOK := sqlText(rows[0]["upload_id"])
 			key, keyOK := sqlText(rows[0]["key"])
-			expiry, expiryOK := rows[0]["expires_unix_ms"].TryI64()
+			expiry, expiryOK := rows[0]["expires_ms"].TryI64()
 			reference, parseErr := core.ParseBlobRef(key)
 			if !idOK || !keyOK || !expiryOK || parseErr != nil {
 				return uploadError("BLOB_CATALOG_FAILED")
@@ -330,12 +330,13 @@ func (s *SQLiteUploadService) Begin(actor *runtime.UserContext, target UploadTar
 		}
 		if _, err := sql.ExecuteSql(actor, sqlQuery(`INSERT INTO teaql_blob_upload
             (upload_id,scope,replay_key,request_hash,key,entity,entity_id,field,file_name,
-             extension,declared_size,expires_unix_ms,state)
-            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)`, core.ValText(id), core.ValText(scope),
+             extension,declared_size,expires_ms,expires_unix_ms,state)
+            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)`, core.ValText(id), core.ValText(scope),
 			core.ValText(replayKey), core.ValText(digest), core.ValText(reference.Key()),
 			core.ValText(target.Entity), core.ValText(target.EntityID), core.ValText(target.Field),
 			core.ValText(normalized.FileName), core.ValText(extension),
-			core.ValI64(normalized.DeclaredSize), core.ValI64(expiry), core.ValText("initiated"))); err != nil {
+			core.ValI64(normalized.DeclaredSize), core.ValI64(expiry),
+			core.ValI64(expiry), core.ValText("initiated"))); err != nil {
 			return uploadError("BLOB_CATALOG_FAILED")
 		}
 		result = UploadSession{id, reference, time.UnixMilli(expiry)}
@@ -354,7 +355,7 @@ func (s *SQLiteUploadService) row(actor *runtime.UserContext, id, action string)
 		return empty, uploadError("BLOB_UPLOAD_DENIED")
 	}
 	rows, err := s.catalog.transport.FetchAllSql(actor, sqlQuery(`SELECT upload_id,scope,key,entity,entity_id,
-        field,file_name,extension,declared_size,expires_unix_ms,state,written_sha256,written_etag
+        field,file_name,extension,declared_size,expires_ms,state,written_sha256,written_etag
         FROM teaql_blob_upload WHERE scope = ? AND upload_id = ?`, core.ValText(scope), core.ValText(id)))
 	if err != nil {
 		return empty, uploadError("BLOB_CATALOG_FAILED")
@@ -372,7 +373,7 @@ func (s *SQLiteUploadService) row(actor *runtime.UserContext, id, action string)
 		values = append(values, value)
 	}
 	size, sizeOK := record["declared_size"].TryI64()
-	expiry, expiryOK := record["expires_unix_ms"].TryI64()
+	expiry, expiryOK := record["expires_ms"].TryI64()
 	if !sizeOK || !expiryOK {
 		return empty, uploadError("BLOB_CATALOG_FAILED")
 	}
@@ -553,7 +554,7 @@ func (s *SQLiteUploadService) Write(actor *runtime.UserContext, id string, sourc
 	input := UploadInput{FileName: row.FileName, DeclaredSize: row.DeclaredSize}
 	target := UploadTarget{row.Entity, row.EntityID, row.Field}
 	err = s.transactionImmediate(actor, func(sql teaqlsql.SqlTransport) error {
-		current, err := sql.FetchAllSql(actor, sqlQuery(`SELECT state,key,expires_unix_ms,written_sha256,written_etag FROM teaql_blob_upload
+		current, err := sql.FetchAllSql(actor, sqlQuery(`SELECT state,key,expires_ms,written_sha256,written_etag FROM teaql_blob_upload
             WHERE upload_id=? AND scope=?`, core.ValText(id), core.ValText(row.Scope)))
 		if err != nil {
 			return uploadError("BLOB_CATALOG_FAILED")
@@ -568,7 +569,7 @@ func (s *SQLiteUploadService) Write(actor *runtime.UserContext, id string, sourc
 		}
 		state, stateOK := sqlText(current[0]["state"])
 		currentKey, keyOK := sqlText(current[0]["key"])
-		expiry, expiryOK := current[0]["expires_unix_ms"].TryI64()
+		expiry, expiryOK := current[0]["expires_ms"].TryI64()
 		location, locationOK := sqlText(catalog[0]["object_key"])
 		status, statusOK := sqlText(catalog[0]["status"])
 		if !stateOK || !keyOK || !expiryOK || !locationOK || !statusOK ||
@@ -641,7 +642,7 @@ func (s *SQLiteUploadService) Write(actor *runtime.UserContext, id string, sourc
 		hash := hex.EncodeToString(reader.digest.Sum(nil))
 		affected, err := sql.ExecuteSql(actor, sqlQuery(`UPDATE teaql_blob_upload SET state='written',
 			written_sha256=?,written_etag=? WHERE upload_id=? AND scope=? AND state='initiated'
-			AND expires_unix_ms > ? AND EXISTS (SELECT 1 FROM teaql_blob_catalog
+			AND expires_ms > ? AND EXISTS (SELECT 1 FROM teaql_blob_catalog
 			WHERE key=teaql_blob_upload.key AND scope=teaql_blob_upload.scope AND status='initiated')`,
 			core.ValText(hash), core.ValText(metadata.ETag()), core.ValText(id), core.ValText(row.Scope), core.ValI64(now)))
 		if err != nil {
@@ -740,7 +741,7 @@ func (s *SQLiteUploadService) Complete(actor *runtime.UserContext, id string) (c
 	input := UploadInput{FileName: row.FileName, DeclaredSize: row.DeclaredSize}
 	replay := false
 	err = s.transactionImmediate(actor, func(sql teaqlsql.SqlTransport) error {
-		current, err := sql.FetchAllSql(actor, sqlQuery(`SELECT state,key,expires_unix_ms,written_sha256,written_etag
+		current, err := sql.FetchAllSql(actor, sqlQuery(`SELECT state,key,expires_ms,written_sha256,written_etag
             FROM teaql_blob_upload WHERE upload_id=? AND scope=?`, core.ValText(id), core.ValText(row.Scope)))
 		if err != nil {
 			return uploadError("BLOB_CATALOG_FAILED")
@@ -755,7 +756,7 @@ func (s *SQLiteUploadService) Complete(actor *runtime.UserContext, id string) (c
 		}
 		state, stateOK := sqlText(current[0]["state"])
 		currentKey, keyOK := sqlText(current[0]["key"])
-		expiry, expiryOK := current[0]["expires_unix_ms"].TryI64()
+		expiry, expiryOK := current[0]["expires_ms"].TryI64()
 		writtenSHA, shaOK := sqlText(current[0]["written_sha256"])
 		writtenETag, etagOK := sqlText(current[0]["written_etag"])
 		if stateOK && keyOK && expiryOK && shaOK && etagOK && state == "completed" &&
@@ -825,7 +826,7 @@ func (s *SQLiteUploadService) Complete(actor *runtime.UserContext, id string) (c
 		}
 		affected, err := sql.ExecuteSql(actor, sqlQuery(`UPDATE teaql_blob_upload SET state='completed'
 			WHERE upload_id=? AND scope=? AND state='written' AND written_sha256=? AND written_etag=?
-			AND expires_unix_ms > ?`, core.ValText(id), core.ValText(row.Scope),
+			AND expires_ms > ?`, core.ValText(id), core.ValText(row.Scope),
 			core.ValText(row.WrittenSHA256), core.ValText(row.WrittenETag), core.ValI64(now)))
 		if err != nil {
 			return uploadError("BLOB_CATALOG_FAILED")

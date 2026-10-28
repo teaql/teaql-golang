@@ -103,7 +103,7 @@ func readDeletionRow(ctx context.Context, sql teaqlsql.SqlTransport,
 	rows, err := sql.FetchAllSql(ctx, sqlQuery(`SELECT c.key,c.object_key,c.content_version,c.status,
         c.completed_at_ms,c.last_unbound_at_ms,c.policy_profile,c.upload_mode,
         c.unbound_retention_seconds,c.effective_unref_seconds,c.retention_floor_until_ms,
-        u.state,u.expires_unix_ms,u.written_etag FROM teaql_blob_catalog c
+        u.state,u.expires_ms,u.written_etag FROM teaql_blob_catalog c
         JOIN teaql_blob_upload u ON u.key=c.key AND u.scope=c.scope
         WHERE c.scope=? AND c.key=?`, core.ValText(scope), core.ValText(key)))
 	if err != nil {
@@ -130,7 +130,7 @@ func readDeletionRow(ctx context.Context, sql teaqlsql.SqlTransport,
 	if result.uploadState, okay = sqlText(row["state"]); !okay {
 		return nil, errors.New("BLOB_CATALOG_FAILED")
 	}
-	if result.expires, okay = row["expires_unix_ms"].TryI64(); !okay {
+	if result.expires, okay = row["expires_ms"].TryI64(); !okay {
 		return nil, errors.New("BLOB_CATALOG_FAILED")
 	}
 	if !row["written_etag"].IsNull() {
@@ -253,7 +253,7 @@ func (s *SQLiteMaintenanceService) candidates(actor *runtime.UserContext, scope,
           (c.status='deleting' AND (u.state IN ('initiated','written') OR
             (u.state='completed' AND c.upload_mode='server_stream')))
           OR (c.status='initiated' AND u.state IN ('initiated','written')
-            AND u.expires_unix_ms<=?)
+            AND u.expires_ms<=?)
           OR (c.status='uploaded_unbound' AND u.state='completed'
             AND c.upload_mode='server_stream' AND c.completed_at_ms IS NOT NULL
             AND c.unbound_retention_seconds IS NOT NULL
