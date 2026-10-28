@@ -24,6 +24,14 @@ seconds. The verifier hashes original bytes and reports `audio/mpeg` or
 `video/mp4`. This is format validation, not malware scanning. Its readiness
 check is called by `BlobReferenceModule.Ready` when that verifier is installed.
 
+To accept both image and media formats through one upload service, the host
+constructs `NewCompositeContentVerifier` with separate image and media
+`ContentVerifierRoute` groups, then passes the composite to
+`NewSQLiteUploadService`. Duplicate, invalid and nil routes fail at assembly;
+unregistered extensions fail before reading the source. Its explicit readiness
+check forwards to each configured parser. This router does not load optional
+parsers or expand the set of implemented formats.
+
 The remaining five extensions (DOC/DOCX/XLS/XLSX/PDF) need production verifier
 adapters. Earlier PDF fixture tests prove upload orchestration only.
 Lifecycle/GC and complete F2–F5 acceptance remain open.
