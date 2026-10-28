@@ -562,7 +562,16 @@ func (s *SQLiteUploadService) Write(actor *runtime.UserContext, id string, sourc
 	if source == nil {
 		return 0, uploadError("BLOB_UPLOAD_INCOMPLETE")
 	}
-	defer source.Close()
+	var sourceClosed bool
+	var sourceCloseErr error
+	closeSource := func() error {
+		if !sourceClosed {
+			sourceClosed = true
+			sourceCloseErr = source.Close()
+		}
+		return sourceCloseErr
+	}
+	defer closeSource()
 	row, err := s.row(actor, id, "Write")
 	if err != nil {
 		return 0, err
@@ -584,7 +593,9 @@ func (s *SQLiteUploadService) Write(actor *runtime.UserContext, id string, sourc
 	if err != nil {
 		return 0, uploadError("BLOB_FORMAT_NOT_ALLOWED")
 	}
-	reader := &hashingReadCloser{ReadCloser: source, digest: sha256.New()}
+	// ObjectStorage.Put closes its input. Keep the caller's source open through
+	// conflict recovery, then close it exactly once before SQL promotion.
+	reader := &hashingReadCloser{ReadCloser: io.NopCloser(source), digest: sha256.New()}
 	input := UploadInput{FileName: row.FileName, DeclaredSize: row.DeclaredSize}
 	target := UploadTarget{row.Entity, row.EntityID, row.Field}
 	err = s.transactionImmediate(actor, func(sql teaqlsql.SqlTransport) error {
@@ -640,6 +651,9 @@ func (s *SQLiteUploadService) Write(actor *runtime.UserContext, id string, sourc
 			if s.now().UnixMilli() >= row.ExpiresUnixMs {
 				return uploadError("BLOB_UPLOAD_EXPIRED")
 			}
+			if err := closeSource(); err != nil {
+				return uploadError("BLOB_STORE_FAILED")
+			}
 			return nil
 		}
 		if state != "initiated" || status != "initiated" {
@@ -672,6 +686,9 @@ func (s *SQLiteUploadService) Write(actor *runtime.UserContext, id string, sourc
 		}
 		if !reader.eof || reader.count != row.DeclaredSize || metadata.Size() != reader.count || metadata.ETag() == "" {
 			return uploadError("BLOB_UPLOAD_INCOMPLETE")
+		}
+		if err := closeSource(); err != nil {
+			return uploadError("BLOB_STORE_FAILED")
 		}
 		hash := hex.EncodeToString(reader.digest.Sum(nil))
 		affected, err := sql.ExecuteSql(actor, sqlQuery(`UPDATE teaql_blob_upload SET state='written',

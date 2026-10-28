@@ -67,6 +67,32 @@ type closeErrorUploadReader struct {
 	fail bool
 }
 
+type singleCloseUploadSource struct {
+	*bytes.Reader
+	closes    int
+	closed    bool
+	failClose bool
+}
+
+func (s *singleCloseUploadSource) Read(p []byte) (int, error) {
+	if s.closed {
+		return 0, errors.New("PRIVATE-READ-AFTER-CLOSE-CANARY")
+	}
+	return s.Reader.Read(p)
+}
+
+func (s *singleCloseUploadSource) Close() error {
+	s.closes++
+	if s.closes > 1 {
+		return errors.New("PRIVATE-DOUBLE-CLOSE-CANARY")
+	}
+	s.closed = true
+	if s.failClose {
+		return errors.New("PRIVATE-SOURCE-CLOSE-CANARY")
+	}
+	return nil
+}
+
 func (r *closeErrorUploadReader) Close() error {
 	if err := r.ReadCloser.Close(); err != nil {
 		return err
@@ -374,6 +400,66 @@ func TestSQLiteBlobUploadWriteHoldsOwnerAcrossFileIOOnAnotherConnection(t *testi
 	}
 	if atomic.LoadInt32(&store.puts) != 1 {
 		t.Fatalf("File put repeated: %d", atomic.LoadInt32(&store.puts))
+	}
+}
+
+func TestSQLiteBlobUploadWriteClosesSourceOnceBeforePromotionAndRecovers(t *testing.T) {
+	e := nativeBatchEnvironment(t)
+	catalog, err := blobreference.NewSQLiteCatalog(e.executor.Transport)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := catalog.EnsureSchema(e.ctx); err != nil {
+		t.Fatal(err)
+	}
+	secret := make([]byte, 32)
+	if _, err := rand.Read(secret); err != nil {
+		t.Fatal(err)
+	}
+	file, err := blobreference.NewFileObjectStorage(filepath.Join(t.TempDir(), "private"), secret)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer file.Close()
+	e.ctx.WithObjectStorage(file).WithObjectStorageObserver(runtime.ObjectStorageObserverFunc(func(runtime.ObjectStorageEvent) {}))
+	service, err := blobreference.NewSQLiteUploadService(catalog,
+		&uploadPermission{scope: "tenant-a", allowed: true}, &fixturePDFVerifier{}, 10_000, time.Minute)
+	if err != nil {
+		t.Fatal(err)
+	}
+	data := []byte("%PDF-1.7\nsource close must precede promotion\n%%EOF")
+	session, err := service.Begin(e.ctx,
+		blobreference.UploadTarget{Entity: "Customer", EntityID: "1", Field: "document"},
+		blobreference.UploadInput{FileName: "report.pdf", DeclaredSize: int64(len(data))}, "source-close")
+	if err != nil {
+		t.Fatal(err)
+	}
+	first := &singleCloseUploadSource{Reader: bytes.NewReader(data), failClose: true}
+	if _, err := service.Write(e.ctx, session.ID, first); err == nil || err.Error() != "BLOB_STORE_FAILED" {
+		t.Fatalf("failed source close returned: %v", err)
+	}
+	if first.closes != 1 {
+		t.Fatalf("failed source closed %d times", first.closes)
+	}
+	var state, catalogState string
+	if err := e.db.QueryRow(`SELECT u.state,c.status FROM teaql_blob_upload u
+		JOIN teaql_blob_catalog c ON c.key=u.key WHERE u.upload_id=?`, session.ID).
+		Scan(&state, &catalogState); err != nil || state != "initiated" || catalogState != "initiated" {
+		t.Fatalf("failed write promoted: %s/%s %v", state, catalogState, err)
+	}
+	retry := &singleCloseUploadSource{Reader: bytes.NewReader(data)}
+	if count, err := service.Write(e.ctx, session.ID, retry); err != nil || count != int64(len(data)) {
+		t.Fatalf("same bytes failed to recover File object: %d %v", count, err)
+	}
+	if retry.closes != 1 {
+		t.Fatalf("retry source closed %d times", retry.closes)
+	}
+	if ref, err := service.Complete(e.ctx, session.ID); err != nil || ref != session.Reference {
+		t.Fatalf("recovered upload failed to confirm: %v", err)
+	}
+	replay := &singleCloseUploadSource{Reader: bytes.NewReader(data)}
+	if count, err := service.Write(e.ctx, session.ID, replay); err != nil || count != int64(len(data)) || replay.closes != 1 {
+		t.Fatalf("completed replay source closure: %d %v closes=%d", count, err, replay.closes)
 	}
 }
 
