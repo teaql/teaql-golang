@@ -88,6 +88,7 @@ func (s *SQLiteMaintenanceService) unixMillis() (int64, error) {
 type deletionRow struct {
 	key, objectKey, version, writtenETag, status, uploadState  string
 	policyProfile, uploadMode                                  string
+	uploadModeKnown                                            bool
 	expires                                                    int64
 	completedAt, lastUnbound, unboundSeconds, effectiveSeconds *int64
 	retentionFloor                                             *int64
@@ -149,6 +150,7 @@ func readDeletionRow(ctx context.Context, sql teaqlsql.SqlTransport,
 		}
 	}
 	if !row["upload_mode"].IsNull() {
+		result.uploadModeKnown = true
 		result.uploadMode, okay = sqlText(row["upload_mode"])
 		if !okay {
 			return nil, errors.New("BLOB_CATALOG_FAILED")
@@ -178,6 +180,7 @@ func readDeletionRow(ctx context.Context, sql teaqlsql.SqlTransport,
 func eligibleExpired(row *deletionRow, now int64) bool {
 	return row != nil && row.expires <= now &&
 		(row.uploadState == "initiated" || row.uploadState == "written") &&
+		(!row.uploadModeKnown || row.uploadMode == "server_stream") &&
 		(row.status == "initiated" || row.status == "deleting")
 }
 
@@ -250,9 +253,11 @@ func (s *SQLiteMaintenanceService) candidates(actor *runtime.UserContext, scope,
 	rows, err := s.catalog.transport.FetchAllSql(actor, sqlQuery(`SELECT c.key FROM teaql_blob_catalog c
         JOIN teaql_blob_upload u ON u.key=c.key AND u.scope=c.scope
         WHERE c.scope=? AND c.key>? AND (
-          (c.status='deleting' AND (u.state IN ('initiated','written') OR
+          (c.status='deleting' AND ((u.state IN ('initiated','written')
+            AND (c.upload_mode IS NULL OR c.upload_mode='server_stream')) OR
             (u.state='completed' AND c.upload_mode='server_stream')))
           OR (c.status='initiated' AND u.state IN ('initiated','written')
+            AND (c.upload_mode IS NULL OR c.upload_mode='server_stream')
             AND u.expires_ms<=?)
           OR (c.status='uploaded_unbound' AND u.state='completed'
             AND c.upload_mode='server_stream' AND c.completed_at_ms IS NOT NULL

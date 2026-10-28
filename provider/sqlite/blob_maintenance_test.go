@@ -218,6 +218,57 @@ func TestSQLiteBlobMaintenanceExpiredUploadClaimRecoveryAndScope(t *testing.T) {
 	}
 }
 
+func TestSQLiteBlobMaintenanceSkipsDirectUploadsWithoutQuiescence(t *testing.T) {
+	e := nativeBatchEnvironment(t)
+	catalog, err := blobreference.NewSQLiteCatalog(e.executor.Transport)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := catalog.EnsureSchema(e.ctx); err != nil {
+		t.Fatal(err)
+	}
+	store := &maintenanceStore{objects: map[string]string{}}
+	e.ctx.WithObjectStorage(store)
+	e.ctx.WithObjectStorageObserver(runtime.ObjectStorageObserverFunc(func(runtime.ObjectStorageEvent) {}))
+	for _, item := range []struct{ key, state, status, mode string }{
+		{"blob_direct_initiated", "initiated", "initiated", "direct"},
+		{"blob_direct_written", "written", "initiated", "direct"},
+		{"blob_direct_deleting", "initiated", "deleting", "direct"},
+		{"blob_unknown_mode", "initiated", "initiated", ""},
+	} {
+		store.objects["objects/"+item.key] = "etag-direct"
+		if _, err := e.db.Exec(`INSERT INTO teaql_blob_catalog
+			(key,scope,object_key,content_version,file_name,content_type,size_bytes,status,upload_mode)
+			VALUES (?,?,?,?,?,?,?,?,?)`, item.key, "tenant-a", "objects/"+item.key,
+			"", "file.pdf", "application/pdf", 1, item.status, item.mode); err != nil {
+			t.Fatal(err)
+		}
+		if _, err := e.db.Exec(`INSERT INTO teaql_blob_upload
+			(upload_id,scope,replay_key,request_hash,key,entity,entity_id,field,file_name,
+			extension,declared_size,expires_ms,state,written_etag)
+			VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)`, "bu_"+item.key, "tenant-a", item.key,
+			"hash_"+item.key, item.key, "Asset", "1", "document", "file.pdf", "pdf",
+			1, time.Now().Add(-time.Minute).UnixMilli(), item.state,
+			func() string {
+				if item.state == "written" {
+					return "etag-direct"
+				}
+				return ""
+			}()); err != nil {
+			t.Fatal(err)
+		}
+	}
+	service, err := blobreference.NewSQLiteMaintenanceService(catalog,
+		&maintenancePermission{scope: "tenant-a", allowed: true}, 10)
+	if err != nil {
+		t.Fatal(err)
+	}
+	batch, err := service.RunBatch(e.ctx, nil)
+	if err != nil || len(batch.Outcomes) != 0 || store.deletes != 0 || len(store.objects) != 4 {
+		t.Fatalf("direct upload was collected: batch=%#v deletes=%d err=%v", batch, store.deletes, err)
+	}
+}
+
 func TestSQLiteBlobMaintenanceRealFileReceiptAndPartialRecovery(t *testing.T) {
 	e := nativeBatchEnvironment(t)
 	catalog, err := blobreference.NewSQLiteCatalog(e.executor.Transport)
