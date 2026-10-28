@@ -22,6 +22,7 @@ import (
 	sdk "github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/teaql/teaql-golang/blobreference"
 	"github.com/teaql/teaql-golang/core"
+	ds "github.com/teaql/teaql-golang/data_service"
 	"github.com/teaql/teaql-golang/provider/sqlite"
 	"github.com/teaql/teaql-golang/runtime"
 	teaqlsql "github.com/teaql/teaql-golang/sql"
@@ -221,11 +222,6 @@ func runSQLiteBlobUploadThroughS3(t *testing.T, mode string) {
 	if err := catalog.EnsureSchema(actor); err != nil {
 		t.Fatal(err)
 	}
-	actor.InsertResource("dataService", teaqlsql.NewSqlDataServiceExecutor(
-		&sqlite.SqliteDialect{}, transport, runtime.NewInMemoryMetadataStore()))
-	if _, err := db.Exec("CREATE TABLE asset (id INTEGER PRIMARY KEY, document TEXT)"); err != nil {
-		t.Fatal(err)
-	}
 	permission := &s3UploadPermission{allowed: true, extensions: []string{"pdf"}}
 	var parser blobreference.ContentVerifier = &s3PDFVerifier{}
 	data := []byte("%PDF-1.7\nreal S3 Blob upload\n%%EOF")
@@ -350,6 +346,26 @@ func runSQLiteBlobUploadThroughS3(t *testing.T, mode string) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	spec, err := core.NewBlobFieldSpec("Asset", "document", permission.extensions, true, "default")
+	if err != nil {
+		t.Fatal(err)
+	}
+	entity := core.NewEntityDescriptor("Asset").TableName("asset").
+		Property(core.NewPropertyDescriptor("id", core.TypeU64).Id().NotNull()).
+		Property(core.NewPropertyDescriptor("version", core.TypeI64).Version()).
+		Property(core.NewPropertyDescriptor("document", core.TypeText).Blob(spec))
+	ddl, err := (&teaqlsql.DefaultSqlDialect{Dialect: &sqlite.SqliteDialect{}}).CompileCreateTable(entity)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := db.Exec(ddl); err != nil {
+		t.Fatal(err)
+	}
+	metadata := runtime.NewInMemoryMetadataStore()
+	metadata.Register(entity)
+	actor.Metadata = metadata
+	actor.InsertResource("dataService", teaqlsql.NewSqlDataServiceExecutor(
+		&sqlite.SqliteDialect{}, transport, metadata))
 	nonce := make([]byte, 16)
 	if _, err := rand.Read(nonce); err != nil {
 		t.Fatal(err)
@@ -410,27 +426,67 @@ func runSQLiteBlobUploadThroughS3(t *testing.T, mode string) {
 		version != head.ETag() {
 		t.Fatal("S3 Blob catalog/object mismatch")
 	}
+	readPermission := &s3ReadPermission{allowed: true}
+	module, err := blobreference.NewBlobReferenceModule(catalog, service, readPermission,
+		3*time.Second, s3BindingPermission{reference: session.Reference, shortRetention: endToEndGC})
+	if err != nil {
+		t.Fatal(err)
+	}
+	maintenance, err := blobreference.NewSQLiteMaintenanceService(catalog, s3UploadMaintenanceAuthorization{}, 10)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := module.WithMaintenance(maintenance); err != nil {
+		t.Fatal(err)
+	}
+	if err := module.Install(actor); err != nil {
+		t.Fatal(err)
+	}
+	if err := module.Ready(actor); err != nil {
+		t.Fatal(err)
+	}
 	reason := "bind S3 Blob in business graph"
 	intent, err := core.NewMutationIntent(&reason)
 	if err != nil {
 		t.Fatal(err)
 	}
-	err = actor.ExecuteGraphSaveWithSQL(intent, func(graph *runtime.GraphSQLHandle) error {
-		if err := graph.WithSQL(func(lease teaqlsql.SqlTransport) error {
-			_, err := lease.ExecuteSql(context.Background(), &teaqlsql.CompiledQuery{
-				Sql:    "INSERT INTO asset(id, document) VALUES (?, ?)",
-				Params: []core.Value{core.ValI64(1), core.ValText(session.Reference.Key())},
-			})
-			return err
-		}); err != nil {
-			return err
-		}
-		_, err := catalog.BindInGraph(actor, graph, actor, blobreference.BindingChange{
-			Target: blobreference.BindingTarget{Entity: "Asset", EntityID: "1", Field: "document"},
-			Next:   &session.Reference, ExpectedVersion: 0, NextVersion: 1, Action: "Create",
-		}, s3BindingPermission{reference: session.Reference, shortRetention: endToEndGC})
-		return err
-	})
+	insert := &ds.InsertMutation{Cmd: core.NewInsertCommand("Asset").
+		Value("id", core.ValU64(1)).Value("version", core.ValI64(1)).
+		Value("document", core.ValBlobRef(session.Reference))}
+	mutationRequest, err := ds.NewMutationRequest(insert, reason)
+	if err != nil {
+		t.Fatal(err)
+	}
+	save := func(reject bool, command ds.MutationRequest) error {
+		return actor.ExecuteGraphSave(intent, func() error {
+			_, err := actor.GetResource("dataService").(ds.MutationExecutor).Mutate(actor, command)
+			if err != nil {
+				return err
+			}
+			if reject {
+				return errors.New("outer owner rejected")
+			}
+			return nil
+		})
+	}
+	if err := save(true, mutationRequest); err == nil || err.Error() != "outer owner rejected" {
+		t.Fatalf("S3 Blob outer owner rollback: %v", err)
+	}
+	var count int
+	if err := db.QueryRow("SELECT COUNT(*) FROM asset WHERE id=1").Scan(&count); err != nil || count != 0 {
+		t.Fatalf("S3 Blob aborted business row survived: %d %v", count, err)
+	}
+	if err := db.QueryRow("SELECT COUNT(*) FROM teaql_blob_binding WHERE key=?", session.Reference.Key()).Scan(&count); err != nil || count != 0 {
+		t.Fatalf("S3 Blob aborted binding survived: %d %v", count, err)
+	}
+	if err := db.QueryRow("SELECT status FROM teaql_blob_catalog WHERE key=?", session.Reference.Key()).Scan(&status); err != nil || status != "uploaded_unbound" {
+		t.Fatalf("S3 Blob aborted catalog promotion survived: %q %v", status, err)
+	}
+	if head, err := store.Head(key); err != nil || head == nil || head.ETag() != version {
+		t.Fatal("S3 Blob lost uploaded object after owner rollback", err)
+	}
+	t.Logf("PASS Go %s native module outer owner rollback", mode)
+	err = save(false, mutationRequest)
 	if err != nil {
 		t.Fatal("S3 Blob graph bind", err)
 	}
@@ -444,11 +500,7 @@ func runSQLiteBlobUploadThroughS3(t *testing.T, mode string) {
 		t.Fatal("S3 Blob binding did not promote catalog", err)
 	}
 	graphAuthorizer := &s3GraphAuthorizer{reference: session.Reference, version: 1}
-	readPermission := &s3ReadPermission{allowed: true}
 	actor.InsertResource("responseGraphAuthorizer", graphAuthorizer)
-	actor.InsertResource("blobResponseContributor", blobreference.SQLiteReadContributor{
-		Catalog: catalog, Authorize: readPermission, MaxURLAge: 3 * time.Second,
-	})
 	options := runtime.ViewOptions{Mode: "ordinary", BusinessOutcome: "read_only",
 		ExpiresAt: time.Now().Add(time.Minute)}
 	view, err := (runtime.ViewPreparationService{}).Prepare(actor, nil, options)
@@ -496,30 +548,12 @@ func runSQLiteBlobUploadThroughS3(t *testing.T, mode string) {
 	if !endToEndGC {
 		return
 	}
-	permissionForBinding := s3BindingPermission{reference: session.Reference, shortRetention: true}
-	err = actor.ExecuteGraphSaveWithSQL(intent, func(graph *runtime.GraphSQLHandle) error {
-		if err := graph.WithSQL(func(lease teaqlsql.SqlTransport) error {
-			affected, err := lease.ExecuteSql(context.Background(), &teaqlsql.CompiledQuery{
-				Sql:    "UPDATE asset SET document=NULL WHERE id=? AND document=?",
-				Params: []core.Value{core.ValI64(1), core.ValText(session.Reference.Key())},
-			})
-			if err != nil {
-				return err
-			}
-			if affected != 1 {
-				return errors.New("business row did not clear")
-			}
-			return nil
-		}); err != nil {
-			return err
-		}
-		_, err := catalog.BindInGraph(actor, graph, actor, blobreference.BindingChange{
-			Target:          blobreference.BindingTarget{Entity: "Asset", EntityID: "1", Field: "document"},
-			ExpectedVersion: 1, NextVersion: 2, Action: "Update", RequirePrevious: true,
-			ExpectedPrevious: &session.Reference,
-		}, permissionForBinding)
-		return err
-	})
+	clear, err := ds.NewMutationRequest(&ds.UpdateMutation{Cmd: core.NewUpdateCommand("Asset", core.ValU64(1)).
+		Value("document", core.ValNull())}, reason)
+	if err != nil {
+		t.Fatal(err)
+	}
+	err = save(false, clear)
 	if err != nil {
 		t.Fatal("S3 Blob graph unbind", err)
 	}
@@ -543,10 +577,6 @@ func runSQLiteBlobUploadThroughS3(t *testing.T, mode string) {
 	_, err = (runtime.ViewPreparationService{}).Prepare(actor, nil, options)
 	if !errors.As(err, &denied) || denied.Code != "BLOB_READ_DENIED" {
 		t.Fatal("unbound S3 Blob stale view projected", err)
-	}
-	maintenance, err := blobreference.NewSQLiteMaintenanceService(catalog, s3UploadMaintenanceAuthorization{}, 10)
-	if err != nil {
-		t.Fatal(err)
 	}
 	deadline, err := blobreference.UnreferencedEligibleAt(lastUnbound, effective, &floor)
 	if err != nil {
