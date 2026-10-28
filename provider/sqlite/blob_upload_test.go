@@ -706,6 +706,65 @@ func TestSQLiteBlobLegacyUploadLeaseMigrationPreservesReplay(t *testing.T) {
 	}
 }
 
+func TestSQLiteBlobUnicodeSeparatorsUseSharedHashAndReplayPriorGoRows(t *testing.T) {
+	e := nativeBatchEnvironment(t)
+	catalog, err := blobreference.NewSQLiteCatalog(e.executor.Transport)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := catalog.EnsureSchema(e.ctx); err != nil {
+		t.Fatal(err)
+	}
+	service, err := blobreference.NewSQLiteUploadService(catalog,
+		&uploadPermission{scope: "tenant-a", allowed: true}, &fixturePDFVerifier{},
+		10_000, 15*time.Minute)
+	if err != nil {
+		t.Fatal(err)
+	}
+	target := blobreference.UploadTarget{Entity: "Customer", EntityID: "1", Field: "document"}
+	for _, item := range []struct{ label, separator string }{
+		{"u2028", "\u2028"}, {"u2029", "\u2029"},
+	} {
+		t.Run(item.label, func(t *testing.T) {
+			fileName := "report" + item.separator + "x.pdf"
+			input := blobreference.UploadInput{FileName: fileName, DeclaredSize: 42,
+				DeclaredContentType: "application/pdf"}
+			old, err := service.Begin(e.ctx, target, input, item.label+"-historical")
+			if err != nil {
+				t.Fatal(err)
+			}
+			parts := []any{"Customer", "1", "document", fileName, 42, "application/pdf"}
+			var encoded bytes.Buffer
+			encoder := json.NewEncoder(&encoded)
+			encoder.SetEscapeHTML(false)
+			if err := encoder.Encode(parts); err != nil {
+				t.Fatal(err)
+			}
+			prior := sha256.Sum256(bytes.TrimSuffix(encoded.Bytes(), []byte("\n")))
+			if _, err := e.db.Exec(`UPDATE teaql_blob_upload SET request_hash=? WHERE upload_id=?`,
+				hex.EncodeToString(prior[:]), old.ID); err != nil {
+				t.Fatal(err)
+			}
+			replay, err := service.Begin(e.ctx, target, input, item.label+"-historical")
+			if err != nil || replay.ID != old.ID || replay.Reference != old.Reference ||
+				!replay.ExpiresAt.Equal(old.ExpiresAt) {
+				t.Fatalf("prior Go hash did not replay: %v", err)
+			}
+			fresh, err := service.Begin(e.ctx, target, input, item.label+"-canonical")
+			if err != nil {
+				t.Fatal(err)
+			}
+			canonical := sha256.Sum256([]byte(`["Customer","1","document","report` +
+				item.separator + `x.pdf",42,"application/pdf"]`))
+			var hash string
+			if err := e.db.QueryRow(`SELECT request_hash FROM teaql_blob_upload WHERE upload_id=?`,
+				fresh.ID).Scan(&hash); err != nil || hash != hex.EncodeToString(canonical[:]) {
+				t.Fatalf("shared JSON separator hash mismatch: %v", err)
+			}
+		})
+	}
+}
+
 func (v *fixturePDFVerifier) Verify(reader io.Reader, extension string, maximum int64) (blobreference.VerifiedContent, error) {
 	v.calls++
 	if v.early {
