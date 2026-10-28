@@ -101,6 +101,23 @@ func TestMinioRealSignedRangeAndExpiry(t *testing.T) {
 	if expired.StatusCode != http.StatusForbidden {
 		t.Fatal("expired signed URL accepted", expired.StatusCode)
 	}
+	refreshOptions, _ := core.NewObjectReadURLOptions(30*time.Second, "attachment", "report.pdf")
+	refreshed, err := storage.GetReadURL(key, refreshOptions)
+	if err != nil || refreshed.URL() == ticket.URL() || !refreshed.ExpiresAt().After(time.Now()) {
+		t.Fatal("signed URL did not refresh after expiry", err)
+	}
+	refreshRequest, _ := http.NewRequest(http.MethodGet, refreshed.URL(), nil)
+	refreshRequest.Header.Set("Range", "bytes=0-7")
+	refreshResponse, err := httpClient.Do(refreshRequest)
+	if err != nil {
+		t.Fatal(err)
+	}
+	refreshBytes, refreshReadErr := io.ReadAll(refreshResponse.Body)
+	_ = refreshResponse.Body.Close()
+	if refreshReadErr != nil || refreshResponse.StatusCode != http.StatusPartialContent ||
+		!bytes.Equal(refreshBytes, data[:8]) {
+		t.Fatal("refreshed signed Range mismatch", refreshReadErr, refreshResponse.StatusCode)
+	}
 	if os.Getenv("TEAQL_S3_TEST_CREATE_ONLY") == "1" {
 		createKey, _ := core.NewObjectKey("f4/go/create/" + hex.EncodeToString(random))
 		raceKey, _ := core.NewObjectKey("f4/go/race/" + hex.EncodeToString(random))
