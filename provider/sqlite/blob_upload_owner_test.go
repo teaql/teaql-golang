@@ -20,19 +20,11 @@ import (
 
 type sqlBackedUploadPermission struct {
 	*uploadPermission
-	db *sql.DB
 }
 
 func (p *sqlBackedUploadPermission) Authorize(actor *runtime.UserContext, target blobreference.UploadTarget,
 	action string, input blobreference.UploadInput) error {
-	if err := p.uploadPermission.Authorize(actor, target, action, input); err != nil {
-		return err
-	}
-	var allowed int
-	if err := p.db.QueryRow("SELECT allowed FROM upload_permission WHERE id=1").Scan(&allowed); err != nil || allowed != 1 {
-		return errors.New("revoked")
-	}
-	return nil
+	return p.uploadPermission.Authorize(actor, target, action, input)
 }
 
 func (p *sqlBackedUploadPermission) CurrentOnLease(actor *runtime.UserContext, lease teaqlsql.SqlTransport,
@@ -175,7 +167,7 @@ func TestSQLiteBlobUploadUsesCurrentSQLPermissionOnTheBorrowedLease(t *testing.T
 	}
 	defer file.Close()
 	e.ctx.WithObjectStorage(file).WithObjectStorageObserver(runtime.ObjectStorageObserverFunc(func(runtime.ObjectStorageEvent) {}))
-	permission := &sqlBackedUploadPermission{uploadPermission: &uploadPermission{scope: "tenant-a", allowed: true}, db: e.db}
+	permission := &sqlBackedUploadPermission{uploadPermission: &uploadPermission{scope: "tenant-a", allowed: true}}
 	service, err := blobreference.NewSQLiteUploadService(catalog, permission, &fixturePDFVerifier{}, 10_000, time.Minute)
 	if err != nil {
 		t.Fatal(err)
@@ -200,6 +192,12 @@ func TestSQLiteBlobUploadUsesCurrentSQLPermissionOnTheBorrowedLease(t *testing.T
 	}
 	if ref, err := service.Complete(e.ctx, session.ID); err != nil || ref != session.Reference {
 		t.Fatalf("current SQL permission failed: %v", err)
+	}
+	if _, err := e.db.Exec("UPDATE upload_permission SET allowed=0 WHERE id=1"); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := service.Complete(e.ctx, session.ID); err == nil || err.Error() != "BLOB_UPLOAD_DENIED" {
+		t.Fatalf("revoked completed replay accepted: %v", err)
 	}
 }
 
@@ -484,6 +482,114 @@ func TestSQLiteBlobUploadConfirmHoldsOwnerAcrossParserIOOnAnotherConnection(t *t
 		if result.err != nil || result.ref != session.Reference {
 			t.Fatalf("concurrent confirmation failed: %v", result.err)
 		}
+	}
+	if atomic.LoadInt32(&verifier.calls) != 1 {
+		t.Fatalf("parser repeated: %d", atomic.LoadInt32(&verifier.calls))
+	}
+}
+
+func TestSQLiteBlobUploadRevocationWaitsForConfirmParserOwner(t *testing.T) {
+	e := nativeBatchEnvironment(t)
+	if _, err := e.db.Exec("CREATE TABLE upload_permission (id INTEGER PRIMARY KEY, allowed INTEGER NOT NULL)"); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := e.db.Exec("INSERT INTO upload_permission (id,allowed) VALUES (1,1)"); err != nil {
+		t.Fatal(err)
+	}
+	catalog, err := blobreference.NewSQLiteCatalog(e.executor.Transport)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := catalog.EnsureSchema(e.ctx); err != nil {
+		t.Fatal(err)
+	}
+	var sequence int
+	var schema, path string
+	if err := e.db.QueryRow("PRAGMA database_list").Scan(&sequence, &schema, &path); err != nil {
+		t.Fatal(err)
+	}
+	other, err := sql.Open("sqlite3", path+"?_busy_timeout=5000")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer other.Close()
+	other.SetMaxOpenConns(1)
+	secret := make([]byte, 32)
+	if _, err := rand.Read(secret); err != nil {
+		t.Fatal(err)
+	}
+	file, err := blobreference.NewFileObjectStorage(filepath.Join(t.TempDir(), "private"), secret)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer file.Close()
+	e.ctx.WithObjectStorage(file).WithObjectStorageObserver(runtime.ObjectStorageObserverFunc(func(runtime.ObjectStorageEvent) {}))
+	permission := &sqlBackedUploadPermission{uploadPermission: &uploadPermission{scope: "tenant-a", allowed: true}}
+	verifier := &pausedUploadVerifier{entered: make(chan struct{}), release: make(chan struct{})}
+	defer func() {
+		select {
+		case <-verifier.release:
+		default:
+			close(verifier.release)
+		}
+	}()
+	service, err := blobreference.NewSQLiteUploadService(catalog, permission, verifier, 10_000, time.Minute)
+	if err != nil {
+		t.Fatal(err)
+	}
+	data := []byte("%PDF-1.7\nconcurrent revocation\n%%EOF")
+	target := blobreference.UploadTarget{Entity: "Customer", EntityID: "1", Field: "document"}
+	session, err := service.Begin(e.ctx, target,
+		blobreference.UploadInput{FileName: "report.pdf", DeclaredSize: int64(len(data))}, "revoke-confirm-owner")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := service.Write(e.ctx, session.ID, io.NopCloser(bytes.NewReader(data))); err != nil {
+		t.Fatal(err)
+	}
+	type confirmation struct {
+		ref core.BlobRef
+		err error
+	}
+	confirmed := make(chan confirmation, 1)
+	go func() {
+		ref, err := service.Complete(e.ctx, session.ID)
+		confirmed <- confirmation{ref, err}
+	}()
+	select {
+	case <-verifier.entered:
+	case <-time.After(5 * time.Second):
+		t.Fatal("confirmation did not reach parser I/O")
+	}
+	revoked := make(chan error, 1)
+	go func() {
+		_, err := other.Exec("UPDATE upload_permission SET allowed=0 WHERE id=1")
+		revoked <- err
+	}()
+	select {
+	case err := <-revoked:
+		t.Fatalf("revocation bypassed physical owner: %v", err)
+	case <-time.After(50 * time.Millisecond):
+	}
+	close(verifier.release)
+	select {
+	case result := <-confirmed:
+		if result.err != nil || result.ref != session.Reference {
+			t.Fatalf("confirmation failed: %v", result.err)
+		}
+	case <-time.After(5 * time.Second):
+		t.Fatal("confirmation did not finish")
+	}
+	select {
+	case err := <-revoked:
+		if err != nil {
+			t.Fatal(err)
+		}
+	case <-time.After(5 * time.Second):
+		t.Fatal("revocation did not finish")
+	}
+	if _, err := service.Complete(e.ctx, session.ID); err == nil || err.Error() != "BLOB_UPLOAD_DENIED" {
+		t.Fatalf("revoked completed replay accepted: %v", err)
 	}
 	if atomic.LoadInt32(&verifier.calls) != 1 {
 		t.Fatalf("parser repeated: %d", atomic.LoadInt32(&verifier.calls))

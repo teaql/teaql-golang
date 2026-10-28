@@ -725,42 +725,71 @@ func (s *SQLiteUploadService) Complete(actor *runtime.UserContext, id string) (c
 		if _, err := hex.DecodeString(row.WrittenSHA256); err != nil {
 			return empty, uploadError("BLOB_UPLOAD_INCOMPLETE")
 		}
-		records, err := s.catalog.transport.FetchAllSql(actor, sqlQuery(`SELECT object_key,content_version,
+		target := UploadTarget{row.Entity, row.EntityID, row.Field}
+		err = s.transactionImmediate(actor, func(sql teaqlsql.SqlTransport) error {
+			current, err := sql.FetchAllSql(actor, sqlQuery(`SELECT state,key,expires_ms,written_sha256,written_etag
+            FROM teaql_blob_upload WHERE upload_id=? AND scope=?`, core.ValText(id), core.ValText(row.Scope)))
+			if err != nil {
+				return uploadError("BLOB_CATALOG_FAILED")
+			}
+			records, err := sql.FetchAllSql(actor, sqlQuery(`SELECT object_key,content_version,
             content_type,size_bytes,status FROM teaql_blob_catalog WHERE key=? AND scope=?`,
-			core.ValText(row.Key), core.ValText(row.Scope)))
-		if err != nil || len(records) != 1 {
-			return empty, uploadError("BLOB_UPLOAD_INCOMPLETE")
-		}
-		record := records[0]
-		location, locationOK := sqlText(record["object_key"])
-		version, versionOK := sqlText(record["content_version"])
-		contentType, contentTypeOK := sqlText(record["content_type"])
-		status, statusOK := sqlText(record["status"])
-		size, sizeOK := record["size_bytes"].TryI64()
-		mime, mimeOK := core.BlobMIMEForExtension(row.Extension)
-		if !locationOK || !versionOK || !contentTypeOK || !statusOK || !sizeOK || !mimeOK ||
-			(status != "uploaded_unbound" && status != "available") ||
-			version != row.WrittenETag || contentType != mime || size != row.DeclaredSize {
-			return empty, uploadError("BLOB_UPLOAD_INCOMPLETE")
-		}
-		key, err := core.NewObjectKey(location)
+				core.ValText(row.Key), core.ValText(row.Scope)))
+			if err != nil {
+				return uploadError("BLOB_CATALOG_FAILED")
+			}
+			if len(current) != 1 || len(records) != 1 {
+				return uploadError("BLOB_UPLOAD_INCOMPLETE")
+			}
+			state, stateOK := sqlText(current[0]["state"])
+			currentKey, keyOK := sqlText(current[0]["key"])
+			expiry, expiryOK := current[0]["expires_ms"].TryI64()
+			writtenSHA, shaOK := sqlText(current[0]["written_sha256"])
+			writtenETag, etagOK := sqlText(current[0]["written_etag"])
+			record := records[0]
+			location, locationOK := sqlText(record["object_key"])
+			version, versionOK := sqlText(record["content_version"])
+			contentType, contentTypeOK := sqlText(record["content_type"])
+			status, statusOK := sqlText(record["status"])
+			size, sizeOK := record["size_bytes"].TryI64()
+			mime, mimeOK := core.BlobMIMEForExtension(row.Extension)
+			if !stateOK || !keyOK || !expiryOK || !shaOK || !etagOK ||
+				state != "completed" || currentKey != row.Key || expiry != row.ExpiresUnixMs ||
+				writtenSHA != row.WrittenSHA256 || writtenETag != row.WrittenETag ||
+				!locationOK || !versionOK || !contentTypeOK || !statusOK || !sizeOK || !mimeOK ||
+				(status != "uploaded_unbound" && status != "available") ||
+				version != row.WrittenETag || contentType != mime || size != row.DeclaredSize {
+				return uploadError("BLOB_UPLOAD_INCOMPLETE")
+			}
+			key, err := core.NewObjectKey(location)
+			if err != nil {
+				return uploadError("BLOB_UPLOAD_INCOMPLETE")
+			}
+			input := UploadInput{FileName: row.FileName, DeclaredSize: size, DeclaredContentType: mime}
+			if _, err := s.currentOnLease(actor, sql, target, "Confirm", input, row.Scope); err != nil {
+				return err
+			}
+			if s.now().UnixMilli() >= row.ExpiresUnixMs {
+				return uploadError("BLOB_UPLOAD_EXPIRED")
+			}
+			store, err := actor.ObjectStorage("recheck completed Blob upload")
+			if err != nil {
+				return uploadError("BLOB_STORE_FAILED")
+			}
+			metadata, err := store.Head(key)
+			if err != nil || metadata == nil || metadata.Size() != size || metadata.ETag() != version {
+				return uploadError("BLOB_UPLOAD_INCOMPLETE")
+			}
+			if _, err := s.currentOnLease(actor, sql, target, "Confirm", input, row.Scope); err != nil {
+				return err
+			}
+			if s.now().UnixMilli() >= row.ExpiresUnixMs {
+				return uploadError("BLOB_UPLOAD_EXPIRED")
+			}
+			return nil
+		})
 		if err != nil {
-			return empty, uploadError("BLOB_UPLOAD_INCOMPLETE")
-		}
-		store, err := actor.ObjectStorage("recheck completed Blob upload")
-		if err != nil {
-			return empty, uploadError("BLOB_STORE_FAILED")
-		}
-		metadata, err := store.Head(key)
-		if err != nil || metadata == nil || metadata.Size() != size || metadata.ETag() != version {
-			return empty, uploadError("BLOB_UPLOAD_INCOMPLETE")
-		}
-		input := UploadInput{FileName: row.FileName, DeclaredSize: size, DeclaredContentType: mime}
-		if _, err := s.current(actor, UploadTarget{row.Entity, row.EntityID, row.Field}, "Confirm", input, row.Scope); err != nil {
 			return empty, err
-		}
-		if s.now().UnixMilli() >= row.ExpiresUnixMs {
-			return empty, uploadError("BLOB_UPLOAD_EXPIRED")
 		}
 		return core.ParseBlobRef(row.Key)
 	}
