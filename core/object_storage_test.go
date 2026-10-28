@@ -41,6 +41,21 @@ func TestObjectStorageValidationAndPrivateFormatting(t *testing.T) {
 	if _, err := NewObjectReadURLOptions(time.Second, "attachment", "bad\nname"); err == nil {
 		t.Fatal("unsafe filename accepted")
 	}
+	for _, name := range []string{"bad/name", string([]byte{0xff})} {
+		if _, err := NewObjectReadURLOptions(time.Second, "attachment", name); err == nil {
+			t.Fatal("unsafe filename accepted")
+		}
+	}
+	ascii, err := NewObjectReadURLOptions(time.Second, "inline", "sample.jpg")
+	if err != nil || ascii.ContentDisposition() != `inline; filename="sample.jpg"` {
+		t.Fatal("ASCII filename disposition changed")
+	}
+	unicode, err := NewObjectReadURLOptions(time.Second, "inline", "报告 & 📄\u2028mid\u2029x.jpg")
+	if err != nil || !strings.HasPrefix(unicode.ContentDisposition(), `inline; filename="__ & _`) ||
+		!strings.Contains(unicode.ContentDisposition(), "filename*=UTF-8''%E6%8A%A5%E5%91%8A%20%26%20%F0%9F%93%84") ||
+		strings.ContainsAny(unicode.ContentDisposition(), "\r\n") {
+		t.Fatal("Unicode filename disposition is unsafe or not RFC 5987 encoded")
+	}
 	key, _ := NewObjectKey("PRIVATE-KEY-CANARY")
 	url := NewObjectReadURL("PRIVATE-URL-CANARY", time.Now())
 	metadata, _ := NewObjectMetadata(key, 0, "PRIVATE-TYPE-CANARY", "PRIVATE-ETAG-CANARY", nil, original)
