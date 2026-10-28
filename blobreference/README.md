@@ -13,9 +13,20 @@ not supply trusted type facts. These are in-process resource bounds, not CPU or
 process isolation. Format, size, source and busy failures use stable Blob codes;
 unknown verifier errors are sanitized by the upload service.
 
-The remaining eight extensions need production verifier adapters. Earlier PDF
-fixture tests prove upload orchestration only. Lifecycle/GC and complete F2–F5
-acceptance remain open.
+`NewMediaContentVerifier` is a separate Linux-only MP3/MP4 adapter. The host
+supplies absolute paths to trusted `ffprobe`, `ffmpeg` and `prlimit` binaries,
+keeps them patched and passes input, frame, pixel and concurrency limits. It
+walks complete MP3 frames or MP4 boxes, probes actual streams and frame counts,
+requires a non-cover-art MP4 video track, then decodes all media from a pipe.
+No client filename or URL reaches FFmpeg. `prlimit` caps each child at 10 CPU
+seconds and 512 MiB virtual memory; a parent timeout limits wall time to 15
+seconds. The verifier hashes original bytes and reports `audio/mpeg` or
+`video/mp4`. This is format validation, not malware scanning. Its readiness
+check is called by `BlobReferenceModule.Ready` when that verifier is installed.
+
+The remaining five extensions (DOC/DOCX/XLS/XLSX/PDF) need production verifier
+adapters. Earlier PDF fixture tests prove upload orchestration only.
+Lifecycle/GC and complete F2–F5 acceptance remain open.
 
 `NewSQLiteFileGenerationSweepService` is an optional, host-scheduled File
 lifecycle operation. The host must first upgrade every process sharing the

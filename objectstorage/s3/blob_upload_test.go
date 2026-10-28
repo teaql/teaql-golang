@@ -11,7 +11,9 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"os/exec"
 	"path/filepath"
+	goRuntime "runtime"
 	"strings"
 	"testing"
 	"time"
@@ -133,13 +135,20 @@ func TestRealSQLiteBlobUploadThroughS3(t *testing.T) {
 	if os.Getenv("TEAQL_S3_TEST_BLOB_UPLOAD") != "1" {
 		t.Skip("explicit S3-compatible Blob upload gate required")
 	}
-	t.Run("fixture-pdf", func(t *testing.T) { runSQLiteBlobUploadThroughS3(t, false) })
+	t.Run("fixture-pdf", func(t *testing.T) { runSQLiteBlobUploadThroughS3(t, "fixture") })
 	if os.Getenv("TEAQL_S3_TEST_REAL_IMAGE") == "1" {
-		t.Run("real-jpeg", func(t *testing.T) { runSQLiteBlobUploadThroughS3(t, true) })
+		t.Run("real-jpeg", func(t *testing.T) { runSQLiteBlobUploadThroughS3(t, "image") })
+	}
+	if os.Getenv("TEAQL_S3_TEST_REAL_MEDIA") == "1" {
+		for _, extension := range []string{"mp3", "mp4"} {
+			t.Run("real-"+extension, func(t *testing.T) {
+				runSQLiteBlobUploadThroughS3(t, extension)
+			})
+		}
 	}
 }
 
-func runSQLiteBlobUploadThroughS3(t *testing.T, image bool) {
+func runSQLiteBlobUploadThroughS3(t *testing.T, mode string) {
 	endpoint, bucket := os.Getenv("TEAQL_S3_TEST_ENDPOINT"), os.Getenv("TEAQL_S3_TEST_BUCKET")
 	access, secret := os.Getenv("TEAQL_S3_TEST_ACCESS_KEY"), os.Getenv("TEAQL_S3_TEST_SECRET_KEY")
 	if endpoint == "" || bucket == "" || access == "" || secret == "" {
@@ -182,7 +191,7 @@ func runSQLiteBlobUploadThroughS3(t *testing.T, image bool) {
 	var parser blobreference.ContentVerifier = &s3PDFVerifier{}
 	data := []byte("%PDF-1.7\nreal S3 Blob upload\n%%EOF")
 	fileName, contentType := "report.pdf", "application/pdf"
-	if image {
+	if mode == "image" {
 		permission.extensions = []string{"jpg"}
 		parser, err = blobreference.NewImageContentVerifier(10_000, 100<<20, 2)
 		if err != nil {
@@ -193,6 +202,32 @@ func runSQLiteBlobUploadThroughS3(t *testing.T, image bool) {
 			t.Fatal(err)
 		}
 		fileName, contentType = "sample.jpg", "image/jpeg"
+	} else if mode == "mp3" || mode == "mp4" {
+		if goRuntime.GOOS != "linux" {
+			t.Skip("Linux prlimit media verifier")
+		}
+		ffprobe, probeErr := exec.LookPath("ffprobe")
+		ffmpeg, decodeErr := exec.LookPath("ffmpeg")
+		prlimit, limitErr := exec.LookPath("prlimit")
+		if probeErr != nil || decodeErr != nil || limitErr != nil {
+			t.Skip("host FFmpeg and prlimit command-line tools required")
+		}
+		permission.extensions = []string{mode}
+		parser, err = blobreference.NewMediaContentVerifier(ffprobe, ffmpeg, prlimit,
+			10_000, 100000, 16000000, 2)
+		if err != nil {
+			t.Fatal(err)
+		}
+		data, err = os.ReadFile(filepath.Join("..", "..", "blobreference", "testdata",
+			"sample."+mode))
+		if err != nil {
+			t.Fatal(err)
+		}
+		fileName = "sample." + mode
+		contentType = "audio/mpeg"
+		if mode == "mp4" {
+			contentType = "video/mp4"
+		}
 	}
 	verifier := &s3CountingVerifier{inner: parser}
 	service, err := blobreference.NewSQLiteUploadService(catalog, permission, verifier, 10_000, 15*time.Minute)

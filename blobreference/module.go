@@ -35,6 +35,11 @@ func (c *blobCapability) ValidateReady(context *runtime.UserContext) error {
 	if c.module.Read.Authorize == nil || c.module.Upload.authorization == nil || c.module.Upload.verifier == nil {
 		return errors.New("BLOB_CAPABILITY_MISSING")
 	}
+	if verifier, ok := c.module.Upload.verifier.(interface{ ValidateReady() error }); ok {
+		if err := verifier.ValidateReady(); err != nil {
+			return err
+		}
+	}
 	if c.module.Maintenance != nil && (c.module.Maintenance.catalog != c.module.Catalog ||
 		context.GetResource("blobMaintenanceService") != c.module.Maintenance) {
 		return errors.New("BLOB_CAPABILITY_MISSING")

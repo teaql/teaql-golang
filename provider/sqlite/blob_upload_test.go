@@ -8,7 +8,9 @@ import (
 	"errors"
 	"io"
 	"os"
+	"os/exec"
 	"path/filepath"
+	goRuntime "runtime"
 	"strings"
 	"testing"
 	"time"
@@ -112,6 +114,139 @@ func TestSQLiteBlobUploadWithRealJPEGDecoder(t *testing.T) {
 	if err := e.db.QueryRow("SELECT status FROM teaql_blob_catalog WHERE key=?",
 		bad.Reference.Key()).Scan(&state); err != nil || state != "initiated" {
 		t.Fatalf("invalid upload promoted: %s %v", state, err)
+	}
+}
+
+func TestSQLiteBlobUploadWithRealMediaDecoder(t *testing.T) {
+	if goRuntime.GOOS != "linux" {
+		t.Skip("Linux prlimit media verifier")
+	}
+	ffprobe, probeErr := exec.LookPath("ffprobe")
+	ffmpeg, decodeErr := exec.LookPath("ffmpeg")
+	prlimit, limitErr := exec.LookPath("prlimit")
+	if probeErr != nil || decodeErr != nil || limitErr != nil {
+		t.Skip("host FFmpeg and prlimit command-line tools required")
+	}
+	for _, extension := range []string{"mp3", "mp4"} {
+		t.Run(extension, func(t *testing.T) {
+			e := nativeBatchEnvironment(t)
+			catalog, err := blobreference.NewSQLiteCatalog(e.executor.Transport)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if err := catalog.EnsureSchema(e.ctx); err != nil {
+				t.Fatal(err)
+			}
+			secret := make([]byte, 32)
+			if _, err := rand.Read(secret); err != nil {
+				t.Fatal(err)
+			}
+			store, err := blobreference.NewFileObjectStorage(filepath.Join(t.TempDir(), "media"), secret)
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer store.Close()
+			e.ctx.WithObjectStorage(store)
+			e.ctx.WithObjectStorageObserver(runtime.ObjectStorageObserverFunc(func(runtime.ObjectStorageEvent) {}))
+			verifier, err := blobreference.NewMediaContentVerifier(ffprobe, ffmpeg, prlimit,
+				10000, 100000, 16000000, 2)
+			if err != nil {
+				t.Fatal(err)
+			}
+			service, err := blobreference.NewSQLiteUploadService(catalog,
+				&uploadPermission{scope: "tenant-a", allowed: true, extensions: []string{extension}},
+				verifier, 10000, 15*time.Minute)
+			if err != nil {
+				t.Fatal(err)
+			}
+			module, err := blobreference.NewBlobReferenceModule(catalog, service,
+				&catalogReadPermission{allowed: true}, 30*time.Second,
+				&catalogPermission{scope: "tenant-a", allowed: true})
+			if err != nil {
+				t.Fatal(err)
+			}
+			if err := module.Install(e.ctx); err != nil {
+				t.Fatal(err)
+			}
+			if err := module.Ready(e.ctx); err != nil {
+				t.Fatalf("media module readiness: %v", err)
+			}
+			data, err := os.ReadFile(filepath.Join("..", "..", "blobreference", "testdata",
+				"sample."+extension))
+			if err != nil {
+				t.Fatal(err)
+			}
+			target := blobreference.UploadTarget{Entity: "Customer", EntityID: "1", Field: "document"}
+			good, err := service.Begin(e.ctx, target,
+				blobreference.UploadInput{FileName: "sample." + extension, DeclaredSize: int64(len(data))},
+				"real-media-"+extension)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if _, err := service.Write(e.ctx, good.ID, io.NopCloser(bytes.NewReader(data))); err != nil {
+				t.Fatal(err)
+			}
+			if reference, err := service.Complete(e.ctx, good.ID); err != nil || reference != good.Reference {
+				t.Fatalf("verified media did not promote: %v", err)
+			}
+			mime := "audio/mpeg"
+			if extension == "mp4" {
+				mime = "video/mp4"
+			}
+			var status, actualMime string
+			var size int64
+			if err := e.db.QueryRow("SELECT status,content_type,size_bytes FROM teaql_blob_catalog WHERE key=?",
+				good.Reference.Key()).Scan(&status, &actualMime, &size); err != nil ||
+				status != "uploaded_unbound" || actualMime != mime || size != int64(len(data)) {
+				t.Fatalf("wrong verified catalog facts: %s %s %d %v", status, actualMime, size, err)
+			}
+			truncated := data[:len(data)-12]
+			bad, err := service.Begin(e.ctx, target,
+				blobreference.UploadInput{FileName: "broken." + extension,
+					DeclaredSize: int64(len(truncated))}, "broken-media-"+extension)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if _, err := service.Write(e.ctx, bad.ID,
+				io.NopCloser(bytes.NewReader(truncated))); err != nil {
+				t.Fatal(err)
+			}
+			if _, err := service.Complete(e.ctx, bad.ID); err == nil ||
+				err.Error() != "BLOB_FORMAT_NOT_ALLOWED" {
+				t.Fatalf("truncated media accepted: %v", err)
+			}
+			if err := e.db.QueryRow("SELECT status FROM teaql_blob_catalog WHERE key=?",
+				bad.Reference.Key()).Scan(&status); err != nil || status != "initiated" {
+				t.Fatalf("invalid media promoted: %s %v", status, err)
+			}
+			missing, err := blobreference.NewMediaContentVerifier(
+				filepath.Join(t.TempDir(), "missing-ffprobe"), ffmpeg, prlimit,
+				10000, 100000, 16000000, 1)
+			if err != nil {
+				t.Fatal(err)
+			}
+			missingService, err := blobreference.NewSQLiteUploadService(catalog,
+				&uploadPermission{scope: "tenant-a", allowed: true, extensions: []string{extension}},
+				missing, 10000, 15*time.Minute)
+			if err != nil {
+				t.Fatal(err)
+			}
+			missingModule, err := blobreference.NewBlobReferenceModule(catalog, missingService,
+				&catalogReadPermission{allowed: true}, 30*time.Second,
+				&catalogPermission{scope: "tenant-a", allowed: true})
+			if err != nil {
+				t.Fatal(err)
+			}
+			missingActor := runtime.NewUserContext().WithObjectStorage(store)
+			missingActor.WithObjectStorageObserver(runtime.ObjectStorageObserverFunc(
+				func(runtime.ObjectStorageEvent) {}))
+			if err := missingModule.Install(missingActor); err != nil {
+				t.Fatal(err)
+			}
+			if err := missingModule.Ready(missingActor); err == nil || err.Error() != "BLOB_CAPABILITY_MISSING" {
+				t.Fatalf("media module accepted missing FFprobe: %v", err)
+			}
+		})
 	}
 }
 func (p *uploadPermission) Authorize(_ *runtime.UserContext, target blobreference.UploadTarget,
