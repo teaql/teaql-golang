@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"crypto/rand"
 	"crypto/sha256"
+	"database/sql"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
@@ -672,6 +673,19 @@ func TestSQLiteBlobLegacyUploadLeaseMigrationPreservesReplay(t *testing.T) {
 	if err := catalog.ValidateSchema(e.ctx); err == nil {
 		t.Fatal("old Go lease schema unexpectedly accepted")
 	}
+	if _, err := e.db.Exec(`CREATE INDEX host_owned_upload_index ON teaql_blob_upload(state)`); err != nil {
+		t.Fatal(err)
+	}
+	if err := catalog.EnsureSchema(e.ctx); err == nil || err.Error() != "BLOB_CATALOG_FAILED" {
+		t.Fatalf("host-owned index should stop destructive table rebuild: %v", err)
+	}
+	var retainedID string
+	if err := e.db.QueryRow(`SELECT upload_id FROM teaql_blob_upload`).Scan(&retainedID); err != nil || retainedID != created.ID {
+		t.Fatalf("failed migration lost legacy session: %q %v", retainedID, err)
+	}
+	if _, err := e.db.Exec(`DROP INDEX host_owned_upload_index`); err != nil {
+		t.Fatal(err)
+	}
 	if err := catalog.EnsureSchema(e.ctx); err != nil {
 		t.Fatal(err)
 	}
@@ -697,6 +711,46 @@ func TestSQLiteBlobLegacyUploadLeaseMigrationPreservesReplay(t *testing.T) {
 			canonical != session.ExpiresAt.UnixMilli() || legacy != canonical {
 			t.Fatalf("migrated or new lease values disagree: %d %d %v", canonical, legacy, err)
 		}
+	}
+	var legacyNotNull int
+	columns, err := e.db.Query(`PRAGMA table_info(teaql_blob_upload)`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for columns.Next() {
+		var cid, notNull, primary int
+		var name, kind string
+		var defaultValue sql.NullString
+		if err := columns.Scan(&cid, &name, &kind, &notNull, &defaultValue, &primary); err != nil {
+			t.Fatal(err)
+		}
+		if name == "expires_unix_ms" {
+			legacyNotNull = notNull
+		}
+	}
+	if err := columns.Close(); err != nil {
+		t.Fatal(err)
+	}
+	if legacyNotNull != 0 {
+		t.Fatalf("legacy Go lease alias still rejects other runtimes' inserts: notnull=%d", legacyNotNull)
+	}
+	if _, err := e.db.Exec(`INSERT INTO teaql_blob_catalog
+        (key,scope,object_key,content_version,file_name,content_type,size_bytes,status)
+        VALUES ('blob_neutral','tenant-a','blob/neutral','','neutral.pdf','',0,'initiated')`); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := e.db.Exec(`INSERT INTO teaql_blob_upload
+        (upload_id,scope,replay_key,request_hash,key,entity,entity_id,field,file_name,
+         extension,declared_size,expires_ms,state)
+        VALUES ('bu_neutral','tenant-a','neutral','neutral-hash','blob_neutral',
+          'Customer','1','document','neutral.pdf','pdf',42,?,'initiated')`,
+		fresh.ExpiresAt.UnixMilli()); err != nil {
+		t.Fatalf("shared-ABI writer could not omit Go lease alias: %v", err)
+	}
+	var neutralAlias sql.NullInt64
+	if err := e.db.QueryRow(`SELECT expires_unix_ms FROM teaql_blob_upload
+        WHERE upload_id='bu_neutral'`).Scan(&neutralAlias); err != nil || neutralAlias.Valid {
+		t.Fatalf("shared-ABI row unexpectedly requires Go lease alias: %v %v", neutralAlias, err)
 	}
 	var currentHash string
 	if err := e.db.QueryRow(`SELECT request_hash FROM teaql_blob_upload WHERE upload_id=?`,

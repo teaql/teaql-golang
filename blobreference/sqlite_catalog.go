@@ -172,7 +172,107 @@ func (c *SQLiteCatalog) EnsureSchema(ctx stdcontext.Context) error {
 	if !okay || count != 0 {
 		return errors.New("BLOB_CATALOG_FAILED")
 	}
+	if err := c.relaxLegacyUploadAlias(ctx); err != nil {
+		return errors.New("BLOB_CATALOG_FAILED")
+	}
 	return nil
+}
+
+// Old Go tables required expires_unix_ms. That rejects new rows written by
+// peers using only the shared expires_ms column, so the host migration makes
+// the alias nullable while retaining the old values and replay keys.
+func (c *SQLiteCatalog) relaxLegacyUploadAlias(ctx stdcontext.Context) error {
+	columns, err := c.transport.FetchAllSql(ctx, sqlQuery("PRAGMA table_info(teaql_blob_upload)"))
+	if err != nil {
+		return err
+	}
+	legacyRequired := false
+	for _, row := range columns {
+		name, _ := sqlText(row["name"])
+		notNull, _ := row["notnull"].TryI64()
+		legacyRequired = legacyRequired || name == "expires_unix_ms" && notNull == 1
+	}
+	if !legacyRequired {
+		return nil
+	}
+	owner, okay := c.transport.(immediateSQLTransport)
+	if !okay {
+		return errors.New("BLOB_TRANSACTION_REQUIRED")
+	}
+	tx, err := owner.BeginImmediateSql(ctx)
+	if err != nil {
+		return err
+	}
+	defer tx.RollbackSql(ctx)
+	columns, err = tx.FetchAllSql(ctx, sqlQuery("PRAGMA table_info(teaql_blob_upload)"))
+	if err != nil {
+		return err
+	}
+	legacyRequired = false
+	expected := map[string]bool{
+		"upload_id": true, "scope": true, "replay_key": true, "request_hash": true,
+		"key": true, "entity": true, "entity_id": true, "field": true,
+		"file_name": true, "extension": true, "declared_size": true,
+		"expires_ms": true, "expires_unix_ms": true, "state": true,
+		"written_sha256": true, "written_etag": true,
+	}
+	for _, row := range columns {
+		name, _ := sqlText(row["name"])
+		notNull, _ := row["notnull"].TryI64()
+		legacyRequired = legacyRequired || name == "expires_unix_ms" && notNull == 1
+		if !expected[name] {
+			return errors.New("BLOB_CATALOG_FAILED")
+		}
+	}
+	if !legacyRequired {
+		return tx.CommitSql(ctx)
+	}
+	if len(columns) != len(expected) {
+		return errors.New("BLOB_CATALOG_FAILED")
+	}
+	custom, err := tx.FetchAllSql(ctx, sqlQuery(`SELECT name FROM sqlite_master
+        WHERE tbl_name='teaql_blob_upload' AND type IN ('index','trigger') AND sql IS NOT NULL`))
+	if err != nil || len(custom) != 0 {
+		return errors.New("BLOB_CATALOG_FAILED")
+	}
+	inconsistent, err := tx.FetchAllSql(ctx, sqlQuery(`SELECT COUNT(*) AS n FROM teaql_blob_upload
+        WHERE expires_ms IS NULL OR expires_unix_ms IS NULL OR expires_ms <> expires_unix_ms`))
+	if err != nil || len(inconsistent) != 1 {
+		return errors.New("BLOB_CATALOG_FAILED")
+	}
+	count, okay := inconsistent[0]["n"].TryI64()
+	if !okay || count != 0 {
+		return errors.New("BLOB_CATALOG_FAILED")
+	}
+	for _, statement := range []string{
+		`CREATE TABLE teaql_blob_upload_upgrade (
+            upload_id TEXT PRIMARY KEY, scope TEXT NOT NULL, replay_key TEXT NOT NULL,
+            request_hash TEXT NOT NULL, key TEXT NOT NULL, entity TEXT NOT NULL,
+            entity_id TEXT NOT NULL, field TEXT NOT NULL, file_name TEXT NOT NULL,
+            extension TEXT NOT NULL, declared_size BIGINT NOT NULL,
+            expires_ms BIGINT NOT NULL, expires_unix_ms BIGINT,
+            state TEXT NOT NULL CHECK (state IN ('initiated','written','completed')),
+            written_sha256 TEXT, written_etag TEXT,
+            UNIQUE(scope,replay_key), FOREIGN KEY(key) REFERENCES teaql_blob_catalog(key)
+        )`,
+		`INSERT INTO teaql_blob_upload_upgrade
+            (upload_id,scope,replay_key,request_hash,key,entity,entity_id,field,file_name,
+             extension,declared_size,expires_ms,expires_unix_ms,state,written_sha256,written_etag)
+            SELECT upload_id,scope,replay_key,request_hash,key,entity,entity_id,field,file_name,
+              extension,declared_size,expires_ms,expires_unix_ms,state,written_sha256,written_etag
+            FROM teaql_blob_upload`,
+		`DROP TABLE teaql_blob_upload`,
+		`ALTER TABLE teaql_blob_upload_upgrade RENAME TO teaql_blob_upload`,
+	} {
+		if _, err := tx.ExecuteSql(ctx, sqlQuery(statement)); err != nil {
+			return err
+		}
+	}
+	invalid, err := tx.FetchAllSql(ctx, sqlQuery("PRAGMA foreign_key_check(teaql_blob_upload)"))
+	if err != nil || len(invalid) != 0 {
+		return errors.New("BLOB_CATALOG_FAILED")
+	}
+	return tx.CommitSql(ctx)
 }
 
 func (c *SQLiteCatalog) ValidateSchema(ctx stdcontext.Context) error {
