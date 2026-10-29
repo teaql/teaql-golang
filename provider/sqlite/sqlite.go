@@ -166,6 +166,13 @@ func NewSqliteMutationExecutor(db *sql.DB) *SqliteMutationExecutor {
 	return &SqliteMutationExecutor{db: db}
 }
 
+// SharesSQLResource identifies one configured pool. Independent pools do not
+// establish shared transaction ownership.
+func (e *SqliteMutationExecutor) SharesSQLResource(transport teaql_sql.SqlTransport) bool {
+	other, ok := transport.(*SqliteMutationExecutor)
+	return ok && e != nil && other != nil && e.db != nil && e.db == other.db
+}
+
 func (e *SqliteMutationExecutor) NextId(context stdcontext.Context, entity string) (uint64, error) {
 	return teaql_sql.NextOptimisticId(context, e, &SqliteDialect{}, entity)
 }

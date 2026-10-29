@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/teaql/teaql-golang/runtime"
+	teaqlsql "github.com/teaql/teaql-golang/sql"
 )
 
 // BlobReferenceModule installs the optional SQLite catalog, verified upload
@@ -33,6 +34,11 @@ func (c *blobCapability) ValidateReady(context *runtime.UserContext) error {
 		return errors.New("BLOB_CAPABILITY_MISSING")
 	}
 	if c.module.Read.Authorize == nil || c.module.Upload.authorization == nil || c.module.Upload.verifier == nil {
+		return errors.New("BLOB_CAPABILITY_MISSING")
+	}
+	owner, ok := context.GetResource("dataService").(*teaqlsql.SqlDataServiceExecutor)
+	if !ok || owner == nil || owner.Dialect == nil || owner.Dialect.Kind() != teaqlsql.DatabaseKindSQLite ||
+		!owner.UsesSqlTransport(c.module.Catalog.transport) {
 		return errors.New("BLOB_CAPABILITY_MISSING")
 	}
 	if verifier, ok := c.module.Upload.verifier.(interface{ ValidateReady() error }); ok {

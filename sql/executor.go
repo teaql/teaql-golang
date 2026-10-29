@@ -5,6 +5,7 @@ import (
 	stdsql "database/sql"
 	"errors"
 	"fmt"
+	"reflect"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -77,6 +78,34 @@ func NewSqlDataServiceExecutor(dialect SqlDialect, transport SqlTransport, schem
 		Transport:      transport,
 		SchemaProvider: schemaProvider,
 	}
+}
+
+// UsesSqlTransport proves the configured physical resource for optional modules.
+// Exact comparable transport instances work directly; native providers may also
+// prove that distinct wrappers share the same pool. It never executes SQL.
+func (e *SqlDataServiceExecutor) UsesSqlTransport(transport SqlTransport) (matches bool) {
+	defer func() {
+		if recover() != nil {
+			matches = false
+		}
+	}()
+	if e == nil || e.Transport == nil || transport == nil {
+		return false
+	}
+	left, right := reflect.ValueOf(e.Transport), reflect.ValueOf(transport)
+	for _, value := range []reflect.Value{left, right} {
+		switch value.Kind() {
+		case reflect.Chan, reflect.Func, reflect.Map, reflect.Ptr, reflect.Interface, reflect.Slice:
+			if value.IsNil() {
+				return false
+			}
+		}
+	}
+	if left.Type() == right.Type() && left.Type().Comparable() && e.Transport == transport {
+		return true
+	}
+	identity, ok := e.Transport.(interface{ SharesSQLResource(SqlTransport) bool })
+	return ok && identity.SharesSQLResource(transport)
 }
 
 func (e *SqlDataServiceExecutor) TopNRelationPlanPolicy() string {
