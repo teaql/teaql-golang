@@ -148,6 +148,10 @@ func (p *SQLiteMutationParticipant) ApplyBlobMutation(ctx context.Context, lease
 				}
 			} else if !sameBlob(previous, next) {
 				return errors.New("BLOB_BIND_DENIED")
+			} else {
+				// An omitted Update field retains its persisted value and binding.
+				// The readback comparison above still rejects trigger-side changes.
+				continue
 			}
 		}
 		target := BindingTarget{Entity: entity.Name, EntityID: idText, Field: field.Name}

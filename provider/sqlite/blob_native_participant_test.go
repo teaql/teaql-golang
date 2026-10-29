@@ -3,6 +3,7 @@ package sqlite
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"errors"
 	"path/filepath"
 	"strings"
@@ -31,6 +32,7 @@ func TestModeledBlobNativeMutationSharesSQLiteOwner(t *testing.T) {
 	entity := core.NewEntityDescriptor("Asset").TableName("asset_data").
 		Property(core.NewPropertyDescriptor("id", core.TypeU64).Id().NotNull()).
 		Property(core.NewPropertyDescriptor("version", core.TypeI64).Version()).
+		Property(core.NewPropertyDescriptor("caption", core.TypeText)).
 		Property(core.NewPropertyDescriptor("document", core.TypeText).Blob(spec))
 	ddl, err := (&teaqlsql.DefaultSqlDialect{Dialect: &SqliteDialect{}}).CompileCreateTable(entity)
 	if err != nil {
@@ -289,4 +291,98 @@ func TestModeledBlobNativeMutationSharesSQLiteOwner(t *testing.T) {
 	if err := db.QueryRow("SELECT status FROM teaql_blob_catalog WHERE key=?", ledgerRef.Key()).Scan(&status); err != nil || status != "available" {
 		t.Fatalf("committed catalog status: %q %v", status, err)
 	}
+	t.Run("unloaded Blob survives ordinary ledger update", func(t *testing.T) {
+		snapshot := func(query string, args ...interface{}) string {
+			t.Helper()
+			rows, err := db.Query(query, args...)
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer rows.Close()
+			columns, err := rows.Columns()
+			if err != nil {
+				t.Fatal(err)
+			}
+			if !rows.Next() {
+				t.Fatal("snapshot row missing")
+			}
+			values := make([]interface{}, len(columns))
+			pointers := make([]interface{}, len(values))
+			for i := range values {
+				pointers[i] = &values[i]
+			}
+			if err := rows.Scan(pointers...); err != nil {
+				t.Fatal(err)
+			}
+			encoded, err := json.Marshal(values)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if rows.Next() {
+				t.Fatal("snapshot returned multiple rows")
+			}
+			if err := rows.Err(); err != nil {
+				t.Fatal(err)
+			}
+			return string(encoded)
+		}
+		bindingQuery := "SELECT * FROM teaql_blob_binding WHERE entity_id=?"
+		catalogQuery := "SELECT * FROM teaql_blob_catalog WHERE key=?"
+		bindingBefore := snapshot(bindingQuery, committedID)
+		catalogBefore := snapshot(catalogQuery, ledgerRef.Key())
+		ledger := core.NewEntityRoot()
+		actual := core.NewEntityKey("Asset", core.ValU64(committedID))
+		ledger.Set(actual, "caption", core.ValText("after"))
+		if _, present := ledger.Change(actual)["document"]; present {
+			t.Fatal("Blob was loaded")
+		}
+		permission.allowed = false
+		defer func() { permission.allowed = true }()
+		if err := save(&ds.UpdateMutation{Cmd: core.NewUpdateCommand("Asset", core.ValU64(committedID)).
+			WithExpectedVersion(1).Value("caption", ledger.Change(actual)["caption"])}, false); err != nil {
+			t.Fatalf("ordinary ledger update rebound omitted Blob: %v", err)
+		}
+		var caption string
+		var version int64
+		if err := db.QueryRow("SELECT document,caption,version FROM asset_data WHERE id=?", committedID).
+			Scan(&business, &caption, &version); err != nil || business != ledgerRef.Key() || caption != "after" || version != 2 {
+			t.Fatalf("partial update business values: %q %q %d %v", business, caption, version, err)
+		}
+		if snapshot(bindingQuery, committedID) != bindingBefore || snapshot(catalogQuery, ledgerRef.Key()) != catalogBefore {
+			t.Fatal("ordinary ledger update changed omitted Blob binding/catalog")
+		}
+		if err := save(&ds.UpdateMutation{Cmd: core.NewUpdateCommand("Asset", core.ValU64(committedID)).
+			WithExpectedVersion(2).Value("document", core.ValBlobRef(ledgerRef))}, false); err == nil {
+			t.Fatal("explicit unchanged Blob assignment bypassed mutation authorization")
+		}
+		permission.allowed = true
+		if _, err := db.Exec(`CREATE TRIGGER mutate_unassigned_blob AFTER UPDATE OF caption ON asset_data
+			WHEN NEW.caption='triggered' BEGIN UPDATE asset_data SET document='blob_native_first' WHERE id=NEW.id; END`); err != nil {
+			t.Fatal(err)
+		}
+		if err := save(&ds.UpdateMutation{Cmd: core.NewUpdateCommand("Asset", core.ValU64(committedID)).
+			WithExpectedVersion(2).Value("caption", core.ValText("triggered"))}, false); err == nil {
+			t.Fatal("trigger-side change of omitted Blob was accepted")
+		}
+		if err := db.QueryRow("SELECT document,caption,version FROM asset_data WHERE id=?", committedID).
+			Scan(&business, &caption, &version); err != nil || business != ledgerRef.Key() || caption != "after" || version != 2 {
+			t.Fatalf("trigger-side Blob mutation did not roll back: %q %q %d %v", business, caption, version, err)
+		}
+		if snapshot(bindingQuery, committedID) != bindingBefore || snapshot(catalogQuery, ledgerRef.Key()) != catalogBefore {
+			t.Fatal("rejected trigger-side change modified Blob binding/catalog")
+		}
+		if _, err := db.Exec("DROP TRIGGER mutate_unassigned_blob"); err != nil {
+			t.Fatal(err)
+		}
+		if err := save(&ds.UpdateMutation{Cmd: core.NewUpdateCommand("Asset", core.ValU64(committedID)).
+			WithExpectedVersion(2).Value("document", core.ValNull())}, false); err != nil {
+			t.Fatalf("explicit Blob clear failed: %v", err)
+		}
+		var cleared sql.NullString
+		var bindingVersion int64
+		if err := db.QueryRow("SELECT key,version FROM teaql_blob_binding WHERE entity_id=?", committedID).
+			Scan(&cleared, &bindingVersion); err != nil || cleared.Valid || bindingVersion != 2 {
+			t.Fatalf("explicit clear binding: %v %d %v", cleared, bindingVersion, err)
+		}
+	})
 }

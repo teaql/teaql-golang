@@ -22,6 +22,12 @@ Missing, typed-nil, non-native, wrong-dialect and unproven resources fail with
 identity check. This check performs no SQL. Catalog schema validation remains
 explicit and separate from migration, upload or maintenance scheduling.
 
+An Update that omits a modeled Blob field preserves its binding version and
+catalog facts without requesting Blob mutation authorization. Native readback
+still rejects a database trigger that changes the omitted Blob value. An
+explicit assignment, including the same Key or null, follows the normal Blob
+authorization and binding path. Business mutation policy continues to apply.
+
 ## Required request intent
 
 The v0.3.0 runtime enforces this request contract. Regenerate older libraries
