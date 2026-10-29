@@ -5,6 +5,7 @@ import (
 	"crypto/sha256"
 	"fmt"
 	"github.com/teaql/teaql-golang/core"
+	"reflect"
 	"testing"
 	"time"
 )
@@ -97,5 +98,96 @@ func TestJavaRustTQD2TQS1Vectors(t *testing.T) {
 	bob.Subject = "bob"
 	if _, err := r.ConsumeBlobSelection(bob, token, selection, target); code(err) != "ROUND_TRIP_REFERENCE_SCOPE_MISMATCH" {
 		t.Fatalf("wrong actor: %v", err)
+	}
+}
+
+func surfaceDocumentFixture(t *testing.T) (*ContextBoundReferenceRuntime, TrustedReferencePrincipal, BoundDocumentSnapshot) {
+	r, actor, snapshot := documentFixture(t)
+	snapshot.Entities[0].LoadedFields = []string{"attachment", "product_code", "quantity"}
+	snapshot.Entities[0].WritableFields = []string{"attachment", "quantity"}
+	key := "blob_A"
+	return r, actor, BoundDocumentSnapshot{snapshot, []DocumentBlobBindingSnapshot{{"item:0", "attachment", "OrderItem", &key, 4, true, true}}}
+}
+
+func TestIssuedProjectionRejectsInconsistentSnapshot(t *testing.T) {
+	for _, scenario := range []string{"writable-unloaded", "duplicate-row", "orphan-relation", "duplicate-relation-row", "readonly-relation-mutation", "binding-unloaded", "binding-readonly", "binding-foreign-entity", "duplicate-binding"} {
+		t.Run(scenario, func(t *testing.T) {
+			r, actor, d := surfaceDocumentFixture(t)
+			row, relation, binding := d.Snapshot.Entities[0], d.Snapshot.Relations[0], d.Bindings[0]
+			switch scenario {
+			case "writable-unloaded":
+				row.WritableFields = []string{"hidden"}
+			case "orphan-relation":
+				relation.RowKeys = []string{"absent"}
+			case "duplicate-relation-row":
+				relation.RowKeys = []string{"item:0", "item:0"}
+			case "readonly-relation-mutation":
+				relation.Writable = false
+			case "binding-unloaded":
+				row.LoadedFields = []string{"quantity"}
+				row.WritableFields = []string{"quantity"}
+				binding.Writable = false
+			case "binding-readonly":
+				row.WritableFields = []string{"quantity"}
+			case "binding-foreign-entity":
+				binding.EntityType = "OtherItem"
+			}
+			d.Snapshot.Entities = []DocumentEntitySnapshot{row}
+			if scenario == "duplicate-row" {
+				d.Snapshot.Entities = append(d.Snapshot.Entities, row)
+			}
+			d.Snapshot.Relations = []DocumentRelationSnapshot{relation}
+			d.Bindings = []DocumentBlobBindingSnapshot{binding}
+			if scenario == "duplicate-binding" {
+				d.Bindings = append(d.Bindings, binding)
+			}
+			if _, err := r.IssueBoundDocumentSnapshot(actor, d, time.Minute); code(err) != "DOCUMENT_PROJECTION_VIOLATION" {
+				t.Fatalf("inconsistent projection accepted: %v", err)
+			}
+		})
+	}
+}
+
+func TestSelectionCannotExpandIssuedSurface(t *testing.T) {
+	for _, scenario := range []string{"readonly-existing", "hidden-existing", "partial-child", "readonly-child", "no-create-child"} {
+		t.Run(scenario, func(t *testing.T) {
+			r, actor, d := surfaceDocumentFixture(t)
+			target := BlobSelectionTarget{d.Snapshot.Scope, "OrderItem", "attachment", "EXISTING_ROW", "item:0", "command-1"}
+			switch scenario {
+			case "readonly-existing":
+				d.Snapshot.Entities[0].WritableFields = []string{"quantity"}
+				d.Bindings[0].Writable = false
+			case "hidden-existing":
+				target.CanonicalField = "hidden_attachment"
+			default:
+				target.Kind = "NEW_CLIENT_KEY"
+				target.TargetKey = "client-hidden"
+				relation := &d.Snapshot.Relations[0]
+				switch scenario {
+				case "partial-child":
+					relation.Completeness = "PARTIAL"
+				case "readonly-child":
+					relation.Writable = false
+					relation.AllowedMutations = []string{}
+				case "no-create-child":
+					relation.AllowedMutations = []string{"REMOVE_CHILD"}
+				}
+			}
+			token, err := r.IssueBoundDocumentSnapshot(actor, d, time.Minute)
+			if err != nil {
+				t.Fatal(err)
+			}
+			verified, err := r.ConsumeBoundDocumentSnapshot(actor, token, "Order", "edit-order")
+			if err != nil || !reflect.DeepEqual(verified.Document, d) {
+				t.Fatal("issued metadata was not preserved", err)
+			}
+			ref, err := core.ParseBlobRef("blob_B")
+			if err != nil {
+				t.Fatal(err)
+			}
+			if _, err = r.IssueBlobSelection(actor, token, BlobSelectionClaim{target, ref}, 30*time.Second); code(err) != "DOCUMENT_PROJECTION_VIOLATION" {
+				t.Fatalf("selection expanded issued surface: %v", err)
+			}
+		})
 	}
 }

@@ -310,6 +310,9 @@ func TestSQLiteContextBoundDocumentOpenAcceptAndReplay(t *testing.T) {
 	if err := e.db.QueryRow("SELECT COUNT(*) FROM teaql_document_command_receipt").Scan(&receipts); err != nil || receipts != 2 {
 		t.Fatalf("receipt failure changed receipt count: %d %v", receipts, err)
 	}
+	if _, err := e.db.Exec("ALTER TABLE document_order ADD COLUMN hidden_note TEXT NOT NULL DEFAULT 'server-only'"); err != nil {
+		t.Fatal(err)
+	}
 	beforeUnknown := host.mutations
 	unknownOpen := open()
 	unknown := document.DocumentAcceptRequest{AggregateType: "Order", Purpose: "edit-order",
@@ -352,4 +355,9 @@ func TestSQLiteContextBoundDocumentOpenAcceptAndReplay(t *testing.T) {
 	if err := e.db.QueryRow("SELECT response FROM teaql_document_command_receipt WHERE command_id='command-commit-unknown'").Scan(&replayed); err != nil || replayed != durable {
 		t.Fatal("commit-unknown recovery changed durable receipt")
 	}
+	var hidden string
+	if err := e.db.QueryRow("SELECT hidden_note FROM document_order WHERE id=10").Scan(&hidden); err != nil || hidden != "server-only" {
+		t.Fatal("document command cleared an omitted hidden field", err)
+	}
+
 }

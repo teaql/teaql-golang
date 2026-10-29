@@ -79,3 +79,69 @@ func TestModulePreparesBoundAuthorizedView(t *testing.T) {
 		t.Fatalf("binding mismatch: %v", e)
 	}
 }
+
+type surfaceAssembly struct{ testAssembly }
+
+func (a surfaceAssembly) Snapshot(*runtime.UserContext, runtime.AuthorizedResponseGraph) (PreparedBoundDocument, error) {
+	return PreparedBoundDocument{a.document, time.Minute}, nil
+}
+
+type surfaceProjector struct {
+	t        *testing.T
+	deadline time.Time
+	late     bool
+	keys     []string
+}
+
+func (p *surfaceProjector) ProjectBatch(_ *runtime.UserContext, graph runtime.AuthorizedResponseGraph, ceiling time.Time) ([]runtime.ProjectedBlobURL, error) {
+	if !ceiling.Equal(p.deadline) {
+		p.t.Fatal("actual signed document deadline was not supplied to Blob projection")
+	}
+	for _, slot := range graph.BlobSlots {
+		p.keys = append(p.keys, slot.Reference.Key())
+	}
+	expiry := p.deadline.Add(-5 * time.Second)
+	if p.late {
+		expiry = p.deadline.Add(time.Millisecond)
+	}
+	return []runtime.ProjectedBlobURL{{URL: "https://files.example.invalid/asset", ExpiresAt: expiry}}, nil
+}
+func TestGovernedViewHidesBlobAndBoundsURLByDocumentDeadline(t *testing.T) {
+	r, actor, d := surfaceDocumentFixture(t)
+	now := time.Now().UTC().Truncate(time.Second)
+	deadline := now.Add(time.Minute)
+	r.WithClock(func() time.Time { return now }).WithNonceSource(bytes.NewReader(bytes.Repeat([]byte{0x33}, 48)))
+	visible, _ := core.ParseBlobRef("blob_A")
+	hidden, _ := core.ParseBlobRef("blob_hidden")
+	source := map[string]any{"attachment": visible, "hidden_attachment": hidden}
+	slot := runtime.AuthorizedBlobSlot{Path: []any{"attachment"}, Entity: "OrderItem", EntityID: "20", Field: "attachment", Scope: "tenant-a", BindingVersion: 4, Reference: visible}
+	context := runtime.NewUserContext()
+	module := &SecureDocumentReferenceModule{Protocol: r}
+	if err := module.Install(context, surfaceAssembly{testAssembly{actor, d}}); err != nil {
+		t.Fatal(err)
+	}
+	signer := &surfaceProjector{t: t, deadline: deadline}
+	context.InsertResource("responseGraphAuthorizer", testGraphAuthorizer{slot})
+	context.InsertResource("blobResponseContributor", signer)
+	options := runtime.ViewOptions{Mode: "governed", BusinessOutcome: "committed", ExpiresAt: now.Add(2 * time.Minute)}
+	view, err := (runtime.ViewPreparationService{}).Prepare(context, source, options)
+	if err != nil {
+		t.Fatal(err)
+	}
+	presentation := view.Presentation.(map[string]any)
+	if len(presentation) != 1 || presentation["attachment"] != "https://files.example.invalid/asset" || !view.ExpiresAt.Equal(deadline.Add(-5*time.Second)) {
+		t.Fatal("unexpected visible view or deadline")
+	}
+	if len(signer.keys) != 1 || signer.keys[0] != "blob_A" || source["hidden_attachment"] != hidden {
+		t.Fatal("hidden Blob was projected or source mutated")
+	}
+	signer.late = true
+	_, err = (runtime.ViewPreparationService{}).Prepare(context, source, options)
+	failure, ok := err.(*runtime.ViewPreparationError)
+	if !ok || failure.Code != "BLOB_SIGN_FAILED" || failure.BusinessState != "committed" || failure.Retry() != "read" {
+		t.Fatalf("URL beyond document deadline accepted: %v", err)
+	}
+	if len(signer.keys) != 2 || signer.keys[1] != "blob_A" {
+		t.Fatal("hidden Blob reached projection")
+	}
+}
