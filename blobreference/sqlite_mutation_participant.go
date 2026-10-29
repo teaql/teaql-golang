@@ -161,7 +161,11 @@ func (p *SQLiteMutationParticipant) ApplyBlobMutation(ctx context.Context, lease
 		if queryErr != nil {
 			return errors.New("BLOB_CATALOG_FAILED")
 		}
-		if action == "Create" && len(rows) != 0 || action != "Create" && len(rows) != 1 {
+		// Additive migrations can introduce a nullable Blob column on an old
+		// business row before its first binding exists. Only an actually empty
+		// before-value may initialize that slot; a non-null orphan stays denied.
+		if len(rows) > 1 || action == "Create" && len(rows) != 0 ||
+			action != "Create" && len(rows) == 0 && previous != nil {
 			return errors.New("BLOB_BIND_DENIED")
 		}
 		version := int64(0)
@@ -172,7 +176,7 @@ func (p *SQLiteMutationParticipant) ApplyBlobMutation(ctx context.Context, lease
 			}
 		}
 		change := BindingChange{Target: target, Next: next, ExpectedVersion: version,
-			NextVersion: version + 1, Action: action, RequirePrevious: action != "Create",
+			NextVersion: version + 1, Action: action, RequirePrevious: action != "Create" && len(rows) == 1,
 			ExpectedPrevious: previous, ExpectedScope: scope}
 		if err := p.Catalog.bindWithTransport(ctx, lease, actor, change, p.Authorize); err != nil {
 			return err
