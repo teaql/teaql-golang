@@ -679,6 +679,9 @@ func TestSQLiteBlobLegacyUploadLeaseMigrationPreservesReplay(t *testing.T) {
 	if err := catalog.EnsureSchema(e.ctx); err == nil || err.Error() != "BLOB_CATALOG_FAILED" {
 		t.Fatalf("host-owned index should stop destructive table rebuild: %v", err)
 	}
+	if err := catalog.ValidateSchema(e.ctx); err == nil || err.Error() != "BLOB_SCHEMA_MISSING" {
+		t.Fatalf("partial migration must not validate for mixed writers: %v", err)
+	}
 	var retainedID string
 	if err := e.db.QueryRow(`SELECT upload_id FROM teaql_blob_upload`).Scan(&retainedID); err != nil || retainedID != created.ID {
 		t.Fatalf("failed migration lost legacy session: %q %v", retainedID, err)
@@ -757,6 +760,15 @@ func TestSQLiteBlobLegacyUploadLeaseMigrationPreservesReplay(t *testing.T) {
 		fresh.ID).Scan(&currentHash); err != nil ||
 		currentHash != "4561d17052606f622a9f182ffb0841a7c25327a82becabbddf189117fdb99a80" {
 		t.Fatalf("new Go request hash differs from shared UTF-8 vector: %v", err)
+	}
+	if _, err := e.db.Exec(`ALTER TABLE teaql_blob_upload ADD COLUMN expires_at BIGINT NOT NULL DEFAULT 1`); err != nil {
+		t.Fatal(err)
+	}
+	if err := catalog.ValidateSchema(e.ctx); err == nil || err.Error() != "BLOB_SCHEMA_MISSING" {
+		t.Fatalf("required TypeScript alias must reject shared ABI validation: %v", err)
+	}
+	if err := catalog.EnsureSchema(e.ctx); err == nil || err.Error() != "BLOB_CATALOG_FAILED" {
+		t.Fatalf("required TypeScript alias must reject Go-only migration: %v", err)
 	}
 }
 

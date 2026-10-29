@@ -175,7 +175,26 @@ func (c *SQLiteCatalog) EnsureSchema(ctx stdcontext.Context) error {
 	if err := c.relaxLegacyUploadAlias(ctx); err != nil {
 		return errors.New("BLOB_CATALOG_FAILED")
 	}
+	required, err := c.hasRequiredUploadAlias(ctx)
+	if err != nil || required {
+		return errors.New("BLOB_CATALOG_FAILED")
+	}
 	return nil
+}
+
+func (c *SQLiteCatalog) hasRequiredUploadAlias(ctx stdcontext.Context) (bool, error) {
+	columns, err := c.transport.FetchAllSql(ctx, sqlQuery("PRAGMA table_info(teaql_blob_upload)"))
+	if err != nil {
+		return false, err
+	}
+	for _, row := range columns {
+		name, _ := sqlText(row["name"])
+		notNull, _ := row["notnull"].TryI64()
+		if (name == "expires_at" || name == "expires_unix_ms") && notNull == 1 {
+			return true, nil
+		}
+	}
+	return false, nil
 }
 
 // Old Go tables required expires_unix_ms. That rejects new rows written by
@@ -306,6 +325,10 @@ func (c *SQLiteCatalog) ValidateSchema(ctx stdcontext.Context) error {
 		}
 	}
 	if !keyNullable || !versionRequired {
+		return errors.New("BLOB_SCHEMA_MISSING")
+	}
+	required, err := c.hasRequiredUploadAlias(ctx)
+	if err != nil || required {
 		return errors.New("BLOB_SCHEMA_MISSING")
 	}
 	indexes, err := c.transport.FetchAllSql(ctx, sqlQuery(`PRAGMA index_list(teaql_blob_catalog)`))
