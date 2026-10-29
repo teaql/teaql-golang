@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -164,6 +165,13 @@ func (h *sqliteDocumentHost) Present(_ stdcontext.Context, _ *runtime.UserContex
 
 func TestSQLiteContextBoundDocumentOpenAcceptAndReplay(t *testing.T) {
 	e := nativeBatchEnvironment(t)
+	faults := &postCommitUploadTransport{
+		SqlTransactionTransport: e.executor.Transport.(teaqlsql.SqlTransactionTransport),
+		immediate: e.executor.Transport.(interface {
+			BeginImmediateSql(stdcontext.Context) (teaqlsql.SqlTransactionTransportTx, error)
+		}),
+	}
+	e.executor.Transport = faults
 	for _, statement := range []string{
 		`CREATE TABLE document_order (id INTEGER PRIMARY KEY, business_id TEXT NOT NULL UNIQUE,
             version INTEGER NOT NULL, quantity INTEGER NOT NULL)`,
@@ -301,5 +309,47 @@ func TestSQLiteContextBoundDocumentOpenAcceptAndReplay(t *testing.T) {
 	}
 	if err := e.db.QueryRow("SELECT COUNT(*) FROM teaql_document_command_receipt").Scan(&receipts); err != nil || receipts != 2 {
 		t.Fatalf("receipt failure changed receipt count: %d %v", receipts, err)
+	}
+	beforeUnknown := host.mutations
+	unknownOpen := open()
+	unknown := document.DocumentAcceptRequest{AggregateType: "Order", Purpose: "edit-order",
+		Submitted: document.SubmittedDocumentCommand{BusinessID: "ORD-10",
+			DocumentToken: unknownOpen.DocumentToken, CommandID: "command-commit-unknown",
+			Body: map[string]any{"quantity": 3}}}
+	atomic.StoreInt32(&faults.fail, 1)
+	if _, err := service.Accept(e.ctx, e.ctx, unknown); err == nil {
+		t.Fatal("lost commit acknowledgement returned success")
+	}
+	if err := e.db.QueryRow("SELECT version,quantity FROM document_order WHERE id=10").Scan(&version, &quantity); err != nil || version != 4 || quantity != 3 {
+		t.Fatalf("commit-unknown business state: version=%d quantity=%d err=%v", version, quantity, err)
+	}
+	if err := e.db.QueryRow("SELECT COUNT(*) FROM teaql_document_command_receipt").Scan(&receipts); err != nil || receipts != 3 || host.mutations != beforeUnknown+1 {
+		t.Fatalf("commit-unknown receipt/mutations: receipts=%d mutations=%d err=%v", receipts, host.mutations, err)
+	}
+	var durable string
+	if err := e.db.QueryRow("SELECT response FROM teaql_document_command_receipt WHERE command_id='command-commit-unknown'").Scan(&durable); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := e.db.Exec("UPDATE document_permission SET can_edit=0 WHERE subject='alice'"); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := service.Accept(e.ctx, e.ctx, unknown); err == nil || err.Error() != "DOCUMENT_AUTHORIZATION_REQUIRED" {
+		t.Fatalf("revoked commit-unknown replay accepted: %v", err)
+	}
+	if _, err := e.db.Exec("UPDATE document_permission SET can_edit=1 WHERE subject='alice'"); err != nil {
+		t.Fatal(err)
+	}
+	modified := unknown
+	modified.Submitted.Body = map[string]any{"quantity": 4}
+	if _, err := service.Accept(e.ctx, e.ctx, modified); err == nil || err.Error() != "DOCUMENT_REPLAY_CONFLICT" {
+		t.Fatalf("changed commit-unknown replay accepted: %v", err)
+	}
+	recovered, err := service.Accept(e.ctx, e.ctx, unknown)
+	if err != nil || !recovered.Replayed || recovered.NewRevision != 4 || host.mutations != beforeUnknown+1 {
+		t.Fatalf("commit-unknown recovery: replayed=%v revision=%d mutations=%d err=%v", recovered.Replayed, recovered.NewRevision, host.mutations, err)
+	}
+	var replayed string
+	if err := e.db.QueryRow("SELECT response FROM teaql_document_command_receipt WHERE command_id='command-commit-unknown'").Scan(&replayed); err != nil || replayed != durable {
+		t.Fatal("commit-unknown recovery changed durable receipt")
 	}
 }
