@@ -391,3 +391,39 @@ func TestUserContextActiveRootIsTypedAndFailsClosed(t *testing.T) {
 		t.Fatal("expected type mismatch")
 	}
 }
+
+func TestUserContextActiveRootRejectsZeroIdentity(t *testing.T) {
+	var nilRoot *EntityReference
+	for _, candidate := range []struct {
+		name   string
+		root   interface{}
+		reason string
+	}{
+		{"value-zero", EntityReference{Entity: "Tenant", ID: 0}, "invalid_id"},
+		{"pointer-zero", &EntityReference{Entity: "Tenant", ID: 0}, "invalid_id"},
+		{"nil-pointer", nilRoot, "missing"},
+		{"wrong-type", EntityReference{Entity: "Store", ID: 1}, "type_mismatch"},
+		{"valid", EntityReference{Entity: "Tenant", ID: 42}, ""},
+		{"upper-unsigned-identity", EntityReference{Entity: "Tenant", ID: ^uint64(0)}, ""},
+	} {
+		t.Run(candidate.name, func(t *testing.T) {
+			context := NewUserContext()
+			context.InsertResource("activeRoot", candidate.root)
+			root, err := context.RequireActiveRoot("Tenant")
+			if candidate.reason == "" {
+				if err != nil || root.ID == 0 || root.Entity != "Tenant" {
+					t.Fatalf("valid typed identity rejected: %#v %v", root, err)
+				}
+				return
+			}
+			failure, ok := err.(*ContextRootError)
+			if !ok || failure.Reason != candidate.reason || failure.ExpectedType != "Tenant" {
+				t.Fatalf("expected typed %s error before root use, got %#v", candidate.reason, err)
+			}
+			if failure.Error() != "context root "+candidate.reason+": expected Tenant" {
+				t.Fatal("context error must retain its stable, identity-free message", failure.Error())
+			}
+		})
+	}
+	fmt.Printf("GO_CONTEXT_ROOT_NATIVE={\"cases\":6,\"passed\":%t}\n", !t.Failed())
+}

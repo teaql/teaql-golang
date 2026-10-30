@@ -1632,6 +1632,11 @@ func (c *UserContext) RequireActiveRoot(expectedType string) (EntityReference, e
 	if root.Entity != expectedType {
 		return EntityReference{}, &ContextRootError{Reason: "type_mismatch", ExpectedType: expectedType, ActiveRoot: &root}
 	}
+	// Zero is the unset identity sentinel, never an active persisted root.
+	// Keep the full positive uint64 domain; provider-specific ranges are separate.
+	if root.ID == 0 {
+		return EntityReference{}, &ContextRootError{Reason: "invalid_id", ExpectedType: expectedType, ActiveRoot: &root}
+	}
 	return root, nil
 }
 
