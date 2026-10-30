@@ -329,7 +329,17 @@ python3 scripts/verify-reference-module-release.py absent
 
 After both tags are pushed, `signed-tags --commit <40-hex-commit>` verifies
 that each remote ref is an annotated, GitHub-verified signed tag pointing to
-that exact commit. These checks do not publish or validate a public consumer.
+that exact commit. Once both modules appear on the public Go proxy, run:
+
+```bash
+python3 scripts/verify-reference-module-public.py --version vX.Y.Z --commit <40-hex-commit>
+```
+
+The public verifier compares each module's `.info`, `.mod` and complete ZIP
+file set and bytes with the signed Git commit, including the S3 module's
+inherited root `LICENSE`. It then builds four clean consumers through only
+`proxy.golang.org` with the public checksum database enabled. These commands
+do not publish; a successful local candidate is not a public release.
 
 ## Use the published runtime
 

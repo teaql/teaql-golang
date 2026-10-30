@@ -76,7 +76,7 @@ def module_zip(proxy, module, version, files, prefix=Path(".")):
     return archive
 
 
-def consumers(work, version, env):
+def consumers(work, version, env, kind="candidate"):
     cases = {
         "base": (False, False),
         "secure": (True, False),
@@ -120,7 +120,7 @@ def consumers(work, version, env):
                 raise RuntimeError(name + ": candidate resolved outside isolated module cache")
         if "replace " in (app / "go.mod").read_text():
             raise RuntimeError(name + ": consumer acquired a path replacement")
-        print("PASS Go clean candidate consumer " + name, flush=True)
+        print("PASS Go clean " + kind + " consumer " + name, flush=True)
 
 
 def main():
