@@ -187,6 +187,9 @@ func checkPlatform(context *runtime.UserContext, input *runtime.CheckAndFixInput
 	}
 
 
+	// The internal registry uses KSML entity keys; diagnostics use the
+	// explicitly generated wire type, never a runtime case-conversion guess.
+	for i := range results { if results[i].EntityType == "" { results[i].EntityType = "Platform" } }
 	return results
 }
 
@@ -211,6 +214,9 @@ func checkCustomerOrder(context *runtime.UserContext, input *runtime.CheckAndFix
 	}
 
 
+	// The internal registry uses KSML entity keys; diagnostics use the
+	// explicitly generated wire type, never a runtime case-conversion guess.
+	for i := range results { if results[i].EntityType == "" { results[i].EntityType = "CustomerOrder" } }
 	return results
 }
 
@@ -228,6 +234,9 @@ func checkOrderItem(context *runtime.UserContext, input *runtime.CheckAndFixInpu
 	}
 
 
+	// The internal registry uses KSML entity keys; diagnostics use the
+	// explicitly generated wire type, never a runtime case-conversion guess.
+	for i := range results { if results[i].EntityType == "" { results[i].EntityType = "OrderItem" } }
 	return results
 }
 
@@ -245,6 +254,9 @@ func checkPayment(context *runtime.UserContext, input *runtime.CheckAndFixInput)
 	}
 
 
+	// The internal registry uses KSML entity keys; diagnostics use the
+	// explicitly generated wire type, never a runtime case-conversion guess.
+	for i := range results { if results[i].EntityType == "" { results[i].EntityType = "Payment" } }
 	return results
 }
 
@@ -262,6 +274,9 @@ func checkPaymentAttempt(context *runtime.UserContext, input *runtime.CheckAndFi
 	}
 
 
+	// The internal registry uses KSML entity keys; diagnostics use the
+	// explicitly generated wire type, never a runtime case-conversion guess.
+	for i := range results { if results[i].EntityType == "" { results[i].EntityType = "PaymentAttempt" } }
 	return results
 }
 
@@ -279,6 +294,9 @@ func checkShipment(context *runtime.UserContext, input *runtime.CheckAndFixInput
 	}
 
 
+	// The internal registry uses KSML entity keys; diagnostics use the
+	// explicitly generated wire type, never a runtime case-conversion guess.
+	for i := range results { if results[i].EntityType == "" { results[i].EntityType = "Shipment" } }
 	return results
 }
 

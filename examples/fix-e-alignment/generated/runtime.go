@@ -153,6 +153,9 @@ func checkTenant(context *runtime.UserContext, input *runtime.CheckAndFixInput) 
 	}
 
 
+	// The internal registry uses KSML entity keys; diagnostics use the
+	// explicitly generated wire type, never a runtime case-conversion guess.
+	for i := range results { if results[i].EntityType == "" { results[i].EntityType = "Tenant" } }
 	return results
 }
 
@@ -227,6 +230,9 @@ func checkPurchaseOrder(context *runtime.UserContext, input *runtime.CheckAndFix
 	}
 
 
+	// The internal registry uses KSML entity keys; diagnostics use the
+	// explicitly generated wire type, never a runtime case-conversion guess.
+	for i := range results { if results[i].EntityType == "" { results[i].EntityType = "PurchaseOrder" } }
 	return results
 }
 
@@ -311,6 +317,9 @@ func checkOrderItem(context *runtime.UserContext, input *runtime.CheckAndFixInpu
 	}
 
 
+	// The internal registry uses KSML entity keys; diagnostics use the
+	// explicitly generated wire type, never a runtime case-conversion guess.
+	for i := range results { if results[i].EntityType == "" { results[i].EntityType = "OrderItem" } }
 	return results
 }
 

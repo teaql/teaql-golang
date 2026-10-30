@@ -119,6 +119,9 @@ func checkPlatform(context *runtime.UserContext, input *runtime.CheckAndFixInput
 	}
 
 
+	// The internal registry uses KSML entity keys; diagnostics use the
+	// explicitly generated wire type, never a runtime case-conversion guess.
+	for i := range results { if results[i].EntityType == "" { results[i].EntityType = "Platform" } }
 	return results
 }
 
@@ -143,6 +146,9 @@ func checkWorkItem(context *runtime.UserContext, input *runtime.CheckAndFixInput
 	}
 
 
+	// The internal registry uses KSML entity keys; diagnostics use the
+	// explicitly generated wire type, never a runtime case-conversion guess.
+	for i := range results { if results[i].EntityType == "" { results[i].EntityType = "WorkItem" } }
 	return results
 }
 

@@ -344,6 +344,9 @@ func checkCommercePlatform(context *runtime.UserContext, input *runtime.CheckAnd
 	}
 
 
+	// The internal registry uses KSML entity keys; diagnostics use the
+	// explicitly generated wire type, never a runtime case-conversion guess.
+	for i := range results { if results[i].EntityType == "" { results[i].EntityType = "CommercePlatform" } }
 	return results
 }
 
@@ -395,6 +398,9 @@ func checkCustomer(context *runtime.UserContext, input *runtime.CheckAndFixInput
 	}
 
 
+	// The internal registry uses KSML entity keys; diagnostics use the
+	// explicitly generated wire type, never a runtime case-conversion guess.
+	for i := range results { if results[i].EntityType == "" { results[i].EntityType = "Customer" } }
 	return results
 }
 
@@ -424,6 +430,9 @@ func checkOrderStatus(context *runtime.UserContext, input *runtime.CheckAndFixIn
 	}
 
 
+	// The internal registry uses KSML entity keys; diagnostics use the
+	// explicitly generated wire type, never a runtime case-conversion guess.
+	for i := range results { if results[i].EntityType == "" { results[i].EntityType = "OrderStatus" } }
 	return results
 }
 
@@ -484,6 +493,9 @@ func checkCustomerOrder(context *runtime.UserContext, input *runtime.CheckAndFix
 	}
 
 
+	// The internal registry uses KSML entity keys; diagnostics use the
+	// explicitly generated wire type, never a runtime case-conversion guess.
+	for i := range results { if results[i].EntityType == "" { results[i].EntityType = "CustomerOrder" } }
 	return results
 }
 
@@ -539,6 +551,9 @@ func checkProduct(context *runtime.UserContext, input *runtime.CheckAndFixInput)
 	}
 
 
+	// The internal registry uses KSML entity keys; diagnostics use the
+	// explicitly generated wire type, never a runtime case-conversion guess.
+	for i := range results { if results[i].EntityType == "" { results[i].EntityType = "Product" } }
 	return results
 }
 
@@ -587,6 +602,9 @@ func checkOrderLine(context *runtime.UserContext, input *runtime.CheckAndFixInpu
 	}
 
 
+	// The internal registry uses KSML entity keys; diagnostics use the
+	// explicitly generated wire type, never a runtime case-conversion guess.
+	for i := range results { if results[i].EntityType == "" { results[i].EntityType = "OrderLine" } }
 	return results
 }
 
@@ -652,6 +670,9 @@ func checkOrderSearchPreset(context *runtime.UserContext, input *runtime.CheckAn
 	}
 
 
+	// The internal registry uses KSML entity keys; diagnostics use the
+	// explicitly generated wire type, never a runtime case-conversion guess.
+	for i := range results { if results[i].EntityType == "" { results[i].EntityType = "OrderSearchPreset" } }
 	return results
 }
 
