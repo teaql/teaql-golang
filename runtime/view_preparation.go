@@ -6,6 +6,7 @@ import (
 	"strconv"
 	"strings"
 	"time"
+	"unicode"
 
 	"github.com/teaql/teaql-golang/core"
 )
@@ -178,6 +179,12 @@ func (ViewPreparationService) Prepare(context *UserContext, result any, options 
 			return view, viewError("BLOB_SIGN_FAILED")
 		}
 		for index, signed := range urls {
+			// Parsing can retain or normalize raw whitespace; never project those original bytes.
+			if strings.IndexFunc(signed.URL, func(r rune) bool {
+				return unicode.IsSpace(r) || unicode.IsControl(r)
+			}) >= 0 {
+				return view, viewError("BLOB_SIGN_FAILED")
+			}
 			parsed, parseErr := url.Parse(signed.URL)
 			if parseErr != nil || parsed.Host == "" || (parsed.Scheme != "http" && parsed.Scheme != "https") ||
 				!signed.ExpiresAt.After(time.Now()) || (!ceiling.IsZero() && signed.ExpiresAt.After(ceiling)) {

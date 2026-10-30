@@ -141,3 +141,35 @@ func TestViewPreparationFailsClosedWithoutLeakingRawKeyOrRepeatingCommittedWork(
 		t.Fatalf("provider failure was not sanitized: %v", err)
 	}
 }
+
+func TestViewPreparationRejectsProviderURLWithRawWhitespaceOrControl(t *testing.T) {
+	reference, err := core.ParseBlobRef("blob_asset_1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	context := NewUserContext()
+	context.InsertResource("responseGraphAuthorizer", viewAuthorizerFunc(func(_ *UserContext, _ any, _ ViewOptions) (AuthorizedResponseGraph, error) {
+		return AuthorizedResponseGraph{Presentation: map[string]any{"document": reference},
+			BlobSlots: []AuthorizedBlobSlot{{Path: []any{"document"}, Reference: reference}}}, nil
+	}))
+	var suppliedURL string
+	context.InsertResource("blobResponseContributor", blobViewFunc(func(_ *UserContext, _ AuthorizedResponseGraph, _ time.Time) ([]ProjectedBlobURL, error) {
+		return []ProjectedBlobURL{{URL: suppliedURL, ExpiresAt: time.Now().Add(30 * time.Second)}}, nil
+	}))
+	for _, invalid := range []string{
+		" https://files.example.invalid/read",
+		"https://files.example.invalid/read file",
+		"https://files.example.invalid/read\n",
+		"https://files.example.invalid/\tread",
+		"https://files.example.invalid/read\u2028next",
+		"https://files.example.invalid/read\u2029next",
+	} {
+		suppliedURL = invalid
+		_, err := (ViewPreparationService{}).Prepare(context, nil,
+			ViewOptions{Mode: "ordinary", BusinessOutcome: "committed"})
+		var failure *ViewPreparationError
+		if !errors.As(err, &failure) || failure.Code != "BLOB_SIGN_FAILED" || failure.BusinessState != "committed" {
+			t.Fatalf("unsafe provider URL was projected: %q, %v", invalid, err)
+		}
+	}
+}
