@@ -363,6 +363,7 @@ func (e *TypePlatform) TeaqlNormalizeMutationGraph(context *runtime.UserContext)
 				prefix := runtime.Location().Property("scalar_type_probe_list").At(index)
 				prefixed := make([]runtime.CheckResult, len(checkError.CheckResults))
 				for resultIndex, result := range checkError.CheckResults { prefixed[resultIndex] = result.PrefixedBy(prefix) }
+				context.TranslateCheckResults(prefixed)
 				return &runtime.RuntimeError{Type: "Check", CheckResults: prefixed}
 			}
 			return fmt.Errorf("normalize child from scalarTypeProbeList: %w", err)
@@ -426,6 +427,7 @@ func (e *TypePlatform) TeaqlPreflightWithinGraph(context *runtime.UserContext, i
 				prefix := runtime.Location().Property("scalar_type_probe_list").At(index)
 				prefixed := make([]runtime.CheckResult, len(checkError.CheckResults))
 				for resultIndex, result := range checkError.CheckResults { prefixed[resultIndex] = result.PrefixedBy(prefix) }
+				context.TranslateCheckResults(prefixed)
 				return &runtime.RuntimeError{Type: "Check", CheckResults: prefixed}
 			}
 			return fmt.Errorf("preflight child from scalarTypeProbeList: %w", err)
@@ -652,6 +654,7 @@ func (e *TypePlatform) saveCascade(context *runtime.UserContext, intent core.Mut
 				prefix := runtime.Location().Property("scalar_type_probe_list").At(index)
 				prefixed := make([]runtime.CheckResult, len(checkError.CheckResults))
 				for resultIndex, result := range checkError.CheckResults { prefixed[resultIndex] = result.PrefixedBy(prefix) }
+				context.TranslateCheckResults(prefixed)
 				return &runtime.RuntimeError{Type: "Check", CheckResults: prefixed}
 			}
 			return fmt.Errorf("save child from scalarTypeProbeList: %w", err)

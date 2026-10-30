@@ -377,6 +377,7 @@ func (e *Customer) TeaqlNormalizeMutationGraph(context *runtime.UserContext) err
 				prefix := runtime.Location().Property("customer_order_list").At(index)
 				prefixed := make([]runtime.CheckResult, len(checkError.CheckResults))
 				for resultIndex, result := range checkError.CheckResults { prefixed[resultIndex] = result.PrefixedBy(prefix) }
+				context.TranslateCheckResults(prefixed)
 				return &runtime.RuntimeError{Type: "Check", CheckResults: prefixed}
 			}
 			return fmt.Errorf("normalize child from customerOrderList: %w", err)
@@ -444,6 +445,7 @@ func (e *Customer) TeaqlPreflightWithinGraph(context *runtime.UserContext, inten
 				prefix := runtime.Location().Property("customer_order_list").At(index)
 				prefixed := make([]runtime.CheckResult, len(checkError.CheckResults))
 				for resultIndex, result := range checkError.CheckResults { prefixed[resultIndex] = result.PrefixedBy(prefix) }
+				context.TranslateCheckResults(prefixed)
 				return &runtime.RuntimeError{Type: "Check", CheckResults: prefixed}
 			}
 			return fmt.Errorf("preflight child from customerOrderList: %w", err)
@@ -670,6 +672,7 @@ func (e *Customer) saveCascade(context *runtime.UserContext, intent core.Mutatio
 				prefix := runtime.Location().Property("customer_order_list").At(index)
 				prefixed := make([]runtime.CheckResult, len(checkError.CheckResults))
 				for resultIndex, result := range checkError.CheckResults { prefixed[resultIndex] = result.PrefixedBy(prefix) }
+				context.TranslateCheckResults(prefixed)
 				return &runtime.RuntimeError{Type: "Check", CheckResults: prefixed}
 			}
 			return fmt.Errorf("save child from customerOrderList: %w", err)

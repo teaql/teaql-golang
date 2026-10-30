@@ -95,6 +95,7 @@ func TestGeneratedCheckerDeclaringTypesAndNestedLocations(t *testing.T) {
 	before := physical()
 	observations := []map[string]any{}
 	metadataFailures := []map[string]any{}
+	humanPathFailures := []map[string]any{}
 	projections := 0
 	invalid := func(scenario string, save func() error, expectedType, expectedPath, expectedRule string) {
 		probe.begins, probe.queries, probe.mutations, probe.commits, probe.rollbacks, audit.events = 0, 0, 0, 0, 0, 0
@@ -121,6 +122,9 @@ func TestGeneratedCheckerDeclaringTypesAndNestedLocations(t *testing.T) {
 			}
 			if result.EntityType != expectedType {
 				metadataFailures = append(metadataFailures, map[string]any{"case": scenario, "expected": expectedType, "actual": result.EntityType})
+			}
+			if result.RuleID != "invalid_type" && !strings.Contains(result.Message, result.NativePath()) {
+				humanPathFailures = append(humanPathFailures, map[string]any{"case": scenario, "expected": result.NativePath(), "actual": result.Message})
 			}
 			for _, profile := range []runtime.JsonFieldNamingProfile{runtime.JsonFieldCamelCase, runtime.JsonFieldSnakeCase, runtime.JsonFieldPascalCase} {
 				wires[string(profile)] = append(wires[string(profile)], result.ToWire(profile))
@@ -187,16 +191,20 @@ func TestGeneratedCheckerDeclaringTypesAndNestedLocations(t *testing.T) {
 		t.Fatal(err)
 	}
 	checker.specialize = true
+	if err := ctx.SetLocaleCode("zh-CN"); err != nil {
+		t.Fatal(err)
+	}
 	badChild("specialized_child", "", "10.00", "required", "product_name", "ReviewedItem")
-	passed := len(metadataFailures) == 0
+	passed := len(metadataFailures) == 0 && len(humanPathFailures) == 0
 	data, err := json.Marshal(map[string]any{"language": "go", "passed": passed, "normalGeneratedSave": true,
 		"observations": observations, "invalidSaves": len(observations), "wireProjections": projections, "metadataFailures": metadataFailures,
+		"humanPathFailures": humanPathFailures, "fullNativePathsInMessages": len(humanPathFailures) == 0,
 		"positiveProviderCalibration": true, "sameContextAndDatabase": true, "physicalId": good.Id(), "physicalVersion": before.Version})
 	if err != nil {
 		t.Fatal(err)
 	}
 	fmt.Println("GO_CHECKER_METADATA=" + string(data))
 	if !passed {
-		t.Fatalf("declaring entity metadata was lost: %+v", metadataFailures)
+		t.Fatalf("Checker diagnostics lost declaring types=%+v or full native paths=%+v", metadataFailures, humanPathFailures)
 	}
 }

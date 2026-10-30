@@ -406,6 +406,7 @@ func (e *Tenant) TeaqlNormalizeMutationGraph(context *runtime.UserContext) error
 				prefix := runtime.Location().Property("purchase_order_list").At(index)
 				prefixed := make([]runtime.CheckResult, len(checkError.CheckResults))
 				for resultIndex, result := range checkError.CheckResults { prefixed[resultIndex] = result.PrefixedBy(prefix) }
+				context.TranslateCheckResults(prefixed)
 				return &runtime.RuntimeError{Type: "Check", CheckResults: prefixed}
 			}
 			return fmt.Errorf("normalize child from purchaseOrderList: %w", err)
@@ -423,6 +424,7 @@ func (e *Tenant) TeaqlNormalizeMutationGraph(context *runtime.UserContext) error
 				prefix := runtime.Location().Property("order_item_list").At(index)
 				prefixed := make([]runtime.CheckResult, len(checkError.CheckResults))
 				for resultIndex, result := range checkError.CheckResults { prefixed[resultIndex] = result.PrefixedBy(prefix) }
+				context.TranslateCheckResults(prefixed)
 				return &runtime.RuntimeError{Type: "Check", CheckResults: prefixed}
 			}
 			return fmt.Errorf("normalize child from orderItemList: %w", err)
@@ -486,6 +488,7 @@ func (e *Tenant) TeaqlPreflightWithinGraph(context *runtime.UserContext, intent 
 				prefix := runtime.Location().Property("purchase_order_list").At(index)
 				prefixed := make([]runtime.CheckResult, len(checkError.CheckResults))
 				for resultIndex, result := range checkError.CheckResults { prefixed[resultIndex] = result.PrefixedBy(prefix) }
+				context.TranslateCheckResults(prefixed)
 				return &runtime.RuntimeError{Type: "Check", CheckResults: prefixed}
 			}
 			return fmt.Errorf("preflight child from purchaseOrderList: %w", err)
@@ -504,6 +507,7 @@ func (e *Tenant) TeaqlPreflightWithinGraph(context *runtime.UserContext, intent 
 				prefix := runtime.Location().Property("order_item_list").At(index)
 				prefixed := make([]runtime.CheckResult, len(checkError.CheckResults))
 				for resultIndex, result := range checkError.CheckResults { prefixed[resultIndex] = result.PrefixedBy(prefix) }
+				context.TranslateCheckResults(prefixed)
 				return &runtime.RuntimeError{Type: "Check", CheckResults: prefixed}
 			}
 			return fmt.Errorf("preflight child from orderItemList: %w", err)
@@ -730,6 +734,7 @@ func (e *Tenant) saveCascade(context *runtime.UserContext, intent core.MutationI
 				prefix := runtime.Location().Property("purchase_order_list").At(index)
 				prefixed := make([]runtime.CheckResult, len(checkError.CheckResults))
 				for resultIndex, result := range checkError.CheckResults { prefixed[resultIndex] = result.PrefixedBy(prefix) }
+				context.TranslateCheckResults(prefixed)
 				return &runtime.RuntimeError{Type: "Check", CheckResults: prefixed}
 			}
 			return fmt.Errorf("save child from purchaseOrderList: %w", err)
@@ -745,6 +750,7 @@ func (e *Tenant) saveCascade(context *runtime.UserContext, intent core.MutationI
 				prefix := runtime.Location().Property("order_item_list").At(index)
 				prefixed := make([]runtime.CheckResult, len(checkError.CheckResults))
 				for resultIndex, result := range checkError.CheckResults { prefixed[resultIndex] = result.PrefixedBy(prefix) }
+				context.TranslateCheckResults(prefixed)
 				return &runtime.RuntimeError{Type: "Check", CheckResults: prefixed}
 			}
 			return fmt.Errorf("save child from orderItemList: %w", err)
