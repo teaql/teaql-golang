@@ -563,6 +563,7 @@ func (e *ExecutablePaymentAttemptRequest) ExecuteForList(context *runtime.UserCo
 				}
 			}
 		}
+		if err := runtime.CaptureEntityQueryProperties(entity, authorized); err != nil { return nil, err }
 		return entity, nil
 	})
 }
@@ -590,6 +591,7 @@ func (e *ExecutablePaymentAttemptRequest) ExecuteForStream(context *runtime.User
 	return runtime.ExecuteTypedStream(context, ds, authorized, chunkSize, func(rec core.Record) (*PaymentAttempt, error) {
 		entity := newLoadedPaymentAttempt()
 		if err := entity.FromRecord(rec); err != nil { return nil, err }
+		if err := runtime.CaptureEntityQueryProperties(entity, authorized); err != nil { return nil, err }
 		return entity, nil
 	}, yield)
 }

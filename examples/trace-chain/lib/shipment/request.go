@@ -563,6 +563,7 @@ func (e *ExecutableShipmentRequest) ExecuteForList(context *runtime.UserContext)
 				}
 			}
 		}
+		if err := runtime.CaptureEntityQueryProperties(entity, authorized); err != nil { return nil, err }
 		return entity, nil
 	})
 }
@@ -590,6 +591,7 @@ func (e *ExecutableShipmentRequest) ExecuteForStream(context *runtime.UserContex
 	return runtime.ExecuteTypedStream(context, ds, authorized, chunkSize, func(rec core.Record) (*Shipment, error) {
 		entity := newLoadedShipment()
 		if err := entity.FromRecord(rec); err != nil { return nil, err }
+		if err := runtime.CaptureEntityQueryProperties(entity, authorized); err != nil { return nil, err }
 		return entity, nil
 	}, yield)
 }

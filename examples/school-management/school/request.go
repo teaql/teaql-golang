@@ -1081,6 +1081,7 @@ func (e *ExecutableSchoolRequest) ExecuteForList(context *runtime.UserContext) (
 				}
 			}
 		}
+		if err := runtime.CaptureEntityQueryProperties(entity, authorized); err != nil { return nil, err }
 		return entity, nil
 	})
 }
@@ -1108,6 +1109,7 @@ func (e *ExecutableSchoolRequest) ExecuteForStream(context *runtime.UserContext,
 	return runtime.ExecuteTypedStream(context, ds, authorized, chunkSize, func(rec core.Record) (*School, error) {
 		entity := newLoadedSchool()
 		if err := entity.FromRecord(rec); err != nil { return nil, err }
+		if err := runtime.CaptureEntityQueryProperties(entity, authorized); err != nil { return nil, err }
 		return entity, nil
 	}, yield)
 }

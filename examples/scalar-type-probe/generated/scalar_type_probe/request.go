@@ -2049,6 +2049,7 @@ func (e *ExecutableScalarTypeProbeRequest) ExecuteForList(context *runtime.UserC
 				}
 			}
 		}
+		if err := runtime.CaptureEntityQueryProperties(entity, authorized); err != nil { return nil, err }
 		return entity, nil
 	})
 }
@@ -2076,6 +2077,7 @@ func (e *ExecutableScalarTypeProbeRequest) ExecuteForStream(context *runtime.Use
 	return runtime.ExecuteTypedStream(context, ds, authorized, chunkSize, func(rec core.Record) (*ScalarTypeProbe, error) {
 		entity := newLoadedScalarTypeProbe()
 		if err := entity.FromRecord(rec); err != nil { return nil, err }
+		if err := runtime.CaptureEntityQueryProperties(entity, authorized); err != nil { return nil, err }
 		return entity, nil
 	}, yield)
 }

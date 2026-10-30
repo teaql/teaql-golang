@@ -660,6 +660,7 @@ func (e *ExecutableTaskExecutionLogRequest) ExecuteForList(context *runtime.User
 				}
 			}
 		}
+		if err := runtime.CaptureEntityQueryProperties(entity, authorized); err != nil { return nil, err }
 		return entity, nil
 	})
 }
@@ -687,6 +688,7 @@ func (e *ExecutableTaskExecutionLogRequest) ExecuteForStream(context *runtime.Us
 	return runtime.ExecuteTypedStream(context, ds, authorized, chunkSize, func(rec core.Record) (*TaskExecutionLog, error) {
 		entity := newLoadedTaskExecutionLog()
 		if err := entity.FromRecord(rec); err != nil { return nil, err }
+		if err := runtime.CaptureEntityQueryProperties(entity, authorized); err != nil { return nil, err }
 		return entity, nil
 	}, yield)
 }

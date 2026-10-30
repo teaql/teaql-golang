@@ -1058,6 +1058,7 @@ func (e *ExecutablePlatformRequest) ExecuteForList(context *runtime.UserContext)
 					if err := childEntity.FromRecord(childRecord); err != nil { return nil, err }
 					entity.SchoolList().Add(childEntity)
 				}}
+		if err := runtime.CaptureEntityQueryProperties(entity, authorized); err != nil { return nil, err }
 		return entity, nil
 	})
 }
@@ -1085,6 +1086,7 @@ func (e *ExecutablePlatformRequest) ExecuteForStream(context *runtime.UserContex
 	return runtime.ExecuteTypedStream(context, ds, authorized, chunkSize, func(rec core.Record) (*Platform, error) {
 		entity := newLoadedPlatform()
 		if err := entity.FromRecord(rec); err != nil { return nil, err }
+		if err := runtime.CaptureEntityQueryProperties(entity, authorized); err != nil { return nil, err }
 		return entity, nil
 	}, yield)
 }

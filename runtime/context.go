@@ -1673,6 +1673,16 @@ func (c *UserContext) checkAndFixWithReferences(input *CheckAndFixInput, referen
 		results = append(results, c.checkFiniteFloatingValues(input)...)
 		results = append(results, c.checkIntegralValues(input, references)...)
 	}
+	if len(results) != 0 {
+		// A customer registry may reuse its result slice. Bind identity and
+		// localize only our private error copy, never shared Checker state.
+		results = append([]CheckResult(nil), results...)
+		for i := range results {
+			if strings.TrimSpace(results[i].EntityType) == "" {
+				results[i].EntityType = entity
+			}
+		}
+	}
 	c.TranslateCheckResults(results)
 	if len(results) != 0 {
 		return &RuntimeError{Type: "Check", CheckResults: results}

@@ -133,19 +133,12 @@ func (r *generatedCheckerRegistry) CheckAndFix(context *runtime.UserContext, inp
 	}
 }
 
-func generatedNumber(value any) (float64, bool) {
-	switch number := value.(type) {
-	case int: return float64(number), true
-	case int32: return float64(number), true
-	case int64: return float64(number), true
-	case uint: return float64(number), true
-	case uint32: return float64(number), true
-	case uint64: return float64(number), true
-	case float32: return float64(number), true
-	case float64: return number, true
-	default: return 0, false
-	}
-}
+var generatedOrderItemUnitPriceMinimum = core.ValDecimal(decimal.RequireFromString("0.01"))
+var generatedOrderItemUnitPriceMaximum = core.ValDecimal(decimal.RequireFromString("1000000"))
+
+
+
+
 
 func checkTenant(context *runtime.UserContext, input *runtime.CheckAndFixInput) []runtime.CheckResult {
 	results := make([]runtime.CheckResult, 0)
@@ -303,10 +296,10 @@ func checkOrderItem(context *runtime.UserContext, input *runtime.CheckAndFixInpu
 		results = append(results, runtime.CheckResult{RuleID: "required", CanonicalLocation: runtime.Location().Property("unit_price")})
 	}
 	if value, exists := input.Values["unit_price"]; exists {
-		if number, ok := generatedNumber(value.V); ok && !(number >= 0.01) { results = append(results, runtime.CheckResult{RuleID: "min", CanonicalLocation: runtime.Location().Property("unit_price"), InputValue: value.V, SystemValue: 0.01}) }
+		if order, ok := core.CompareNumericValues(value, generatedOrderItemUnitPriceMinimum); ok && order < 0 { results = append(results, runtime.CheckResult{RuleID: "min", CanonicalLocation: runtime.Location().Property("unit_price"), InputValue: value.V, SystemValue: generatedOrderItemUnitPriceMinimum.V}) }
 	}
 	if value, exists := input.Values["unit_price"]; exists {
-		if number, ok := generatedNumber(value.V); ok && number > 1000000 { results = append(results, runtime.CheckResult{RuleID: "max", CanonicalLocation: runtime.Location().Property("unit_price"), InputValue: value.V, SystemValue: 1000000}) }
+		if order, ok := core.CompareNumericValues(value, generatedOrderItemUnitPriceMaximum); ok && order > 0 { results = append(results, runtime.CheckResult{RuleID: "max", CanonicalLocation: runtime.Location().Property("unit_price"), InputValue: value.V, SystemValue: generatedOrderItemUnitPriceMaximum.V}) }
 	}
 
 	if value, exists := input.Values["create_time"]; (input.Operation == core.MutationInsert && !exists) || (exists && value.V == nil) {

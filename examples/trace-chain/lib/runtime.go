@@ -176,19 +176,6 @@ func (r *generatedCheckerRegistry) CheckAndFix(context *runtime.UserContext, inp
 	}
 }
 
-func generatedNumber(value any) (float64, bool) {
-	switch number := value.(type) {
-	case int: return float64(number), true
-	case int32: return float64(number), true
-	case int64: return float64(number), true
-	case uint: return float64(number), true
-	case uint32: return float64(number), true
-	case uint64: return float64(number), true
-	case float32: return float64(number), true
-	case float64: return number, true
-	default: return 0, false
-	}
-}
 
 func checkPlatform(context *runtime.UserContext, input *runtime.CheckAndFixInput) []runtime.CheckResult {
 	results := make([]runtime.CheckResult, 0)

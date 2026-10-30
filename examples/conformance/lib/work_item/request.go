@@ -660,6 +660,7 @@ func (e *ExecutableWorkItemRequest) ExecuteForList(context *runtime.UserContext)
 				}
 			}
 		}
+		if err := runtime.CaptureEntityQueryProperties(entity, authorized); err != nil { return nil, err }
 		return entity, nil
 	})
 }
@@ -687,6 +688,7 @@ func (e *ExecutableWorkItemRequest) ExecuteForStream(context *runtime.UserContex
 	return runtime.ExecuteTypedStream(context, ds, authorized, chunkSize, func(rec core.Record) (*WorkItem, error) {
 		entity := newLoadedWorkItem()
 		if err := entity.FromRecord(rec); err != nil { return nil, err }
+		if err := runtime.CaptureEntityQueryProperties(entity, authorized); err != nil { return nil, err }
 		return entity, nil
 	}, yield)
 }

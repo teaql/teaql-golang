@@ -419,6 +419,10 @@ func (e *CommercePlatform) ToJSON(profile ...runtime.JsonFieldNamingProfile) ([]
 
 func (e *CommercePlatform) MarshalJSON() ([]byte, error) { return e.ToJSON() }
 
+// Only aliases captured from an executed query are public query properties.
+// Never dump Base().Dynamic: it also contains modeled and private runtime data.
+func (e *CommercePlatform) JSONQueryProperties() core.Record { return e.base.QueryProperties() }
+
 // Only shallow loaded values escape. Related documents are visited lazily by
 // the runtime codec under its depth, byte and cycle guards.
 func (e *CommercePlatform) LoadedJSONFields() core.Record {
@@ -686,23 +690,23 @@ func (e *CommercePlatform) TeaqlPreflightWithinGraph(context *runtime.UserContex
 		if e.isNew { operation = core.MutationInsert }
 		if operation == core.MutationUpdate {
 			if !e.IsLoaded("id") {
-				result := runtime.CheckResult{RuleID: "invalid_type", CanonicalLocation: runtime.Location().Property("id"), Message: "Mutation requires a fully loaded entity"}
+				result := runtime.CheckResult{RuleID: "invalid_type", EntityType: "CommercePlatform", CanonicalLocation: runtime.Location().Property("id"), Message: "Mutation requires a fully loaded entity"}
 				return &runtime.RuntimeError{Type: "Check", CheckResults: []runtime.CheckResult{result}}
 			}
 			if !e.IsLoaded("name") {
-				result := runtime.CheckResult{RuleID: "invalid_type", CanonicalLocation: runtime.Location().Property("name"), Message: "Mutation requires a fully loaded entity"}
+				result := runtime.CheckResult{RuleID: "invalid_type", EntityType: "CommercePlatform", CanonicalLocation: runtime.Location().Property("name"), Message: "Mutation requires a fully loaded entity"}
 				return &runtime.RuntimeError{Type: "Check", CheckResults: []runtime.CheckResult{result}}
 			}
 			if !e.IsLoaded("create_time") {
-				result := runtime.CheckResult{RuleID: "invalid_type", CanonicalLocation: runtime.Location().Property("create_time"), Message: "Mutation requires a fully loaded entity"}
+				result := runtime.CheckResult{RuleID: "invalid_type", EntityType: "CommercePlatform", CanonicalLocation: runtime.Location().Property("create_time"), Message: "Mutation requires a fully loaded entity"}
 				return &runtime.RuntimeError{Type: "Check", CheckResults: []runtime.CheckResult{result}}
 			}
 			if !e.IsLoaded("update_time") {
-				result := runtime.CheckResult{RuleID: "invalid_type", CanonicalLocation: runtime.Location().Property("update_time"), Message: "Mutation requires a fully loaded entity"}
+				result := runtime.CheckResult{RuleID: "invalid_type", EntityType: "CommercePlatform", CanonicalLocation: runtime.Location().Property("update_time"), Message: "Mutation requires a fully loaded entity"}
 				return &runtime.RuntimeError{Type: "Check", CheckResults: []runtime.CheckResult{result}}
 			}
 			if !e.IsLoaded("version") {
-				result := runtime.CheckResult{RuleID: "invalid_type", CanonicalLocation: runtime.Location().Property("version"), Message: "Mutation requires a fully loaded entity"}
+				result := runtime.CheckResult{RuleID: "invalid_type", EntityType: "CommercePlatform", CanonicalLocation: runtime.Location().Property("version"), Message: "Mutation requires a fully loaded entity"}
 				return &runtime.RuntimeError{Type: "Check", CheckResults: []runtime.CheckResult{result}}
 			}
 		}

@@ -992,6 +992,7 @@ func (e *ExecutableOrderSearchPresetRequest) ExecuteForList(context *runtime.Use
 				}
 			}
 		}
+		if err := runtime.CaptureEntityQueryProperties(entity, authorized); err != nil { return nil, err }
 		return entity, nil
 	})
 }
@@ -1019,6 +1020,7 @@ func (e *ExecutableOrderSearchPresetRequest) ExecuteForStream(context *runtime.U
 	return runtime.ExecuteTypedStream(context, ds, authorized, chunkSize, func(rec core.Record) (*OrderSearchPreset, error) {
 		entity := newLoadedOrderSearchPreset()
 		if err := entity.FromRecord(rec); err != nil { return nil, err }
+		if err := runtime.CaptureEntityQueryProperties(entity, authorized); err != nil { return nil, err }
 		return entity, nil
 	}, yield)
 }

@@ -952,6 +952,7 @@ func (e *ExecutableTaskStatusRequest) ExecuteForList(context *runtime.UserContex
 					if err := childEntity.FromRecord(childRecord); err != nil { return nil, err }
 					entity.TaskList().Add(childEntity)
 				}}
+		if err := runtime.CaptureEntityQueryProperties(entity, authorized); err != nil { return nil, err }
 		return entity, nil
 	})
 }
@@ -979,6 +980,7 @@ func (e *ExecutableTaskStatusRequest) ExecuteForStream(context *runtime.UserCont
 	return runtime.ExecuteTypedStream(context, ds, authorized, chunkSize, func(rec core.Record) (*TaskStatus, error) {
 		entity := newLoadedTaskStatus()
 		if err := entity.FromRecord(rec); err != nil { return nil, err }
+		if err := runtime.CaptureEntityQueryProperties(entity, authorized); err != nil { return nil, err }
 		return entity, nil
 	}, yield)
 }

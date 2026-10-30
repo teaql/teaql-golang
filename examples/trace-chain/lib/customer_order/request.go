@@ -831,6 +831,7 @@ func (e *ExecutableCustomerOrderRequest) ExecuteForList(context *runtime.UserCon
 					if err := childEntity.FromRecord(childRecord); err != nil { return nil, err }
 					entity.ShipmentList().Add(childEntity)
 				}}
+		if err := runtime.CaptureEntityQueryProperties(entity, authorized); err != nil { return nil, err }
 		return entity, nil
 	})
 }
@@ -858,6 +859,7 @@ func (e *ExecutableCustomerOrderRequest) ExecuteForStream(context *runtime.UserC
 	return runtime.ExecuteTypedStream(context, ds, authorized, chunkSize, func(rec core.Record) (*CustomerOrder, error) {
 		entity := newLoadedCustomerOrder()
 		if err := entity.FromRecord(rec); err != nil { return nil, err }
+		if err := runtime.CaptureEntityQueryProperties(entity, authorized); err != nil { return nil, err }
 		return entity, nil
 	}, yield)
 }

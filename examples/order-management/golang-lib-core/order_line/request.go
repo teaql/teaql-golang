@@ -1030,6 +1030,7 @@ func (e *ExecutableOrderLineRequest) ExecuteForList(context *runtime.UserContext
 				}
 			}
 		}
+		if err := runtime.CaptureEntityQueryProperties(entity, authorized); err != nil { return nil, err }
 		return entity, nil
 	})
 }
@@ -1057,6 +1058,7 @@ func (e *ExecutableOrderLineRequest) ExecuteForStream(context *runtime.UserConte
 	return runtime.ExecuteTypedStream(context, ds, authorized, chunkSize, func(rec core.Record) (*OrderLine, error) {
 		entity := newLoadedOrderLine()
 		if err := entity.FromRecord(rec); err != nil { return nil, err }
+		if err := runtime.CaptureEntityQueryProperties(entity, authorized); err != nil { return nil, err }
 		return entity, nil
 	}, yield)
 }

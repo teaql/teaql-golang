@@ -299,6 +299,10 @@ func (e *ScalarTypeProbe) ToJSON(profile ...runtime.JsonFieldNamingProfile) ([]b
 
 func (e *ScalarTypeProbe) MarshalJSON() ([]byte, error) { return e.ToJSON() }
 
+// Only aliases captured from an executed query are public query properties.
+// Never dump Base().Dynamic: it also contains modeled and private runtime data.
+func (e *ScalarTypeProbe) JSONQueryProperties() core.Record { return e.base.QueryProperties() }
+
 // Only shallow loaded values escape. Related documents are visited lazily by
 // the runtime codec under its depth, byte and cycle guards.
 func (e *ScalarTypeProbe) LoadedJSONFields() core.Record {
@@ -404,107 +408,107 @@ func (e *ScalarTypeProbe) TeaqlPreflightWithinGraph(context *runtime.UserContext
 		if e.isNew { operation = core.MutationInsert }
 		if operation == core.MutationUpdate {
 			if !e.IsLoaded("id") {
-				result := runtime.CheckResult{RuleID: "invalid_type", CanonicalLocation: runtime.Location().Property("id"), Message: "Mutation requires a fully loaded entity"}
+				result := runtime.CheckResult{RuleID: "invalid_type", EntityType: "ScalarTypeProbe", CanonicalLocation: runtime.Location().Property("id"), Message: "Mutation requires a fully loaded entity"}
 				return &runtime.RuntimeError{Type: "Check", CheckResults: []runtime.CheckResult{result}}
 			}
 			if !e.IsLoaded("type_platform_id") {
-				result := runtime.CheckResult{RuleID: "invalid_type", CanonicalLocation: runtime.Location().Property("type_platform"), Message: "Mutation requires a fully loaded entity"}
+				result := runtime.CheckResult{RuleID: "invalid_type", EntityType: "ScalarTypeProbe", CanonicalLocation: runtime.Location().Property("type_platform"), Message: "Mutation requires a fully loaded entity"}
 				return &runtime.RuntimeError{Type: "Check", CheckResults: []runtime.CheckResult{result}}
 			}
 			if !e.IsLoaded("required_string") {
-				result := runtime.CheckResult{RuleID: "invalid_type", CanonicalLocation: runtime.Location().Property("required_string"), Message: "Mutation requires a fully loaded entity"}
+				result := runtime.CheckResult{RuleID: "invalid_type", EntityType: "ScalarTypeProbe", CanonicalLocation: runtime.Location().Property("required_string"), Message: "Mutation requires a fully loaded entity"}
 				return &runtime.RuntimeError{Type: "Check", CheckResults: []runtime.CheckResult{result}}
 			}
 			if !e.IsLoaded("optional_string") {
-				result := runtime.CheckResult{RuleID: "invalid_type", CanonicalLocation: runtime.Location().Property("optional_string"), Message: "Mutation requires a fully loaded entity"}
+				result := runtime.CheckResult{RuleID: "invalid_type", EntityType: "ScalarTypeProbe", CanonicalLocation: runtime.Location().Property("optional_string"), Message: "Mutation requires a fully loaded entity"}
 				return &runtime.RuntimeError{Type: "Check", CheckResults: []runtime.CheckResult{result}}
 			}
 			if !e.IsLoaded("large_text") {
-				result := runtime.CheckResult{RuleID: "invalid_type", CanonicalLocation: runtime.Location().Property("large_text"), Message: "Mutation requires a fully loaded entity"}
+				result := runtime.CheckResult{RuleID: "invalid_type", EntityType: "ScalarTypeProbe", CanonicalLocation: runtime.Location().Property("large_text"), Message: "Mutation requires a fully loaded entity"}
 				return &runtime.RuntimeError{Type: "Check", CheckResults: []runtime.CheckResult{result}}
 			}
 			if !e.IsLoaded("required_boolean") {
-				result := runtime.CheckResult{RuleID: "invalid_type", CanonicalLocation: runtime.Location().Property("required_boolean"), Message: "Mutation requires a fully loaded entity"}
+				result := runtime.CheckResult{RuleID: "invalid_type", EntityType: "ScalarTypeProbe", CanonicalLocation: runtime.Location().Property("required_boolean"), Message: "Mutation requires a fully loaded entity"}
 				return &runtime.RuntimeError{Type: "Check", CheckResults: []runtime.CheckResult{result}}
 			}
 			if !e.IsLoaded("optional_boolean") {
-				result := runtime.CheckResult{RuleID: "invalid_type", CanonicalLocation: runtime.Location().Property("optional_boolean"), Message: "Mutation requires a fully loaded entity"}
+				result := runtime.CheckResult{RuleID: "invalid_type", EntityType: "ScalarTypeProbe", CanonicalLocation: runtime.Location().Property("optional_boolean"), Message: "Mutation requires a fully loaded entity"}
 				return &runtime.RuntimeError{Type: "Check", CheckResults: []runtime.CheckResult{result}}
 			}
 			if !e.IsLoaded("required_integer") {
-				result := runtime.CheckResult{RuleID: "invalid_type", CanonicalLocation: runtime.Location().Property("required_integer"), Message: "Mutation requires a fully loaded entity"}
+				result := runtime.CheckResult{RuleID: "invalid_type", EntityType: "ScalarTypeProbe", CanonicalLocation: runtime.Location().Property("required_integer"), Message: "Mutation requires a fully loaded entity"}
 				return &runtime.RuntimeError{Type: "Check", CheckResults: []runtime.CheckResult{result}}
 			}
 			if !e.IsLoaded("optional_integer") {
-				result := runtime.CheckResult{RuleID: "invalid_type", CanonicalLocation: runtime.Location().Property("optional_integer"), Message: "Mutation requires a fully loaded entity"}
+				result := runtime.CheckResult{RuleID: "invalid_type", EntityType: "ScalarTypeProbe", CanonicalLocation: runtime.Location().Property("optional_integer"), Message: "Mutation requires a fully loaded entity"}
 				return &runtime.RuntimeError{Type: "Check", CheckResults: []runtime.CheckResult{result}}
 			}
 			if !e.IsLoaded("required_long") {
-				result := runtime.CheckResult{RuleID: "invalid_type", CanonicalLocation: runtime.Location().Property("required_long"), Message: "Mutation requires a fully loaded entity"}
+				result := runtime.CheckResult{RuleID: "invalid_type", EntityType: "ScalarTypeProbe", CanonicalLocation: runtime.Location().Property("required_long"), Message: "Mutation requires a fully loaded entity"}
 				return &runtime.RuntimeError{Type: "Check", CheckResults: []runtime.CheckResult{result}}
 			}
 			if !e.IsLoaded("optional_long") {
-				result := runtime.CheckResult{RuleID: "invalid_type", CanonicalLocation: runtime.Location().Property("optional_long"), Message: "Mutation requires a fully loaded entity"}
+				result := runtime.CheckResult{RuleID: "invalid_type", EntityType: "ScalarTypeProbe", CanonicalLocation: runtime.Location().Property("optional_long"), Message: "Mutation requires a fully loaded entity"}
 				return &runtime.RuntimeError{Type: "Check", CheckResults: []runtime.CheckResult{result}}
 			}
 			if !e.IsLoaded("required_decimal") {
-				result := runtime.CheckResult{RuleID: "invalid_type", CanonicalLocation: runtime.Location().Property("required_decimal"), Message: "Mutation requires a fully loaded entity"}
+				result := runtime.CheckResult{RuleID: "invalid_type", EntityType: "ScalarTypeProbe", CanonicalLocation: runtime.Location().Property("required_decimal"), Message: "Mutation requires a fully loaded entity"}
 				return &runtime.RuntimeError{Type: "Check", CheckResults: []runtime.CheckResult{result}}
 			}
 			if !e.IsLoaded("optional_decimal") {
-				result := runtime.CheckResult{RuleID: "invalid_type", CanonicalLocation: runtime.Location().Property("optional_decimal"), Message: "Mutation requires a fully loaded entity"}
+				result := runtime.CheckResult{RuleID: "invalid_type", EntityType: "ScalarTypeProbe", CanonicalLocation: runtime.Location().Property("optional_decimal"), Message: "Mutation requires a fully loaded entity"}
 				return &runtime.RuntimeError{Type: "Check", CheckResults: []runtime.CheckResult{result}}
 			}
 			if !e.IsLoaded("required_float") {
-				result := runtime.CheckResult{RuleID: "invalid_type", CanonicalLocation: runtime.Location().Property("required_float"), Message: "Mutation requires a fully loaded entity"}
+				result := runtime.CheckResult{RuleID: "invalid_type", EntityType: "ScalarTypeProbe", CanonicalLocation: runtime.Location().Property("required_float"), Message: "Mutation requires a fully loaded entity"}
 				return &runtime.RuntimeError{Type: "Check", CheckResults: []runtime.CheckResult{result}}
 			}
 			if !e.IsLoaded("optional_float") {
-				result := runtime.CheckResult{RuleID: "invalid_type", CanonicalLocation: runtime.Location().Property("optional_float"), Message: "Mutation requires a fully loaded entity"}
+				result := runtime.CheckResult{RuleID: "invalid_type", EntityType: "ScalarTypeProbe", CanonicalLocation: runtime.Location().Property("optional_float"), Message: "Mutation requires a fully loaded entity"}
 				return &runtime.RuntimeError{Type: "Check", CheckResults: []runtime.CheckResult{result}}
 			}
 			if !e.IsLoaded("required_double") {
-				result := runtime.CheckResult{RuleID: "invalid_type", CanonicalLocation: runtime.Location().Property("required_double"), Message: "Mutation requires a fully loaded entity"}
+				result := runtime.CheckResult{RuleID: "invalid_type", EntityType: "ScalarTypeProbe", CanonicalLocation: runtime.Location().Property("required_double"), Message: "Mutation requires a fully loaded entity"}
 				return &runtime.RuntimeError{Type: "Check", CheckResults: []runtime.CheckResult{result}}
 			}
 			if !e.IsLoaded("optional_double") {
-				result := runtime.CheckResult{RuleID: "invalid_type", CanonicalLocation: runtime.Location().Property("optional_double"), Message: "Mutation requires a fully loaded entity"}
+				result := runtime.CheckResult{RuleID: "invalid_type", EntityType: "ScalarTypeProbe", CanonicalLocation: runtime.Location().Property("optional_double"), Message: "Mutation requires a fully loaded entity"}
 				return &runtime.RuntimeError{Type: "Check", CheckResults: []runtime.CheckResult{result}}
 			}
 			if !e.IsLoaded("required_date") {
-				result := runtime.CheckResult{RuleID: "invalid_type", CanonicalLocation: runtime.Location().Property("required_date"), Message: "Mutation requires a fully loaded entity"}
+				result := runtime.CheckResult{RuleID: "invalid_type", EntityType: "ScalarTypeProbe", CanonicalLocation: runtime.Location().Property("required_date"), Message: "Mutation requires a fully loaded entity"}
 				return &runtime.RuntimeError{Type: "Check", CheckResults: []runtime.CheckResult{result}}
 			}
 			if !e.IsLoaded("optional_date") {
-				result := runtime.CheckResult{RuleID: "invalid_type", CanonicalLocation: runtime.Location().Property("optional_date"), Message: "Mutation requires a fully loaded entity"}
+				result := runtime.CheckResult{RuleID: "invalid_type", EntityType: "ScalarTypeProbe", CanonicalLocation: runtime.Location().Property("optional_date"), Message: "Mutation requires a fully loaded entity"}
 				return &runtime.RuntimeError{Type: "Check", CheckResults: []runtime.CheckResult{result}}
 			}
 			if !e.IsLoaded("required_time") {
-				result := runtime.CheckResult{RuleID: "invalid_type", CanonicalLocation: runtime.Location().Property("required_time"), Message: "Mutation requires a fully loaded entity"}
+				result := runtime.CheckResult{RuleID: "invalid_type", EntityType: "ScalarTypeProbe", CanonicalLocation: runtime.Location().Property("required_time"), Message: "Mutation requires a fully loaded entity"}
 				return &runtime.RuntimeError{Type: "Check", CheckResults: []runtime.CheckResult{result}}
 			}
 			if !e.IsLoaded("optional_time") {
-				result := runtime.CheckResult{RuleID: "invalid_type", CanonicalLocation: runtime.Location().Property("optional_time"), Message: "Mutation requires a fully loaded entity"}
+				result := runtime.CheckResult{RuleID: "invalid_type", EntityType: "ScalarTypeProbe", CanonicalLocation: runtime.Location().Property("optional_time"), Message: "Mutation requires a fully loaded entity"}
 				return &runtime.RuntimeError{Type: "Check", CheckResults: []runtime.CheckResult{result}}
 			}
 			if !e.IsLoaded("required_datetime") {
-				result := runtime.CheckResult{RuleID: "invalid_type", CanonicalLocation: runtime.Location().Property("required_datetime"), Message: "Mutation requires a fully loaded entity"}
+				result := runtime.CheckResult{RuleID: "invalid_type", EntityType: "ScalarTypeProbe", CanonicalLocation: runtime.Location().Property("required_datetime"), Message: "Mutation requires a fully loaded entity"}
 				return &runtime.RuntimeError{Type: "Check", CheckResults: []runtime.CheckResult{result}}
 			}
 			if !e.IsLoaded("optional_datetime") {
-				result := runtime.CheckResult{RuleID: "invalid_type", CanonicalLocation: runtime.Location().Property("optional_datetime"), Message: "Mutation requires a fully loaded entity"}
+				result := runtime.CheckResult{RuleID: "invalid_type", EntityType: "ScalarTypeProbe", CanonicalLocation: runtime.Location().Property("optional_datetime"), Message: "Mutation requires a fully loaded entity"}
 				return &runtime.RuntimeError{Type: "Check", CheckResults: []runtime.CheckResult{result}}
 			}
 			if !e.IsLoaded("create_time") {
-				result := runtime.CheckResult{RuleID: "invalid_type", CanonicalLocation: runtime.Location().Property("create_time"), Message: "Mutation requires a fully loaded entity"}
+				result := runtime.CheckResult{RuleID: "invalid_type", EntityType: "ScalarTypeProbe", CanonicalLocation: runtime.Location().Property("create_time"), Message: "Mutation requires a fully loaded entity"}
 				return &runtime.RuntimeError{Type: "Check", CheckResults: []runtime.CheckResult{result}}
 			}
 			if !e.IsLoaded("update_time") {
-				result := runtime.CheckResult{RuleID: "invalid_type", CanonicalLocation: runtime.Location().Property("update_time"), Message: "Mutation requires a fully loaded entity"}
+				result := runtime.CheckResult{RuleID: "invalid_type", EntityType: "ScalarTypeProbe", CanonicalLocation: runtime.Location().Property("update_time"), Message: "Mutation requires a fully loaded entity"}
 				return &runtime.RuntimeError{Type: "Check", CheckResults: []runtime.CheckResult{result}}
 			}
 			if !e.IsLoaded("version") {
-				result := runtime.CheckResult{RuleID: "invalid_type", CanonicalLocation: runtime.Location().Property("version"), Message: "Mutation requires a fully loaded entity"}
+				result := runtime.CheckResult{RuleID: "invalid_type", EntityType: "ScalarTypeProbe", CanonicalLocation: runtime.Location().Property("version"), Message: "Mutation requires a fully loaded entity"}
 				return &runtime.RuntimeError{Type: "Check", CheckResults: []runtime.CheckResult{result}}
 			}
 		}

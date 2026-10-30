@@ -1071,6 +1071,7 @@ func (e *ExecutableProductRequest) ExecuteForList(context *runtime.UserContext) 
 					if err := childEntity.FromRecord(childRecord); err != nil { return nil, err }
 					entity.OrderLineList().Add(childEntity)
 				}}
+		if err := runtime.CaptureEntityQueryProperties(entity, authorized); err != nil { return nil, err }
 		return entity, nil
 	})
 }
@@ -1098,6 +1099,7 @@ func (e *ExecutableProductRequest) ExecuteForStream(context *runtime.UserContext
 	return runtime.ExecuteTypedStream(context, ds, authorized, chunkSize, func(rec core.Record) (*Product, error) {
 		entity := newLoadedProduct()
 		if err := entity.FromRecord(rec); err != nil { return nil, err }
+		if err := runtime.CaptureEntityQueryProperties(entity, authorized); err != nil { return nil, err }
 		return entity, nil
 	}, yield)
 }

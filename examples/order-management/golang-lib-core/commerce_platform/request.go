@@ -1449,6 +1449,7 @@ func (e *ExecutableCommercePlatformRequest) ExecuteForList(context *runtime.User
 					if err := childEntity.FromRecord(childRecord); err != nil { return nil, err }
 					entity.OrderSearchPresetList().Add(childEntity)
 				}}
+		if err := runtime.CaptureEntityQueryProperties(entity, authorized); err != nil { return nil, err }
 		return entity, nil
 	})
 }
@@ -1476,6 +1477,7 @@ func (e *ExecutableCommercePlatformRequest) ExecuteForStream(context *runtime.Us
 	return runtime.ExecuteTypedStream(context, ds, authorized, chunkSize, func(rec core.Record) (*CommercePlatform, error) {
 		entity := newLoadedCommercePlatform()
 		if err := entity.FromRecord(rec); err != nil { return nil, err }
+		if err := runtime.CaptureEntityQueryProperties(entity, authorized); err != nil { return nil, err }
 		return entity, nil
 	}, yield)
 }
