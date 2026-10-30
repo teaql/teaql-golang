@@ -124,12 +124,21 @@ func (e *SqlDataServiceExecutor) Mutate(context stdcontext.Context, request data
 	switch req := request.(type) {
 	case *data_service.InsertMutation:
 		entity := e.metadata.Entity(req.Cmd.Entity)
+		if entity != nil && entity.HasBlobFields() {
+			return nil, fmt.Errorf("BLOB_CAPABILITY_MISSING")
+		}
 		compiled, err = e.dialect.CompileInsert(entity, req.Cmd)
 	case *data_service.UpdateMutation:
 		entity := e.metadata.Entity(req.Cmd.Entity)
+		if entity != nil && entity.HasBlobFields() {
+			return nil, fmt.Errorf("BLOB_CAPABILITY_MISSING")
+		}
 		compiled, err = e.dialect.CompileUpdate(entity, req.Cmd)
 	case *data_service.DeleteMutation:
 		entity := e.metadata.Entity(req.Cmd.Entity)
+		if entity != nil && entity.HasBlobFields() {
+			return nil, fmt.Errorf("BLOB_CAPABILITY_MISSING")
+		}
 		compiled, err = e.dialect.CompileDelete(entity, req.Cmd)
 	default:
 		return nil, fmt.Errorf("unsupported mutation type")

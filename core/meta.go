@@ -9,6 +9,8 @@ type PropertyDescriptor struct {
 	IsVersion bool
 	// Trusted descriptor policy, never taken from a query/TFP request.
 	LogPolicy string
+	// BlobSpec is trusted generated model metadata, never a client declaration.
+	BlobSpec *BlobFieldSpec
 }
 
 func NewPropertyDescriptor(name string, dataType DataType) *PropertyDescriptor {
@@ -39,6 +41,16 @@ func (p *PropertyDescriptor) Id() *PropertyDescriptor {
 
 func (p *PropertyDescriptor) Version() *PropertyDescriptor {
 	p.IsVersion = true
+	return p
+}
+
+// Blob marks a typed stable-Key column and preserves its model policy for the optional module.
+func (p *PropertyDescriptor) Blob(spec BlobFieldSpec) *PropertyDescriptor {
+	copySpec := spec
+	p.DataType = TypeBlobRef
+	p.Nullable = spec.Nullable
+	p.BlobSpec = &copySpec
+	p.LogPolicy = "credential"
 	return p
 }
 
@@ -170,6 +182,18 @@ func (e *EntityDescriptor) PropertyByName(name string) *PropertyDescriptor {
 		}
 	}
 	return nil
+}
+
+func (e *EntityDescriptor) HasBlobFields() bool {
+	if e == nil {
+		return false
+	}
+	for _, property := range e.Properties {
+		if property.DataType == TypeBlobRef || property.BlobSpec != nil {
+			return true
+		}
+	}
+	return false
 }
 
 func (e *EntityDescriptor) RelationByName(name string) *RelationDescriptor {

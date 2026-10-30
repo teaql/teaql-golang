@@ -13,6 +13,7 @@ import (
 	"github.com/teaql/teaql-golang/core"
 	"github.com/teaql/teaql-golang/data_service"
 	"github.com/teaql/teaql-golang/internal/mutationaudit"
+	teaql_sql "github.com/teaql/teaql-golang/sql"
 )
 
 type ContinuousPageCursor struct {
@@ -289,6 +290,7 @@ type UserContext struct {
 	initialGraphs                     []*GraphNode
 	rootGraphs                        []*GraphNode
 	resources                         map[string]interface{}
+	requiredCapabilities              map[string]struct{}
 	standardAuditSink                 RawAuditEventSink
 	appAuditSink                      AppAuditEventSink
 	runtimeTelemetrySink              RuntimeTelemetrySink
@@ -318,6 +320,8 @@ type UserContext struct {
 	graphSaveGate                     sync.Mutex
 	graphSaveMu                       sync.Mutex
 	graphSaveActive                   bool
+	graphSQLHandle                    *GraphSQLHandle
+	graphSQLTransaction               physicalSQLModuleOwner
 	graphCommitActions                []func() error
 	graphRollbackActions              []func()
 	graphFixTime                      time.Time
@@ -904,10 +908,21 @@ func (c *UserContext) executeGraphSave(operationContext stdcontext.Context, work
 			c.finishGraphPreparation()
 		}
 	}()
+	if err := c.ValidateCapabilities(); err != nil {
+		return err
+	}
 	c.graphSaveMu.Lock()
 	provider := c.resources["dataService"]
+	blobResource := c.resources["blobMutationParticipant"]
 	originalIDGenerator, hadIDGenerator := c.resources["idGenerator"]
 	c.graphSaveMu.Unlock()
+	if blobResource != nil {
+		participant, okay := blobResource.(teaql_sql.BlobMutationParticipant)
+		if !okay {
+			return errors.New("BLOB_CAPABILITY_MISSING")
+		}
+		operationContext = teaql_sql.WithBlobMutationParticipant(operationContext, participant, c)
+	}
 	executor, ok := provider.(data_service.TransactionExecutor)
 	if !ok {
 		return fmt.Errorf("configured dataService does not support graph transactions")
@@ -916,10 +931,13 @@ func (c *UserContext) executeGraphSave(operationContext stdcontext.Context, work
 	if err != nil {
 		return err
 	}
+	physicalSQL, _ := transaction.(physicalSQLModuleOwner)
 	// The carrier follows the actual transaction instead of rewriting c.Context.
 	transaction = bindGraphTelemetryTransaction(transaction, operationContext)
 	c.graphSaveMu.Lock()
 	c.graphSaveActive = true
+	c.graphSQLTransaction = physicalSQL
+	c.graphSQLHandle = &GraphSQLHandle{context: c}
 	c.graphCommitActions = nil
 	c.graphRollbackActions = nil
 	if !preparationStarted {
@@ -953,6 +971,8 @@ func (c *UserContext) executeGraphSave(operationContext stdcontext.Context, work
 			delete(c.resources, "idGenerator")
 		}
 		c.graphSaveActive = false
+		c.graphSQLHandle = nil
+		c.graphSQLTransaction = nil
 		c.graphCommitActions = nil
 		c.graphRollbackActions = nil
 		c.graphFixTime = time.Time{}

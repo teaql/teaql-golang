@@ -7,6 +7,27 @@ Current published versions and acceptance status are tracked in
 [TeaQL Conformance](https://github.com/teaql/teaql-conformance). Individual
 verification notes below describe their own scope, not all-provider parity.
 
+## Blob module business-owner readiness
+
+`BlobReferenceModule.Install` installs services passively. Its explicit `Ready`
+check requires the current `dataService` to be a native SQLite
+`SqlDataServiceExecutor` using the catalog's configured SQL resource before it
+activates the content verifier. `UsesSqlTransport` accepts the exact transport
+instance, or a trusted provider's `SharesSQLResource` identity proof. The native
+SQLite provider also recognizes distinct transport wrappers over the same
+`*sql.DB` pool. Independent pools do not establish this identity.
+
+Missing, typed-nil, non-native, wrong-dialect and unproven resources fail with
+`BLOB_CAPABILITY_MISSING`; noncomparable transport values cannot panic the
+identity check. This check performs no SQL. Catalog schema validation remains
+explicit and separate from migration, upload or maintenance scheduling.
+
+An Update that omits a modeled Blob field preserves its binding version and
+catalog facts without requesting Blob mutation authorization. Native readback
+still rejects a database trigger that changes the omitted Blob value. An
+explicit assignment, including the same Key or null, follows the normal Blob
+authorization and binding path. Business mutation policy continues to apply.
+
 ## Required request intent
 
 The v0.3.0 runtime enforces this request contract. Regenerate older libraries

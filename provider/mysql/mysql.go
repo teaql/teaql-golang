@@ -50,6 +50,8 @@ func (d *MysqlDialect) SchemaTypeSql(dataType core.DataType, property *core.Prop
 		return "DECIMAL(38, 10)", nil
 	case core.TypeText:
 		return "VARCHAR(255)", nil
+	case core.TypeBlobRef:
+		return "VARCHAR(128)", nil
 	case core.TypeLargeText:
 		return "LONGTEXT", nil
 	case core.TypeJson:
@@ -309,6 +311,8 @@ func bindMysqlValue(value core.Value) (interface{}, error) {
 		return v.ToTime(), nil
 	case string:
 		return v, nil
+	case core.BlobRef:
+		return v.Value()
 	}
 	return nil, fmt.Errorf("unsupported mysql bind value type %T", value.V)
 }

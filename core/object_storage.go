@@ -164,10 +164,38 @@ func NewObjectReadURLOptions(lifetime time.Duration, disposition, filename strin
 		return ObjectReadURLOptions{}, &StorageError{StorageInvalidInput}
 	}
 	if filename != "" {
-		if disposition == "" || !objectHeader(filename) || strings.ContainsAny(filename, "/\\\"") {
+		if disposition == "" || len(filename) > 1024 || !utf8.ValidString(filename) ||
+			strings.IndexFunc(filename, unicode.IsControl) >= 0 || strings.ContainsAny(filename, "/\\\"") {
 			return ObjectReadURLOptions{}, &StorageError{StorageInvalidInput}
 		}
-		disposition += "; filename=\"" + filename + "\""
+		var fallback strings.Builder
+		ascii := true
+		for _, character := range filename {
+			if character > 126 {
+				ascii = false
+				fallback.WriteByte('_')
+			} else {
+				fallback.WriteRune(character)
+			}
+		}
+		if ascii {
+			disposition += "; filename=\"" + filename + "\""
+		} else {
+			const digits = "0123456789ABCDEF"
+			var encoded strings.Builder
+			for i := 0; i < len(filename); i++ {
+				b := filename[i]
+				if b >= 'A' && b <= 'Z' || b >= 'a' && b <= 'z' ||
+					b >= '0' && b <= '9' || b == '-' || b == '.' || b == '_' || b == '~' {
+					encoded.WriteByte(b)
+				} else {
+					encoded.WriteByte('%')
+					encoded.WriteByte(digits[b>>4])
+					encoded.WriteByte(digits[b&15])
+				}
+			}
+			disposition += "; filename=\"" + fallback.String() + "\"; filename*=UTF-8''" + encoded.String()
+		}
 	}
 	return ObjectReadURLOptions{lifetime, disposition}, nil
 }

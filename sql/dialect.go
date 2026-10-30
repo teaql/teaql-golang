@@ -97,6 +97,8 @@ func (d *DefaultSqlDialect) SchemaTypeSql(dataType core.DataType, property *core
 		return "NUMERIC", nil
 	case core.TypeText:
 		return "VARCHAR(255)", nil
+	case core.TypeBlobRef:
+		return "VARCHAR(128)", nil
 	case core.TypeLargeText, core.TypeJson, core.TypeDate, core.TypeTimestamp:
 		return "TEXT", nil
 	}
@@ -357,6 +359,9 @@ func (d *DefaultSqlDialect) CompileInsert(entity *core.EntityDescriptor, command
 
 	for _, property := range entity.Properties {
 		if value, ok := command.Values[property.Name]; ok {
+			if err := validateBlobMutationValue(entity, property, value); err != nil {
+				return nil, err
+			}
 			columns = append(columns, d.Dialect.QuoteIdent(property.ColName))
 			if value.V == nil {
 				value = core.ValTypedNull(property.DataType)
@@ -414,6 +419,9 @@ func (d *DefaultSqlDialect) CompileBatchInsert(entity *core.EntityDescriptor, co
 			if !ok {
 				value = core.ValNull()
 			}
+			if err := validateBlobMutationValue(entity, property, value); err != nil {
+				return nil, err
+			}
 			if value.V == nil {
 				value = core.ValTypedNull(property.DataType)
 			}
@@ -451,6 +459,9 @@ func (d *DefaultSqlDialect) CompileUpdate(entity *core.EntityDescriptor, command
 			continue
 		}
 		if value, ok := command.Values[property.Name]; ok {
+			if err := validateBlobMutationValue(entity, property, value); err != nil {
+				return nil, err
+			}
 			if value.V == nil {
 				value = core.ValTypedNull(property.DataType)
 			}
@@ -522,6 +533,9 @@ func (d *DefaultSqlDialect) CompileBatchUpdate(entity *core.EntityDescriptor, co
 			val, ok := record[fieldName]
 			if !ok {
 				val = core.ValNull()
+			}
+			if err := validateBlobMutationValue(entity, property, val); err != nil {
+				return nil, err
 			}
 			if val.V == nil {
 				val = core.ValTypedNull(property.DataType)
@@ -724,6 +738,9 @@ func (d *DefaultSqlDialect) appendMutationGuards(entity *core.EntityDescriptor, 
 		property := entity.PropertyByName(field)
 		if property == nil {
 			return nil, nil, ErrUnknownField(field)
+		}
+		if err := validateBlobMutationValue(entity, property, guards[field]); err != nil {
+			return nil, nil, err
 		}
 		d.bindField(&params, guards[field], entity, field)
 		predicates = append(predicates, fmt.Sprintf("%s = %s", d.Dialect.QuoteIdent(property.ColName), d.Dialect.Placeholder(len(params))))

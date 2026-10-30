@@ -6,7 +6,7 @@ require (
 	github.com/aws/aws-sdk-go-v2 v1.47.3
 	github.com/aws/aws-sdk-go-v2/credentials v1.20.9
 	github.com/aws/aws-sdk-go-v2/service/s3 v1.114.3
-	github.com/teaql/teaql-golang v0.3.1
+	github.com/teaql/teaql-golang v0.3.2
 	github.com/teaql/teaql-golang/objectstorage/s3 v0.3.1
 )
 

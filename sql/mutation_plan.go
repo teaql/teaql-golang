@@ -68,6 +68,10 @@ func (e *SqlDataServiceExecutor) prepareMutation(request ds.MutationRequest) (*s
 		if entity == nil {
 			return fmt.Errorf("unknown entity %s", name)
 		}
+		// A typed Blob business row must use the same physical owner as its catalog.
+		if entity.HasBlobFields() && (!e.transactional || e.blobParticipant == nil) {
+			return errBlobCapabilityMissing
+		}
 		dialect := &DefaultSqlDialect{Dialect: e.Dialect}
 		leaf := compiledMutationLeaf{entity: entity, entityName: name}
 		var err error

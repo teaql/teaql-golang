@@ -106,6 +106,8 @@ func (d *PostgresDialect) SchemaTypeSql(dataType core.DataType, property *core.P
 		return "NUMERIC", nil
 	case core.TypeText:
 		return "VARCHAR(255)", nil
+	case core.TypeBlobRef:
+		return "VARCHAR(128)", nil
 	case core.TypeLargeText:
 		return "TEXT", nil
 	case core.TypeJson:
@@ -367,6 +369,8 @@ func bindPgValue(value core.Value) (interface{}, error) {
 		return v.ToTime(), nil
 	case string:
 		return v, nil
+	case core.BlobRef:
+		return v.Value()
 	}
 	return nil, fmt.Errorf("unsupported postgres bind value type %T", value.V)
 }

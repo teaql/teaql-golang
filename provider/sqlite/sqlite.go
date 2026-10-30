@@ -133,6 +133,8 @@ func (d *SqliteDialect) SchemaTypeSql(dataType core.DataType, property *core.Pro
 		return "NUMERIC", nil
 	case core.TypeText:
 		return "VARCHAR(255)", nil
+	case core.TypeBlobRef:
+		return "VARCHAR(128)", nil
 	case core.TypeLargeText:
 		return "TEXT", nil
 	case core.TypeJson:
@@ -162,6 +164,13 @@ type SqliteMutationExecutor struct {
 
 func NewSqliteMutationExecutor(db *sql.DB) *SqliteMutationExecutor {
 	return &SqliteMutationExecutor{db: db}
+}
+
+// SharesSQLResource identifies one configured pool. Independent pools do not
+// establish shared transaction ownership.
+func (e *SqliteMutationExecutor) SharesSQLResource(transport teaql_sql.SqlTransport) bool {
+	other, ok := transport.(*SqliteMutationExecutor)
+	return ok && e != nil && other != nil && e.db != nil && e.db == other.db
 }
 
 func (e *SqliteMutationExecutor) NextId(context stdcontext.Context, entity string) (uint64, error) {
@@ -292,6 +301,112 @@ func (e *SqliteMutationExecutor) BeginSql(context stdcontext.Context) (teaql_sql
 	return &SqliteTransactionExecutor{tx: tx}, nil
 }
 
+// BeginImmediateSql acquires SQLite's write reservation before returning the
+// physical owner. Optional modules can hold it through external I/O without
+// allowing another connection to promote a stale journal row in the meantime.
+func (e *SqliteMutationExecutor) BeginImmediateSql(ctx stdcontext.Context) (teaql_sql.SqlTransactionTransportTx, error) {
+	conn, err := e.db.Conn(ctx)
+	if err != nil {
+		return nil, err
+	}
+	if _, err := conn.ExecContext(ctx, "BEGIN IMMEDIATE"); err != nil {
+		_ = conn.Close()
+		return nil, err
+	}
+	return &sqliteImmediateTransactionExecutor{conn: conn}, nil
+}
+
+type sqliteImmediateTransactionExecutor struct {
+	conn *sql.Conn
+}
+
+func (e *sqliteImmediateTransactionExecutor) FetchAllSql(ctx stdcontext.Context, query *teaql_sql.CompiledQuery) ([]core.Record, error) {
+	return fetchAllSqlOn(ctx, e.conn, query)
+}
+
+func (e *sqliteImmediateTransactionExecutor) ExecuteSql(ctx stdcontext.Context, query *teaql_sql.CompiledQuery) (uint64, error) {
+	params, err := bindValues(query.Params)
+	if err != nil {
+		return 0, err
+	}
+	result, err := e.conn.ExecContext(ctx, query.SqlWithComment(), params...)
+	if err != nil {
+		return 0, err
+	}
+	affected, err := result.RowsAffected()
+	return uint64(affected), err
+}
+
+func (e *sqliteImmediateTransactionExecutor) CommitSql(ctx stdcontext.Context) error {
+	if e.conn == nil {
+		return sql.ErrTxDone
+	}
+	if _, err := e.conn.ExecContext(ctx, "COMMIT"); err != nil {
+		return err
+	}
+	err := e.conn.Close()
+	e.conn = nil
+	return err
+}
+
+func (e *sqliteImmediateTransactionExecutor) RollbackSql(_ stdcontext.Context) error {
+	if e.conn == nil {
+		return sql.ErrTxDone
+	}
+	// The caller's context may already be cancelled. Still release the writer
+	// before returning the pooled connection to database/sql.
+	ctx, cancel := stdcontext.WithTimeout(stdcontext.Background(), 5*time.Second)
+	defer cancel()
+	_, err := e.conn.ExecContext(ctx, "ROLLBACK")
+	closeErr := e.conn.Close()
+	e.conn = nil
+	if err != nil {
+		return err
+	}
+	return closeErr
+}
+
+type sqliteRowQuerier interface {
+	QueryContext(stdcontext.Context, string, ...any) (*sql.Rows, error)
+}
+
+func fetchAllSqlOn(ctx stdcontext.Context, owner sqliteRowQuerier, query *teaql_sql.CompiledQuery) ([]core.Record, error) {
+	params, err := bindValues(query.Params)
+	if err != nil {
+		return nil, err
+	}
+	rows, err := owner.QueryContext(ctx, query.SqlWithComment(), params...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	cols, err := rows.Columns()
+	if err != nil {
+		return nil, err
+	}
+	colTypes, err := rows.ColumnTypes()
+	if err != nil {
+		return nil, err
+	}
+	var records []core.Record
+	for rows.Next() {
+		vals := make([]interface{}, len(cols))
+		valPtrs := make([]interface{}, len(cols))
+		for i := range vals {
+			valPtrs[i] = &vals[i]
+		}
+		if err := rows.Scan(valPtrs...); err != nil {
+			return nil, err
+		}
+		record, err := decodeSqliteRow(cols, colTypes, vals)
+		if err != nil {
+			return nil, err
+		}
+		records = append(records, record)
+	}
+	return records, rows.Err()
+}
+
 type SqliteTransactionExecutor struct {
 	tx *sql.Tx
 }
@@ -405,6 +520,8 @@ func bindSqliteValue(value core.Value) (interface{}, error) {
 		return int64(v), nil
 	case string:
 		return v, nil
+	case core.BlobRef:
+		return v.Value()
 	}
 	return nil, fmt.Errorf("unsupported sqlite bind value type %T", value.V)
 }

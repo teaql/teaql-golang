@@ -20,6 +20,7 @@ const (
 	TypeJson
 	TypeDate
 	TypeTimestamp
+	TypeBlobRef
 )
 
 // Value represents a dynamic database value.
@@ -41,6 +42,7 @@ func ValJson(j any) Value                { return Value{j} }
 func ValDate(d time.Time) Value          { return Value{d} }            // Stores date without time
 func ValTimestamp(t int64) Value         { return Value{Timestamp(t)} } // Unix timestamp in milliseconds
 func ValTypedNull(t DataType) Value      { return Value{t} }
+func ValBlobRef(reference BlobRef) Value { return Value{reference} }
 
 // --- Methods ---
 

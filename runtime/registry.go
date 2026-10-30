@@ -1,6 +1,8 @@
 package runtime
 
 import (
+	"sort"
+
 	"github.com/teaql/teaql-golang/core"
 )
 
@@ -145,26 +147,46 @@ func (r *InMemoryEntityDataServiceBehaviorRegistry) Behavior(entity string) Enti
 }
 
 type RuntimeModule struct {
-	Metadata        *InMemoryMetadataStore
-	EntityRegistry  *InMemoryEntityRegistry
-	Behaviors       *InMemoryEntityDataServiceBehaviorRegistry
-	EventSinks      *InMemoryRawAuditEventSink
-	InitialGraphs   []*GraphNode
-	RootGraphs      []*GraphNode
-	CheckerRegistry CheckerRegistry
-	WireMetadata    map[string]WireEntityMetadata
+	Metadata             *InMemoryMetadataStore
+	EntityRegistry       *InMemoryEntityRegistry
+	Behaviors            *InMemoryEntityDataServiceBehaviorRegistry
+	EventSinks           *InMemoryRawAuditEventSink
+	InitialGraphs        []*GraphNode
+	RootGraphs           []*GraphNode
+	CheckerRegistry      CheckerRegistry
+	WireMetadata         map[string]WireEntityMetadata
+	requiredCapabilities map[string]struct{}
 }
 
 func NewRuntimeModule() *RuntimeModule {
 	return &RuntimeModule{
-		Metadata:       NewInMemoryMetadataStore(),
-		EntityRegistry: NewInMemoryEntityRegistry(),
-		Behaviors:      NewInMemoryEntityDataServiceBehaviorRegistry(),
-		EventSinks:     NewInMemoryRawAuditEventSink(),
-		InitialGraphs:  make([]*GraphNode, 0),
-		RootGraphs:     make([]*GraphNode, 0),
-		WireMetadata:   make(map[string]WireEntityMetadata),
+		Metadata:             NewInMemoryMetadataStore(),
+		EntityRegistry:       NewInMemoryEntityRegistry(),
+		Behaviors:            NewInMemoryEntityDataServiceBehaviorRegistry(),
+		EventSinks:           NewInMemoryRawAuditEventSink(),
+		InitialGraphs:        make([]*GraphNode, 0),
+		RootGraphs:           make([]*GraphNode, 0),
+		WireMetadata:         make(map[string]WireEntityMetadata),
+		requiredCapabilities: make(map[string]struct{}),
 	}
+}
+
+// RequireCapability only declares a dependency; installation performs no I/O.
+func (m *RuntimeModule) RequireCapability(name string) *RuntimeModule {
+	if !canonicalCapability(name) {
+		panic("invalid runtime capability")
+	}
+	m.requiredCapabilities[name] = struct{}{}
+	return m
+}
+
+func (m *RuntimeModule) RequiredCapabilities() []string {
+	result := make([]string, 0, len(m.requiredCapabilities))
+	for name := range m.requiredCapabilities {
+		result = append(result, name)
+	}
+	sort.Strings(result)
+	return result
 }
 func (m *RuntimeModule) WireEntity(metadata WireEntityMetadata) *RuntimeModule {
 	m.WireMetadata[metadata.EntityType] = metadata
@@ -223,6 +245,12 @@ func (m *RuntimeModule) AddInitialGraphs(graphs []*GraphNode) *RuntimeModule {
 // And creates a composed manifest without modifying either input module.
 func (m *RuntimeModule) And(other *RuntimeModule) *RuntimeModule {
 	combined := NewRuntimeModule()
+	for name := range m.requiredCapabilities {
+		combined.requiredCapabilities[name] = struct{}{}
+	}
+	for name := range other.requiredCapabilities {
+		combined.requiredCapabilities[name] = struct{}{}
+	}
 	for name, metadata := range m.WireMetadata {
 		combined.WireMetadata[name] = metadata
 	}
@@ -256,6 +284,10 @@ func (m *RuntimeModule) And(other *RuntimeModule) *RuntimeModule {
 
 // ApplyTo sets the module's registries into the given UserContext
 func (m *RuntimeModule) ApplyTo(context *UserContext) {
+	context.requiredCapabilities = make(map[string]struct{}, len(m.requiredCapabilities))
+	for name := range m.requiredCapabilities {
+		context.requiredCapabilities[name] = struct{}{}
+	}
 	context.Metadata = m.Metadata
 	context.EntityRegistry = m.EntityRegistry
 	context.Behaviors = m.Behaviors
