@@ -40,12 +40,16 @@ def module_version():
 
 
 def reject_reused_tag(version):
-    tagged = subprocess.run(["git", "rev-parse", "--verify", "-q",
-                             "refs/tags/" + version + "^{commit}"],
-                            cwd=ROOT, text=True, capture_output=True)
-    if tagged.returncode == 0 and tagged.stdout.strip() != command(["git", "rev-parse", "HEAD"]):
-        raise RuntimeError("root candidate version " + version
-                           + " already tags different source; choose a new matching version")
+    for label, tag in (("root", version), ("S3", "objectstorage/s3/" + version)):
+        tagged = subprocess.run(["git", "rev-parse", "--verify", "-q",
+                                 "refs/tags/" + tag + "^{commit}"],
+                                cwd=ROOT, text=True, capture_output=True)
+        if tagged.returncode == 0:
+            raise RuntimeError(label + " candidate version " + version
+                               + " already has an immutable tag; choose a new matching version")
+        if tagged.returncode != 1:
+            raise RuntimeError("cannot check " + label + " candidate tag " + tag
+                               + ": " + tagged.stderr.strip())
 
 
 def tracked_files():
