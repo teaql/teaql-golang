@@ -23,7 +23,7 @@ type PaymentAttemptRequest struct {
 	queryOptions *core.QueryOptions
 	purposeText string
 	commentText string
-	relationFactories map[string]func() core.Entity
+	relationFactories map[string]func(core.Record) (core.Entity, error)
 	dynamicSearchWarnings []core.DynamicSearchWarning
 }
 
@@ -35,7 +35,7 @@ func NewPaymentAttemptRequest() *PaymentAttemptRequest {
 	r := &PaymentAttemptRequest{
 		Query: core.NewSelectQuery("Payment Attempt"),
 		queryOptions: core.NewQueryOptions(),
-		relationFactories: make(map[string]func() core.Entity),
+		relationFactories: make(map[string]func(core.Record) (core.Entity, error)),
 	}
 	r.Query.AndFilter(core.ExprGte("version", core.ValI64(1)))
 	return r
@@ -76,6 +76,28 @@ func (r *PaymentAttemptRequest) GetEntityDescriptor() *core.EntityDescriptor {
 
 func (r *PaymentAttemptRequest) NewRelationEntity() core.Entity {
 	return newLoadedPaymentAttempt()
+}
+
+// Generated query infrastructure. Preserve this request's selected nested
+// factories without importing parent packages or using a global registry.
+func (r *PaymentAttemptRequest) TeaqlHydrateQueryRecord(rec core.Record) (core.Entity, error) {
+	return r.teaqlHydrateQueryRecord(rec)
+}
+
+func (r *PaymentAttemptRequest) teaqlHydrateQueryRecord(rec core.Record) (*PaymentAttempt, error) {
+	entity := newLoadedPaymentAttempt()
+	if err := entity.FromRecord(rec); err != nil { return nil, err }
+	if relationValue, selected := rec["paymentEntity"]; selected {
+		entity.markRelationLoaded("paymentEntity")
+		if childRecord, ok := relationValue.V.(core.Record); ok {
+			if factory := r.relationFactories["paymentEntity"]; factory != nil {
+				childEntity, err := factory(childRecord)
+				if err != nil { return nil, err }
+				entity.setRelationEntity("paymentEntity", childEntity)
+			}
+		}
+	}
+	return entity, nil
 }
 
 func (r *PaymentAttemptRequest) Comment(comment string) *PaymentAttemptRequest {
@@ -483,7 +505,14 @@ func (r *PaymentAttemptRequest) SelectPaymentWith(child interface {
 	runtime.EnsureRelationProjection(r.Query, "payment_id")
 	r.Query.RelationQuerySelection("paymentEntity", core.QuerySelectionFor(child))
 	r.Query.Relations[len(r.Query.Relations)-1].Operation = &core.QueryOperation{Kind: "relation", Method: "SelectPaymentWith", Relation: "paymentEntity"}
-	r.relationFactories["paymentEntity"] = child.NewRelationEntity
+	r.relationFactories["paymentEntity"] = func(record core.Record) (core.Entity, error) {
+		if hydrator, ok := child.(interface { TeaqlHydrateQueryRecord(core.Record) (core.Entity, error) }); ok {
+			return hydrator.TeaqlHydrateQueryRecord(record)
+		}
+		entity := child.NewRelationEntity()
+		if err := entity.FromRecord(record); err != nil { return nil, err }
+		return entity, nil
+	}
 	return r
 }
 
@@ -551,18 +580,8 @@ func (e *ExecutablePaymentAttemptRequest) ExecuteForList(context *runtime.UserCo
 	if !ok { return nil, fmt.Errorf("dataService does not implement data_service.QueryExecutor") }
 	service := runtime.NewRuntimeDataService(context.Metadata, ds)
 	return runtime.ExecuteTypedList(context, service, authorized, plan, func(rec core.Record) (*PaymentAttempt, error) {
-		entity := newLoadedPaymentAttempt()
-		if err := entity.FromRecord(rec); err != nil { return nil, err }
-		if relationValue, selected := rec["paymentEntity"]; selected {
-			entity.markRelationLoaded("paymentEntity")
-			if childRecord, ok := relationValue.V.(core.Record); ok {
-				if factory := e.request.relationFactories["paymentEntity"]; factory != nil {
-					childEntity := factory()
-					if err := childEntity.FromRecord(childRecord); err != nil { return nil, err }
-					entity.setRelationEntity("paymentEntity", childEntity)
-				}
-			}
-		}
+		entity, err := r.teaqlHydrateQueryRecord(rec)
+		if err != nil { return nil, err }
 		if err := runtime.CaptureEntityQueryProperties(entity, authorized); err != nil { return nil, err }
 		return entity, nil
 	})

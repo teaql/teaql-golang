@@ -23,7 +23,7 @@ type ShipmentRequest struct {
 	queryOptions *core.QueryOptions
 	purposeText string
 	commentText string
-	relationFactories map[string]func() core.Entity
+	relationFactories map[string]func(core.Record) (core.Entity, error)
 	dynamicSearchWarnings []core.DynamicSearchWarning
 }
 
@@ -35,7 +35,7 @@ func NewShipmentRequest() *ShipmentRequest {
 	r := &ShipmentRequest{
 		Query: core.NewSelectQuery("Shipment"),
 		queryOptions: core.NewQueryOptions(),
-		relationFactories: make(map[string]func() core.Entity),
+		relationFactories: make(map[string]func(core.Record) (core.Entity, error)),
 	}
 	r.Query.AndFilter(core.ExprGte("version", core.ValI64(1)))
 	return r
@@ -76,6 +76,28 @@ func (r *ShipmentRequest) GetEntityDescriptor() *core.EntityDescriptor {
 
 func (r *ShipmentRequest) NewRelationEntity() core.Entity {
 	return newLoadedShipment()
+}
+
+// Generated query infrastructure. Preserve this request's selected nested
+// factories without importing parent packages or using a global registry.
+func (r *ShipmentRequest) TeaqlHydrateQueryRecord(rec core.Record) (core.Entity, error) {
+	return r.teaqlHydrateQueryRecord(rec)
+}
+
+func (r *ShipmentRequest) teaqlHydrateQueryRecord(rec core.Record) (*Shipment, error) {
+	entity := newLoadedShipment()
+	if err := entity.FromRecord(rec); err != nil { return nil, err }
+	if relationValue, selected := rec["customerOrderEntity"]; selected {
+		entity.markRelationLoaded("customerOrderEntity")
+		if childRecord, ok := relationValue.V.(core.Record); ok {
+			if factory := r.relationFactories["customerOrderEntity"]; factory != nil {
+				childEntity, err := factory(childRecord)
+				if err != nil { return nil, err }
+				entity.setRelationEntity("customerOrderEntity", childEntity)
+			}
+		}
+	}
+	return entity, nil
 }
 
 func (r *ShipmentRequest) Comment(comment string) *ShipmentRequest {
@@ -483,7 +505,14 @@ func (r *ShipmentRequest) SelectCustomerOrderWith(child interface {
 	runtime.EnsureRelationProjection(r.Query, "customer_order_id")
 	r.Query.RelationQuerySelection("customerOrderEntity", core.QuerySelectionFor(child))
 	r.Query.Relations[len(r.Query.Relations)-1].Operation = &core.QueryOperation{Kind: "relation", Method: "SelectCustomerOrderWith", Relation: "customerOrderEntity"}
-	r.relationFactories["customerOrderEntity"] = child.NewRelationEntity
+	r.relationFactories["customerOrderEntity"] = func(record core.Record) (core.Entity, error) {
+		if hydrator, ok := child.(interface { TeaqlHydrateQueryRecord(core.Record) (core.Entity, error) }); ok {
+			return hydrator.TeaqlHydrateQueryRecord(record)
+		}
+		entity := child.NewRelationEntity()
+		if err := entity.FromRecord(record); err != nil { return nil, err }
+		return entity, nil
+	}
 	return r
 }
 
@@ -551,18 +580,8 @@ func (e *ExecutableShipmentRequest) ExecuteForList(context *runtime.UserContext)
 	if !ok { return nil, fmt.Errorf("dataService does not implement data_service.QueryExecutor") }
 	service := runtime.NewRuntimeDataService(context.Metadata, ds)
 	return runtime.ExecuteTypedList(context, service, authorized, plan, func(rec core.Record) (*Shipment, error) {
-		entity := newLoadedShipment()
-		if err := entity.FromRecord(rec); err != nil { return nil, err }
-		if relationValue, selected := rec["customerOrderEntity"]; selected {
-			entity.markRelationLoaded("customerOrderEntity")
-			if childRecord, ok := relationValue.V.(core.Record); ok {
-				if factory := e.request.relationFactories["customerOrderEntity"]; factory != nil {
-					childEntity := factory()
-					if err := childEntity.FromRecord(childRecord); err != nil { return nil, err }
-					entity.setRelationEntity("customerOrderEntity", childEntity)
-				}
-			}
-		}
+		entity, err := r.teaqlHydrateQueryRecord(rec)
+		if err != nil { return nil, err }
 		if err := runtime.CaptureEntityQueryProperties(entity, authorized); err != nil { return nil, err }
 		return entity, nil
 	})

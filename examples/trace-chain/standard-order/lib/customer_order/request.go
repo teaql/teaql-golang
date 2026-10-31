@@ -24,7 +24,7 @@ type CustomerOrderRequest struct {
 	queryOptions *core.QueryOptions
 	purposeText string
 	commentText string
-	relationFactories map[string]func() core.Entity
+	relationFactories map[string]func(core.Record) (core.Entity, error)
 	dynamicSearchWarnings []core.DynamicSearchWarning
 }
 
@@ -36,7 +36,7 @@ func NewCustomerOrderRequest() *CustomerOrderRequest {
 	r := &CustomerOrderRequest{
 		Query: core.NewSelectQuery("Customer Order"),
 		queryOptions: core.NewQueryOptions(),
-		relationFactories: make(map[string]func() core.Entity),
+		relationFactories: make(map[string]func(core.Record) (core.Entity, error)),
 	}
 	r.Query.AndFilter(core.ExprGte("version", core.ValI64(1)))
 	return r
@@ -77,6 +77,51 @@ func (r *CustomerOrderRequest) GetEntityDescriptor() *core.EntityDescriptor {
 
 func (r *CustomerOrderRequest) NewRelationEntity() core.Entity {
 	return newLoadedCustomerOrder()
+}
+
+// Generated query infrastructure. Preserve this request's selected nested
+// factories without importing parent packages or using a global registry.
+func (r *CustomerOrderRequest) TeaqlHydrateQueryRecord(rec core.Record) (core.Entity, error) {
+	return r.teaqlHydrateQueryRecord(rec)
+}
+
+func (r *CustomerOrderRequest) teaqlHydrateQueryRecord(rec core.Record) (*CustomerOrder, error) {
+	entity := newLoadedCustomerOrder()
+	if err := entity.FromRecord(rec); err != nil { return nil, err }
+	if relationValue, selected := rec["customerEntity"]; selected {
+		entity.markRelationLoaded("customerEntity")
+		if childRecord, ok := relationValue.V.(core.Record); ok {
+			if factory := r.relationFactories["customerEntity"]; factory != nil {
+				childEntity, err := factory(childRecord)
+				if err != nil { return nil, err }
+				entity.setRelationEntity("customerEntity", childEntity)
+			}
+		}
+	}
+	if relationValue, selected := rec["statusEntity"]; selected {
+		entity.markRelationLoaded("statusEntity")
+		if childRecord, ok := relationValue.V.(core.Record); ok {
+			if factory := r.relationFactories["statusEntity"]; factory != nil {
+				childEntity, err := factory(childRecord)
+				if err != nil { return nil, err }
+				entity.setRelationEntity("statusEntity", childEntity)
+			}
+		}
+	}
+	if relationValue, selected := rec["orderItemList"]; selected {
+		factory := r.relationFactories["orderItemList"]
+		if factory == nil { return nil, fmt.Errorf("missing generated query hydrator for relation orderItemList") }
+		childRecords, ok := relationValue.V.([]core.Record)
+			if !ok { return nil, fmt.Errorf("relation orderItemList has unexpected runtime type %T", relationValue.V) }
+			for _, childRecord := range childRecords {
+				child, err := factory(childRecord)
+				if err != nil { return nil, err }
+				childEntity, ok := child.(*order_item.OrderItem)
+				if !ok { return nil, fmt.Errorf("unexpected generated query child type for relation orderItemList") }
+				childEntity.AttachEntityRoot(entity.EntityRoot())
+				entity.OrderItemList().Add(childEntity)
+			}}
+	return entity, nil
 }
 
 func (r *CustomerOrderRequest) Comment(comment string) *CustomerOrderRequest {
@@ -715,7 +760,14 @@ func (r *CustomerOrderRequest) SelectCustomerWith(child interface {
 	runtime.EnsureRelationProjection(r.Query, "customer_id")
 	r.Query.RelationQuerySelection("customerEntity", core.QuerySelectionFor(child))
 	r.Query.Relations[len(r.Query.Relations)-1].Operation = &core.QueryOperation{Kind: "relation", Method: "SelectCustomerWith", Relation: "customerEntity"}
-	r.relationFactories["customerEntity"] = child.NewRelationEntity
+	r.relationFactories["customerEntity"] = func(record core.Record) (core.Entity, error) {
+		if hydrator, ok := child.(interface { TeaqlHydrateQueryRecord(core.Record) (core.Entity, error) }); ok {
+			return hydrator.TeaqlHydrateQueryRecord(record)
+		}
+		entity := child.NewRelationEntity()
+		if err := entity.FromRecord(record); err != nil { return nil, err }
+		return entity, nil
+	}
 	return r
 }
 func (r *CustomerOrderRequest) SelectStatusWith(child interface {
@@ -725,7 +777,14 @@ func (r *CustomerOrderRequest) SelectStatusWith(child interface {
 	runtime.EnsureRelationProjection(r.Query, "status_id")
 	r.Query.RelationQuerySelection("statusEntity", core.QuerySelectionFor(child))
 	r.Query.Relations[len(r.Query.Relations)-1].Operation = &core.QueryOperation{Kind: "relation", Method: "SelectStatusWith", Relation: "statusEntity"}
-	r.relationFactories["statusEntity"] = child.NewRelationEntity
+	r.relationFactories["statusEntity"] = func(record core.Record) (core.Entity, error) {
+		if hydrator, ok := child.(interface { TeaqlHydrateQueryRecord(core.Record) (core.Entity, error) }); ok {
+			return hydrator.TeaqlHydrateQueryRecord(record)
+		}
+		entity := child.NewRelationEntity()
+		if err := entity.FromRecord(record); err != nil { return nil, err }
+		return entity, nil
+	}
 	return r
 }
 
@@ -979,6 +1038,7 @@ func (r *CustomerOrderRequest) SelectOrderItemList() *CustomerOrderRequest {
 func (r *CustomerOrderRequest) SelectOrderItemListWith(child *order_item.OrderItemRequest) *CustomerOrderRequest {
 	r.Query.RelationQuerySelection("orderItemList", child.GetQuerySelection())
 	r.Query.Relations[len(r.Query.Relations)-1].Operation = &core.QueryOperation{Kind: "relation", Method: "SelectOrderItemListWith", Relation: "orderItemList"}
+	r.relationFactories["orderItemList"] = child.TeaqlHydrateQueryRecord
 	return r
 }
 
@@ -1045,38 +1105,8 @@ func (e *ExecutableCustomerOrderRequest) ExecuteForList(context *runtime.UserCon
 	if !ok { return nil, fmt.Errorf("dataService does not implement data_service.QueryExecutor") }
 	service := runtime.NewRuntimeDataService(context.Metadata, ds)
 	return runtime.ExecuteTypedList(context, service, authorized, plan, func(rec core.Record) (*CustomerOrder, error) {
-		entity := newLoadedCustomerOrder()
-		if err := entity.FromRecord(rec); err != nil { return nil, err }
-		if relationValue, selected := rec["customerEntity"]; selected {
-			entity.markRelationLoaded("customerEntity")
-			if childRecord, ok := relationValue.V.(core.Record); ok {
-				if factory := e.request.relationFactories["customerEntity"]; factory != nil {
-					childEntity := factory()
-					if err := childEntity.FromRecord(childRecord); err != nil { return nil, err }
-					entity.setRelationEntity("customerEntity", childEntity)
-				}
-			}
-		}
-		if relationValue, selected := rec["statusEntity"]; selected {
-			entity.markRelationLoaded("statusEntity")
-			if childRecord, ok := relationValue.V.(core.Record); ok {
-				if factory := e.request.relationFactories["statusEntity"]; factory != nil {
-					childEntity := factory()
-					if err := childEntity.FromRecord(childRecord); err != nil { return nil, err }
-					entity.setRelationEntity("statusEntity", childEntity)
-				}
-			}
-		}
-		if relationValue, selected := rec["orderItemList"]; selected {
-			childRecords, ok := relationValue.V.([]core.Record)
-				if !ok { return nil, fmt.Errorf("relation orderItemList has unexpected runtime type %T", relationValue.V) }
-				for _, childRecord := range childRecords {
-					childEntity := order_item.NewOrderItem()
-					childEntity.EntityRoot().ClearEntity(childEntity.EntityKey())
-					childEntity.AttachEntityRoot(entity.EntityRoot())
-					if err := childEntity.FromRecord(childRecord); err != nil { return nil, err }
-					entity.OrderItemList().Add(childEntity)
-				}}
+		entity, err := r.teaqlHydrateQueryRecord(rec)
+		if err != nil { return nil, err }
 		if err := runtime.CaptureEntityQueryProperties(entity, authorized); err != nil { return nil, err }
 		return entity, nil
 	})

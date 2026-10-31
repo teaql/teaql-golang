@@ -23,7 +23,7 @@ type ScalarTypeProbeRequest struct {
 	queryOptions *core.QueryOptions
 	purposeText string
 	commentText string
-	relationFactories map[string]func() core.Entity
+	relationFactories map[string]func(core.Record) (core.Entity, error)
 	dynamicSearchWarnings []core.DynamicSearchWarning
 }
 
@@ -35,7 +35,7 @@ func NewScalarTypeProbeRequest() *ScalarTypeProbeRequest {
 	r := &ScalarTypeProbeRequest{
 		Query: core.NewSelectQuery("Scalar Type Probe"),
 		queryOptions: core.NewQueryOptions(),
-		relationFactories: make(map[string]func() core.Entity),
+		relationFactories: make(map[string]func(core.Record) (core.Entity, error)),
 	}
 	r.Query.AndFilter(core.ExprGte("version", core.ValI64(1)))
 	return r
@@ -76,6 +76,28 @@ func (r *ScalarTypeProbeRequest) GetEntityDescriptor() *core.EntityDescriptor {
 
 func (r *ScalarTypeProbeRequest) NewRelationEntity() core.Entity {
 	return newLoadedScalarTypeProbe()
+}
+
+// Generated query infrastructure. Preserve this request's selected nested
+// factories without importing parent packages or using a global registry.
+func (r *ScalarTypeProbeRequest) TeaqlHydrateQueryRecord(rec core.Record) (core.Entity, error) {
+	return r.teaqlHydrateQueryRecord(rec)
+}
+
+func (r *ScalarTypeProbeRequest) teaqlHydrateQueryRecord(rec core.Record) (*ScalarTypeProbe, error) {
+	entity := newLoadedScalarTypeProbe()
+	if err := entity.FromRecord(rec); err != nil { return nil, err }
+	if relationValue, selected := rec["typePlatformEntity"]; selected {
+		entity.markRelationLoaded("typePlatformEntity")
+		if childRecord, ok := relationValue.V.(core.Record); ok {
+			if factory := r.relationFactories["typePlatformEntity"]; factory != nil {
+				childEntity, err := factory(childRecord)
+				if err != nil { return nil, err }
+				entity.setRelationEntity("typePlatformEntity", childEntity)
+			}
+		}
+	}
+	return entity, nil
 }
 
 func (r *ScalarTypeProbeRequest) Comment(comment string) *ScalarTypeProbeRequest {
@@ -1969,7 +1991,14 @@ func (r *ScalarTypeProbeRequest) SelectTypePlatformWith(child interface {
 	runtime.EnsureRelationProjection(r.Query, "type_platform_id")
 	r.Query.RelationQuerySelection("typePlatformEntity", core.QuerySelectionFor(child))
 	r.Query.Relations[len(r.Query.Relations)-1].Operation = &core.QueryOperation{Kind: "relation", Method: "SelectTypePlatformWith", Relation: "typePlatformEntity"}
-	r.relationFactories["typePlatformEntity"] = child.NewRelationEntity
+	r.relationFactories["typePlatformEntity"] = func(record core.Record) (core.Entity, error) {
+		if hydrator, ok := child.(interface { TeaqlHydrateQueryRecord(core.Record) (core.Entity, error) }); ok {
+			return hydrator.TeaqlHydrateQueryRecord(record)
+		}
+		entity := child.NewRelationEntity()
+		if err := entity.FromRecord(record); err != nil { return nil, err }
+		return entity, nil
+	}
 	return r
 }
 
@@ -2037,18 +2066,8 @@ func (e *ExecutableScalarTypeProbeRequest) ExecuteForList(context *runtime.UserC
 	if !ok { return nil, fmt.Errorf("dataService does not implement data_service.QueryExecutor") }
 	service := runtime.NewRuntimeDataService(context.Metadata, ds)
 	return runtime.ExecuteTypedList(context, service, authorized, plan, func(rec core.Record) (*ScalarTypeProbe, error) {
-		entity := newLoadedScalarTypeProbe()
-		if err := entity.FromRecord(rec); err != nil { return nil, err }
-		if relationValue, selected := rec["typePlatformEntity"]; selected {
-			entity.markRelationLoaded("typePlatformEntity")
-			if childRecord, ok := relationValue.V.(core.Record); ok {
-				if factory := e.request.relationFactories["typePlatformEntity"]; factory != nil {
-					childEntity := factory()
-					if err := childEntity.FromRecord(childRecord); err != nil { return nil, err }
-					entity.setRelationEntity("typePlatformEntity", childEntity)
-				}
-			}
-		}
+		entity, err := r.teaqlHydrateQueryRecord(rec)
+		if err != nil { return nil, err }
 		if err := runtime.CaptureEntityQueryProperties(entity, authorized); err != nil { return nil, err }
 		return entity, nil
 	})

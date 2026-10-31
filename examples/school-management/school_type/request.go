@@ -24,7 +24,7 @@ type SchoolTypeRequest struct {
 	queryOptions *core.QueryOptions
 	purposeText string
 	commentText string
-	relationFactories map[string]func() core.Entity
+	relationFactories map[string]func(core.Record) (core.Entity, error)
 	dynamicSearchWarnings []core.DynamicSearchWarning
 }
 
@@ -36,7 +36,7 @@ func NewSchoolTypeRequest() *SchoolTypeRequest {
 	r := &SchoolTypeRequest{
 		Query: core.NewSelectQuery("School Type"),
 		queryOptions: core.NewQueryOptions(),
-		relationFactories: make(map[string]func() core.Entity),
+		relationFactories: make(map[string]func(core.Record) (core.Entity, error)),
 	}
 	r.Query.AndFilter(core.ExprGte("version", core.ValI64(1)))
 	return r
@@ -77,6 +77,41 @@ func (r *SchoolTypeRequest) GetEntityDescriptor() *core.EntityDescriptor {
 
 func (r *SchoolTypeRequest) NewRelationEntity() core.Entity {
 	return newLoadedSchoolType()
+}
+
+// Generated query infrastructure. Preserve this request's selected nested
+// factories without importing parent packages or using a global registry.
+func (r *SchoolTypeRequest) TeaqlHydrateQueryRecord(rec core.Record) (core.Entity, error) {
+	return r.teaqlHydrateQueryRecord(rec)
+}
+
+func (r *SchoolTypeRequest) teaqlHydrateQueryRecord(rec core.Record) (*SchoolType, error) {
+	entity := newLoadedSchoolType()
+	if err := entity.FromRecord(rec); err != nil { return nil, err }
+	if relationValue, selected := rec["platformEntity"]; selected {
+		entity.markRelationLoaded("platformEntity")
+		if childRecord, ok := relationValue.V.(core.Record); ok {
+			if factory := r.relationFactories["platformEntity"]; factory != nil {
+				childEntity, err := factory(childRecord)
+				if err != nil { return nil, err }
+				entity.setRelationEntity("platformEntity", childEntity)
+			}
+		}
+	}
+	if relationValue, selected := rec["schoolList"]; selected {
+		factory := r.relationFactories["schoolList"]
+		if factory == nil { return nil, fmt.Errorf("missing generated query hydrator for relation schoolList") }
+		childRecords, ok := relationValue.V.([]core.Record)
+			if !ok { return nil, fmt.Errorf("relation schoolList has unexpected runtime type %T", relationValue.V) }
+			for _, childRecord := range childRecords {
+				child, err := factory(childRecord)
+				if err != nil { return nil, err }
+				childEntity, ok := child.(*school.School)
+				if !ok { return nil, fmt.Errorf("unexpected generated query child type for relation schoolList") }
+				childEntity.AttachEntityRoot(entity.EntityRoot())
+				entity.SchoolList().Add(childEntity)
+			}}
+	return entity, nil
 }
 
 func (r *SchoolTypeRequest) Comment(comment string) *SchoolTypeRequest {
@@ -650,7 +685,14 @@ func (r *SchoolTypeRequest) SelectPlatformWith(child interface {
 	runtime.EnsureRelationProjection(r.Query, "platform_id")
 	r.Query.RelationQuerySelection("platformEntity", core.QuerySelectionFor(child))
 	r.Query.Relations[len(r.Query.Relations)-1].Operation = &core.QueryOperation{Kind: "relation", Method: "SelectPlatformWith", Relation: "platformEntity"}
-	r.relationFactories["platformEntity"] = child.NewRelationEntity
+	r.relationFactories["platformEntity"] = func(record core.Record) (core.Entity, error) {
+		if hydrator, ok := child.(interface { TeaqlHydrateQueryRecord(core.Record) (core.Entity, error) }); ok {
+			return hydrator.TeaqlHydrateQueryRecord(record)
+		}
+		entity := child.NewRelationEntity()
+		if err := entity.FromRecord(record); err != nil { return nil, err }
+		return entity, nil
+	}
 	return r
 }
 
@@ -865,6 +907,7 @@ func (r *SchoolTypeRequest) SelectSchoolList() *SchoolTypeRequest {
 func (r *SchoolTypeRequest) SelectSchoolListWith(child *school.SchoolRequest) *SchoolTypeRequest {
 	r.Query.RelationQuerySelection("schoolList", child.GetQuerySelection())
 	r.Query.Relations[len(r.Query.Relations)-1].Operation = &core.QueryOperation{Kind: "relation", Method: "SelectSchoolListWith", Relation: "schoolList"}
+	r.relationFactories["schoolList"] = child.TeaqlHydrateQueryRecord
 	return r
 }
 
@@ -931,28 +974,8 @@ func (e *ExecutableSchoolTypeRequest) ExecuteForList(context *runtime.UserContex
 	if !ok { return nil, fmt.Errorf("dataService does not implement data_service.QueryExecutor") }
 	service := runtime.NewRuntimeDataService(context.Metadata, ds)
 	return runtime.ExecuteTypedList(context, service, authorized, plan, func(rec core.Record) (*SchoolType, error) {
-		entity := newLoadedSchoolType()
-		if err := entity.FromRecord(rec); err != nil { return nil, err }
-		if relationValue, selected := rec["platformEntity"]; selected {
-			entity.markRelationLoaded("platformEntity")
-			if childRecord, ok := relationValue.V.(core.Record); ok {
-				if factory := e.request.relationFactories["platformEntity"]; factory != nil {
-					childEntity := factory()
-					if err := childEntity.FromRecord(childRecord); err != nil { return nil, err }
-					entity.setRelationEntity("platformEntity", childEntity)
-				}
-			}
-		}
-		if relationValue, selected := rec["schoolList"]; selected {
-			childRecords, ok := relationValue.V.([]core.Record)
-				if !ok { return nil, fmt.Errorf("relation schoolList has unexpected runtime type %T", relationValue.V) }
-				for _, childRecord := range childRecords {
-					childEntity := school.NewSchool()
-					childEntity.EntityRoot().ClearEntity(childEntity.EntityKey())
-					childEntity.AttachEntityRoot(entity.EntityRoot())
-					if err := childEntity.FromRecord(childRecord); err != nil { return nil, err }
-					entity.SchoolList().Add(childEntity)
-				}}
+		entity, err := r.teaqlHydrateQueryRecord(rec)
+		if err != nil { return nil, err }
 		if err := runtime.CaptureEntityQueryProperties(entity, authorized); err != nil { return nil, err }
 		return entity, nil
 	})

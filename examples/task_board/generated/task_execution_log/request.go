@@ -23,7 +23,7 @@ type TaskExecutionLogRequest struct {
 	queryOptions *core.QueryOptions
 	purposeText string
 	commentText string
-	relationFactories map[string]func() core.Entity
+	relationFactories map[string]func(core.Record) (core.Entity, error)
 	dynamicSearchWarnings []core.DynamicSearchWarning
 }
 
@@ -35,7 +35,7 @@ func NewTaskExecutionLogRequest() *TaskExecutionLogRequest {
 	r := &TaskExecutionLogRequest{
 		Query: core.NewSelectQuery("Task Execution Log"),
 		queryOptions: core.NewQueryOptions(),
-		relationFactories: make(map[string]func() core.Entity),
+		relationFactories: make(map[string]func(core.Record) (core.Entity, error)),
 	}
 	r.Query.AndFilter(core.ExprGte("version", core.ValI64(1)))
 	return r
@@ -76,6 +76,28 @@ func (r *TaskExecutionLogRequest) GetEntityDescriptor() *core.EntityDescriptor {
 
 func (r *TaskExecutionLogRequest) NewRelationEntity() core.Entity {
 	return newLoadedTaskExecutionLog()
+}
+
+// Generated query infrastructure. Preserve this request's selected nested
+// factories without importing parent packages or using a global registry.
+func (r *TaskExecutionLogRequest) TeaqlHydrateQueryRecord(rec core.Record) (core.Entity, error) {
+	return r.teaqlHydrateQueryRecord(rec)
+}
+
+func (r *TaskExecutionLogRequest) teaqlHydrateQueryRecord(rec core.Record) (*TaskExecutionLog, error) {
+	entity := newLoadedTaskExecutionLog()
+	if err := entity.FromRecord(rec); err != nil { return nil, err }
+	if relationValue, selected := rec["taskEntity"]; selected {
+		entity.markRelationLoaded("taskEntity")
+		if childRecord, ok := relationValue.V.(core.Record); ok {
+			if factory := r.relationFactories["taskEntity"]; factory != nil {
+				childEntity, err := factory(childRecord)
+				if err != nil { return nil, err }
+				entity.setRelationEntity("taskEntity", childEntity)
+			}
+		}
+	}
+	return entity, nil
 }
 
 func (r *TaskExecutionLogRequest) Comment(comment string) *TaskExecutionLogRequest {
@@ -580,7 +602,14 @@ func (r *TaskExecutionLogRequest) SelectTaskWith(child interface {
 	runtime.EnsureRelationProjection(r.Query, "task_id")
 	r.Query.RelationQuerySelection("taskEntity", core.QuerySelectionFor(child))
 	r.Query.Relations[len(r.Query.Relations)-1].Operation = &core.QueryOperation{Kind: "relation", Method: "SelectTaskWith", Relation: "taskEntity"}
-	r.relationFactories["taskEntity"] = child.NewRelationEntity
+	r.relationFactories["taskEntity"] = func(record core.Record) (core.Entity, error) {
+		if hydrator, ok := child.(interface { TeaqlHydrateQueryRecord(core.Record) (core.Entity, error) }); ok {
+			return hydrator.TeaqlHydrateQueryRecord(record)
+		}
+		entity := child.NewRelationEntity()
+		if err := entity.FromRecord(record); err != nil { return nil, err }
+		return entity, nil
+	}
 	return r
 }
 
@@ -648,18 +677,8 @@ func (e *ExecutableTaskExecutionLogRequest) ExecuteForList(context *runtime.User
 	if !ok { return nil, fmt.Errorf("dataService does not implement data_service.QueryExecutor") }
 	service := runtime.NewRuntimeDataService(context.Metadata, ds)
 	return runtime.ExecuteTypedList(context, service, authorized, plan, func(rec core.Record) (*TaskExecutionLog, error) {
-		entity := newLoadedTaskExecutionLog()
-		if err := entity.FromRecord(rec); err != nil { return nil, err }
-		if relationValue, selected := rec["taskEntity"]; selected {
-			entity.markRelationLoaded("taskEntity")
-			if childRecord, ok := relationValue.V.(core.Record); ok {
-				if factory := e.request.relationFactories["taskEntity"]; factory != nil {
-					childEntity := factory()
-					if err := childEntity.FromRecord(childRecord); err != nil { return nil, err }
-					entity.setRelationEntity("taskEntity", childEntity)
-				}
-			}
-		}
+		entity, err := r.teaqlHydrateQueryRecord(rec)
+		if err != nil { return nil, err }
 		if err := runtime.CaptureEntityQueryProperties(entity, authorized); err != nil { return nil, err }
 		return entity, nil
 	})

@@ -29,7 +29,7 @@ type CommercePlatformRequest struct {
 	queryOptions *core.QueryOptions
 	purposeText string
 	commentText string
-	relationFactories map[string]func() core.Entity
+	relationFactories map[string]func(core.Record) (core.Entity, error)
 	dynamicSearchWarnings []core.DynamicSearchWarning
 }
 
@@ -41,7 +41,7 @@ func NewCommercePlatformRequest() *CommercePlatformRequest {
 	r := &CommercePlatformRequest{
 		Query: core.NewSelectQuery("commerce_platform"),
 		queryOptions: core.NewQueryOptions(),
-		relationFactories: make(map[string]func() core.Entity),
+		relationFactories: make(map[string]func(core.Record) (core.Entity, error)),
 	}
 	r.Query.AndFilter(core.ExprGte("version", core.ValI64(1)))
 	return r
@@ -82,6 +82,96 @@ func (r *CommercePlatformRequest) GetEntityDescriptor() *core.EntityDescriptor {
 
 func (r *CommercePlatformRequest) NewRelationEntity() core.Entity {
 	return newLoadedCommercePlatform()
+}
+
+// Generated query infrastructure. Preserve this request's selected nested
+// factories without importing parent packages or using a global registry.
+func (r *CommercePlatformRequest) TeaqlHydrateQueryRecord(rec core.Record) (core.Entity, error) {
+	return r.teaqlHydrateQueryRecord(rec)
+}
+
+func (r *CommercePlatformRequest) teaqlHydrateQueryRecord(rec core.Record) (*CommercePlatform, error) {
+	entity := newLoadedCommercePlatform()
+	if err := entity.FromRecord(rec); err != nil { return nil, err }
+	if relationValue, selected := rec["customerList"]; selected {
+		factory := r.relationFactories["customerList"]
+		if factory == nil { return nil, fmt.Errorf("missing generated query hydrator for relation customerList") }
+		childRecords, ok := relationValue.V.([]core.Record)
+			if !ok { return nil, fmt.Errorf("relation customerList has unexpected runtime type %T", relationValue.V) }
+			for _, childRecord := range childRecords {
+				child, err := factory(childRecord)
+				if err != nil { return nil, err }
+				childEntity, ok := child.(*customer.Customer)
+				if !ok { return nil, fmt.Errorf("unexpected generated query child type for relation customerList") }
+				childEntity.AttachEntityRoot(entity.EntityRoot())
+				entity.CustomerList().Add(childEntity)
+			}}
+	if relationValue, selected := rec["orderStatusList"]; selected {
+		factory := r.relationFactories["orderStatusList"]
+		if factory == nil { return nil, fmt.Errorf("missing generated query hydrator for relation orderStatusList") }
+		childRecords, ok := relationValue.V.([]core.Record)
+			if !ok { return nil, fmt.Errorf("relation orderStatusList has unexpected runtime type %T", relationValue.V) }
+			for _, childRecord := range childRecords {
+				child, err := factory(childRecord)
+				if err != nil { return nil, err }
+				childEntity, ok := child.(*order_status.OrderStatus)
+				if !ok { return nil, fmt.Errorf("unexpected generated query child type for relation orderStatusList") }
+				childEntity.AttachEntityRoot(entity.EntityRoot())
+				entity.OrderStatusList().Add(childEntity)
+			}}
+	if relationValue, selected := rec["customerOrderList"]; selected {
+		factory := r.relationFactories["customerOrderList"]
+		if factory == nil { return nil, fmt.Errorf("missing generated query hydrator for relation customerOrderList") }
+		childRecords, ok := relationValue.V.([]core.Record)
+			if !ok { return nil, fmt.Errorf("relation customerOrderList has unexpected runtime type %T", relationValue.V) }
+			for _, childRecord := range childRecords {
+				child, err := factory(childRecord)
+				if err != nil { return nil, err }
+				childEntity, ok := child.(*customer_order.CustomerOrder)
+				if !ok { return nil, fmt.Errorf("unexpected generated query child type for relation customerOrderList") }
+				childEntity.AttachEntityRoot(entity.EntityRoot())
+				entity.CustomerOrderList().Add(childEntity)
+			}}
+	if relationValue, selected := rec["productList"]; selected {
+		factory := r.relationFactories["productList"]
+		if factory == nil { return nil, fmt.Errorf("missing generated query hydrator for relation productList") }
+		childRecords, ok := relationValue.V.([]core.Record)
+			if !ok { return nil, fmt.Errorf("relation productList has unexpected runtime type %T", relationValue.V) }
+			for _, childRecord := range childRecords {
+				child, err := factory(childRecord)
+				if err != nil { return nil, err }
+				childEntity, ok := child.(*product.Product)
+				if !ok { return nil, fmt.Errorf("unexpected generated query child type for relation productList") }
+				childEntity.AttachEntityRoot(entity.EntityRoot())
+				entity.ProductList().Add(childEntity)
+			}}
+	if relationValue, selected := rec["orderLineList"]; selected {
+		factory := r.relationFactories["orderLineList"]
+		if factory == nil { return nil, fmt.Errorf("missing generated query hydrator for relation orderLineList") }
+		childRecords, ok := relationValue.V.([]core.Record)
+			if !ok { return nil, fmt.Errorf("relation orderLineList has unexpected runtime type %T", relationValue.V) }
+			for _, childRecord := range childRecords {
+				child, err := factory(childRecord)
+				if err != nil { return nil, err }
+				childEntity, ok := child.(*order_line.OrderLine)
+				if !ok { return nil, fmt.Errorf("unexpected generated query child type for relation orderLineList") }
+				childEntity.AttachEntityRoot(entity.EntityRoot())
+				entity.OrderLineList().Add(childEntity)
+			}}
+	if relationValue, selected := rec["orderSearchPresetList"]; selected {
+		factory := r.relationFactories["orderSearchPresetList"]
+		if factory == nil { return nil, fmt.Errorf("missing generated query hydrator for relation orderSearchPresetList") }
+		childRecords, ok := relationValue.V.([]core.Record)
+			if !ok { return nil, fmt.Errorf("relation orderSearchPresetList has unexpected runtime type %T", relationValue.V) }
+			for _, childRecord := range childRecords {
+				child, err := factory(childRecord)
+				if err != nil { return nil, err }
+				childEntity, ok := child.(*order_search_preset.OrderSearchPreset)
+				if !ok { return nil, fmt.Errorf("unexpected generated query child type for relation orderSearchPresetList") }
+				childEntity.AttachEntityRoot(entity.EntityRoot())
+				entity.OrderSearchPresetList().Add(childEntity)
+			}}
+	return entity, nil
 }
 
 func (r *CommercePlatformRequest) Comment(comment string) *CommercePlatformRequest {
@@ -1191,6 +1281,7 @@ func (r *CommercePlatformRequest) SelectCustomerList() *CommercePlatformRequest 
 func (r *CommercePlatformRequest) SelectCustomerListWith(child *customer.CustomerRequest) *CommercePlatformRequest {
 	r.Query.RelationQuerySelection("customerList", child.GetQuerySelection())
 	r.Query.Relations[len(r.Query.Relations)-1].Operation = &core.QueryOperation{Kind: "relation", Method: "SelectCustomerListWith", Relation: "customerList"}
+	r.relationFactories["customerList"] = child.TeaqlHydrateQueryRecord
 	return r
 }
 func (r *CommercePlatformRequest) SelectOrderStatusList() *CommercePlatformRequest {
@@ -1200,6 +1291,7 @@ func (r *CommercePlatformRequest) SelectOrderStatusList() *CommercePlatformReque
 func (r *CommercePlatformRequest) SelectOrderStatusListWith(child *order_status.OrderStatusRequest) *CommercePlatformRequest {
 	r.Query.RelationQuerySelection("orderStatusList", child.GetQuerySelection())
 	r.Query.Relations[len(r.Query.Relations)-1].Operation = &core.QueryOperation{Kind: "relation", Method: "SelectOrderStatusListWith", Relation: "orderStatusList"}
+	r.relationFactories["orderStatusList"] = child.TeaqlHydrateQueryRecord
 	return r
 }
 func (r *CommercePlatformRequest) SelectCustomerOrderList() *CommercePlatformRequest {
@@ -1209,6 +1301,7 @@ func (r *CommercePlatformRequest) SelectCustomerOrderList() *CommercePlatformReq
 func (r *CommercePlatformRequest) SelectCustomerOrderListWith(child *customer_order.CustomerOrderRequest) *CommercePlatformRequest {
 	r.Query.RelationQuerySelection("customerOrderList", child.GetQuerySelection())
 	r.Query.Relations[len(r.Query.Relations)-1].Operation = &core.QueryOperation{Kind: "relation", Method: "SelectCustomerOrderListWith", Relation: "customerOrderList"}
+	r.relationFactories["customerOrderList"] = child.TeaqlHydrateQueryRecord
 	return r
 }
 func (r *CommercePlatformRequest) SelectProductList() *CommercePlatformRequest {
@@ -1218,6 +1311,7 @@ func (r *CommercePlatformRequest) SelectProductList() *CommercePlatformRequest {
 func (r *CommercePlatformRequest) SelectProductListWith(child *product.ProductRequest) *CommercePlatformRequest {
 	r.Query.RelationQuerySelection("productList", child.GetQuerySelection())
 	r.Query.Relations[len(r.Query.Relations)-1].Operation = &core.QueryOperation{Kind: "relation", Method: "SelectProductListWith", Relation: "productList"}
+	r.relationFactories["productList"] = child.TeaqlHydrateQueryRecord
 	return r
 }
 func (r *CommercePlatformRequest) SelectOrderLineList() *CommercePlatformRequest {
@@ -1227,6 +1321,7 @@ func (r *CommercePlatformRequest) SelectOrderLineList() *CommercePlatformRequest
 func (r *CommercePlatformRequest) SelectOrderLineListWith(child *order_line.OrderLineRequest) *CommercePlatformRequest {
 	r.Query.RelationQuerySelection("orderLineList", child.GetQuerySelection())
 	r.Query.Relations[len(r.Query.Relations)-1].Operation = &core.QueryOperation{Kind: "relation", Method: "SelectOrderLineListWith", Relation: "orderLineList"}
+	r.relationFactories["orderLineList"] = child.TeaqlHydrateQueryRecord
 	return r
 }
 func (r *CommercePlatformRequest) SelectOrderSearchPresetList() *CommercePlatformRequest {
@@ -1236,6 +1331,7 @@ func (r *CommercePlatformRequest) SelectOrderSearchPresetList() *CommercePlatfor
 func (r *CommercePlatformRequest) SelectOrderSearchPresetListWith(child *order_search_preset.OrderSearchPresetRequest) *CommercePlatformRequest {
 	r.Query.RelationQuerySelection("orderSearchPresetList", child.GetQuerySelection())
 	r.Query.Relations[len(r.Query.Relations)-1].Operation = &core.QueryOperation{Kind: "relation", Method: "SelectOrderSearchPresetListWith", Relation: "orderSearchPresetList"}
+	r.relationFactories["orderSearchPresetList"] = child.TeaqlHydrateQueryRecord
 	return r
 }
 
@@ -1387,68 +1483,8 @@ func (e *ExecutableCommercePlatformRequest) ExecuteForList(context *runtime.User
 	if !ok { return nil, fmt.Errorf("dataService does not implement data_service.QueryExecutor") }
 	service := runtime.NewRuntimeDataService(context.Metadata, ds)
 	return runtime.ExecuteTypedList(context, service, authorized, plan, func(rec core.Record) (*CommercePlatform, error) {
-		entity := newLoadedCommercePlatform()
-		if err := entity.FromRecord(rec); err != nil { return nil, err }
-		if relationValue, selected := rec["customerList"]; selected {
-			childRecords, ok := relationValue.V.([]core.Record)
-				if !ok { return nil, fmt.Errorf("relation customerList has unexpected runtime type %T", relationValue.V) }
-				for _, childRecord := range childRecords {
-					childEntity := customer.NewCustomer()
-					childEntity.EntityRoot().ClearEntity(childEntity.EntityKey())
-					childEntity.AttachEntityRoot(entity.EntityRoot())
-					if err := childEntity.FromRecord(childRecord); err != nil { return nil, err }
-					entity.CustomerList().Add(childEntity)
-				}}
-		if relationValue, selected := rec["orderStatusList"]; selected {
-			childRecords, ok := relationValue.V.([]core.Record)
-				if !ok { return nil, fmt.Errorf("relation orderStatusList has unexpected runtime type %T", relationValue.V) }
-				for _, childRecord := range childRecords {
-					childEntity := order_status.NewOrderStatus()
-					childEntity.EntityRoot().ClearEntity(childEntity.EntityKey())
-					childEntity.AttachEntityRoot(entity.EntityRoot())
-					if err := childEntity.FromRecord(childRecord); err != nil { return nil, err }
-					entity.OrderStatusList().Add(childEntity)
-				}}
-		if relationValue, selected := rec["customerOrderList"]; selected {
-			childRecords, ok := relationValue.V.([]core.Record)
-				if !ok { return nil, fmt.Errorf("relation customerOrderList has unexpected runtime type %T", relationValue.V) }
-				for _, childRecord := range childRecords {
-					childEntity := customer_order.NewCustomerOrder()
-					childEntity.EntityRoot().ClearEntity(childEntity.EntityKey())
-					childEntity.AttachEntityRoot(entity.EntityRoot())
-					if err := childEntity.FromRecord(childRecord); err != nil { return nil, err }
-					entity.CustomerOrderList().Add(childEntity)
-				}}
-		if relationValue, selected := rec["productList"]; selected {
-			childRecords, ok := relationValue.V.([]core.Record)
-				if !ok { return nil, fmt.Errorf("relation productList has unexpected runtime type %T", relationValue.V) }
-				for _, childRecord := range childRecords {
-					childEntity := product.NewProduct()
-					childEntity.EntityRoot().ClearEntity(childEntity.EntityKey())
-					childEntity.AttachEntityRoot(entity.EntityRoot())
-					if err := childEntity.FromRecord(childRecord); err != nil { return nil, err }
-					entity.ProductList().Add(childEntity)
-				}}
-		if relationValue, selected := rec["orderLineList"]; selected {
-			childRecords, ok := relationValue.V.([]core.Record)
-				if !ok { return nil, fmt.Errorf("relation orderLineList has unexpected runtime type %T", relationValue.V) }
-				for _, childRecord := range childRecords {
-					childEntity := order_line.NewOrderLine()
-					childEntity.EntityRoot().ClearEntity(childEntity.EntityKey())
-					childEntity.AttachEntityRoot(entity.EntityRoot())
-					if err := childEntity.FromRecord(childRecord); err != nil { return nil, err }
-					entity.OrderLineList().Add(childEntity)
-				}}
-		if relationValue, selected := rec["orderSearchPresetList"]; selected {
-			childRecords, ok := relationValue.V.([]core.Record)
-				if !ok { return nil, fmt.Errorf("relation orderSearchPresetList has unexpected runtime type %T", relationValue.V) }
-				for _, childRecord := range childRecords {
-					childEntity := order_search_preset.NewOrderSearchPreset()
-					childEntity.EntityRoot().ClearEntity(childEntity.EntityKey())
-					childEntity.AttachEntityRoot(entity.EntityRoot())
-					if err := childEntity.FromRecord(childRecord); err != nil { return nil, err }
-					entity.OrderSearchPresetList().Add(childEntity)
-				}}
+		entity, err := r.teaqlHydrateQueryRecord(rec)
+		if err != nil { return nil, err }
 		if err := runtime.CaptureEntityQueryProperties(entity, authorized); err != nil { return nil, err }
 		return entity, nil
 	})

@@ -24,7 +24,7 @@ type TypePlatformRequest struct {
 	queryOptions *core.QueryOptions
 	purposeText string
 	commentText string
-	relationFactories map[string]func() core.Entity
+	relationFactories map[string]func(core.Record) (core.Entity, error)
 	dynamicSearchWarnings []core.DynamicSearchWarning
 }
 
@@ -36,7 +36,7 @@ func NewTypePlatformRequest() *TypePlatformRequest {
 	r := &TypePlatformRequest{
 		Query: core.NewSelectQuery("Type Platform"),
 		queryOptions: core.NewQueryOptions(),
-		relationFactories: make(map[string]func() core.Entity),
+		relationFactories: make(map[string]func(core.Record) (core.Entity, error)),
 	}
 	r.Query.AndFilter(core.ExprGte("version", core.ValI64(1)))
 	return r
@@ -77,6 +77,31 @@ func (r *TypePlatformRequest) GetEntityDescriptor() *core.EntityDescriptor {
 
 func (r *TypePlatformRequest) NewRelationEntity() core.Entity {
 	return newLoadedTypePlatform()
+}
+
+// Generated query infrastructure. Preserve this request's selected nested
+// factories without importing parent packages or using a global registry.
+func (r *TypePlatformRequest) TeaqlHydrateQueryRecord(rec core.Record) (core.Entity, error) {
+	return r.teaqlHydrateQueryRecord(rec)
+}
+
+func (r *TypePlatformRequest) teaqlHydrateQueryRecord(rec core.Record) (*TypePlatform, error) {
+	entity := newLoadedTypePlatform()
+	if err := entity.FromRecord(rec); err != nil { return nil, err }
+	if relationValue, selected := rec["scalarTypeProbeList"]; selected {
+		factory := r.relationFactories["scalarTypeProbeList"]
+		if factory == nil { return nil, fmt.Errorf("missing generated query hydrator for relation scalarTypeProbeList") }
+		childRecords, ok := relationValue.V.([]core.Record)
+			if !ok { return nil, fmt.Errorf("relation scalarTypeProbeList has unexpected runtime type %T", relationValue.V) }
+			for _, childRecord := range childRecords {
+				child, err := factory(childRecord)
+				if err != nil { return nil, err }
+				childEntity, ok := child.(*scalar_type_probe.ScalarTypeProbe)
+				if !ok { return nil, fmt.Errorf("unexpected generated query child type for relation scalarTypeProbeList") }
+				childEntity.AttachEntityRoot(entity.EntityRoot())
+				entity.ScalarTypeProbeList().Add(childEntity)
+			}}
+	return entity, nil
 }
 
 func (r *TypePlatformRequest) Comment(comment string) *TypePlatformRequest {
@@ -1529,6 +1554,7 @@ func (r *TypePlatformRequest) SelectScalarTypeProbeList() *TypePlatformRequest {
 func (r *TypePlatformRequest) SelectScalarTypeProbeListWith(child *scalar_type_probe.ScalarTypeProbeRequest) *TypePlatformRequest {
 	r.Query.RelationQuerySelection("scalarTypeProbeList", child.GetQuerySelection())
 	r.Query.Relations[len(r.Query.Relations)-1].Operation = &core.QueryOperation{Kind: "relation", Method: "SelectScalarTypeProbeListWith", Relation: "scalarTypeProbeList"}
+	r.relationFactories["scalarTypeProbeList"] = child.TeaqlHydrateQueryRecord
 	return r
 }
 
@@ -1595,18 +1621,8 @@ func (e *ExecutableTypePlatformRequest) ExecuteForList(context *runtime.UserCont
 	if !ok { return nil, fmt.Errorf("dataService does not implement data_service.QueryExecutor") }
 	service := runtime.NewRuntimeDataService(context.Metadata, ds)
 	return runtime.ExecuteTypedList(context, service, authorized, plan, func(rec core.Record) (*TypePlatform, error) {
-		entity := newLoadedTypePlatform()
-		if err := entity.FromRecord(rec); err != nil { return nil, err }
-		if relationValue, selected := rec["scalarTypeProbeList"]; selected {
-			childRecords, ok := relationValue.V.([]core.Record)
-				if !ok { return nil, fmt.Errorf("relation scalarTypeProbeList has unexpected runtime type %T", relationValue.V) }
-				for _, childRecord := range childRecords {
-					childEntity := scalar_type_probe.NewScalarTypeProbe()
-					childEntity.EntityRoot().ClearEntity(childEntity.EntityKey())
-					childEntity.AttachEntityRoot(entity.EntityRoot())
-					if err := childEntity.FromRecord(childRecord); err != nil { return nil, err }
-					entity.ScalarTypeProbeList().Add(childEntity)
-				}}
+		entity, err := r.teaqlHydrateQueryRecord(rec)
+		if err != nil { return nil, err }
 		if err := runtime.CaptureEntityQueryProperties(entity, authorized); err != nil { return nil, err }
 		return entity, nil
 	})
