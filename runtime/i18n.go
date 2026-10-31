@@ -4,6 +4,7 @@ import (
 	_ "embed"
 	"encoding/json"
 	"fmt"
+	"regexp"
 	"strings"
 )
 
@@ -114,6 +115,12 @@ func (c *I18nCatalog) Message(locale Locale, key string) string {
 	return key
 }
 func (c *I18nCatalog) Translate(result *CheckResult, locale Locale) {
+	c.translateChecker(result, locale, nil)
+}
+
+var checkerTemplateToken = regexp.MustCompile(`\{(?:location|system|input|input_len)\}`)
+
+func (c *I18nCatalog) translateChecker(result *CheckResult, locale Locale, secrets []string) {
 	keys := map[string]string{"REQUIRED": "checker.required", "MIN": "checker.min", "MAX": "checker.max", "MIN_STR_LEN": "checker.minLength", "MIN_LENGTH": "checker.minLength", "MAX_STR_LEN": "checker.maxLength", "MAX_LENGTH": "checker.maxLength"}
 	key := keys[strings.ToUpper(result.RuleID)]
 	if key == "" {
@@ -125,12 +132,23 @@ func (c *I18nCatalog) Translate(result *CheckResult, locale Locale) {
 	if msg == key && strings.TrimSpace(result.Message) != "" {
 		return
 	}
-	values := map[string]string{"location": result.NativePath(), "system": fmt.Sprint(result.SystemValue), "input": fmt.Sprint(result.InputValue), "input_len": "0"}
-	if s, ok := result.InputValue.(string); ok {
-		values["input_len"] = fmt.Sprint(len([]rune(s)))
+	values := map[string]string{"{location}": result.NativePath(), "{system}": fmt.Sprint(result.SystemValue), "{input}": fmt.Sprint(result.InputValue), "{input_len}": fmt.Sprint(checkerInputLength(*result))}
+	public := msg == builtinCatalog.Message(locale, key)
+	var rendered strings.Builder
+	last := 0
+	for _, token := range checkerTemplateToken.FindAllStringIndex(msg, -1) {
+		literal := msg[last:token[0]]
+		if !public {
+			literal = scrubCheckerText(literal, secrets)
+		}
+		rendered.WriteString(literal)
+		rendered.WriteString(values[msg[token[0]:token[1]]])
+		last = token[1]
 	}
-	for k, v := range values {
-		msg = strings.ReplaceAll(msg, "{"+k+"}", v)
+	literal := msg[last:]
+	if !public {
+		literal = scrubCheckerText(literal, secrets)
 	}
-	result.Message = msg
+	rendered.WriteString(literal)
+	result.Message = rendered.String()
 }

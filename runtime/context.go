@@ -1598,10 +1598,7 @@ func (c *UserContext) TranslateCheckResults(args ...any) {
 	if !ok {
 		return
 	}
-	locale := c.Language().(Locale)
-	for i := range results {
-		c.I18nCatalog().Translate(&results[i], locale)
-	}
+	c.translateCheckerResults(results, "", nil, plaintextLogsEnabled())
 }
 
 func (c *UserContext) UserIdentifier(args ...any) any {
@@ -1659,6 +1656,8 @@ func (c *UserContext) checkAndFixWithReferences(input *CheckAndFixInput, referen
 	if err := c.mapCheckerInput(input, true); err != nil {
 		return checkerMappingError(entity, err)
 	}
+	allow := plaintextLogsEnabled()
+	known := c.checkerKnownValues(entity, allow, input.Values, input.OldValues)
 	if c.checkerRegistry != nil {
 		if input.Now.IsZero() {
 			input.Now = c.FixTime()
@@ -1688,7 +1687,10 @@ func (c *UserContext) checkAndFixWithReferences(input *CheckAndFixInput, referen
 			}
 		}
 	}
-	c.TranslateCheckResults(results)
+	if len(results) != 0 {
+		known = append(known, c.checkerKnownValues(entity, allow, input.Values, input.OldValues)...)
+		c.translateCheckerResults(results, entity, known, allow)
+	}
 	if len(results) != 0 {
 		return &RuntimeError{Type: "Check", CheckResults: results}
 	}

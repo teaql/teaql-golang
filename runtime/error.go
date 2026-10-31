@@ -3,6 +3,8 @@ package runtime
 import (
 	"fmt"
 	"strings"
+
+	"github.com/teaql/teaql-golang/internal/logprivacy"
 )
 
 type CheckResult struct {
@@ -15,6 +17,7 @@ type CheckResult struct {
 	Message            string
 	EntityType         string
 	SourceInstancePath string
+	presentation       logprivacy.ProjectionState
 }
 
 func (c *CheckResult) String() string { return c.Message }
