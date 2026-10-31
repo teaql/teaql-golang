@@ -82,13 +82,13 @@ func NormalizeWireInput(input map[string]any, metadata WireEntityMetadata, paren
 func RetainSubmittedPaths(results []CheckResult, normalized NormalizedWireInput) []CheckResult {
 	output := append([]CheckResult(nil), results...)
 	for i := range output {
-		for _, segment := range output[i].ObjectLocation().Segments {
-			if segment.Property != nil {
-				if path, ok := normalized.SourceInstancePaths[*segment.Property]; ok {
-					output[i].SourceInstancePath = path
-				}
-				break
-			}
+		// A one-object map cannot identify a descendant's complete source path.
+		segments := output[i].ObjectLocation().Segments
+		if len(segments) != 1 || segments[0].Property == nil {
+			continue
+		}
+		if path, ok := normalized.SourceInstancePaths[*segments[0].Property]; ok {
+			output[i].SourceInstancePath = path
 		}
 	}
 	return output

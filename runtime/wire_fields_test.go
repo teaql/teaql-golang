@@ -51,3 +51,23 @@ func TestWireCheckResultDTO(t *testing.T) {
 		t.Fatalf("unexpected wire location: %s", encoded)
 	}
 }
+
+func TestWireParentAliasNeverTruncatesDescendantProvenance(t *testing.T) {
+	normalized := NormalizedWireInput{SourceInstancePaths: map[string]string{"order_item_list": "/legacy~1items", "product_name": "/legacy~0name"}}
+	location := Location().Property("order_item_list").At(2).Property("product_name")
+	input := []CheckResult{
+		{RuleID: "required", CanonicalLocation: location, SourceInstancePath: "/legacy~1items/2/legacy~0name"},
+		{RuleID: "required", CanonicalLocation: location},
+		{RuleID: "required", CanonicalLocation: Location().At(2).Property("product_name")},
+		{RuleID: "required", CanonicalLocation: Location().Property("order_item_list")},
+	}
+	actual := RetainSubmittedPaths(input, normalized)
+	for i, expected := range []string{"/legacy~1items/2/legacy~0name", "", "", "/legacy~1items"} {
+		if actual[i].SourceInstancePath != expected {
+			t.Fatalf("case %d: %q != %q", i, actual[i].SourceInstancePath, expected)
+		}
+	}
+	if actual[0].ObjectLocation().InstancePath() != "/orderItemList/2/productName" || input[0].SourceInstancePath != "/legacy~1items/2/legacy~0name" {
+		t.Fatal("identity or input result changed")
+	}
+}
