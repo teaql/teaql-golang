@@ -73,7 +73,9 @@ func NormalizeWireInput(input map[string]any, metadata WireEntityMetadata, paren
 		}
 		submitted[field.CanonicalName] = name
 		values[field.CanonicalName] = value
-		if name != field.WireName {
+		// A standard leaf spelling does not erase an ancestor's actual input path.
+		// parentPointer is an already-escaped boundary supplied by the caller.
+		if name != field.WireName || parentPointer != "" {
 			paths[field.CanonicalName] = pointer
 		}
 	}

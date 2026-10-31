@@ -71,3 +71,39 @@ func TestWireParentAliasNeverTruncatesDescendantProvenance(t *testing.T) {
 		t.Fatal("identity or input result changed")
 	}
 }
+
+func TestWireStandardChildRetainsAncestorProvenance(t *testing.T) {
+	parent := MustCreateWireEntityMetadata("Order", []string{"order_item_list"}, JsonFieldCamelCase, map[string][]string{"order_item_list": {"legacy/items~"}})
+	for _, profile := range []JsonFieldNamingProfile{JsonFieldCamelCase, JsonFieldSnakeCase, JsonFieldPascalCase} {
+		t.Run(string(profile), func(t *testing.T) {
+			child := MustCreateWireEntityMetadata("OrderItem", []string{"product_name", "unit_count"}, profile, nil)
+			name := child.Fields["product_name"].WireName
+			for _, value := range []any{nil, "submitted item"} {
+				childObject := map[string]any{name: value}
+				parentInput, err := NormalizeWireInput(map[string]any{"legacy/items~": []any{nil, nil, childObject}}, parent, "")
+				if err != nil {
+					t.Fatal(err)
+				}
+				boundary := parentInput.SourceInstancePaths["order_item_list"] + "/2"
+				normalized, err := NormalizeWireInput(childObject, child, boundary)
+				if err != nil {
+					t.Fatal(err)
+				}
+				if len(normalized.Values) != 1 || normalized.Values["product_name"] != value || len(normalized.SourceInstancePaths) != 1 || normalized.SourceInstancePaths["product_name"] != boundary+"/"+name {
+					t.Fatalf("standard child lost its boundary: %#v", normalized)
+				}
+				original := CheckResult{RuleID: "required", EntityType: "OrderItem", CanonicalLocation: Location().Property("product_name")}
+				leaf := RetainSubmittedPaths([]CheckResult{original}, normalized)[0]
+				leaf.CanonicalLocation = Location().Property("order_item_list").At(2).Property("product_name")
+				actual := RetainSubmittedPaths([]CheckResult{leaf}, parentInput)[0]
+				if actual.SourceInstancePath != "/legacy~1items~0/2/"+name || actual.ObjectLocation().InstancePath() != "/orderItemList/2/productName" || original.SourceInstancePath != "" {
+					t.Fatalf("source or canonical identity changed: %#v", actual)
+				}
+			}
+			root, err := NormalizeWireInput(map[string]any{name: nil}, child, "")
+			if err != nil || len(root.SourceInstancePaths) != 0 {
+				t.Fatalf("root map must remain sparse: %#v %v", root, err)
+			}
+		})
+	}
+}
