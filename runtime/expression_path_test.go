@@ -2,9 +2,71 @@ package runtime
 
 import (
 	"encoding/json"
+	"os"
+	"reflect"
 	"strings"
 	"testing"
 )
+
+func TestExpressionLiteralPunctuationPreservesCanonicalIdentityInAllWireProfiles(t *testing.T) {
+	for _, example := range []struct {
+		profile        JsonFieldNamingProfile
+		label, pointer string
+	}{
+		{JsonFieldCamelCase, "camelCase", "/schoolType/2/a~0~1b.c"},
+		{JsonFieldSnakeCase, "snake_case", "/school_type/2/a~0~1b.c"},
+		{JsonFieldPascalCase, "PascalCase", "/SchoolType/2/A~0~1b.c"},
+	} {
+		t.Run(example.label, func(t *testing.T) {
+			path := NewExpressionPath("E.Node(<root>)", example.profile).Member("school_type", "SchoolType").At(2, false).Member("a~/b.c", "SafeField").MarkMissing()
+			wire := NewNotLoadedError(path, "a~/b.c").Terminal("Eval()").ToWire()
+			if wire.InstancePath != example.pointer || wire.AttemptedInstancePath != example.pointer || wire.BreakPoint != "a~/b.c" || wire.BreakPointIndex != 2 {
+				t.Fatal(wire)
+			}
+			canonical, err := json.Marshal(wire.Location)
+			if err != nil {
+				t.Fatal(err)
+			}
+			var actual, expected any
+			if err := json.Unmarshal(canonical, &actual); err != nil {
+				t.Fatal(err)
+			}
+			if err := json.Unmarshal([]byte(`[{"kind":"property","name":"school_type"},{"kind":"index","index":2},{"kind":"property","name":"a~/b.c"}]`), &expected); err != nil {
+				t.Fatal(err)
+			}
+			if !reflect.DeepEqual(actual, expected) {
+				t.Fatal(string(canonical))
+			}
+			attempted, _ := json.Marshal(wire.AttemptedLocation)
+			suggested, _ := json.Marshal(wire.SuggestedFix.Location)
+			if string(attempted) != string(canonical) || string(suggested) != string(canonical) {
+				t.Fatal(wire)
+			}
+			if wire.ExpressionWithBrokenPoint != "E.Node(<root>).SchoolType().Get(2).SafeField()<broken>.Eval()" {
+				t.Fatal(wire)
+			}
+			record, err := json.Marshal(map[string]any{"language": "go", "profile": example.label, "wire": wire})
+			if err != nil {
+				t.Fatal(err)
+			}
+			t.Log("E_POINTER_PROFILE_CASE=" + string(record))
+			if output := os.Getenv("TEAQL_POINTER_PROFILE_EVIDENCE"); output != "" {
+				file, err := os.OpenFile(output, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0600)
+				if err != nil {
+					t.Fatal(err)
+				}
+				_, writeErr := file.Write(append(record, '\n'))
+				closeErr := file.Close()
+				if writeErr != nil {
+					t.Fatal(writeErr)
+				}
+				if closeErr != nil {
+					t.Fatal(closeErr)
+				}
+			}
+		})
+	}
+}
 
 func TestExpressionEarlyRepeatedRelationPreservesOneBreakpoint(t *testing.T) {
 	parent := NewExpressionPath("E.Node(<root>)", JsonFieldCamelCase).Member("parent", "Parent").MarkMissing()
