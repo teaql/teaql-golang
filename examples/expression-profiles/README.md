@@ -25,7 +25,16 @@ build scratch is removed. To choose an output location, set
 `TEAQL_GENERATED_E_PROFILE_EVIDENCE_DIR` to a new absolute directory.
 Existing reports and databases are never overwritten. Go resolves both the generated module and runtime through explicit local replacements, with public dependency downloads disabled.
 
-These are local-source examples, not private/public package qualification,
-a new audited-save test, a full example-inventory gate or full P0/P1 acceptance.
+By themselves these are local-source examples, not private/public package
+qualification, a new audited-save test, a full inventory or full P0/P1 acceptance.
 Literal punctuation and JSON-pointer escaping are covered by the separate
 native expression-path tests; modeled names here are legal multiword fields.
+
+## Complete inventory and copied-source origin
+
+The repository inventory also runs all three modeled profiles twice. When an
+outer gate compiles an isolated source copy, `TEAQL_GO_EXAMPLE_SOURCE_ROOT` names
+its real Git origin. The verifier compares all source bytes, modes and link text
+before compilation and records actual copied paths from `go list`; it does not
+create Git aliases, rewrite generated files or substitute the origin path for
+the code that was compiled.

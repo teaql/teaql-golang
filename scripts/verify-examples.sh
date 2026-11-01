@@ -2,7 +2,7 @@
 set -euo pipefail
 
 repo="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-expected=(basic business-id conformance fix-e-alignment mutation-policy object-storage order-management scalar-type-probe school-management security-foundations task_board trace-chain typed-runtime-spi)
+expected=(basic business-id conformance expression-profiles fix-e-alignment mutation-policy object-storage order-management scalar-type-probe school-management security-foundations task_board trace-chain typed-runtime-spi)
 mapfile -t actual < <(find "$repo/examples" -mindepth 1 -maxdepth 1 -type d -printf '%f\n' | sort)
 if [[ "${actual[*]}" != "${expected[*]}" ]]; then
   echo "example inventory changed; update scripts/verify-examples.sh: ${actual[*]}" >&2
@@ -16,7 +16,10 @@ go_binary="$(command -v "${GO:-go}")"
 export GO="$go_binary"
 export PATH="$(dirname "$go_binary"):$PATH"
 "$GO" version
+inventory_evidence="${TEAQL_EXAMPLES_EVIDENCE_DIR:-$(mktemp -d -t teaql-go-examples-evidence.XXXXXXXX)}"
+mkdir -p "$inventory_evidence"
 node examples/fix-e-alignment/verify-local.cjs
+TEAQL_GENERATED_E_PROFILE_EVIDENCE_DIR="$inventory_evidence/expression-profiles" node examples/expression-profiles/verify-local.cjs
 bash examples/object-storage/verify.sh
 bash examples/scalar-type-probe/verify.sh
 node examples/scalar-type-probe/verify-integral.cjs
@@ -25,7 +28,10 @@ node examples/scalar-type-probe/verify-integral.cjs
 # can therefore resolve differently from its application. Bind every module in
 # one explicit temporary workspace; do not rely on an ambient parent go.work,
 # rewrite generated go.mod files, or silently download an older runtime.
-mapfile -t module_files < <(find "$repo/examples" -name go.mod -type f ! -path '*/standard-telemetry/*' ! -path '*/standard-order/*' ! -path '*/standard-graph/*' ! -path '*/standard-stream/*' | sort)
+# The three profile fixtures deliberately reuse one module name. Their own
+# verifier isolates and checks every actual runtime origin above; do not merge
+# them into this unrelated workspace or silently omit their executions.
+mapfile -t module_files < <(find "$repo/examples" -name go.mod -type f ! -path "$repo/examples/expression-profiles/*" ! -path '*/standard-telemetry/*' ! -path '*/standard-order/*' ! -path '*/standard-graph/*' ! -path '*/standard-stream/*' | sort)
 module_dirs=("$repo")
 for module_file in "${module_files[@]}"; do
   module_dirs+=("$(dirname "$module_file")")
@@ -39,8 +45,6 @@ export GOWORK="$workspace/go.work"
 # loading; a use entry alone still attempts to look up that version remotely.
 go work edit "-replace=checker-fix-advanced-core-workspace/lib@v0.0.0=$repo/examples/fix-e-alignment/generated"
 go work edit "-replace=scalar-type-conformance-service-core-workspace/lib@v0.0.0=$repo/examples/scalar-type-probe/generated"
-inventory_evidence="${TEAQL_EXAMPLES_EVIDENCE_DIR:-$(mktemp -d -t teaql-go-examples-evidence.XXXXXXXX)}"
-mkdir -p "$inventory_evidence"
 cp "$workspace/go.work" "$inventory_evidence/go.work"
 echo "Local Go example workspace (removed on exit): $GOWORK"
 for module_file in "${module_files[@]}"; do

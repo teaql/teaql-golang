@@ -3,10 +3,16 @@
 const fs=require('node:fs'),path=require('node:path'),os=require('node:os'),cp=require('node:child_process'),crypto=require('node:crypto'),assert=require('node:assert/strict');
 const {createOwnedRunner,ownedBytes}=require('../fix-e-alignment/owned-command.cjs');
 const EXAMPLE=__dirname,REPO=path.resolve(EXAMPLE,'../..'),PROFILES=['camelCase','snake_case','PascalCase'],LANGUAGE="go";
+const ORIGIN=path.resolve(process.env.TEAQL_GO_EXAMPLE_SOURCE_ROOT||REPO);
 const sha=b=>crypto.createHash('sha256').update(b).digest('hex'),digest=f=>sha(fs.readFileSync(f));
-function sourceHash(){
- const names=[...new Set(cp.execFileSync('git',['-C',REPO,'ls-files','-z','--cached','--others','--exclude-standard']).toString().split('\0').filter(Boolean))].sort(),h=crypto.createHash('sha256');
- for(const n of names){const f=path.join(REPO,n);h.update(n+'\0');if(!fs.existsSync(f)){h.update('deleted\0');continue;}const s=fs.lstatSync(f);h.update(String(s.mode)+'\0');h.update(s.isSymbolicLink()?fs.readlinkSync(f):fs.readFileSync(f));h.update('\0');}return h.digest('hex');
+function sourceHash(source=REPO){
+ assert.equal(fs.realpathSync(source),source);assert.equal(fs.realpathSync(ORIGIN),ORIGIN);
+ const names=[...new Set(cp.execFileSync('git',['-C',ORIGIN,'ls-files','-z','--cached','--others','--exclude-standard']).toString().split('\0').filter(Boolean))].sort(),h=crypto.createHash('sha256');
+ for(const n of names){const f=path.join(source,n);h.update(n+'\0');if(!fs.existsSync(f)){h.update('deleted\0');continue;}const s=fs.lstatSync(f);h.update(String(s.mode)+'\0');h.update(s.isSymbolicLink()?fs.readlinkSync(f):fs.readFileSync(f));h.update('\0');}return h.digest('hex');
+}
+function sourceIdentity(){
+ const body=sourceHash();assert.equal(body,sourceHash(ORIGIN),'isolated runtime must match its real Git origin before compiling');
+ return{commit:cp.execFileSync('git',['-C',ORIGIN,'rev-parse','HEAD'],{encoding:'utf8'}).trim(),sourceContentsSha256:body};
 }
 function fixture(){
  const root=path.join(EXAMPLE,'generated'),manifest=JSON.parse(fs.readFileSync(path.join(root,'manifest.json'))),provenance=JSON.parse(fs.readFileSync(path.join(EXAMPLE,'provenance.json')));
@@ -23,7 +29,7 @@ async function main(){
  let scratch,runner;
  try{
   const disk=fs.statfsSync(os.tmpdir());assert(disk.bavail*disk.bsize>8*1024**3);
-  report.sourceBefore={commit:cp.execFileSync('git',['-C',REPO,'rev-parse','HEAD'],{encoding:'utf8'}).trim(),sourceContentsSha256:sourceHash()};report.fixture=fixture();report.controllerSha256=digest(__filename);
+  report.sourceBefore=sourceIdentity();if(REPO!==ORIGIN)report.runtimeSourceCopy={path:REPO,origin:ORIGIN,sourceContentsSha256:report.sourceBefore.sourceContentsSha256};report.fixture=fixture();report.controllerSha256=digest(__filename);
   scratch=fs.mkdtempSync(path.join(os.tmpdir(),'teaql-'+LANGUAGE+'-expression-build-'));runner=createOwnedRunner();
   const env={...process.env,TMPDIR:scratch};
   async function run(profile,name,command,cwd,timeout=300000){
@@ -61,3 +67,4 @@ async function main(){
  }
 }
 if(require.main===module)main().catch(e=>{console.error(e.stack);process.exitCode=1;});
+module.exports={sourceHash,sourceIdentity,fixture};
