@@ -8,6 +8,14 @@ This builds the retained evaluated fixture against the local checkout, executes
 the application twice without resetting its SQLite stores, and removes its owned
 compiler outputs after the processes exit. Compact evidence and databases remain.
 
+`projection_views_test.go` adds three independent-view checks to the default
+two-round gate: a full query must not widen an earlier sparse view; independently
+queried objects with equal IDs must not merge pending edits; a sparse outer root
+and full nested alias of that root must preserve different E/JSON projections.
+The stale second save must reject and retain its pending edit/original version;
+only successful managed Fix values may remain as additional pending fields.
+The provider, real transaction, policy and audit boundaries are observed.
+
 `partial_root_test.go` loads two untouched sparse ancestors and one complete
 modified leaf through generated Q/E APIs. A second real root is created through
 the generated audited-save API. Both wrong-context attempts must reject before
