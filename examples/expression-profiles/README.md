@@ -6,6 +6,11 @@ Run from this runtime repository:
 node examples/expression-profiles/verify-local.cjs
 ```
 
+The local `go.mod` is a module boundary, not a standalone consumer manifest.
+Use the verifier above: it supplies the distinct generated dependency for each
+profile. The runtime's root `go test ./...` must not try to compile this harness
+without those dependencies; the complete example inventory runs it explicitly.
+
 The same application executes against three evaluated, unmodified generated
 libraries: default `camelCase`, `snake_case`, and `PascalCase`. Models differ
 only in `json_field_naming`. The local producer identity and file hashes are
