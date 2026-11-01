@@ -216,8 +216,11 @@ func TestGeneratedIndependentProjectionViews(t *testing.T) {
 		}
 		observed, _ := json.Marshal(map[string]any{"round": f.round, "orderId": strconv.FormatUint(original.Id(), 10), "errorType": fmt.Sprintf("%T", failure), "kind": kind, "message": fmt.Sprint(failure), "effects": effects})
 		fmt.Println("GO_STALE_VIEW_OBSERVATION=" + string(observed))
-		if failure == nil || conflict == nil || conflict.Type != "OptimisticLockConflict" {
-			t.Fatal("missing structured stale-view rejection", failure)
+		// The existing prepared-provider guard rejects a zero-affected stale
+		// update as incomplete reviewed work. ML-10/12 require optimistic
+		// admission and no false commit, not a particular exception label.
+		if failure == nil || conflict == nil || conflict.Type != "Check" || len(conflict.CheckResults) != 1 || conflict.CheckResults[0].RuleID != "prepared_mutation_incomplete" {
+			t.Fatal("missing existing structured prepared-plan rejection", failure)
 		}
 		if effects["begins"] != 1 || effects["mutations"] != 1 || effects["rollbacks"] != 1 || effects["commits"] != 0 || effects["audits"] != 0 {
 			t.Fatal("stale save did not roll back without commit/audit", effects)
@@ -257,7 +260,7 @@ func TestGeneratedIndependentProjectionViews(t *testing.T) {
 		if version, ok := lib.E.PurchaseOrder(stored).Version().Eval(); !ok || version != 2 {
 			t.Fatal("stale save changed the persisted version")
 		}
-		f.emit("same-identity-independent-mutation-ledgers", original.Id(), map[string]any{"separateViews": true, "otherPendingEditRetained": true, "noCrossViewWrite": true, "staleException": "OptimisticLockConflict", "storedVersion": 2, "otherVersion": 1, "derivedFixFields": derived, "rejectionRolledBack": true, "commitAuditsOnRejection": 0})
+		f.emit("same-identity-independent-mutation-ledgers", original.Id(), map[string]any{"separateViews": true, "otherPendingEditRetained": true, "noCrossViewWrite": true, "staleException": "Check:prepared_mutation_incomplete", "storedVersion": 2, "otherVersion": 1, "derivedFixFields": derived, "rejectionRolledBack": true, "commitAuditsOnRejection": 0})
 	})
 	t.Run("repeated_identity_keeps_explicit_projections", func(t *testing.T) {
 		f := newProjectionFixture(t)

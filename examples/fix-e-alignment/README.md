@@ -15,6 +15,9 @@ and full nested alias of that root must preserve different E/JSON projections.
 The stale second save must reject and retain its pending edit/original version;
 only successful managed Fix values may remain as additional pending fields.
 The provider, real transaction, policy and audit boundaries are observed.
+The existing Go guard reports the stale zero-affected update as structured
+`Check / prepared_mutation_incomplete`. The example verifies that behavior,
+not a newly added optimistic-conflict exception type.
 
 `partial_root_test.go` loads two untouched sparse ancestors and one complete
 modified leaf through generated Q/E APIs. A second real root is created through
