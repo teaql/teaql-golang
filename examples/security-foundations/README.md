@@ -15,7 +15,10 @@ any of these backend security contracts regress:
    once, leaves the caller request reusable, and fails closed on denial; and
 6. future or unreadable Business Clock values cannot alter opaque-reference
    issue/expiry time. The example calibrates the unreadable clock, then proves
-   security work makes zero calls to it and uses the real operational clock.
+   security work makes zero calls to it and uses the real operational clock; and
+7. the built-in memory DataStore and Context local cache retain empty hits,
+   really expire with an unreadable Business Clock, and cannot be revived by
+   a backward business-time jump.
 
 Run it from the repository root:
 
@@ -31,4 +34,11 @@ The public-API regression tests in
 backward jumps, actual deadline expiry while business time stays frozen, wrong
 type/purpose and tamper rejection, and both explicitly enabled raw-reference
 paths. They do not substitute Business Clock for the codec's separate security
-clock SPI, nor claim cache/HTTP timeout coverage.
+clock SPI, nor claim HTTP timeout coverage.
+
+`runtime/operational_store_clock_test.go` covers real cache expiry, TTL overwrite,
+nil/zero no-expiry, empty/null/false/zero membership, independent stores, safe
+concurrent access, zero-value construction, huge positive TTL and the local/ID-set
+cache clock boundaries. The memory DataStore uses operational monotonic deadlines;
+oversized positive TTL is capped at the largest whole-second `time.Duration`
+instead of overflowing into a short or zero lifetime. No public signatures change.

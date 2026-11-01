@@ -191,29 +191,6 @@ type DataStore interface {
 	Remove(context stdcontext.Context, key string)
 }
 
-type InMemoryDataStore struct {
-	cache map[string]core.Value
-}
-
-func NewInMemoryDataStore() *InMemoryDataStore {
-	return &InMemoryDataStore{
-		cache: make(map[string]core.Value),
-	}
-}
-
-func (s *InMemoryDataStore) Get(context stdcontext.Context, key string) (core.Value, bool) {
-	val, ok := s.cache[key]
-	return val, ok
-}
-
-func (s *InMemoryDataStore) Put(context stdcontext.Context, key string, value core.Value, timeoutSeconds *uint64) {
-	s.cache[key] = value
-}
-
-func (s *InMemoryDataStore) Remove(context stdcontext.Context, key string) {
-	delete(s.cache, key)
-}
-
 type GraphNode struct {
 	Entity       string
 	Values       core.Record

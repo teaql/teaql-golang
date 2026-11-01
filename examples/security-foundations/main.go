@@ -170,6 +170,7 @@ func main() {
 	verifyOpaqueReference()
 	verifyBusinessClock()
 	verifyClockDomainSeparation()
+	verifyCacheClockDomains()
 	verifyQueryPolicy()
 	fmt.Println("PASS Go security foundations example")
 }
