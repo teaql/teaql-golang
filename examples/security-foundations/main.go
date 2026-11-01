@@ -169,6 +169,7 @@ func main() {
 	verifyTrustedTFP()
 	verifyOpaqueReference()
 	verifyBusinessClock()
+	verifyClockDomainSeparation()
 	verifyQueryPolicy()
 	fmt.Println("PASS Go security foundations example")
 }
