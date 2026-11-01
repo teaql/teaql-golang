@@ -10,14 +10,15 @@ import (
 type CheckResult struct {
 	RuleID string
 	// Location is a legacy presentation retained for source compatibility.
-	Location           string
-	CanonicalLocation  ObjectLocation
-	InputValue         any
-	SystemValue        any
-	Message            string
-	EntityType         string
-	SourceInstancePath string
-	presentation       logprivacy.ProjectionState
+	Location            string
+	CanonicalLocation   ObjectLocation
+	InputValue          any
+	SystemValue         any
+	Message             string
+	EntityType          string
+	SourceInstancePath  string
+	presentation        logprivacy.ProjectionState
+	messagePresentation logprivacy.ProjectionState
 }
 
 func (c *CheckResult) String() string { return c.Message }

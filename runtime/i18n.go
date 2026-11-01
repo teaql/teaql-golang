@@ -1,11 +1,14 @@
 package runtime
 
 import (
+	"crypto/sha256"
 	_ "embed"
 	"encoding/json"
 	"fmt"
 	"regexp"
 	"strings"
+
+	"github.com/teaql/teaql-golang/internal/logprivacy"
 )
 
 type Locale string
@@ -127,6 +130,17 @@ func (c *I18nCatalog) translateChecker(result *CheckResult, locale Locale, secre
 		key = "checker." + strings.ToLower(result.RuleID)
 	}
 	msg := c.Message(locale, key)
+	// These newly catalogued contextual rules must not take ownership of a
+	// customer's existing explanation. A value-copy-safe hash recognizes only
+	// our previous automatic rendering, so relocation/locale changes can render
+	// it again. No raw input, message, entity or UserContext is retained here.
+	contextual := key == "checker.context_root_missing" || key == "checker.context_root_mismatch"
+	if contextual && strings.TrimSpace(result.Message) != "" && result.Message != key {
+		previous, automatic := logprivacy.ReadProjectionState(result.messagePresentation).([32]byte)
+		if !automatic || previous != sha256.Sum256([]byte(result.Message)) {
+			return
+		}
+	}
 	// Relocation must not erase an opaque customer diagnostic when the catalog
 	// has no template for its rule. Its canonical location remains authoritative.
 	if msg == key && strings.TrimSpace(result.Message) != "" {
@@ -151,4 +165,7 @@ func (c *I18nCatalog) translateChecker(result *CheckResult, locale Locale, secre
 	}
 	rendered.WriteString(literal)
 	result.Message = rendered.String()
+	if contextual {
+		result.messagePresentation = logprivacy.NewProjectionState(sha256.Sum256([]byte(result.Message)))
+	}
 }

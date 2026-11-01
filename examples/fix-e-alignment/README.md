@@ -20,3 +20,10 @@ The counted test ID SPI deliberately reserves disjoint ranges for each round;
 it tests ownership admission, not persistent or early factory ID allocation.
 Independent read-only SQL is an oracle only; setup and mutations use generated
 APIs. No generated implementation is hand-edited.
+
+Default context-root diagnostics now have readable English/Simplified Chinese
+messages, with English fallback for the other supported locales. Native tests
+also cover all three JSON naming profiles, catalog overrides and customer-owned
+explanations. Automatic root messages can rerender after a locale/path change;
+their internal bookkeeping retains only a SHA-256 fingerprint, never raw input,
+message text, an entity or UserContext. This does not alter other Checker rules.
