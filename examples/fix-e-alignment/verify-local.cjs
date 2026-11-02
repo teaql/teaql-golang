@@ -32,6 +32,7 @@ try {
   report.projectionApplicationSha256 = sha(fs.readFileSync(path.join(example, 'projection_views_test.go')));
   report.unchangedApplicationSha256 = sha(fs.readFileSync(path.join(example, 'unchanged_views_test.go')));
   report.rollbackApplicationSha256 = sha(fs.readFileSync(path.join(example, 'rollback_views_test.go')));
+  report.checkerBoundaryApplicationSha256 = sha(fs.readFileSync(path.join(example, 'checker_boundaries_test.go')));
   const manifest = fs.readFileSync(path.join(example, 'go.mod'), 'utf8')
     + '\nreplace checker-fix-advanced-core-workspace/lib => ' + JSON.stringify(path.join(example, 'generated'))
     + '\nreplace github.com/teaql/teaql-golang => ' + JSON.stringify(repo) + '\n';
@@ -57,10 +58,13 @@ try {
   for (const round of [1, 2]) {
     env.TEAQL_PARTIAL_ROOT_ROUND = String(round);
     const log = await run([binary, '-test.v', '-test.count=1', '-test.run', '^TestGenerated'], 'round-' + round + '.log', 90000);
-    for (const marker of ['FIX_E_EXAMPLE=', 'CORE_LOAD_EXAMPLE=', 'CORE_MUTATION_OWNERSHIP=', 'CORE_MUTATION_PAGING=', 'CORE_VERSION_LIFECYCLE=', 'GO_CHECKER_METADATA=', 'GO_CHECKER_EXACT_RANGES=', 'GO_CONTEXT_ROOT_RESULT=', 'GO_PARTIAL_ANCESTORS_RESULT=', 'GO_PARTIAL_ROOT_RESULT=']) {
+    for (const marker of ['FIX_E_EXAMPLE=', 'CORE_LOAD_EXAMPLE=', 'CORE_MUTATION_OWNERSHIP=', 'CORE_MUTATION_PAGING=', 'CORE_VERSION_LIFECYCLE=', 'GO_CHECKER_METADATA=', 'GO_CHECKER_EXACT_RANGES=', 'GO_CONTEXT_ROOT_RESULT=', 'GO_PARTIAL_ANCESTORS_RESULT=', 'GO_PARTIAL_ROOT_RESULT=', 'GO_CHECKER_BOUNDARY_RESULT=']) {
       const values = log.split(/\r?\n/).filter(line => line.startsWith(marker)).map(line => JSON.parse(line.slice(marker.length)));
       assert.equal(values.length, 1, marker); assert.equal(values[0].passed, true, marker);
     }
+    const boundaries = log.split(/\r?\n/).filter(line => line.startsWith('GO_CHECKER_BOUNDARY_CASE='))
+      .map(line => JSON.parse(line.slice('GO_CHECKER_BOUNDARY_CASE='.length)));
+    assert.equal(boundaries.length, 28); assert(boundaries.every(v => v.passed && v.round === round));
     const projections = log.split(/\r?\n/).filter(line => line.startsWith('GO_PROJECTION_VIEW_CASE='))
       .map(line => JSON.parse(line.slice('GO_PROJECTION_VIEW_CASE='.length)));
     assert.equal(projections.length, 3);
@@ -90,6 +94,8 @@ try {
   report.databaseSha256 = sha(fs.readFileSync(path.join(evidence, 'fixture.sqlite'))); report.passed = true;
   report.contextRootDatabase = {file: 'fixture.sqlite.context-root.sqlite',
     sha256: sha(fs.readFileSync(path.join(evidence, 'fixture.sqlite.context-root.sqlite')))};
+  report.checkerBoundaryDatabase = {file: 'fixture.sqlite.checker-boundaries.sqlite',
+    sha256: sha(fs.readFileSync(path.join(evidence, 'fixture.sqlite.checker-boundaries.sqlite')))};
   report.partialAncestorDatabase = {file: 'fixture.sqlite.partial-ancestors.sqlite',
     sha256: sha(fs.readFileSync(path.join(evidence, 'fixture.sqlite.partial-ancestors.sqlite')))};
   report.partialRootDatabase = {file: 'fixture.sqlite.partial-root.sqlite',
