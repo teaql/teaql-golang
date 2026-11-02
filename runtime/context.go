@@ -850,6 +850,9 @@ func (c *UserContext) executePreparedGraphSave(ctx stdcontext.Context, intent co
 	if err != nil {
 		return err
 	}
+	if err := c.validatePreparedGraphViews(); err != nil {
+		return err
+	}
 	c.graphSaveMu.Lock()
 	c.activeMutationGovernance = snapshot
 	c.graphSaveMu.Unlock()

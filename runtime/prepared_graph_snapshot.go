@@ -18,6 +18,10 @@ type preparedGraphSnapshot struct {
 	assignments map[string]core.EntityKey
 	metadata    map[string]*core.EntityDescriptor
 	lineage     map[string]preparedGraphLineage
+	views       map[string]*preparedGraphView
+	viewOrder   []*preparedGraphView
+	viewsSealed bool
+	relations   []func() error
 	source      []preparedLedgerEntry
 }
 

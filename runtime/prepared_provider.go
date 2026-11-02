@@ -65,6 +65,9 @@ func preparedIncomplete(entity string) error {
 }
 
 func (c *UserContext) sealPreparedPlan(plan *MutationPlan) error {
+	if err := c.capturePreparedGraphViews(); err != nil {
+		return err
+	}
 	c.graphSaveMu.Lock()
 	defer c.graphSaveMu.Unlock()
 	state := c.preparedGraphSnapshot
