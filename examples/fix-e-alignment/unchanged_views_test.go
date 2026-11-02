@@ -136,7 +136,8 @@ func TestGeneratedUnchangedQueryViews(t *testing.T) {
 	_, _, failure = lib.E.PurchaseOrder(sparse).Tenant().Name().TryEval()
 	projectionMissing(t, failure, "/tenant/name")
 	noop(sparse, "repeat-clean-sparse-save")
-	request2 := lib.Q.PurchaseOrders().OrderByIdAsc().Limit(2).
+	request2 := lib.Q.PurchaseOrdersMinimal().SelectContactPhone().SelectInternalNote().SelectCreateTime().SelectUpdateTime().
+		SelectTenantWith(lib.Q.TenantsMinimal().Limit(1).Comment("Retain the selected root identity")).OrderByIdAsc().Limit(2).
 		Comment("Load two rows with equal query geometry")
 	request2.GetQuery().AndFilter(core.ExprInList("id", []core.Value{core.ValU64(one.Id()), core.ValU64(two.Id())}))
 	unchangedAliases(request2.GetQuery())
