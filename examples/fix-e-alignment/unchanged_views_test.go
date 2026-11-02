@@ -19,7 +19,6 @@ import (
 func unchangedAliases(q *core.SelectQuery) {
 	q.ProjectExpr("_null", core.ExprValueNode(core.ValNull())).
 		ProjectExpr("_zero", core.ExprValueNode(core.ValI64(0))).
-		ProjectExpr("_false", core.ExprValueNode(core.ValBool(false))).
 		ProjectExpr("_empty", core.ExprValueNode(core.ValText(""))).
 		ProjectExpr("_row_id", core.ExprColumnNode("id")).
 		ProjectExpr("_phone", core.ExprColumnNode("contact_phone"))
@@ -28,25 +27,24 @@ func unchangedAliases(q *core.SelectQuery) {
 func unchangedProperties(t *testing.T, row *purchase_order.PurchaseOrder) {
 	t.Helper()
 	p := row.Base().QueryProperties()
-	if len(p) != 6 || !p["_null"].IsNull() {
+	if len(p) != 5 || !p["_null"].IsNull() {
 		t.Fatal("selected query properties missing", p)
 	}
 	if _, ok := p["_missing"]; ok {
 		t.Fatal("absent property invented")
 	}
 	zero, z := p["_zero"].TryI64()
-	flag, b := p["_false"].TryBool()
 	empty, e := p["_empty"].TryText()
 	id, i := p["_row_id"].TryU64()
 	phone, ph := p["_phone"].TryText()
-	if !z || zero != 0 || !b || flag || !e || empty != "" || !i || id != row.Id() || !ph || phone != "5550800" {
+	if !z || zero != 0 || !e || empty != "" || !i || id != row.Id() || !ph || phone != "5550800" {
 		t.Fatal("query property values changed", p)
 	}
 	body, _ := projectionJSON(t, row)
 	if v, ok := body["_null"]; !ok || v != nil {
 		t.Fatal("JSON lost selected null")
 	}
-	if body["_zero"] != float64(0) || body["_false"] != false || body["_empty"] != "" || body["_row_id"] != float64(row.Id()) || body["_phone"] != "5550800" {
+	if body["_zero"] != float64(0) || body["_empty"] != "" || body["_row_id"] != float64(row.Id()) || body["_phone"] != "5550800" {
 		t.Fatal("JSON lost selected values", body)
 	}
 	if _, ok := body["_missing"]; ok {

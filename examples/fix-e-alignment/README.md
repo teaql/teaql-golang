@@ -8,6 +8,16 @@ This builds the retained evaluated fixture against the local checkout, executes
 the application twice without resetting its SQLite stores, and removes its owned
 compiler outputs after the processes exit. Compact evidence and databases remain.
 
+`unchanged_views_test.go` exercises four no-op saves per round: sparse value/null
+restoration with a selected sparse relation, repeated clean saving, another row's
+pending intent, and row-owned query values. Generated Q/E and JSON retain the
+original sparse view, null/absent distinction, zero and empty text; all seven
+observed provider/transaction/policy/audit counters remain unchanged. A genuine
+write advances only its own version and discards stale query-result aliases.
+The same SQLite file retains both rounds. Native capture tests additionally
+cover boolean false and every supported projection source. This does not claim
+a typed dynamic-property schema, persistent dynamic fields or outer transactions.
+
 `projection_views_test.go` adds three independent-view checks to the default
 two-round gate: a full query must not widen an earlier sparse view; independently
 queried objects with equal IDs must not merge pending edits; a sparse outer root

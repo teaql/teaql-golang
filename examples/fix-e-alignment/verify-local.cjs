@@ -30,6 +30,7 @@ try {
   report.partialAncestorApplicationSha256 = sha(fs.readFileSync(path.join(example, 'partial_ancestors_test.go')));
   report.partialRootApplicationSha256 = sha(fs.readFileSync(path.join(example, 'partial_root_test.go')));
   report.projectionApplicationSha256 = sha(fs.readFileSync(path.join(example, 'projection_views_test.go')));
+  report.unchangedApplicationSha256 = sha(fs.readFileSync(path.join(example, 'unchanged_views_test.go')));
   const manifest = fs.readFileSync(path.join(example, 'go.mod'), 'utf8')
     + '\nreplace checker-fix-advanced-core-workspace/lib => ' + JSON.stringify(path.join(example, 'generated'))
     + '\nreplace github.com/teaql/teaql-golang => ' + JSON.stringify(repo) + '\n';
@@ -65,6 +66,16 @@ try {
     assert.deepEqual(projections.map(v => v.case).sort(), ['independent-query-projection-boundary',
       'same-identity-independent-mutation-ledgers', 'intra-query-repeated-identity-projection-boundary'].sort());
     assert(projections.every(v => v.passed && v.round === round));
+    const unchanged = log.split(/\r?\n/).filter(line => line.startsWith('GO_UNCHANGED_VIEW_CASE='))
+      .map(line => JSON.parse(line.slice('GO_UNCHANGED_VIEW_CASE='.length)));
+    assert.deepEqual(unchanged.map(v => v.case).sort(), ['sparse-restored-values-null-properties-and-edge',
+      'repeat-clean-sparse-save', 'other-row-pending-intent-and-values-retained',
+      'row-owned-properties-and-loaded-null-retained'].sort());
+    assert(unchanged.every(v => v.passed && v.round === round && Object.values(v.effects).every(n => n === 0)));
+    const writes = log.split(/\r?\n/).filter(line => line.startsWith('GO_UNCHANGED_VIEW_WRITE='))
+      .map(line => JSON.parse(line.slice('GO_UNCHANGED_VIEW_WRITE='.length)));
+    assert.equal(writes.length, 1);
+    assert(writes[0].passed && writes[0].round === round && writes[0].version === 2 && writes[0].staleProperties === 0);
     assert.deepEqual(fingerprint(), m);
   }
   report.databaseSha256 = sha(fs.readFileSync(path.join(evidence, 'fixture.sqlite'))); report.passed = true;
@@ -76,6 +87,8 @@ try {
     sha256: sha(fs.readFileSync(path.join(evidence, 'fixture.sqlite.partial-root.sqlite')))};
   report.projectionDatabase = {file: 'fixture.sqlite.projection-views.sqlite',
     sha256: sha(fs.readFileSync(path.join(evidence, 'fixture.sqlite.projection-views.sqlite')))};
+  report.unchangedDatabase = {file: 'fixture.sqlite.unchanged.projection-views.sqlite',
+    sha256: sha(fs.readFileSync(path.join(evidence, 'fixture.sqlite.unchanged.projection-views.sqlite')))};
   console.log('PASS Go retained Fix/E/loading/ownership example twice on one database');
 } catch (error) { console.error(error.stack); process.exitCode ||= 1; }
 finally {

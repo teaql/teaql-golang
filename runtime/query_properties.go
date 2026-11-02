@@ -30,13 +30,36 @@ func CaptureEntityQueryProperties(entity QueryPropertyEntity, query *core.Select
 			return fmt.Errorf("query property capture exceeds the supported graph depth")
 		}
 		properties := core.Record{}
+		captureAlias := func(alias string) {
+			if value, present := current.Base().GetDynamic(alias); present {
+				properties[alias] = value
+			}
+		}
+		for _, projection := range selected.ExprProjection {
+			if projection != nil {
+				captureAlias(projection.Alias)
+			}
+		}
+		for _, projection := range selected.RawProjections {
+			if projection != nil {
+				captureAlias(projection.PropertyName)
+			}
+		}
+		for _, projection := range selected.DynamicProperties {
+			if projection != nil {
+				captureAlias(projection.PropertyName)
+			}
+		}
+		for _, aggregate := range selected.Aggregates {
+			if aggregate != nil {
+				captureAlias(aggregate.Alias)
+			}
+		}
 		for _, aggregate := range selected.RelationAggregates {
 			if aggregate == nil {
 				continue
 			}
-			if value, present := current.Base().GetDynamic(aggregate.Alias); present {
-				properties[aggregate.Alias] = value
-			}
+			captureAlias(aggregate.Alias)
 		}
 		pending = append(pending, captured{current.Base(), properties})
 		if len(selected.Relations) == 0 {
