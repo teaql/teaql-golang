@@ -467,6 +467,7 @@ func (e *SchoolType) TeaqlPreflightWithinGraph(context *runtime.UserContext, int
 type teaqlSchoolTypeSaveSnapshot struct {
 	loadedSnapshot core.LoadedScalarSnapshot
 	record core.Record
+	queryProperties core.Record
 	dirtyFields map[string]bool
 	isNew bool
 	markedAsDelete bool
@@ -482,6 +483,7 @@ func (e *SchoolType) teaqlSaveSnapshot() teaqlSchoolTypeSaveSnapshot {
 	for field, value := range e.loadState { loaded[field] = value }
 	return teaqlSchoolTypeSaveSnapshot{
 		loadedSnapshot: e.loadedSnapshot,
+		queryProperties: e.base.QueryProperties(),
 		record: e.IntoRecord(), dirtyFields: dirty, isNew: e.isNew,
 		markedAsDelete: e.markedAsDelete, loadState: loaded,
 		restrictLoadState: e.restrictLoadState, ledgerID: e.ledgerID,
@@ -491,6 +493,7 @@ func (e *SchoolType) teaqlSaveSnapshot() teaqlSchoolTypeSaveSnapshot {
 func (e *SchoolType) teaqlRegisterGraphOutcome(context *runtime.UserContext, snapshot teaqlSchoolTypeSaveSnapshot) {
 	context.AfterGraphRollback(func() {
 		if err := e.FromRecord(snapshot.record); err != nil { panic(err) }
+		e.base.CaptureQueryProperties(snapshot.queryProperties)
 		e.loadedSnapshot = snapshot.loadedSnapshot
 		e.dirtyFields = snapshot.dirtyFields
 		e.isNew = snapshot.isNew

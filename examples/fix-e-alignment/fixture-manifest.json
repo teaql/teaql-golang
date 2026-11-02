@@ -1,18 +1,18 @@
 {
   "schema": "teaql.generated-example-fixture/v1",
-  "generatorCommit": "109a216d7daf9a83a96d35c4d781d04b62069373",
-  "generatorSourceContentsSha256": "9a0a9e534a44ef2db0623f91d61dcf9c32867212ed403ce1ed874fb8309c52f1",
-  "producerReceiptSha256": "3ecb584274fa99d6472a6feeb3568960ecb091a572ad7c88d25abd94c3614835",
+  "generatorCommit": "811fffebdd1f2b686b4a52964b25ed47d2dcf960",
+  "generatorSourceContentsSha256": "88abe3a0bd1a7d42095ec02d3f2f441bedc56ff0149b46e148091b4b681f984d",
+  "producerReceiptSha256": "cad5b970950482436665d328d42114a3f501c9b5c06bee4b3a787d998534f2fa",
   "evaluationErrors": 0,
   "language": "go",
   "modelSha256": "a2cf4c907cb084cb0946e993eeba586c8c0701a89fdc4a849808aa743be033b7",
-  "generatedManifestSha256": "d435f7dd2a993c0bb01dca8bb14168bdca3636ee4b38e48259ef2cc7c5d82071",
+  "generatedManifestSha256": "801e18b68d3f6c3b1160fe0b6dae074094c11e35d9bbcc9823ec5e56dc9af18d",
   "producerFixture": "fix-e-alignment",
   "producerSource": {
-    "commit": "109a216d7daf9a83a96d35c4d781d04b62069373",
+    "commit": "811fffebdd1f2b686b4a52964b25ed47d2dcf960",
     "diff": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
     "status": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-    "sourceContentsSha256": "9a0a9e534a44ef2db0623f91d61dcf9c32867212ed403ce1ed874fb8309c52f1",
+    "sourceContentsSha256": "88abe3a0bd1a7d42095ec02d3f2f441bedc56ff0149b46e148091b4b681f984d",
     "retainedModels": [
       {
         "id": "conformance",
@@ -88,8 +88,6 @@
     "tenant/behavior.go": "a5320eac18f5b810aab79a1acff3ee45117e7e0a5abb5896592cd00a8ebd095c",
     "purchase_order/behavior.go": "7f70d05c8f7879720a1a76ccd405684fedefae895aba6e9fbf1371137968a8f7",
     "order_item/behavior.go": "0d1c08bf44cc8f2268b5b5c998fae61e24b6a6c07589bb0b49337e5882d9dc6a",
-    "q.go": "ac0053a2dfbd9a1f823df07e928220ceaa5ffda25d4c44037f4524c53e51b384",
-    "lib.go": "72bf51dda2b3dc6e6aa5563a70ec68d27cf5ab641ff47790c465427026e5fc83",
     "runtime.go": "7dd09a8cf22e7c519acdeef18029bbd90ec8774cf4c58a6c1ac31603a5e1b056",
     "internal/generatedsearch/search_models.go": "684ab28a36b174cf143210391ca062178ad7997454d7f0fc49656f58cd45f730",
     "internal/generatedjson/model.go": "d373fea48af6f7448fdfd631f434424510e7b1f8a0c4546e443e04c683563aed",
@@ -97,16 +95,18 @@
     "tenant/request.go": "fad279fdb9eeba7c59d8ccf4483ee9423d0bc3efdb36c98b4cb4bd664d924df1",
     "purchase_order/request.go": "937be42c52da3f89cae56ff7c1a22b29bde9239290f9e9454f573270e956e90b",
     "order_item/request.go": "eb713d63f714e8706f01053b7693378bf5eed806d5775209caf41093d6fcf6e3",
-    "e.go": "7910bee58509d2c72ff7aafccddd372fe5b617d1bfefe19ffbefe415d59546f4",
     "tenant/expression.go": "407d09e0af722aca7e7f27015d12e50867499ff1ae890dfbe4a363923ef26f2c",
     "purchase_order/expression.go": "241a64aac2bcd91d00a765fea3fa8b511eefac33a934da8f58f089f54b359f30",
     "order_item/expression.go": "656bdd717846f446b20d9fc2516eaed3ab91dcfc4ed17cf2dca858c9fdcd567b",
+    "go.mod": "d5f72fdb4142475205e0d2a03582b43127bdb4abe291bbd9f984f8d2cb07848d",
     "tenant/checker.go": "78409224822eecf82ae5617141b0116f808a6d1bab0b483789b6496a49c013e8",
     "purchase_order/checker.go": "1c2bb40949d6a04e92ac1dba63c681727447a2b7027c7b7c50b83609eef39b90",
     "order_item/checker.go": "02e151227137a4eb1df8824d4ba83bcd08057bc88c57beb33f63096a0b0434af",
-    "go.mod": "d5f72fdb4142475205e0d2a03582b43127bdb4abe291bbd9f984f8d2cb07848d",
-    "tenant/entity.go": "398762aeb4f8976674e83120013abb34a40ecaef9c77c1963605fbb64b12bfaf",
-    "purchase_order/entity.go": "3ff5970176690af5f67794cbf2bf1bec5328a7c109b2cc963b8b5243479eef67",
-    "order_item/entity.go": "f0c82368ca1ff25e4121127ad830339aa3b6456f5d2d31d9a19659dd2edddb37"
+    "lib.go": "72bf51dda2b3dc6e6aa5563a70ec68d27cf5ab641ff47790c465427026e5fc83",
+    "tenant/entity.go": "eaa0c1f2297ade7255e6f6ad5628e6fb56abb63a00e273d1c18d9e09b2ebe6bc",
+    "purchase_order/entity.go": "15babe6cedba33a14bfdafd991ddd55477deaaf2daa06113411a73ee004cdf48",
+    "order_item/entity.go": "188b8ee55fed72a71a63c557c365e083f17580b2498cc4b9b72a8dcd1449620f",
+    "e.go": "7910bee58509d2c72ff7aafccddd372fe5b617d1bfefe19ffbefe415d59546f4",
+    "q.go": "ac0053a2dfbd9a1f823df07e928220ceaa5ffda25d4c44037f4524c53e51b384"
   }
 }

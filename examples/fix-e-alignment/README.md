@@ -18,6 +18,14 @@ The same SQLite file retains both rounds. Native capture tests additionally
 cover boolean false and every supported projection source. This does not claim
 a typed dynamic-property schema, persistent dynamic fields or outer transactions.
 
+`rollback_views_test.go` injects failures after a real SQLite write and before
+commit. Both paths must retain query-output properties (including selected null),
+loaded relation detail, original version and pending intent, while the physical
+row remains unchanged and no committed audit is emitted. Each object then retries
+without reloading and returns the new version with old derived properties cleared.
+The snapshot fix is generated from the upstream template; all eight retained
+models were regenerated, with no handwritten domain-library edits.
+
 `projection_views_test.go` adds three independent-view checks to the default
 two-round gate: a full query must not widen an earlier sparse view; independently
 queried objects with equal IDs must not merge pending edits; a sparse outer root

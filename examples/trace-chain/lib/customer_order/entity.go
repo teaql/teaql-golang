@@ -622,6 +622,7 @@ func (e *CustomerOrder) TeaqlPreflightWithinGraph(context *runtime.UserContext, 
 type teaqlCustomerOrderSaveSnapshot struct {
 	loadedSnapshot core.LoadedScalarSnapshot
 	record core.Record
+	queryProperties core.Record
 	dirtyFields map[string]bool
 	isNew bool
 	markedAsDelete bool
@@ -637,6 +638,7 @@ func (e *CustomerOrder) teaqlSaveSnapshot() teaqlCustomerOrderSaveSnapshot {
 	for field, value := range e.loadState { loaded[field] = value }
 	return teaqlCustomerOrderSaveSnapshot{
 		loadedSnapshot: e.loadedSnapshot,
+		queryProperties: e.base.QueryProperties(),
 		record: e.IntoRecord(), dirtyFields: dirty, isNew: e.isNew,
 		markedAsDelete: e.markedAsDelete, loadState: loaded,
 		restrictLoadState: e.restrictLoadState, ledgerID: e.ledgerID,
@@ -646,6 +648,7 @@ func (e *CustomerOrder) teaqlSaveSnapshot() teaqlCustomerOrderSaveSnapshot {
 func (e *CustomerOrder) teaqlRegisterGraphOutcome(context *runtime.UserContext, snapshot teaqlCustomerOrderSaveSnapshot) {
 	context.AfterGraphRollback(func() {
 		if err := e.FromRecord(snapshot.record); err != nil { panic(err) }
+		e.base.CaptureQueryProperties(snapshot.queryProperties)
 		e.loadedSnapshot = snapshot.loadedSnapshot
 		e.dirtyFields = snapshot.dirtyFields
 		e.isNew = snapshot.isNew
