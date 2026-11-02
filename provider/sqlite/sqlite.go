@@ -18,15 +18,41 @@ import (
 
 const DefaultIdSpaceTable = "teaql_id_space"
 
-// EnsureSoundex installs the SQLite functions and collations required by the
-// generated schema, including soundex and exact Decimal ordering. The name is
-// retained for generated workspaces that already call it from EnsureSchema.
+const managedDriverName = "teaql_sqlite3"
+
+var managedDriver = &sqlite3.SQLiteDriver{ConnectHook: registerConnectionFeatures}
+
+func init() {
+	sql.Register(managedDriverName, managedDriver)
+}
+
+// OpenDatabase creates a pool whose every physical connection has TeaQL's
+// functions, aggregate and collation, including after expiry or cancellation.
+// The conservative single-connection default also supports :memory: databases;
+// callers may explicitly increase pool capacity for a file-backed database.
+// Opening the pool does not create or reconcile application schema.
+func OpenDatabase(dataSourceName string) (*sql.DB, error) {
+	db, err := sql.Open(managedDriverName, dataSourceName)
+	if err != nil {
+		return nil, err
+	}
+	db.SetMaxOpenConns(1)
+	return db, nil
+}
+
+// EnsureSoundex retains the one-connection initializer used by older generated
+// workspaces. Use OpenDatabase for pool-lifetime guarantees; an existing DB's
+// driver cannot safely be replaced or given a global connection hook here.
 func EnsureSoundex(db *sql.DB) error {
 	if db == nil {
 		return fmt.Errorf("sqlite database is nil")
 	}
-	// A user-defined SQLite function belongs to a physical connection. Keeping
-	// one connection makes the registration deterministic for this embedded DB.
+	if db.Driver() == managedDriver {
+		// The driver initializes each connection once. Do not register again on
+		// every EnsureSchema or change the caller's explicit pool configuration.
+		return db.PingContext(stdcontext.Background())
+	}
+	// Legacy initialization applies only to this physical connection.
 	db.SetMaxOpenConns(1)
 	connection, err := db.Conn(stdcontext.Background())
 	if err != nil {
@@ -38,22 +64,26 @@ func EnsureSoundex(db *sql.DB) error {
 		if !ok {
 			return fmt.Errorf("unexpected SQLite driver connection %T", driverConnection)
 		}
-		if err := sqliteConnection.RegisterFunc("soundex", sqliteCompatibleSoundex, true); err != nil {
-			return err
-		}
-		if err := sqliteConnection.RegisterCollation("TEAQL_DECIMAL", compareExactDecimal); err != nil {
-			return err
-		}
-		if err := sqliteConnection.RegisterFunc("teaql_decimal_valid", func(text string) int {
-			if _, err := decimal.NewFromString(text); err != nil {
-				return 0
-			}
-			return 1
-		}, true); err != nil {
-			return err
-		}
-		return sqliteConnection.RegisterAggregator("TEAQL_DECIMAL_SUM", func() *exactDecimalSum { return &exactDecimalSum{} }, true)
+		return registerConnectionFeatures(sqliteConnection)
 	})
+}
+
+func registerConnectionFeatures(connection *sqlite3.SQLiteConn) error {
+	if err := connection.RegisterFunc("soundex", sqliteCompatibleSoundex, true); err != nil {
+		return err
+	}
+	if err := connection.RegisterCollation("TEAQL_DECIMAL", compareExactDecimal); err != nil {
+		return err
+	}
+	if err := connection.RegisterFunc("teaql_decimal_valid", func(text string) int {
+		if _, err := decimal.NewFromString(text); err != nil {
+			return 0
+		}
+		return 1
+	}, true); err != nil {
+		return err
+	}
+	return connection.RegisterAggregator("TEAQL_DECIMAL_SUM", func() *exactDecimalSum { return &exactDecimalSum{} }, true)
 }
 
 type exactDecimalSum struct {
