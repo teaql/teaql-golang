@@ -2,6 +2,7 @@
 "use strict";
 const fs = require("node:fs"), path = require("node:path"), os = require("node:os"), cp = require("node:child_process"), crypto = require("node:crypto"), assert = require("node:assert/strict");
 const example = __dirname, repo = path.resolve(example, "../.."), sha = bytes => crypto.createHash("sha256").update(bytes).digest("hex");
+const {validateExpressionBoundaries} = require('./expression-boundaries.cjs');
 function fingerprint() {
   const m = JSON.parse(fs.readFileSync(path.join(example, 'fixture-manifest.json')));
   assert.equal(m.language, 'go'); assert.equal(m.evaluationErrors, 0);
@@ -33,6 +34,9 @@ try {
   report.unchangedApplicationSha256 = sha(fs.readFileSync(path.join(example, 'unchanged_views_test.go')));
   report.rollbackApplicationSha256 = sha(fs.readFileSync(path.join(example, 'rollback_views_test.go')));
   report.checkerBoundaryApplicationSha256 = sha(fs.readFileSync(path.join(example, 'checker_boundaries_test.go')));
+  report.expressionBoundaryApplicationSha256 = sha(fs.readFileSync(path.join(example, 'expression_boundary_test.go')));
+  report.expressionBoundaryValidatorSha256 = sha(fs.readFileSync(path.join(example, 'expression-boundaries.cjs')));
+  report.expressionBoundaryRounds = [];
   const manifest = fs.readFileSync(path.join(example, 'go.mod'), 'utf8')
     + '\nreplace checker-fix-advanced-core-workspace/lib => ' + JSON.stringify(path.join(example, 'generated'))
     + '\nreplace github.com/teaql/teaql-golang => ' + JSON.stringify(repo) + '\n';
@@ -89,6 +93,7 @@ try {
     assert.deepEqual(retries.map(v => v.case), ['after-write', 'before-commit']);
     assert(rollback.every(v => v.passed && v.round === round && v.queryPropertiesPreserved && v.selectedNullPresent));
     assert(retries.every(v => v.passed && v.round === round && v.version === 2 && v.staleProperties === 0));
+    report.expressionBoundaryRounds.push(validateExpressionBoundaries(log));
     assert.deepEqual(fingerprint(), m);
   }
   report.databaseSha256 = sha(fs.readFileSync(path.join(evidence, 'fixture.sqlite'))); report.passed = true;
@@ -96,6 +101,8 @@ try {
     sha256: sha(fs.readFileSync(path.join(evidence, 'fixture.sqlite.context-root.sqlite')))};
   report.checkerBoundaryDatabase = {file: 'fixture.sqlite.checker-boundaries.sqlite',
     sha256: sha(fs.readFileSync(path.join(evidence, 'fixture.sqlite.checker-boundaries.sqlite')))};
+  report.expressionBoundaryDatabase = {file: 'fixture.sqlite.expression-boundaries.sqlite',
+    sha256: sha(fs.readFileSync(path.join(evidence, 'fixture.sqlite.expression-boundaries.sqlite')))};
   report.partialAncestorDatabase = {file: 'fixture.sqlite.partial-ancestors.sqlite',
     sha256: sha(fs.readFileSync(path.join(evidence, 'fixture.sqlite.partial-ancestors.sqlite')))};
   report.partialRootDatabase = {file: 'fixture.sqlite.partial-root.sqlite',

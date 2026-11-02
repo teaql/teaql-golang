@@ -8,6 +8,20 @@ This builds the retained evaluated fixture against the local checkout, executes
 the application twice without resetting its SQLite stores, and removes its owned
 compiler outputs after the processes exit. Compact evidence and databases remain.
 
+`expression_boundary_test.go` is part of this default gate, not a separate
+conformance-only probe. Each round checks nine generated E cases: late and
+indexed missing leaves, loaded null, empty/out-of-range access, fallible/panic/
+fallback terminals, sibling paths from one expression root, FK-only references
+and no side effects. Actual generated Q and audited Save establish the graph.
+Calibrated provider/transaction/policy/audit counters stay zero during E, and
+entity snapshots, ledger identities and physical versions stay unchanged.
+The controller validates both the closed machine DTO and readable human message,
+including the full redacted suffix, one positional broken marker and no private
+fallback data. Two additional native-only location vectors cover punctuation and
+repeated names under three profiles; they do not claim that the generated Go
+forward wrapper supports recursive relation traversal. The same small SQLite
+store holds both unreset rounds and is retained for independent SQL checks.
+
 `unchanged_views_test.go` exercises four no-op saves per round: sparse value/null
 restoration with a selected sparse relation, repeated clean saving, another row's
 pending intent, and row-owned query values. Generated Q/E and JSON retain the
