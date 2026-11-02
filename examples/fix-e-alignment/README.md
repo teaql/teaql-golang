@@ -37,6 +37,25 @@ The existing Go guard reports the stale zero-affected update as structured
 `Check / prepared_mutation_incomplete`. The example verifies that behavior,
 not a newly added optimistic-conflict exception type.
 
+`checker_boundaries_test.go` adds 28 boundary observations per round to the
+normal gate. A module-installed Checker rejects invalid generated saves without
+schema initialization or provider entry. The actual modified object must be
+fully loaded, including an optional field; an untouched sparse ancestor need
+not be complete. A public CheckerRegistry decorator tests both a range violation
+introduced by Fix and a successful required-name/Decimal repair, followed by
+fresh Q/E reads. Positive graph controls observe one transaction, two writes
+and two committed audits. Invalid attempts preserve the physical rows.
+
+The same test submits real JSON through the public object-local wire adapter
+in all three naming profiles. It preserves an explicitly declared alias and its
+escaped source pointer, rejects unknown object-valued fields and equal/unequal
+alias collisions in both JSON orders before mapping, Checker or Save, and
+includes a valid write control. Go maps are unordered: a collision must identify
+an actual submitted field, not necessarily the second field in JSON text. This
+does not claim a recursive generated HTTP adapter. Both rounds share one retained
+SQLite store; independent read-only SQL verifies the final ten parents, four
+children, unchanged root and exact repaired Decimal.
+
 `partial_root_test.go` loads two untouched sparse ancestors and one complete
 modified leaf through generated Q/E APIs. A second real root is created through
 the generated audited-save API. Both wrong-context attempts must reject before

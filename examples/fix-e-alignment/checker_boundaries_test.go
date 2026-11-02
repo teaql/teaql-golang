@@ -411,6 +411,13 @@ func TestGeneratedCheckerBoundaries(t *testing.T) {
 			if wire.Code != want || mapped != 0 || saves != 0 || checker.calls != 0 {
 				t.Fatal("wire rejection reached domain work", scenario, wire, counts())
 			}
+			if scenario == "unknown" {
+				if wire.InstancePath != "/payload~1order/unknown~1field~0" {
+					t.Fatal("unknown input lost its actual escaped source pointer", wire)
+				}
+			} else if wire.InstancePath != "/payload~1order/"+standard && wire.InstancePath != "/payload~1order/legacy~1phone~0" {
+				t.Fatal("collision location is not an actually submitted field", wire)
+			}
 			zeroIO()
 			if physical() != before {
 				t.Fatal("wire rejection changed storage", scenario)
