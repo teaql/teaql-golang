@@ -262,6 +262,13 @@ repository's local runtime. No external database server or generator is needed
 to run the retained generated example. Use only the example's test database;
 reset/repeated-run behavior is documented in its README.
 
+The [SQLite connection lifecycle example](examples/sqlite-lifecycle/README.md)
+checks generated Q/E and audited graph saves after connection discard, idle
+eviction, pool fan-out and transaction cancellation. Manual SQLite setup uses
+`sqlite.OpenDatabase(dsn)` so every physical connection receives Soundex and
+exact Decimal functions, collation and aggregation. Generated runtimes use the
+same factory; schema creation remains an explicit Context-based operation.
+
 ## Optional standard OpenTelemetry module
 
 The local, unreleased `telemetry/standard` module needs Go 1.25 or newer; the

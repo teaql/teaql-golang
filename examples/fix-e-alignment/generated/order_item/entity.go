@@ -453,8 +453,15 @@ func (e *OrderItem) teaqlRegisterGraphOutcome(context *runtime.UserContext, snap
 
 // TeaqlSaveWithinGraph is generated infrastructure used by related entity
 // packages after the public root Save has opened the graph transaction.
-func (e *OrderItem) TeaqlSaveWithinGraph(context *runtime.UserContext, intent core.MutationIntent, parentScope *core.MutationTraceScope, privacy *data_service.MutationPrivacy) (*OrderItem, error) {
+func (e *OrderItem) TeaqlSaveWithinGraph(context *runtime.UserContext, intent core.MutationIntent, parentScope *core.MutationTraceScope, privacy *data_service.MutationPrivacy, visited ...map[any]struct{}) (*OrderItem, error) {
 	if err := intent.Validate(); err != nil { return nil, err }
+	// This traversal owns its pointer-identity set. Never deduplicate distinct
+	// views by entity ID, or keep a guard on Context/entities across saves.
+	var seen map[any]struct{}
+	if len(visited) > 0 { seen = visited[0] }
+	if seen == nil { seen = make(map[any]struct{}) }
+	if _, exists := seen[e]; exists { return e, nil }
+	seen[e] = struct{}{}
 	if e.isNew && e.markedAsDelete {
 		if parentScope == nil { return nil, fmt.Errorf("cancelled new root %s: create-then-delete has no persisted entity to return", e.EntityName()) }
 		return e, nil
@@ -464,7 +471,7 @@ func (e *OrderItem) TeaqlSaveWithinGraph(context *runtime.UserContext, intent co
 	if !e.isNew && !e.markedAsDelete && len(e.root.Change(e.EntityKey())) == 0 {
 		scope, err := core.MutationScopeForEntity(parentScope, e.EntityKey(), intent, e.comment)
 		if err != nil { return nil, err }
-		if err := e.saveCascade(context, intent, scope, privacy); err != nil { return nil, err }
+		if err := e.saveCascade(context, intent, scope, privacy, seen); err != nil { return nil, err }
 		return e, nil
 	}
 	snapshot := e.teaqlSaveSnapshot()
@@ -543,7 +550,7 @@ func (e *OrderItem) TeaqlSaveWithinGraph(context *runtime.UserContext, intent co
 		if err := e.teaqlAcceptPersisted(context, res.PersistedRecord); err != nil {
 			return nil, err
 		}
-		if err := e.saveCascade(context, intent, scope, privacy); err != nil { return nil, err }
+		if err := e.saveCascade(context, intent, scope, privacy, seen); err != nil { return nil, err }
 		return e, nil
 	} else if e.markedAsDelete {
 		scope, err := core.MutationScopeForEntity(parentScope, e.EntityKey(), intent, e.comment)
@@ -590,7 +597,7 @@ func (e *OrderItem) TeaqlSaveWithinGraph(context *runtime.UserContext, intent co
 		// A clean parent still carries the scope for changed descendants, but
 		// must not emit an empty UPDATE or bump its optimistic version.
 		if len(cmd.Values) == 0 {
-			if err := e.saveCascade(context, intent, scope, privacy); err != nil { return nil, err }
+			if err := e.saveCascade(context, intent, scope, privacy, seen); err != nil { return nil, err }
 			return e, nil
 		}
 		expectedVersion := e.base.Version
@@ -615,12 +622,12 @@ func (e *OrderItem) TeaqlSaveWithinGraph(context *runtime.UserContext, intent co
 			return nil, fmt.Errorf("mutation did not return the authoritative persisted record")
 		}
 		if err := e.teaqlAcceptPersisted(context, res.PersistedRecord); err != nil { return nil, err }
-		if err := e.saveCascade(context, intent, scope, privacy); err != nil { return nil, err }
+		if err := e.saveCascade(context, intent, scope, privacy, seen); err != nil { return nil, err }
 		return e, nil
 	}
 }
 
-func (e *OrderItem) saveCascade(context *runtime.UserContext, intent core.MutationIntent, scope *core.MutationTraceScope, privacy *data_service.MutationPrivacy) error {
+func (e *OrderItem) saveCascade(context *runtime.UserContext, intent core.MutationIntent, scope *core.MutationTraceScope, privacy *data_service.MutationPrivacy, seen map[any]struct{}) error {
 	return nil
 }
 

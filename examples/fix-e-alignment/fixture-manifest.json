@@ -1,18 +1,18 @@
 {
   "schema": "teaql.generated-example-fixture/v1",
-  "generatorCommit": "5d24b84cfe319225d1664f2c867d1b408e6ab362",
-  "generatorSourceContentsSha256": "93c6f6aed15bcfc155d7202800eac1cebe0bae3a1512ea147fe1262a5b0ed004",
-  "producerReceiptSha256": "b1e20b217cf000aeedd9e1a02de252855ef322ee894c3397321d391ce8a98315",
+  "generatorCommit": "30216a79e1c0d9525ccf5d595dfbc2309b2ba91b",
+  "generatorSourceContentsSha256": "e38fb84585267caeeb3cba48b6965baf02054317696e78811711ef0f2d403831",
+  "producerReceiptSha256": "d71b4106ab7eea5bf9f90fbb0bac6ef4892c4ead2fa8b1e3af5cf7532bf5ef56",
   "evaluationErrors": 0,
   "language": "go",
   "modelSha256": "a2cf4c907cb084cb0946e993eeba586c8c0701a89fdc4a849808aa743be033b7",
-  "generatedManifestSha256": "28b043ca4cdb29d98aa3d94a573e4dd7f023c78fc5d7dfa8dd337f90627cab2a",
+  "generatedManifestSha256": "7485ddaf882a39fb7a6fbcc7c055e83873ba22b23e3b34a584c3054bc3910172",
   "producerFixture": "fix-e-alignment",
   "producerSource": {
-    "commit": "5d24b84cfe319225d1664f2c867d1b408e6ab362",
-    "diff": "59186b2ca6af2c096516dbfb97fd9210e9641f85ab03568a571d08e8abd3f70e",
-    "status": "05ec391ed22b275f101e064bd9df9e9c49997706e486bb015c1c2ccc1e4a2889",
-    "sourceContentsSha256": "93c6f6aed15bcfc155d7202800eac1cebe0bae3a1512ea147fe1262a5b0ed004"
+    "commit": "30216a79e1c0d9525ccf5d595dfbc2309b2ba91b",
+    "diff": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "status": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "sourceContentsSha256": "e38fb84585267caeeb3cba48b6965baf02054317696e78811711ef0f2d403831"
   },
   "evaluatedScope": "golang-lib-core",
   "evaluationWarnings": 4,
@@ -21,9 +21,9 @@
     "purchase_order/expression.go": "e2ff80e2bd514014eb3a57e63a952a41319d437d3c6d7b701b77ae97afd9d002",
     "order_item/expression.go": "fbc3e9bd21fe412fb1161705b35de74d7353ae8ff81bc4502bbd8c0d6faba8c7",
     "internal/expressiongraph/graph.go": "a5da7c2a28dd32413ae1fc7a930f6714b392eb56903f1381e89170f04a91eeea",
-    "tenant/entity.go": "eaa0c1f2297ade7255e6f6ad5628e6fb56abb63a00e273d1c18d9e09b2ebe6bc",
-    "purchase_order/entity.go": "15babe6cedba33a14bfdafd991ddd55477deaaf2daa06113411a73ee004cdf48",
-    "order_item/entity.go": "188b8ee55fed72a71a63c557c365e083f17580b2498cc4b9b72a8dcd1449620f",
+    "tenant/entity.go": "3c6d631cf58498ac839548ab08cc44b277081a12a31aa8475b0360f46de680c3",
+    "purchase_order/entity.go": "58066a1131a6bf2f584a78d76971271ee31467466618648dfd17b596fa5fe37b",
+    "order_item/entity.go": "b8cdfa272da3a55f2b948d02a94ce5d11e44768f4dd7185d8807e87e984c09db",
     "tenant/request.go": "fad279fdb9eeba7c59d8ccf4483ee9423d0bc3efdb36c98b4cb4bd664d924df1",
     "purchase_order/request.go": "937be42c52da3f89cae56ff7c1a22b29bde9239290f9e9454f573270e956e90b",
     "order_item/request.go": "eb713d63f714e8706f01053b7693378bf5eed806d5775209caf41093d6fcf6e3",
@@ -35,12 +35,12 @@
     "purchase_order/behavior.go": "7f70d05c8f7879720a1a76ccd405684fedefae895aba6e9fbf1371137968a8f7",
     "order_item/behavior.go": "0d1c08bf44cc8f2268b5b5c998fae61e24b6a6c07589bb0b49337e5882d9dc6a",
     "e.go": "7910bee58509d2c72ff7aafccddd372fe5b617d1bfefe19ffbefe415d59546f4",
-    "runtime.go": "7dd09a8cf22e7c519acdeef18029bbd90ec8774cf4c58a6c1ac31603a5e1b056",
+    "runtime.go": "ec7a96b71634b9d9ac480f6b4761675570ea4e3e6b02007231a3dbe4695d25ea",
     "internal/generatedsearch/search_models.go": "684ab28a36b174cf143210391ca062178ad7997454d7f0fc49656f58cd45f730",
     "internal/generatedjson/model.go": "d373fea48af6f7448fdfd631f434424510e7b1f8a0c4546e443e04c683563aed",
     "entity_json.go": "a2ce8174310c5de1b036c4895d880a89114d4698e0669f92fa690eacad9f3442",
     "q.go": "ac0053a2dfbd9a1f823df07e928220ceaa5ffda25d4c44037f4524c53e51b384",
     "go.mod": "d5f72fdb4142475205e0d2a03582b43127bdb4abe291bbd9f984f8d2cb07848d"
   },
-  "previousFixtureManifestSha256": "a7a4dce1fda10e67b49b6bbc0ffa0fc61a53511a342e40571ed4653b9a8c6242"
+  "previousFixtureManifestSha256": "bb340d0b3930be64d08853d272cb0389219ce37c8e920f3c2c25fc876abfd262"
 }
