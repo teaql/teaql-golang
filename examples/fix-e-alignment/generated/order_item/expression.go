@@ -5,6 +5,7 @@ import (
 	"github.com/shopspring/decimal"
 	"github.com/teaql/teaql-golang/runtime"
 	"github.com/teaql/teaql-golang/core"
+	"checker-fix-advanced-core-workspace/lib/internal/expressiongraph"
 )
 
 var _ = time.Time{}
@@ -122,6 +123,7 @@ func (e *OrderItemExpression) Version() *ValueExpression[int64] {
 }
 type PurchaseOrderRelationExpression struct {
 	value core.Record
+	entity core.Entity
 	root string
 	path runtime.ExpressionPath
 	err *runtime.NotLoadedError
@@ -197,6 +199,15 @@ func (e *PurchaseOrderRelationExpression) Version() *ValueExpression[int64] {
 	value, valid := raw.TryI64(); if !valid { return missingExpression[int64]() }
 		return valueExpression(value)
 }
+func (e *PurchaseOrderRelationExpression) Tenant() *expressiongraph.TenantExpression {
+	return expressiongraph.NewPurchaseOrderExpression(e.entity, e.path, e.err).Tenant()
+}
+func (e *PurchaseOrderRelationExpression) TenantId() *expressiongraph.ValueExpression[uint64] {
+	return expressiongraph.NewPurchaseOrderExpression(e.entity, e.path, e.err).TenantId()
+}
+func (e *PurchaseOrderRelationExpression) OrderItemList() *expressiongraph.PurchaseOrderOrderItemListExpression {
+	return expressiongraph.NewPurchaseOrderExpression(e.entity, e.path, e.err).OrderItemList()
+}
 
 func (e *OrderItemExpression) PurchaseOrderId() *ValueExpression[uint64] {
 	path := e.path.Member("purchase_order", "PurchaseOrderId")
@@ -220,11 +231,12 @@ func (e *OrderItemExpression) PurchaseOrder() *PurchaseOrderRelationExpression {
 	if !e.value.isRelationLoaded("purchaseOrderEntity") { return &PurchaseOrderRelationExpression{root:e.root,path:path,err:runtime.NewNotLoadedError(path.MarkMissing(), "purchase_order")} }
 	related, ok := e.value.RelationEntity("purchaseOrderEntity")
 	if !ok || related == nil { return &PurchaseOrderRelationExpression{root:e.root,path:path} }
-	return &PurchaseOrderRelationExpression{value:related.IntoRecord(),root:e.root,path:path}
+	return &PurchaseOrderRelationExpression{value:related.IntoRecord(),entity:related,root:e.root,path:path}
 }
 
 type TenantRelationExpression struct {
 	value core.Record
+	entity core.Entity
 	root string
 	path runtime.ExpressionPath
 	err *runtime.NotLoadedError
@@ -267,6 +279,13 @@ func (e *TenantRelationExpression) Version() *ValueExpression[int64] {
 	value, valid := raw.TryI64(); if !valid { return missingExpression[int64]() }
 		return valueExpression(value)
 }
+func (e *TenantRelationExpression) PurchaseOrderList() *expressiongraph.TenantPurchaseOrderListExpression {
+	return expressiongraph.NewTenantExpression(e.entity, e.path, e.err).PurchaseOrderList()
+}
+
+func (e *TenantRelationExpression) OrderItemList() *expressiongraph.TenantOrderItemListExpression {
+	return expressiongraph.NewTenantExpression(e.entity, e.path, e.err).OrderItemList()
+}
 
 func (e *OrderItemExpression) TenantId() *ValueExpression[uint64] {
 	path := e.path.Member("tenant", "TenantId")
@@ -290,5 +309,20 @@ func (e *OrderItemExpression) Tenant() *TenantRelationExpression {
 	if !e.value.isRelationLoaded("tenantEntity") { return &TenantRelationExpression{root:e.root,path:path,err:runtime.NewNotLoadedError(path.MarkMissing(), "tenant")} }
 	related, ok := e.value.RelationEntity("tenantEntity")
 	if !ok || related == nil { return &TenantRelationExpression{root:e.root,path:path} }
-	return &TenantRelationExpression{value:related.IntoRecord(),root:e.root,path:path}
+	return &TenantRelationExpression{value:related.IntoRecord(),entity:related,root:e.root,path:path}
+}
+
+// Generated graph adapters expose loaded state only; no context or provider is available.
+func (e *OrderItem) TeaqlExpressionRelationLoaded(name string) bool {
+	return e.isRelationLoaded(name)
+}
+func (e *OrderItem) TeaqlExpressionListSize(name string) (int, bool) {
+	switch name {
+	default: return 0, false
+	}
+}
+func (e *OrderItem) TeaqlExpressionListItem(name string, index int) core.Entity {
+	switch name {
+	default: return nil
+	}
 }

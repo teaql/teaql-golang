@@ -5,6 +5,7 @@ import (
 	"github.com/shopspring/decimal"
 	"github.com/teaql/teaql-golang/runtime"
 	"github.com/teaql/teaql-golang/core"
+	"checker-fix-advanced-core-workspace/lib/internal/expressiongraph"
 	"checker-fix-advanced-core-workspace/lib/order_item"
 )
 
@@ -123,6 +124,7 @@ func (e *PurchaseOrderExpression) Version() *ValueExpression[int64] {
 }
 type TenantRelationExpression struct {
 	value core.Record
+	entity core.Entity
 	root string
 	path runtime.ExpressionPath
 	err *runtime.NotLoadedError
@@ -165,6 +167,13 @@ func (e *TenantRelationExpression) Version() *ValueExpression[int64] {
 	value, valid := raw.TryI64(); if !valid { return missingExpression[int64]() }
 		return valueExpression(value)
 }
+func (e *TenantRelationExpression) PurchaseOrderList() *expressiongraph.TenantPurchaseOrderListExpression {
+	return expressiongraph.NewTenantExpression(e.entity, e.path, e.err).PurchaseOrderList()
+}
+
+func (e *TenantRelationExpression) OrderItemList() *expressiongraph.TenantOrderItemListExpression {
+	return expressiongraph.NewTenantExpression(e.entity, e.path, e.err).OrderItemList()
+}
 
 func (e *PurchaseOrderExpression) TenantId() *ValueExpression[uint64] {
 	path := e.path.Member("tenant", "TenantId")
@@ -188,7 +197,7 @@ func (e *PurchaseOrderExpression) Tenant() *TenantRelationExpression {
 	if !e.value.isRelationLoaded("tenantEntity") { return &TenantRelationExpression{root:e.root,path:path,err:runtime.NewNotLoadedError(path.MarkMissing(), "tenant")} }
 	related, ok := e.value.RelationEntity("tenantEntity")
 	if !ok || related == nil { return &TenantRelationExpression{root:e.root,path:path} }
-	return &TenantRelationExpression{value:related.IntoRecord(),root:e.root,path:path}
+	return &TenantRelationExpression{value:related.IntoRecord(),entity:related,root:e.root,path:path}
 }
 type OrderItemListExpression struct {
 	value *OrderItemList
@@ -226,4 +235,25 @@ func (e *PurchaseOrderExpression) OrderItemList() *OrderItemListExpression {
 	if e.value == nil { return &OrderItemListExpression{root:e.root, path:path} }
 	if !e.value.IsLoaded("orderItemList") { return &OrderItemListExpression{err: runtime.NewNotLoadedError(path.MarkMissing(), "order_item_list"), root:e.root, path:path} }
 	return &OrderItemListExpression{value: e.value.OrderItemList(), root: e.root, path:path}
+}
+
+// Generated graph adapters expose loaded state only; no context or provider is available.
+func (e *PurchaseOrder) TeaqlExpressionRelationLoaded(name string) bool {
+	return e.isRelationLoaded(name)
+}
+func (e *PurchaseOrder) TeaqlExpressionListSize(name string) (int, bool) {
+	switch name {
+	case "orderItemList":
+		if !e.IsLoaded(name) { return 0, false }
+		return len(e.OrderItemList().Items()), true
+	default: return 0, false
+	}
+}
+func (e *PurchaseOrder) TeaqlExpressionListItem(name string, index int) core.Entity {
+	switch name {
+	case "orderItemList":
+		if !e.IsLoaded(name) || index < 0 || index >= len(e.OrderItemList().Items()) { return nil }
+		return e.OrderItemList().Items()[index]
+	default: return nil
+	}
 }

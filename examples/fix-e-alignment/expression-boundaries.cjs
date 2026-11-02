@@ -83,4 +83,4 @@ function validateExpressionBoundaries(log) {
   assert.equal(result.childIds.length, 3); assert.equal(new Set(result.childIds).size, 3);
   return result;
 }
-module.exports = {validateExpressionBoundaries};
+module.exports = {validateExpressionBoundaries, failure};

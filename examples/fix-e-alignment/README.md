@@ -89,3 +89,22 @@ also cover all three JSON naming profiles, catalog overrides and customer-owned
 explanations. Automatic root messages can rerender after a locale/path change;
 their internal bookkeeping retains only a SHA-256 fingerprint, never raw input,
 message text, an entity or UserContext. This does not alter other Checker rules.
+# Recursive generated E traversal
+
+The default controller also requires twelve recursive E cases on a real SQLite
+graph, twice without resetting the store. A path such as
+`E.PurchaseOrder(order).Tenant().PurchaseOrderList().First().Tenant().Name()`
+uses model-specific methods throughout; no string expression or hand-built path
+stands in for generated traversal. Early, middle-list and late missing accesses
+retain the complete native suffix and one positional broken marker. Loaded
+values, null/empty/out-of-range absence, fallback behavior and sibling isolation
+are checked with calibrated zero provider/policy/audit effects, unchanged graph
+data, pending intent and mutation-ledger identities.
+
+Forward wrappers retain their existing scalar return types. Further relations
+delegate to one generated `internal/expressiongraph` package, avoiding entity
+package import cycles and recursive expansion of generated types. Its entity
+adapters read already-loaded fields and list items only; they have no context,
+provider or implicit-loading capability. Generated source is refreshed from the
+evaluated model and checked against its fixture manifest, never edited by hand.
+
