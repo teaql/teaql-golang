@@ -269,6 +269,12 @@ eviction, pool fan-out and transaction cancellation. Manual SQLite setup uses
 exact Decimal functions, collation and aggregation. Generated runtimes use the
 same factory; schema creation remains an explicit Context-based operation.
 
+The [graph save and loaded-view regression](examples/fix-e-alignment/README.md)
+runs generated Q/E, Checker/Fix, rollback/retry and same-ID instance admission
+twice against retained SQLite stores. Ambiguous writable views and graph changes
+introduced by policy/approval/warning callbacks reject before database writes;
+repeated references to one instance still produce one write.
+
 ## Optional standard OpenTelemetry module
 
 The local, unreleased `telemetry/standard` module needs Go 1.25 or newer; the

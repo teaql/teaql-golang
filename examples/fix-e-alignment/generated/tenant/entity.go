@@ -382,9 +382,52 @@ func (e *Tenant) Save(context *runtime.UserContext) (*Tenant, error) {
 // first provider mutation. It is generated infrastructure, not application API.
 func (e *Tenant) TeaqlPreflightGraph(context *runtime.UserContext, intent core.MutationIntent) error {
 	if err := intent.Validate(); err != nil { return err }
+	if err := e.TeaqlPrepareMutationViews(context); err != nil { return err }
 	if err := e.TeaqlNormalizeMutationGraph(context); err != nil { return err }
 	if err := context.ValidateGraphMutationVersions(e.root); err != nil { return err }
+	if err := e.TeaqlAdmitMutationGraph(context); err != nil { return err }
 	return e.TeaqlPreflightWithinGraph(context, intent, nil)
+}
+
+// Preserve instance-local intent before automatic ledger attachment can merge
+// aliases. Known-baseline equal assignments are not writable intent.
+func (e *Tenant) TeaqlPrepareMutationViews(context *runtime.UserContext) error {
+	if e.isNew && e.markedAsDelete { return nil }
+	restoredFields, err := context.DiscardRestoredScalarChanges(e.root, e.EntityKey(), e.loadedSnapshot)
+	if err != nil { return err }
+	for _, field := range restoredFields { delete(e.dirtyFields, field) }
+	if e.isNew || e.markedAsDelete || len(e.root.Change(e.EntityKey())) > 0 {
+		if err := context.AdmitPreparedGraphEntityView(e.EntityKey(), e); err != nil { return err }
+	}
+	for index, child := range e.purchaseOrderList.Items() {
+		if child.IsNew() && child.IsMarkedAsDelete() { continue }
+		if err := child.TeaqlPrepareMutationViews(context); err != nil {
+			var checkError *runtime.RuntimeError
+			if errors.As(err, &checkError) && checkError.Type == "Check" {
+				prefix := runtime.Location().Property("purchase_order_list").At(index)
+				prefixed := make([]runtime.CheckResult, len(checkError.CheckResults))
+				for resultIndex, result := range checkError.CheckResults { prefixed[resultIndex] = result.PrefixedBy(prefix) }
+				context.TranslateCheckResults(prefixed)
+				return &runtime.RuntimeError{Type: "Check", CheckResults: prefixed}
+			}
+			return fmt.Errorf("prepare views from purchaseOrderList: %w", err)
+		}
+	}
+	for index, child := range e.orderItemList.Items() {
+		if child.IsNew() && child.IsMarkedAsDelete() { continue }
+		if err := child.TeaqlPrepareMutationViews(context); err != nil {
+			var checkError *runtime.RuntimeError
+			if errors.As(err, &checkError) && checkError.Type == "Check" {
+				prefix := runtime.Location().Property("order_item_list").At(index)
+				prefixed := make([]runtime.CheckResult, len(checkError.CheckResults))
+				for resultIndex, result := range checkError.CheckResults { prefixed[resultIndex] = result.PrefixedBy(prefix) }
+				context.TranslateCheckResults(prefixed)
+				return &runtime.RuntimeError{Type: "Check", CheckResults: prefixed}
+			}
+			return fmt.Errorf("prepare views from orderItemList: %w", err)
+		}
+	}
+	return nil
 }
 
 // Cancel known-baseline equal assignments and attach the complete pending graph
@@ -428,6 +471,52 @@ func (e *Tenant) TeaqlNormalizeMutationGraph(context *runtime.UserContext) error
 				return &runtime.RuntimeError{Type: "Check", CheckResults: prefixed}
 			}
 			return fmt.Errorf("normalize child from orderItemList: %w", err)
+		}
+	}
+	return nil
+}
+
+// Admit all writable object instances before any Checker/Fix can rewrite a
+// carrier. Explicit compatible ledger composition into one view stays legal.
+func (e *Tenant) TeaqlAdmitMutationGraph(context *runtime.UserContext) error {
+	if e.isNew && e.markedAsDelete { return nil }
+	if e.isNew || e.markedAsDelete || len(e.root.Change(e.EntityKey())) > 0 {
+		if err := context.AdmitPreparedGraphEntityView(e.EntityKey(), e); err != nil { return err }
+	}
+	if err := runtime.RememberPreparedGraphRelation(context, e.EntityKey(), "purchase_order_list", func() []*purchase_order.PurchaseOrder {
+		if e.purchaseOrderList == nil { return nil }
+		return e.purchaseOrderList.Items()
+	}); err != nil { return err }
+	for index, child := range e.purchaseOrderList.Items() {
+		if child.IsNew() && child.IsMarkedAsDelete() { continue }
+		if err := child.TeaqlAdmitMutationGraph(context); err != nil {
+			var checkError *runtime.RuntimeError
+			if errors.As(err, &checkError) && checkError.Type == "Check" {
+				prefix := runtime.Location().Property("purchase_order_list").At(index)
+				prefixed := make([]runtime.CheckResult, len(checkError.CheckResults))
+				for resultIndex, result := range checkError.CheckResults { prefixed[resultIndex] = result.PrefixedBy(prefix) }
+				context.TranslateCheckResults(prefixed)
+				return &runtime.RuntimeError{Type: "Check", CheckResults: prefixed}
+			}
+			return fmt.Errorf("admit child from purchaseOrderList: %w", err)
+		}
+	}
+	if err := runtime.RememberPreparedGraphRelation(context, e.EntityKey(), "order_item_list", func() []*order_item.OrderItem {
+		if e.orderItemList == nil { return nil }
+		return e.orderItemList.Items()
+	}); err != nil { return err }
+	for index, child := range e.orderItemList.Items() {
+		if child.IsNew() && child.IsMarkedAsDelete() { continue }
+		if err := child.TeaqlAdmitMutationGraph(context); err != nil {
+			var checkError *runtime.RuntimeError
+			if errors.As(err, &checkError) && checkError.Type == "Check" {
+				prefix := runtime.Location().Property("order_item_list").At(index)
+				prefixed := make([]runtime.CheckResult, len(checkError.CheckResults))
+				for resultIndex, result := range checkError.CheckResults { prefixed[resultIndex] = result.PrefixedBy(prefix) }
+				context.TranslateCheckResults(prefixed)
+				return &runtime.RuntimeError{Type: "Check", CheckResults: prefixed}
+			}
+			return fmt.Errorf("admit child from orderItemList: %w", err)
 		}
 	}
 	return nil

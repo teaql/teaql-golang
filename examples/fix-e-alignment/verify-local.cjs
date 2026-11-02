@@ -41,13 +41,18 @@ try {
   report.recursiveExpressionApplicationSha256 = sha(fs.readFileSync(path.join(example, 'expression_recursive_test.go')));
   report.recursiveExpressionValidatorSha256 = sha(fs.readFileSync(path.join(example, 'expression-recursive.cjs')));
   report.recursiveExpressionRounds = [];
+  report.graphApplicationSha256 = sha(fs.readFileSync(path.join(example, 'graph_fix_test.go')));
+  report.graphViewApplicationSha256 = sha(fs.readFileSync(path.join(example, 'graph_view_test.go')));
+  report.graphRounds = [];
   const manifest = fs.readFileSync(path.join(example, 'go.mod'), 'utf8')
     + '\nreplace checker-fix-advanced-core-workspace/lib => ' + JSON.stringify(path.join(example, 'generated'))
     + '\nreplace github.com/teaql/teaql-golang => ' + JSON.stringify(repo) + '\n';
   fs.writeFileSync(path.join(scratch, 'go.mod'), manifest); fs.writeFileSync(path.join(evidence, 'consumer-go.mod'), manifest);
   for (const file of fs.readdirSync(example).filter(file => file.endsWith('_test.go'))) fs.copyFileSync(path.join(example, file), path.join(scratch, file));
   const env = {...process.env, GOWORK: 'off', GOCACHE: path.join(scratch, 'cache'), GOTMPDIR: path.join(scratch, 'tmp'),
-    GOMAXPROCS: '2', TEAQL_FIX_E_DB: path.join(evidence, 'fixture.sqlite')};
+    GOMAXPROCS: '2', TEAQL_FIX_E_DB: path.join(evidence, 'fixture.sqlite'),
+    CORE236_GO_RUNTIME_ROOT: repo, CORE236_GO_GRAPH_DB: path.join(evidence, 'graph'),
+    CORE236_GO_RUNTIME_SHA256: sha(fs.readFileSync(path.join(repo, 'runtime/deferred_reference_admission.go')))};
   fs.mkdirSync(env.GOTMPDIR);
   async function run(command, log, timeout) {
     const file = path.join(evidence, log), fd = fs.openSync(file, 'w'); let result;
@@ -59,13 +64,37 @@ try {
     assert.equal(result.status, 0, bytes.toString().slice(-12000)); return bytes.toString();
   }
   const binary = path.join(scratch, 'verify.test');
-  await run(['go', 'test', '-mod=mod', '-c', '-o', binary, '.'], 'build.log', 300000);
+  report.runtimeOrigin = JSON.parse(await run(['go', 'list', '-m', '-json', 'github.com/teaql/teaql-golang'], 'origin.log', 30000));
+  assert.equal(report.runtimeOrigin.Replace?.Dir, repo);
+  await run(['go', 'test', '-race', '-mod=mod', '-c', '-o', binary, '.'], 'build.log', 300000);
   report.binarySha256 = sha(fs.readFileSync(binary));
   fs.copyFileSync(path.join(scratch, 'go.mod'), path.join(evidence, 'resolved-go.mod'));
   if (fs.existsSync(path.join(scratch, 'go.sum'))) fs.copyFileSync(path.join(scratch, 'go.sum'), path.join(evidence, 'consumer-go.sum'));
   for (const round of [1, 2]) {
     env.TEAQL_PARTIAL_ROOT_ROUND = String(round);
-    const log = await run([binary, '-test.v', '-test.count=1', '-test.run', '^TestGenerated'], 'round-' + round + '.log', 90000);
+    env.CORE236_GO_GRAPH_ROUND = String(round);
+    const log = await run([binary, '-test.v', '-test.count=1', '-test.run', '^TestGenerated|^TestCore236Graph'], 'round-' + round + '.log', 90000);
+    assert(!log.includes('WARNING: DATA RACE'));
+    assert.equal([...log.matchAll(/^--- PASS: /gm)].length, 29);
+    const graph = log.split(/\r?\n/).filter(line => line.startsWith('GO_GRAPH_FIX_CASE='))
+      .map(line => JSON.parse(line.slice('GO_GRAPH_FIX_CASE='.length)));
+    const expectedGraph = ['create', 'update', 'checker-retry', 'provider-retry', 'cancel-retry',
+      'lifecycle-complete', 'repeated-object', 'repeated-object-complete', 'independent-contexts',
+      'distinct-views', 'runtime-origin',
+      ...['different', 'equal', 'restored_first', 'restored_last', 'both_restored'].map(name => 'view-admission-' + name)];
+    for (const stage of ['policy', 'approval', 'warning']) for (const change of ['replace', 'append', 'nil_member']) expectedGraph.push('late-view-' + stage + '-' + change);
+    assert.deepEqual(graph.map(row => row.case), expectedGraph);
+    for (const row of graph.filter(row => row.case.startsWith('view-admission-') || row.case.startsWith('late-view-'))) {
+      assert.equal(row.facts.providerEffectsBeforeRead, 0);
+      assert.equal(row.facts.databaseUnchanged, true);
+      if (row.case.startsWith('view-admission-')) {
+        assert.equal(row.facts.checkerCalls, 0); assert.equal(row.facts.carriersUnchanged, true);
+      } else assert.equal(row.facts.callbackCalls, 1);
+    }
+    const distinct = graph.find(row => row.case === 'distinct-views');
+    assert.equal(distinct.facts.rejectedBeforeProvider, true);
+    assert(Object.values(distinct.facts.effects).every(value => value === 0));
+    report.graphRounds.push({round, methodPasses: 29, observations: graph});
     for (const marker of ['FIX_E_EXAMPLE=', 'CORE_LOAD_EXAMPLE=', 'CORE_MUTATION_OWNERSHIP=', 'CORE_MUTATION_PAGING=', 'CORE_VERSION_LIFECYCLE=', 'GO_CHECKER_METADATA=', 'GO_CHECKER_EXACT_RANGES=', 'GO_CONTEXT_ROOT_RESULT=', 'GO_PARTIAL_ANCESTORS_RESULT=', 'GO_PARTIAL_ROOT_RESULT=', 'GO_CHECKER_BOUNDARY_RESULT=']) {
       const values = log.split(/\r?\n/).filter(line => line.startsWith(marker)).map(line => JSON.parse(line.slice(marker.length)));
       assert.equal(values.length, 1, marker); assert.equal(values[0].passed, true, marker);
@@ -101,7 +130,7 @@ try {
     report.recursiveExpressionRounds.push(validateRecursiveExpressions(log));
     assert.deepEqual(fingerprint(), m);
   }
-  report.databaseSha256 = sha(fs.readFileSync(path.join(evidence, 'fixture.sqlite'))); report.passed = true;
+  report.databaseSha256 = sha(fs.readFileSync(path.join(evidence, 'fixture.sqlite')));
   report.contextRootDatabase = {file: 'fixture.sqlite.context-root.sqlite',
     sha256: sha(fs.readFileSync(path.join(evidence, 'fixture.sqlite.context-root.sqlite')))};
   report.checkerBoundaryDatabase = {file: 'fixture.sqlite.checker-boundaries.sqlite',
@@ -114,17 +143,34 @@ try {
     sha256: sha(fs.readFileSync(path.join(evidence, 'fixture.sqlite.partial-ancestors.sqlite')))};
   report.partialRootDatabase = {file: 'fixture.sqlite.partial-root.sqlite',
     sha256: sha(fs.readFileSync(path.join(evidence, 'fixture.sqlite.partial-root.sqlite')))};
+  report.graphDatabases = {};
+  for (const name of fs.readdirSync(evidence).filter(name => name.startsWith('graph.') && name.endsWith('.sqlite'))) {
+    report.graphDatabases[name] = sha(fs.readFileSync(path.join(evidence, name)));
+  }
+  assert.equal(Object.keys(report.graphDatabases).length, 19);
   report.projectionDatabase = {file: 'fixture.sqlite.projection-views.sqlite',
     sha256: sha(fs.readFileSync(path.join(evidence, 'fixture.sqlite.projection-views.sqlite')))};
   report.unchangedDatabase = {file: 'fixture.sqlite.unchanged.projection-views.sqlite',
     sha256: sha(fs.readFileSync(path.join(evidence, 'fixture.sqlite.unchanged.projection-views.sqlite')))};
-  console.log('PASS Go retained Fix/E/loading/ownership example twice on one database');
-} catch (error) { console.error(error.stack); process.exitCode ||= 1; }
+  report.passed = true;
+  console.log('PASS Go retained Fix/E/loading/ownership/graph example twice without resetting databases');
+} catch (error) { report.passed = false; report.error = error.stack; console.error(error.stack); process.exitCode ||= 1; }
 finally {
-  report.disposedOwnedBytes = runner.safeToClean ? ownedBytes(scratch) : 0;
-  if (runner.safeToClean) fs.rmSync(scratch, {recursive: true});
-  else report.unsafeBuildRetention = {path: scratch, processGroup: runner.unsafeGroup};
-  report.scratchRemoved = !fs.existsSync(scratch); runner.dispose();
+  report.disposedOwnedBytes = 0;
+  try {
+    if (runner.safeToClean) {
+      report.disposedOwnedBytes = ownedBytes(scratch);
+      fs.rmSync(scratch, {recursive: true});
+    } else {
+      report.unsafeBuildRetention = {path: scratch, processGroup: runner.unsafeGroup};
+      report.passed = false; process.exitCode ||= 1;
+    }
+  } catch (error) {
+    report.cleanupError = error.stack; report.passed = false; process.exitCode ||= 1;
+  } finally {
+    report.scratchRemoved = !fs.existsSync(scratch);
+    try { runner.dispose(); } catch (error) { report.disposeError = error.stack; report.passed = false; process.exitCode ||= 1; }
+  }
   fs.writeFileSync(path.join(evidence, 'receipt.json'), JSON.stringify(report, null, 2) + '\n');
   console.log('Retained compact example evidence: ' + evidence);
 }

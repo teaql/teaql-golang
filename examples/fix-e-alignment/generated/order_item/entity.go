@@ -330,9 +330,24 @@ func (e *OrderItem) Save(context *runtime.UserContext) (*OrderItem, error) {
 // first provider mutation. It is generated infrastructure, not application API.
 func (e *OrderItem) TeaqlPreflightGraph(context *runtime.UserContext, intent core.MutationIntent) error {
 	if err := intent.Validate(); err != nil { return err }
+	if err := e.TeaqlPrepareMutationViews(context); err != nil { return err }
 	if err := e.TeaqlNormalizeMutationGraph(context); err != nil { return err }
 	if err := context.ValidateGraphMutationVersions(e.root); err != nil { return err }
+	if err := e.TeaqlAdmitMutationGraph(context); err != nil { return err }
 	return e.TeaqlPreflightWithinGraph(context, intent, nil)
+}
+
+// Preserve instance-local intent before automatic ledger attachment can merge
+// aliases. Known-baseline equal assignments are not writable intent.
+func (e *OrderItem) TeaqlPrepareMutationViews(context *runtime.UserContext) error {
+	if e.isNew && e.markedAsDelete { return nil }
+	restoredFields, err := context.DiscardRestoredScalarChanges(e.root, e.EntityKey(), e.loadedSnapshot)
+	if err != nil { return err }
+	for _, field := range restoredFields { delete(e.dirtyFields, field) }
+	if e.isNew || e.markedAsDelete || len(e.root.Change(e.EntityKey())) > 0 {
+		if err := context.AdmitPreparedGraphEntityView(e.EntityKey(), e); err != nil { return err }
+	}
+	return nil
 }
 
 // Cancel known-baseline equal assignments and attach the complete pending graph
@@ -342,6 +357,16 @@ func (e *OrderItem) TeaqlNormalizeMutationGraph(context *runtime.UserContext) er
 	restoredFields, err := context.DiscardRestoredScalarChanges(e.root, e.EntityKey(), e.loadedSnapshot)
 	if err != nil { return err }
 	for _, field := range restoredFields { delete(e.dirtyFields, field) }
+	return nil
+}
+
+// Admit all writable object instances before any Checker/Fix can rewrite a
+// carrier. Explicit compatible ledger composition into one view stays legal.
+func (e *OrderItem) TeaqlAdmitMutationGraph(context *runtime.UserContext) error {
+	if e.isNew && e.markedAsDelete { return nil }
+	if e.isNew || e.markedAsDelete || len(e.root.Change(e.EntityKey())) > 0 {
+		if err := context.AdmitPreparedGraphEntityView(e.EntityKey(), e); err != nil { return err }
+	}
 	return nil
 }
 

@@ -8,6 +8,28 @@ This builds the retained evaluated fixture against the local checkout, executes
 the application twice without resetting its SQLite stores, and removes its owned
 compiler outputs after the processes exit. Compact evidence and databases remain.
 
+`graph_fix_test.go` and `graph_view_test.go` exercise actual generated Q/E and
+audited graph saves. They are required by this default gate, which now runs
+29 top-level methods twice with the race detector, retaining the same databases
+between rounds. The generated library is copied unchanged from its evaluated
+generator output and checked against `fixture-manifest.json`.
+
+The graph cases verify one Business Clock instant, once-per-entity Fix,
+rollback/cancellation and retry, repeated-pointer idempotence, and independent
+contexts. Two writable instances of the same typed ID must reject before
+Checker/Fix, policy, ID allocation or database work. The regression also checks
+identical pending values, a restored alias in either list position, and two
+restored no-op views. A policy, approval provider or warning callback cannot
+replace, append or null out a child after review and before transaction begin.
+Storage price/version and carrier business values remain unchanged on rejection;
+same-value parent FK normalization from SQLite `int64` to `uint64` is allowed.
+
+Explicit compatible ledger composition into one selected writable instance
+remains legal. The instance registry and snapshots live only for the current
+save invocation, not as a permanent Context-owned mutation ledger. Native
+runtime tests additionally verify late removal/reordering and a retry using one
+selected instance. This example is included in `scripts/verify-examples.sh`.
+
 `expression_boundary_test.go` is part of this default gate, not a separate
 conformance-only probe. Each round checks nine generated E cases: late and
 indexed missing leaves, loaded null, empty/out-of-range access, fallible/panic/
