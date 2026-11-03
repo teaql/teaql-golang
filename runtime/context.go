@@ -389,6 +389,13 @@ func preserveRuntimeContextServices(context stdcontext.Context) stdcontext.Conte
 	if !ok {
 		return context
 	}
+	// A provider may keep reading this context after its synchronous call returns
+	// (database/sql Rows has a cancellation watcher). Pin the native parent now;
+	// do not let that watcher delegate back through the reusable UserContext.
+	// Services still refer to the original owner, not a copied UserContext/ledger.
+	if direct, ok := context.(*UserContext); ok {
+		context = direct.Context
+	}
 	if context.Value(userContextKey{}) == nil {
 		context = stdcontext.WithValue(context, userContextKey{}, user)
 	}
