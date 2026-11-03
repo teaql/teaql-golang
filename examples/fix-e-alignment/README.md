@@ -10,7 +10,7 @@ compiler outputs after the processes exit. Compact evidence and databases remain
 
 `graph_fix_test.go` and `graph_view_test.go` exercise actual generated Q/E and
 audited graph saves. They are required by this default gate, which now runs
-29 top-level methods twice with the race detector, retaining the same databases
+30 top-level methods twice with the race detector, retaining the same databases
 between rounds. The generated library is copied unchanged from its evaluated
 generator output and checked against `fixture-manifest.json`.
 
@@ -29,6 +29,14 @@ remains legal. The instance registry and snapshots live only for the current
 save invocation, not as a permanent Context-owned mutation ledger. Native
 runtime tests additionally verify late removal/reordering and a retry using one
 selected instance. This example is included in `scripts/verify-examples.sh`.
+
+`operational_deadline_test.go` checks a real slow HTTP request using the Context
+returned by TeaQL's public runtime-operation bridge. Frozen business time,
+forward/backward jumps of 100 years and an unreadable Business Clock must not
+change the native deadline or prevent server-observed cancellation. Each case
+also completes a real successful HTTP request. This verifies Context/clock
+separation, not the existence of a TeaQL HTTP provider. The test stops its own
+server, transport and worker on every exit path.
 
 `expression_boundary_test.go` is part of this default gate, not a separate
 conformance-only probe. Each round checks nine generated E cases: late and

@@ -44,6 +44,8 @@ try {
   report.graphApplicationSha256 = sha(fs.readFileSync(path.join(example, 'graph_fix_test.go')));
   report.graphViewApplicationSha256 = sha(fs.readFileSync(path.join(example, 'graph_view_test.go')));
   report.graphRounds = [];
+  report.operationalDeadlineApplicationSha256 = sha(fs.readFileSync(path.join(example, 'operational_deadline_test.go')));
+  report.operationalDeadlineRounds = [];
   const manifest = fs.readFileSync(path.join(example, 'go.mod'), 'utf8')
     + '\nreplace checker-fix-advanced-core-workspace/lib => ' + JSON.stringify(path.join(example, 'generated'))
     + '\nreplace github.com/teaql/teaql-golang => ' + JSON.stringify(repo) + '\n';
@@ -75,7 +77,17 @@ try {
     env.CORE236_GO_GRAPH_ROUND = String(round);
     const log = await run([binary, '-test.v', '-test.count=1', '-test.run', '^TestGenerated|^TestCore236Graph'], 'round-' + round + '.log', 90000);
     assert(!log.includes('WARNING: DATA RACE'));
-    assert.equal([...log.matchAll(/^--- PASS: /gm)].length, 29);
+    assert.equal([...log.matchAll(/^--- PASS: /gm)].length, 30);
+    const deadlines = log.split(/\r?\n/).filter(line => line.startsWith('GO_FIX_HTTP_CLOCK_CASE='))
+      .map(line => JSON.parse(line.slice('GO_FIX_HTTP_CLOCK_CASE='.length)));
+    assert.deepEqual(deadlines.map(row => row.case), ['frozen', 'forward', 'backward', 'unreadable']);
+    for (const row of deadlines) {
+      for (const flag of ['passed', 'positiveHttp', 'deadlinePreserved', 'realDeadlineReached', 'serverObservedCancellation', 'callerContextPreserved']) assert.equal(row[flag], true);
+      assert.equal(row.frameworkHttpProviderInferred, false);
+      assert.equal(row.businessReadsBefore, row.case === 'unreadable' ? 2 : 1);
+      assert.equal(row.businessReadsAfter, row.businessReadsBefore);
+    }
+    report.operationalDeadlineRounds.push({round, observations: deadlines});
     const graph = log.split(/\r?\n/).filter(line => line.startsWith('GO_GRAPH_FIX_CASE='))
       .map(line => JSON.parse(line.slice('GO_GRAPH_FIX_CASE='.length)));
     const expectedGraph = ['create', 'update', 'checker-retry', 'provider-retry', 'cancel-retry',
@@ -94,7 +106,7 @@ try {
     const distinct = graph.find(row => row.case === 'distinct-views');
     assert.equal(distinct.facts.rejectedBeforeProvider, true);
     assert(Object.values(distinct.facts.effects).every(value => value === 0));
-    report.graphRounds.push({round, methodPasses: 29, observations: graph});
+    report.graphRounds.push({round, methodPasses: 30, observations: graph});
     for (const marker of ['FIX_E_EXAMPLE=', 'CORE_LOAD_EXAMPLE=', 'CORE_MUTATION_OWNERSHIP=', 'CORE_MUTATION_PAGING=', 'CORE_VERSION_LIFECYCLE=', 'GO_CHECKER_METADATA=', 'GO_CHECKER_EXACT_RANGES=', 'GO_CONTEXT_ROOT_RESULT=', 'GO_PARTIAL_ANCESTORS_RESULT=', 'GO_PARTIAL_ROOT_RESULT=', 'GO_CHECKER_BOUNDARY_RESULT=']) {
       const values = log.split(/\r?\n/).filter(line => line.startsWith(marker)).map(line => JSON.parse(line.slice(marker.length)));
       assert.equal(values.length, 1, marker); assert.equal(values[0].passed, true, marker);
