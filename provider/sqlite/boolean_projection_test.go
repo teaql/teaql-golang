@@ -75,7 +75,8 @@ func TestModeledBooleanRenamedResultColumnsKeepPredicateAffinity(t *testing.T) {
 				if err != nil {
 					t.Fatal(err)
 				}
-				if !strings.Contains(predicate.Sql, "WHERE (\"active_flag\" = ?)") || !strings.Contains(predicate.Sql, "ORDER BY \"active_flag\" ASC") {
+				column := (&provider.SqliteDialect{}).QuoteIdent("active_flag")
+				if !strings.Contains(predicate.Sql, "WHERE ("+column+" = ?)") || !strings.Contains(predicate.Sql, "ORDER BY "+column+" ASC") {
 					t.Fatalf("result repair changed predicate/order affinity: %s", predicate.Sql)
 				}
 			})
