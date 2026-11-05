@@ -12,7 +12,9 @@ func booleanResultAliases(entity *core.EntityDescriptor, query *core.SelectQuery
 			aliases[alias] = true
 		}
 	}
-	if len(query.Aggregates)+len(query.GroupBy)+len(query.Projection)+len(query.ExprProjection)+len(query.RawProjections)+len(query.DynamicProperties) == 0 {
+	// Match selectProjection's actual default output. GroupBy alone does not
+	// replace the select-all projection or change its canonical output names.
+	if len(query.Aggregates)+len(query.Projection)+len(query.ExprProjection)+len(query.RawProjections)+len(query.DynamicProperties) == 0 {
 		for _, property := range entity.Properties {
 			add(property.Name, property.Name)
 		}
@@ -26,9 +28,14 @@ func booleanResultAliases(entity *core.EntityDescriptor, query *core.SelectQuery
 			add(field, field)
 		}
 	}
-	for _, field := range query.GroupBy {
-		if property := entity.PropertyByName(field); property != nil {
-			add(field, property.ColName)
+	// Only aggregateProjection emits group columns by physical column name.
+	// On ordinary projections, an unselected group key cannot type an output
+	// which merely shares its physical spelling.
+	if len(query.Aggregates) != 0 {
+		for _, field := range query.GroupBy {
+			if property := entity.PropertyByName(field); property != nil {
+				add(field, property.ColName)
+			}
 		}
 	}
 	for _, aggregate := range query.Aggregates {
