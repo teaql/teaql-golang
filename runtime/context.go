@@ -1663,6 +1663,7 @@ func (c *UserContext) checkAndFixWithReferences(input *CheckAndFixInput, referen
 		references.revalidate()
 		results = append(results, c.checkFiniteFloatingValues(input)...)
 		results = append(results, c.checkIntegralValues(input, references)...)
+		results = append(results, c.checkBooleanValues(input, results)...)
 	}
 	if len(results) != 0 {
 		// A customer registry may reuse its result slice. Bind identity and

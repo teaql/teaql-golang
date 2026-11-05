@@ -839,7 +839,7 @@ func (d *DefaultSqlDialect) selectProjection(entity *core.EntityDescriptor, quer
 		parts = append(parts, propertyProjection(property))
 	}
 	for _, projection := range query.ExprProjection {
-		expr, err := d.compileExpr(entity, projection.Expr, params)
+		expr, err := d.resultExprSql(entity, projection.Expr, params)
 		if err != nil {
 			return "", err
 		}
@@ -867,7 +867,7 @@ func (d *DefaultSqlDialect) aggregateProjection(entity *core.EntityDescriptor, q
 	}
 
 	for _, field := range query.GroupBy {
-		colSql, err := d.columnSql(entity, field)
+		colSql, err := d.resultColumnSql(entity, field)
 		if err != nil {
 			return "", err
 		}
@@ -876,7 +876,7 @@ func (d *DefaultSqlDialect) aggregateProjection(entity *core.EntityDescriptor, q
 		}
 	}
 	for _, field := range query.Projection {
-		colSql, err := d.columnSql(entity, field)
+		colSql, err := d.resultColumnSql(entity, field)
 		if err != nil {
 			return "", err
 		}
@@ -885,7 +885,7 @@ func (d *DefaultSqlDialect) aggregateProjection(entity *core.EntityDescriptor, q
 		}
 	}
 	for _, projection := range query.ExprProjection {
-		expr, err := d.compileExpr(entity, projection.Expr, params)
+		expr, err := d.resultExprSql(entity, projection.Expr, params)
 		if err != nil {
 			return "", err
 		}
@@ -1227,10 +1227,42 @@ func (d *DefaultSqlDialect) resolveOrderField(entity *core.EntityDescriptor, ord
 
 func (d *DefaultSqlDialect) columnWithAlias(property *core.PropertyDescriptor) string {
 	column := d.Dialect.QuoteIdent(property.ColName)
+	if d.Dialect.Kind() == DatabaseKindSQLite && property.DataType == core.TypeBool {
+		return fmt.Sprintf("+(%s) AS %s", column, d.Dialect.QuoteIdent(property.Name))
+	}
 	if property.ColName == property.Name {
 		return column
 	}
 	return fmt.Sprintf("%s AS %s", column, d.Dialect.QuoteIdent(property.Name))
+}
+
+// SQLite's driver otherwise converts every positive INTEGER in a declared
+// BOOLEAN column to true before the model can validate it. Unary plus removes
+// declaration metadata without casting/coercing the physical value. Apply it
+// only to result columns: predicates/grouping/order retain their own affinity.
+func (d *DefaultSqlDialect) resultColumnSql(entity *core.EntityDescriptor, field string) (string, error) {
+	column, err := d.columnSql(entity, field)
+	if err != nil {
+		return "", err
+	}
+	property := entity.PropertyByName(field)
+	if d.Dialect.Kind() == DatabaseKindSQLite && property != nil && property.DataType == core.TypeBool {
+		return fmt.Sprintf("+(%s) AS %s", column, d.Dialect.QuoteIdent(property.ColName)), nil
+	}
+	return column, nil
+}
+
+func (d *DefaultSqlDialect) resultExprSql(entity *core.EntityDescriptor, expr *core.Expr, params *[]core.Value) (string, error) {
+	result, err := d.compileExpr(entity, expr, params)
+	if err != nil {
+		return "", err
+	}
+	if d.Dialect.Kind() == DatabaseKindSQLite && expr != nil && expr.Type == core.ExprTypeColumn {
+		if property := entity.PropertyByName(expr.Column); property != nil && property.DataType == core.TypeBool {
+			return fmt.Sprintf("+(%s)", result), nil
+		}
+	}
+	return result, nil
 }
 
 func (d *DefaultSqlDialect) resolveAggregateField(entity *core.EntityDescriptor, aggregate *core.Aggregate) (string, error) {

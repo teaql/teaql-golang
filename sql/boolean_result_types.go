@@ -18,7 +18,13 @@ func booleanResultAliases(entity *core.EntityDescriptor, query *core.SelectQuery
 		}
 	}
 	for _, field := range query.Projection {
-		add(field, field)
+		if len(query.Aggregates) != 0 {
+			if property := entity.PropertyByName(field); property != nil {
+				add(field, property.ColName)
+			}
+		} else {
+			add(field, field)
+		}
 	}
 	for _, field := range query.GroupBy {
 		if property := entity.PropertyByName(field); property != nil {
@@ -37,7 +43,14 @@ func booleanResultAliases(entity *core.EntityDescriptor, query *core.SelectQuery
 		}
 		delete(aliases, projection.Alias)
 		expr := projection.Expr
-		if expr == nil || expr.Type != core.ExprTypeFunctionCall || len(expr.Args) != 1 || expr.Args[0] == nil || expr.Args[0].Type != core.ExprTypeColumn {
+		if expr == nil {
+			continue
+		}
+		if expr.Type == core.ExprTypeColumn {
+			add(expr.Column, projection.Alias)
+			continue
+		}
+		if expr.Type != core.ExprTypeFunctionCall || len(expr.Args) != 1 || expr.Args[0] == nil || expr.Args[0].Type != core.ExprTypeColumn {
 			continue
 		}
 		if expr.Function == core.FuncMin || expr.Function == core.FuncMax {
