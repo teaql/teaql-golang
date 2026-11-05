@@ -7,7 +7,7 @@ const requested=process.env.TEAQL_EXAMPLES_EVIDENCE_DIR;
 const evidence=requested?path.join(path.resolve(requested),'scalar-type-probe'):fs.mkdtempSync(path.join(os.tmpdir(),'teaql-go-scalar-evidence-'));
 if(requested){assert(!fs.existsSync(evidence),'never replace a previous scalar run');fs.mkdirSync(evidence,{recursive:true});}
 const scratch=fs.mkdtempSync(path.join(os.tmpdir(),'teaql-go-scalar-build-')),runner=createOwnedRunner();
-const report={schema:'teaql.go-scalar-example/v3',passed:false,localRuntime:repo,commands:[],rounds:[],typedEntityJsonAccepted:false,integerReadAccepted:false,
+const report={schema:'teaql.go-scalar-example/v4',passed:false,localRuntime:repo,commands:[],rounds:[],typedEntityJsonAccepted:false,integerReadAccepted:false,booleanAccepted:false,
   publicPublication:false,sourceDeleted:false,sharedCachesDeleted:false,testDatabasesDeleted:false};
 function fingerprint(){
   const bytes=fs.readFileSync(path.join(example,'generated-provenance.json')),m=JSON.parse(bytes);
@@ -60,12 +60,14 @@ try{
     assert.equal((log.match(/^CORE_INTEGER_READ_REJECT /gm)||[]).length,40);
     assert(log.includes('CORE_INTEGER_READ_ORACLE rows='+(round*9)+' version=1 corrupt='+(round*8)+' queries=8 hydration=8 expressions=24 raw_values_redacted=true'));
     assert(/^--- PASS: TestGeneratedIntegerReadBoundaries \(/m.test(log));
-    report.rounds.push({round,timeEntityId:time[0][1],nonFiniteCases:12,jsonEntityIDs:Object.fromEntries(json.map(m=>[m[1],m[2]])),integerRead:{queryFailures:8,atomicHydrationFailures:8,expressionFailures:24,rows:round*9,corruptRows:round*8,rawValuesRedacted:true}});assert.equal(fingerprint(),report.provenanceSha256);process.stdout.write(log);
+    const boolean=[...log.matchAll(/^GO_BOOLEAN_BOUNDARY=(.+)$/gm)].map(m=>JSON.parse(m[1]));assert.equal(boolean.length,1);const b=boolean[0];assert(b.passed&&b.rejectedFixLedgerUnchanged&&b.trueFalseUnknown&&b.notLoadedIsNotNull&&b.repairedBooleanPersisted&&b.legacyIntegerRejected);assert.equal(b.invalidFixCases,12);assert.equal(b.rejectedFixProviderEntries,0);assert.equal(b.checks.length,12);assert.equal(new Set(b.checks).size,12);assert.equal(b.version,3);
+    report.rounds.push({round,timeEntityId:time[0][1],nonFiniteCases:12,jsonEntityIDs:Object.fromEntries(json.map(m=>[m[1],m[2]])),integerRead:{queryFailures:8,atomicHydrationFailures:8,expressionFailures:24,rows:round*9,corruptRows:round*8,rawValuesRedacted:true},boolean:b});assert.equal(fingerprint(),report.provenanceSha256);process.stdout.write(log);
   }
   assert.notEqual(report.rounds[0].timeEntityId,report.rounds[1].timeEntityId,'SQLite must not reset between rounds');
   assert.equal(new Set(report.rounds.flatMap(r=>Object.values(r.jsonEntityIDs))).size,6,'JSON database must not reset between rounds');
-  report.databases=['scalars.sqlite','scalars.sqlite.nonfinite.sqlite','scalars.sqlite.typed-time.sqlite','scalars.sqlite.entity-json.sqlite','scalars.sqlite.integer-read.sqlite'].map(file=>({file,sha256:sha(fs.readFileSync(path.join(evidence,file)))}));
-  report.typedEntityJsonAccepted=true;report.integerReadAccepted=true;report.passed=true;console.log('PASS: generated Go scalar/TimeOfDay/typed-entity-JSON/Integer-read example twice without cleanup');
+  assert.equal(new Set(report.rounds.flatMap(r=>[r.boolean.entityId,r.boolean.repairedId])).size,4,'Boolean database must not reset between rounds');
+  report.databases=['scalars.sqlite','scalars.sqlite.nonfinite.sqlite','scalars.sqlite.typed-time.sqlite','scalars.sqlite.entity-json.sqlite','scalars.sqlite.integer-read.sqlite','scalars.sqlite.boolean.sqlite'].map(file=>({file,sha256:sha(fs.readFileSync(path.join(evidence,file)))}));
+  report.typedEntityJsonAccepted=true;report.integerReadAccepted=true;report.booleanAccepted=true;report.passed=true;console.log('PASS: generated Go scalar/TimeOfDay/typed-entity-JSON/Integer-read/Boolean example twice without cleanup');
 }catch(error){report.error=error.stack;console.error(error.stack);process.exitCode||=1;}
 finally{
   report.disposedOwnedBytes=runner.safeToClean?ownedBytes(scratch):0;

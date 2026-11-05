@@ -20,6 +20,25 @@ fields and projection NotLoaded remain distinct. Twelve nonfinite mutation cases
 must fail before query, mutation, transaction begin or ID allocation. Successful
 provider operations calibrate those counters.
 
+## Boolean admission and readback
+
+The default verifier also uses generated Q/E/audited saves for true, false,
+explicit null, projection NotLoaded and optimistic versions 1→2→3. Twelve
+create/update custom-Fix attempts replace required/optional Booleans with
+integers, text or JSON bytes. All must fail before query, mutation, transaction
+begin or ID allocation, without changing pending values, identity, status or
+original version. A valid custom repair still saves false. One explicitly
+labelled SQL fault injection tests corrupt storage, then restores the control.
+Two executions preserve four distinct rows in `scalars.sqlite.boolean.sqlite`.
+
+Native transport cases additionally cover INTEGER, BOOL and legacy BOOLEAN
+columns, ordinary/named/grouped results, streaming, renamed columns, numeric
+COUNT aliases and Boolean MIN/MAX. SQLite result expressions retain physical
+values instead of accepting the driver's early nonzero-to-true conversion;
+predicates, grouping and ordering keep their original column affinity. This
+is modeled query/mutation coverage, not arbitrary raw-SQL result typing or
+full scalar/provider/release acceptance.
+
 ## Exact integral admission after custom Fix
 
 ```bash
