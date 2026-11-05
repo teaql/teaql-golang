@@ -76,3 +76,67 @@ func TestFinalPlanScalarAdmission(t *testing.T) {
 		})
 	}
 }
+
+type repairingFinalScalarChecker struct{ calls int }
+
+func (p *repairingFinalScalarChecker) CheckAndFix(_ *runtime.UserContext, input *runtime.CheckAndFixInput) []runtime.CheckResult {
+	p.calls++
+	input.Values["scalar_value"] = core.ValBool(true)
+	return nil
+}
+
+func TestFinalPlanScalarReviewDoesNotRepeatCustomerFix(t *testing.T) {
+	entity := core.NewEntityDescriptor("TypedCarrier").Property(core.NewPropertyDescriptor("scalar_value", core.TypeBool))
+	ctx := runtime.NewRuntimeModule().Entity(entity).IntoContext()
+	fix, policy := &repairingFinalScalarChecker{}, &observingPolicy{}
+	ctx.WithCheckerRegistry(fix).WithMutationPolicyRegistry(runtime.MutationPolicyRegistryFunc(func(string) runtime.MutationPolicy { return policy }))
+	input := &runtime.CheckAndFixInput{Entity: "TypedCarrier", Operation: core.MutationInsert,
+		Values: core.Record{"scalar_value": core.ValText("repair-before-final-review")}}
+	if err := ctx.CheckAndFix(input); err != nil {
+		t.Fatal(err)
+	}
+	plan := &runtime.MutationPlan{RequestKey: "TypedCarrier.saveGraph", RootEntity: "TypedCarrier", AuditReason: "review actual repaired values once",
+		Operations: []runtime.MutationOperation{{Kind: core.MutationInsert, Entity: "TypedCarrier", ID: core.ValU64(1), ChangedValues: input.Values}}}
+	if _, err := ctx.ReviewMutationPlan(plan); err != nil || fix.calls != 1 || policy.calls != 1 {
+		t.Fatalf("final review repeated Fix or refused its valid repair: fixes=%d policies=%d", fix.calls, policy.calls)
+	}
+}
+
+func TestFinalPlanScalarReviewRequiresOwnedDeferredReferences(t *testing.T) {
+	for _, owned := range []bool{false, true} {
+		name := "foreign-ledger"
+		if owned {
+			name = "same-graph-new-target"
+		}
+		t.Run(name, func(t *testing.T) {
+			parent := core.NewEntityDescriptor("Parent").Property(core.NewPropertyDescriptor("id", core.TypeU64).Id())
+			child := core.NewEntityDescriptor("Child").Property(core.NewPropertyDescriptor("parent_id", core.TypeU64)).
+				Relation(core.NewRelationDescriptor("parentEntity", "Parent").CanonicalKey("parent").LocalKey("parent_id").ForeignKey("id"))
+			ctx := runtime.NewRuntimeModule().Entity(parent).Entity(child).IntoContext()
+			root, unrelated := core.NewEntityRoot(), core.NewEntityRoot()
+			owner, target := core.NewEntityKey("Child", core.ValI64(-2)), core.NewEntityKey("Parent", core.ValI64(-1))
+			root.MarkAsNew(owner)
+			root.Set(owner, "parent", core.ValI64(-1))
+			unrelated.MarkAsNew(target)
+			if owned {
+				root.MarkAsNew(target)
+			}
+			policy := &observingPolicy{}
+			ctx.WithMutationPolicyRegistry(runtime.MutationPolicyRegistryFunc(func(string) runtime.MutationPolicy { return policy }))
+			_, err := ctx.ReviewMutationPlan(runtime.MutationPlanFromEntityRoot(root, "Child", "review only graph-owned temporary references"))
+			if owned {
+				if err != nil || policy.calls != 1 {
+					t.Fatal("owned new target was refused", err)
+				}
+			} else {
+				var failure *runtime.RuntimeError
+				if !errors.As(err, &failure) || failure.Type != "Check" || policy.calls != 0 {
+					t.Fatal("foreign ledger authorized a temporary reference")
+				}
+			}
+			if root.Change(owner)["parent"] != core.ValI64(-1) || !unrelated.IsNew(target) {
+				t.Fatal("review rewrote pending state")
+			}
+		})
+	}
+}
