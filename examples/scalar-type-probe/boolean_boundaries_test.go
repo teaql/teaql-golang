@@ -17,13 +17,21 @@ import (
 )
 
 type injectedBooleanFix struct {
-	field string
-	value core.Value
-	calls int
+	field             string
+	value             core.Value
+	calls             int
+	supplyManagedTime bool
 }
 
 func (fix *injectedBooleanFix) CheckAndFix(_ *runtime.UserContext, input *runtime.CheckAndFixInput) []runtime.CheckResult {
 	fix.calls++
+	// This SPI intentionally replaces the entire model checker, rather than
+	// decorating it. A successful create therefore owns managed fields too.
+	// Use the captured business clock, never the wall clock.
+	if fix.supplyManagedTime && input.Operation == core.MutationInsert {
+		input.Values["create_time"] = core.ValTimestamp(input.Now.UnixMilli())
+		input.Values["update_time"] = core.ValTimestamp(input.Now.UnixMilli())
+	}
 	input.Values[fix.field] = fix.value
 	return nil
 }
@@ -134,7 +142,7 @@ func TestGeneratedBooleanBoundaries(t *testing.T) {
 	// the prepared-view guard correctly refuses that inconsistent input.
 	repaired := prepared(ctx)
 	repaired.UpdateRequiredBoolean(true)
-	fix := &injectedBooleanFix{field: "required_boolean", value: core.ValBool(false)}
+	fix := &injectedBooleanFix{field: "required_boolean", value: core.ValBool(false), supplyManagedTime: true}
 	ctx.WithCheckerRegistry(fix)
 	repaired, err = repaired.AuditAs("accept a repaired native Boolean").Save(ctx)
 	if err != nil || fix.calls != 1 {
