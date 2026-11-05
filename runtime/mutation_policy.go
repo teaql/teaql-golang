@@ -310,6 +310,9 @@ func (c *UserContext) ReviewMutationPlan(input *MutationPlan) (*MutationGovernan
 	}
 	plan := cloneMutationPlan(input)
 	plan.AuditReason = intent.AuditReason()
+	if err := c.validateFinalMutationPlanScalars(plan); err != nil {
+		return nil, err
+	}
 	if plan.ExecutionID == "" {
 		plan.ExecutionID = fmt.Sprintf("%s-mutation-%d", c.userIdentifier, atomic.AddUint64(&mutationExecutionSequence, 1))
 	}
