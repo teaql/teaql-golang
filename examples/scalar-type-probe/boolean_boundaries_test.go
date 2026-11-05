@@ -129,9 +129,11 @@ func TestGeneratedBooleanBoundaries(t *testing.T) {
 	if len(checks) != 12 {
 		t.Fatalf("only %d Boolean refusals completed", len(checks))
 	}
-	// A custom Fix can still repair a real bad carrier to a legitimate false.
+	// A legitimate generated mutation can still be repaired by a custom Fix.
+	// Do not bypass the updater by corrupting the ledger behind the object:
+	// the prepared-view guard correctly refuses that inconsistent input.
 	repaired := prepared(ctx)
-	repaired.EntityRoot().Set(repaired.EntityKey(), "required_boolean", core.ValI64(1))
+	repaired.UpdateRequiredBoolean(true)
 	fix := &injectedBooleanFix{field: "required_boolean", value: core.ValBool(false)}
 	ctx.WithCheckerRegistry(fix)
 	repaired, err = repaired.AuditAs("accept a repaired native Boolean").Save(ctx)
