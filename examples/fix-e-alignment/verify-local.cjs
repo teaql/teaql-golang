@@ -44,6 +44,8 @@ try {
   report.graphApplicationSha256 = sha(fs.readFileSync(path.join(example, 'graph_fix_test.go')));
   report.graphViewApplicationSha256 = sha(fs.readFileSync(path.join(example, 'graph_view_test.go')));
   report.graphRounds = [];
+  report.concurrentQueryApplicationSha256 = sha(fs.readFileSync(path.join(example, 'concurrent_query_test.go')));
+  report.concurrentQueryRounds = [];
   report.operationalDeadlineApplicationSha256 = sha(fs.readFileSync(path.join(example, 'operational_deadline_test.go')));
   report.operationalDeadlineRounds = [];
   const manifest = fs.readFileSync(path.join(example, 'go.mod'), 'utf8')
@@ -77,7 +79,13 @@ try {
     env.CORE236_GO_GRAPH_ROUND = String(round);
     const log = await run([binary, '-test.v', '-test.count=1', '-test.run', '^TestGenerated|^TestCore236Graph'], 'round-' + round + '.log', 90000);
     assert(!log.includes('WARNING: DATA RACE'));
-    assert.equal([...log.matchAll(/^--- PASS: /gm)].length, 30);
+    assert.equal([...log.matchAll(/^--- PASS: /gm)].length, 31);
+    const concurrent = log.split(/\r?\n/).filter(line => line.startsWith('GO_CONCURRENT_QUERY='))
+      .map(line => JSON.parse(line.slice('GO_CONCURRENT_QUERY='.length)));
+    assert.equal(concurrent.length, 1);
+    assert(concurrent[0].passed && concurrent[0].round === round && concurrent[0].overlapEntered === 2);
+    assert.equal(concurrent[0].events.length, 6);
+    report.concurrentQueryRounds.push(concurrent[0]);
     const deadlines = log.split(/\r?\n/).filter(line => line.startsWith('GO_FIX_HTTP_CLOCK_CASE='))
       .map(line => JSON.parse(line.slice('GO_FIX_HTTP_CLOCK_CASE='.length)));
     assert.deepEqual(deadlines.map(row => row.case), ['frozen', 'forward', 'backward', 'unreadable']);
@@ -106,7 +114,7 @@ try {
     const distinct = graph.find(row => row.case === 'distinct-views');
     assert.equal(distinct.facts.rejectedBeforeProvider, true);
     assert(Object.values(distinct.facts.effects).every(value => value === 0));
-    report.graphRounds.push({round, methodPasses: 30, observations: graph});
+    report.graphRounds.push({round, methodPasses: 31, observations: graph});
     for (const marker of ['FIX_E_EXAMPLE=', 'CORE_LOAD_EXAMPLE=', 'CORE_MUTATION_OWNERSHIP=', 'CORE_MUTATION_PAGING=', 'CORE_VERSION_LIFECYCLE=', 'GO_CHECKER_METADATA=', 'GO_CHECKER_EXACT_RANGES=', 'GO_CONTEXT_ROOT_RESULT=', 'GO_PARTIAL_ANCESTORS_RESULT=', 'GO_PARTIAL_ROOT_RESULT=', 'GO_CHECKER_BOUNDARY_RESULT=']) {
       const values = log.split(/\r?\n/).filter(line => line.startsWith(marker)).map(line => JSON.parse(line.slice(marker.length)));
       assert.equal(values.length, 1, marker); assert.equal(values[0].passed, true, marker);
@@ -143,6 +151,8 @@ try {
     assert.deepEqual(fingerprint(), m);
   }
   report.databaseSha256 = sha(fs.readFileSync(path.join(evidence, 'fixture.sqlite')));
+  report.concurrentQueryDatabase = {file: 'fixture.sqlite.concurrent-query.sqlite',
+    sha256: sha(fs.readFileSync(path.join(evidence, 'fixture.sqlite.concurrent-query.sqlite')))};
   report.contextRootDatabase = {file: 'fixture.sqlite.context-root.sqlite',
     sha256: sha(fs.readFileSync(path.join(evidence, 'fixture.sqlite.context-root.sqlite')))};
   report.checkerBoundaryDatabase = {file: 'fixture.sqlite.checker-boundaries.sqlite',
