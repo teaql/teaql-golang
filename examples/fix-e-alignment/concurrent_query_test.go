@@ -241,7 +241,7 @@ func TestGeneratedConcurrentQueryIntentStaysRequestOwned(t *testing.T) {
 	for _, label := range []string{"alpha", "beta", "after"} {
 		var selected []map[string]any
 		for _, e := range events {
-			if e["comment"] == label+" root" {
+			if e["purpose"] == label+" purpose" {
 				selected = append(selected, e)
 			}
 		}
@@ -253,13 +253,27 @@ func TestGeneratedConcurrentQueryIntentStaysRequestOwned(t *testing.T) {
 				t.Fatal("SQL evidence lost request intent", e)
 			}
 		}
-		root := []map[string]string{{"kind": "purpose", "name": "PurchaseOrder", "comment": label + " purpose"}, {"kind": "comment", "name": "PurchaseOrder", "comment": label + " root"}}
+		root := []map[string]string{{"kind": "purpose", "name": "purchase_order", "comment": label + " purpose"}, {"kind": "comment", "name": "purchase_order", "comment": label + " root"}}
 		if !reflect.DeepEqual(selected[0]["business"], root) {
 			t.Fatal("root request lineage differs", selected[0])
 		}
-		child := append(append([]map[string]string{}, root...), map[string]string{"kind": "comment", "name": "SelectOrderItemListWith", "comment": "SelectOrderItemListWith(...)"}, map[string]string{"kind": "comment", "name": "OrderItem", "comment": label + " children"})
+		child := append(append([]map[string]string{}, root...), map[string]string{"kind": "comment", "name": "SelectOrderItemListWith", "comment": "SelectOrderItemListWith(...)"}, map[string]string{"kind": "comment", "name": "order_item", "comment": label + " children"})
 		if !reflect.DeepEqual(selected[1]["business"], child) {
 			t.Fatal("nested operation/local comment lineage differs", selected[1])
+		}
+		if selected[0]["comment"] != label+" root" || selected[1]["comment"] != label+" children" {
+			t.Fatal("SQL envelope must use its local request comment", selected)
+		}
+		physicalRoot := []map[string]string{{"kind": "operation", "name": "purchase_order", "comment": "query"}, {"kind": "request", "name": "purchase_order", "comment": ""}}
+		for index, event := range selected {
+			path := append([]map[string]string{}, physicalRoot...)
+			if index == 1 {
+				path = append(path, map[string]string{"kind": "relation", "name": "orderItemList", "comment": "purchase_order.orderItemList"})
+			}
+			path = append(path, map[string]string{"kind": "provider", "name": "sqlite", "comment": ""}, map[string]string{"kind": "sql", "name": "select", "comment": ""})
+			if !reflect.DeepEqual(event["physical"], path) {
+				t.Fatal("physical SQL path differs", event)
+			}
 		}
 	}
 	frame["passed"] = true
