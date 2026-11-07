@@ -36,8 +36,11 @@ func TestGeneratedFixAndExpressionExample(t *testing.T) {
 	if err := lib.EnsureSchema(context); err != nil {
 		t.Fatal(err)
 	}
-	order := lib.Q.PurchaseOrders().Comment("Prepare the synthetic clock fixture").
+	order, orderCreationErr := lib.Q.PurchaseOrders().Comment("Prepare the synthetic clock fixture").
 		Purpose("Verify generated audited saves and expression diagnostics").NewEntity(context)
+	if orderCreationErr != nil {
+		t.Fatal(orderCreationErr)
+	}
 	order.UpdateContactPhone("5550100").UpdateInternalNote(nil)
 	saved, err := order.AuditAs("Create the synthetic Fix order").Save(context)
 	if err != nil {

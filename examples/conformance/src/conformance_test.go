@@ -42,7 +42,10 @@ func TestRetainedMinimumConformance(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	platform := lib.Q.Platforms().Comment("create test root").Purpose("initialize conformance data").NewEntity(context)
+	platform, platformCreationErr := lib.Q.Platforms().Comment("create test root").Purpose("initialize conformance data").NewEntity(context)
+	if platformCreationErr != nil {
+		t.Fatal(platformCreationErr)
+	}
 	platform.UpdateName("Runtime Example")
 	platform, err = platform.AuditAs("create test root").Save(context)
 	if err != nil {
@@ -50,7 +53,10 @@ func TestRetainedMinimumConformance(t *testing.T) {
 	}
 
 	// 2. Checker rejects invalid input before persistence.
-	invalid := lib.Q.WorkItems().Comment("create invalid work item").Purpose("exercise checker").NewEntity(context)
+	invalid, invalidCreationErr := lib.Q.WorkItems().Comment("create invalid work item").Purpose("exercise checker").NewEntity(context)
+	if invalidCreationErr != nil {
+		t.Fatal(invalidCreationErr)
+	}
 	invalid.UpdatePlatformId(platform.Id())
 	if _, err = invalid.AuditAs("reject missing title").Save(context); err == nil {
 		t.Fatalf("expected title checker error, got %v", err)
@@ -62,7 +68,10 @@ func TestRetainedMinimumConformance(t *testing.T) {
 	assertWorkItemCount(t, context, 0)
 
 	// 3. Create returns the persisted, versioned strong type.
-	item := lib.Q.WorkItems().Comment("create work item").Purpose("exercise create mutation").NewEntity(context)
+	item, itemCreationErr := lib.Q.WorkItems().Comment("create work item").Purpose("exercise create mutation").NewEntity(context)
+	if itemCreationErr != nil {
+		t.Fatal(itemCreationErr)
+	}
 	item.UpdateTitle("draft")
 	item.UpdatePlatformId(platform.Id())
 	item, err = item.AuditAs("create work item").Save(context)

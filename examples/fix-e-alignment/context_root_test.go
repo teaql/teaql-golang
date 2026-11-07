@@ -137,12 +137,19 @@ func TestGeneratedContextRootInjectionAndOwnershipBoundaries(t *testing.T) {
 		return ctx
 	}
 	newOrder := func(ctx *runtime.UserContext) *purchase_order.PurchaseOrder {
-		return lib.Q.PurchaseOrders().Comment("Prepare a generated root-binding boundary").
-			Purpose("Derive ownership only from trusted context").NewEntity(ctx).UpdateContactPhone("5550980").UpdateInternalNote(nil)
+		created, createdCreationErr := lib.Q.PurchaseOrders().Comment("Prepare a generated root-binding boundary").
+			Purpose("Derive ownership only from trusted context").NewEntity(ctx)
+		if createdCreationErr != nil {
+			t.Fatal(createdCreationErr)
+		}
+		return created.UpdateContactPhone("5550980").UpdateInternalNote(nil)
 	}
 	ctx := contextFor(&active)
 	parent := newOrder(ctx)
-	child := lib.Q.OrderItems().Comment("Prepare the context-bound child").Purpose("Verify root injection at every graph node").NewEntity(ctx)
+	child, childCreationErr := lib.Q.OrderItems().Comment("Prepare the context-bound child").Purpose("Verify root injection at every graph node").NewEntity(ctx)
+	if childCreationErr != nil {
+		t.Fatal(childCreationErr)
+	}
 	child.UpdateProductName("Context root child").UpdateUnitPrice(decimal.RequireFromString("10.00"))
 	parent.OrderItemList().Add(child)
 	reset()

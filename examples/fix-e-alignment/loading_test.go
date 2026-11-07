@@ -31,8 +31,11 @@ func TestGeneratedFilteredForwardAndPartialMutation(t *testing.T) {
 	if err := lib.EnsureSchema(context); err != nil {
 		t.Fatal(err)
 	}
-	order := lib.Q.PurchaseOrders().Comment("Prepare the loading state fixture").
+	order, orderCreationErr := lib.Q.PurchaseOrders().Comment("Prepare the loading state fixture").
 		Purpose("Verify generated FK, detail loading and mutation completeness").NewEntity(context)
+	if orderCreationErr != nil {
+		t.Fatal(orderCreationErr)
+	}
 	order.UpdateContactPhone("5550200").UpdateInternalNote(nil)
 	saved, err := order.AuditAs("Create the synthetic loading order").Save(context)
 	if err != nil {

@@ -165,10 +165,18 @@ func (f *graphFixFixture) clear() {
 	f.checker.visits = nil
 }
 func graphFixMake(ctx *runtime.UserContext, count int) (*purchase_order.PurchaseOrder, []*order_item.OrderItem) {
-	parent := lib.Q.PurchaseOrders().Comment("Prepare a generated graph clock owner").Purpose("Verify actual generated Fix and audited persistence").NewEntity(ctx).UpdateContactPhone("5550400").UpdateInternalNote(nil)
+	parent, parentCreationErr := lib.Q.PurchaseOrders().Comment("Prepare a generated graph clock owner").Purpose("Verify actual generated Fix and audited persistence").NewEntity(ctx)
+	if parentCreationErr != nil {
+		panic(parentCreationErr)
+	}
+	parent.UpdateContactPhone("5550400").UpdateInternalNote(nil)
 	children := make([]*order_item.OrderItem, count)
 	for i := range children {
-		child := lib.Q.OrderItems().Comment("Prepare a generated graph child").Purpose("Verify one stable graph instant").NewEntity(ctx).UpdateProductName(fmt.Sprintf("Graph item %d", i)).UpdateUnitPrice(decimal.RequireFromString("12.34"))
+		child, childCreationErr := lib.Q.OrderItems().Comment("Prepare a generated graph child").Purpose("Verify one stable graph instant").NewEntity(ctx)
+		if childCreationErr != nil {
+			panic(childCreationErr)
+		}
+		child.UpdateProductName(fmt.Sprintf("Graph item %d", i)).UpdateUnitPrice(decimal.RequireFromString("12.34"))
 		parent.OrderItemList().Add(child)
 		children[i] = child
 	}

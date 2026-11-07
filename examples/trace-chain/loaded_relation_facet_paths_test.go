@@ -28,7 +28,10 @@ func TestGeneratedLoadedFacetPhysicalPathsAndFullMembership(t *testing.T) {
 				for count := 0; count < 3; count++ {
 					root := newOrder(t, e, "physical loaded facet fixture")
 					for i := 0; i < count; i++ {
-						pay := lib.Q.Payments().Comment("create scoped payment").Purpose("prepare loaded facet fixture").NewEntity(e.context)
+						pay, payCreationErr := lib.Q.Payments().Comment("create scoped payment").Purpose("prepare loaded facet fixture").NewEntity(e.context)
+						if payCreationErr != nil {
+							t.Fatal(payCreationErr)
+						}
 						pay.UpdateReferenceCode("bounded payment")
 						root.PaymentList().Add(pay)
 					}

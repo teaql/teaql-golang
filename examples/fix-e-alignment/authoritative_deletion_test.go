@@ -39,7 +39,10 @@ func TestGeneratedAuthoritativeTombstoneAndRepeatedDeletion(t *testing.T) {
 	var frames []map[string]any
 	for _, mode := range []string{"ordinary", "trigger"} {
 		t.Run(mode, func(t *testing.T) {
-			row := lib.Q.PurchaseOrders().Comment("Prepare an authoritative-deletion fixture").Purpose("Verify deleted state is read from storage and cannot be toggled into recovery").NewEntity(ctx)
+			row, rowCreationErr := lib.Q.PurchaseOrders().Comment("Prepare an authoritative-deletion fixture").Purpose("Verify deleted state is read from storage and cannot be toggled into recovery").NewEntity(ctx)
+			if rowCreationErr != nil {
+				t.Fatal(rowCreationErr)
+			}
 			phone := "5550930"
 			if mode == "trigger" {
 				phone = "5550931"

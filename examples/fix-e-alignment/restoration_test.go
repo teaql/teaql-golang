@@ -84,8 +84,11 @@ func TestGeneratedRestoredLoadedScalarSaveIsNoop(t *testing.T) {
 	if err := lib.EnsureSchema(ctx); err != nil {
 		t.Fatal(err)
 	}
-	order := lib.Q.PurchaseOrders().Comment("Prepare a synthetic restoration fixture").
+	order, orderCreationErr := lib.Q.PurchaseOrders().Comment("Prepare a synthetic restoration fixture").
 		Purpose("Prove restored values do not enter the mutation pipeline").NewEntity(ctx)
+	if orderCreationErr != nil {
+		t.Fatal(orderCreationErr)
+	}
 	order.UpdateContactPhone("5550800").UpdateInternalNote(nil)
 	saved, err := order.AuditAs("Create an order with a known null note").Save(ctx)
 	if err != nil {

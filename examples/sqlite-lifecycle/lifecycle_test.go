@@ -66,8 +66,16 @@ func lifecycleFrame(name string, facts any) {
 	fmt.Println("SQLITE_LIFECYCLE_CASE=" + string(b))
 }
 func lifecycleGraph(ctx *runtime.UserContext, phone string) (uint64, uint64, error) {
-	owner := lib.Q.PurchaseOrders().Comment("Prepare a physical SQLite lifecycle graph").Purpose("Verify generated saves retain exact scalar support after reconnect").NewEntity(ctx).UpdateContactPhone(phone).UpdateInternalNote(nil)
-	child := lib.Q.OrderItems().Comment("Prepare the exact Decimal lifecycle child").Purpose("Verify generated Q and E use the replacement connection").NewEntity(ctx).UpdateProductName("Connection lifecycle item").UpdateUnitPrice(decimal.RequireFromString("12.34"))
+	owner, ownerCreationErr := lib.Q.PurchaseOrders().Comment("Prepare a physical SQLite lifecycle graph").Purpose("Verify generated saves retain exact scalar support after reconnect").NewEntity(ctx)
+	if ownerCreationErr != nil {
+		return 0, 0, ownerCreationErr
+	}
+	owner.UpdateContactPhone(phone).UpdateInternalNote(nil)
+	child, childCreationErr := lib.Q.OrderItems().Comment("Prepare the exact Decimal lifecycle child").Purpose("Verify generated Q and E use the replacement connection").NewEntity(ctx)
+	if childCreationErr != nil {
+		return 0, 0, childCreationErr
+	}
+	child.UpdateProductName("Connection lifecycle item").UpdateUnitPrice(decimal.RequireFromString("12.34"))
 	owner.OrderItemList().Add(child)
 	_, err := owner.AuditAs("Persist one exact graph through the configured SQLite pool").Save(ctx)
 	if err != nil {

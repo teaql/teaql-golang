@@ -22,7 +22,10 @@ func TestGeneratedFilteredForwardReferencePreservesIdentity(t *testing.T) {
 				e.context.DisableSqlLog()
 			}
 			root := newOrder(t, e, "filtered forward fixture")
-			pay := lib.Q.Payments().Comment("create reference fixture").Purpose("test generated hydration").NewEntity(e.context)
+			pay, payCreationErr := lib.Q.Payments().Comment("create reference fixture").Purpose("test generated hydration").NewEntity(e.context)
+			if payCreationErr != nil {
+				t.Fatal(payCreationErr)
+			}
 			pay.UpdateReferenceCode("filtered forward payment")
 			root.PaymentList().Add(pay)
 			if _, err := root.AuditAs("seed filtered reference graph").Save(e.context); err != nil {
@@ -94,7 +97,10 @@ func TestGeneratedRelationAggregateKeepsOriginalRoute(t *testing.T) {
 				root := newOrder(t, e, "relation aggregate fixture")
 				root.OrderItemList().Add(newItem(e, secret))
 				root.OrderItemList().Add(newItem(e, "ordinary item"))
-				pay := lib.Q.Payments().Comment("create payment").Purpose("prepare aggregate fixture").NewEntity(e.context)
+				pay, payCreationErr := lib.Q.Payments().Comment("create payment").Purpose("prepare aggregate fixture").NewEntity(e.context)
+				if payCreationErr != nil {
+					t.Fatal(payCreationErr)
+				}
 				pay.UpdateReferenceCode("aggregate payment")
 				root.PaymentList().Add(pay)
 				if _, err := root.AuditAs("seed aggregate graph").Save(e.context); err != nil {

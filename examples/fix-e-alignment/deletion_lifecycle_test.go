@@ -81,7 +81,10 @@ func TestGeneratedCancelledNewRootAndChildLifecycle(t *testing.T) {
 	}
 	var frames []map[string]any
 	t.Run("cancelled-root-never-enters-provider", func(t *testing.T) {
-		row := lib.Q.PurchaseOrders().Comment("Prepare a root cancelled before its first save").Purpose("Verify ML-12 rejects non-existent durable roots").NewEntity(ctx)
+		row, rowCreationErr := lib.Q.PurchaseOrders().Comment("Prepare a root cancelled before its first save").Purpose("Verify ML-12 rejects non-existent durable roots").NewEntity(ctx)
+		if rowCreationErr != nil {
+			t.Fatal(rowCreationErr)
+		}
 		row.UpdateContactPhone("5550920").UpdateInternalNote(nil)
 		reset()
 		row.MarkForDeletion()
@@ -99,9 +102,15 @@ func TestGeneratedCancelledNewRootAndChildLifecycle(t *testing.T) {
 	})
 	for _, variant := range []string{"complete-child", "incomplete-child", "already-composed-child", "rollback-retry"} {
 		t.Run(variant, func(t *testing.T) {
-			parent := lib.Q.PurchaseOrders().Comment("Prepare a parent graph with one cancelled new child").Purpose("Verify cancellation does not reject valid sibling work").NewEntity(ctx)
+			parent, parentCreationErr := lib.Q.PurchaseOrders().Comment("Prepare a parent graph with one cancelled new child").Purpose("Verify cancellation does not reject valid sibling work").NewEntity(ctx)
+			if parentCreationErr != nil {
+				t.Fatal(parentCreationErr)
+			}
 			parent.UpdateContactPhone("5550921").UpdateInternalNote(nil)
-			cancelled := lib.Q.OrderItems().Comment("Prepare the child which will never be persisted").Purpose("Verify no Checker or allocation is needed for cancelled data").NewEntity(ctx)
+			cancelled, cancelledCreationErr := lib.Q.OrderItems().Comment("Prepare the child which will never be persisted").Purpose("Verify no Checker or allocation is needed for cancelled data").NewEntity(ctx)
+			if cancelledCreationErr != nil {
+				t.Fatal(cancelledCreationErr)
+			}
 			if variant != "incomplete-child" {
 				cancelled.UpdateProductName("Cancelled synthetic widget").UpdateUnitPrice(decimal.NewFromInt(10))
 			}
@@ -109,7 +118,10 @@ func TestGeneratedCancelledNewRootAndChildLifecycle(t *testing.T) {
 			if variant == "already-composed-child" {
 				cancelled.AttachEntityRoot(parent.EntityRoot())
 			}
-			kept := lib.Q.OrderItems().Comment("Prepare the live sibling").Purpose("Verify the parent and intended child persist together").NewEntity(ctx)
+			kept, keptCreationErr := lib.Q.OrderItems().Comment("Prepare the live sibling").Purpose("Verify the parent and intended child persist together").NewEntity(ctx)
+			if keptCreationErr != nil {
+				t.Fatal(keptCreationErr)
+			}
 			kept.UpdateProductName("Retained synthetic widget").UpdateUnitPrice(decimal.NewFromInt(12))
 			parent.OrderItemList().Add(cancelled)
 			parent.OrderItemList().Add(kept)

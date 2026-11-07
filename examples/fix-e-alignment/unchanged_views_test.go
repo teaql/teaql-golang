@@ -60,7 +60,10 @@ func TestGeneratedUnchangedQueryViews(t *testing.T) {
 	t.Setenv("TEAQL_FIX_E_DB", base+".unchanged")
 	f := newProjectionFixture(t)
 	seed := func() *purchase_order.PurchaseOrder {
-		row := lib.Q.PurchaseOrders().Comment("Prepare an unchanged-view fixture").Purpose("Verify no-op view preservation through generated mutations").NewEntity(f.ctx)
+		row, rowCreationErr := lib.Q.PurchaseOrders().Comment("Prepare an unchanged-view fixture").Purpose("Verify no-op view preservation through generated mutations").NewEntity(f.ctx)
+		if rowCreationErr != nil {
+			t.Fatal(rowCreationErr)
+		}
 		row.UpdateContactPhone("5550800").UpdateInternalNote(nil)
 		result, err := row.AuditAs("Create an unchanged-view fixture").Save(f.ctx)
 		if err != nil {

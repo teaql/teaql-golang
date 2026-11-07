@@ -37,7 +37,10 @@ func run() error {
 		return err
 	}
 
-	task := gen.Q.Tasks().Comment("prepare task").Purpose("demonstrate governed task authoring").NewEntity(context)
+	task, taskCreationErr := gen.Q.Tasks().Comment("prepare task").Purpose("demonstrate governed task authoring").NewEntity(context)
+	if taskCreationErr != nil {
+		return taskCreationErr
+	}
 	task.UpdateName("Build Robot Arm").UpdateStatusToPlanned().UpdatePlatformId(1)
 	if _, err := task.AuditAs("create demo robot task").Save(context); err != nil {
 		return err
@@ -71,7 +74,10 @@ func run() error {
 		return fmt.Errorf("rename not persisted")
 	}
 
-	entry := gen.Q.TaskExecutionLogs().Comment("prepare task log").Purpose("record the rename").NewEntity(context)
+	entry, entryCreationErr := gen.Q.TaskExecutionLogs().Comment("prepare task log").Purpose("record the rename").NewEntity(context)
+	if entryCreationErr != nil {
+		return entryCreationErr
+	}
 	entry.UpdateTaskId(task.Id()).UpdateAction("RENAME").UpdateDetail("PRIVATE-TASK-DETAIL")
 	if _, err := entry.AuditAs("record PRIVATE-TASK-DETAIL rename evidence").Save(context); err != nil {
 		return err

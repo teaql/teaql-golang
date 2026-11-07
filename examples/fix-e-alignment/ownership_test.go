@@ -36,11 +36,17 @@ func TestGeneratedIndependentNewAndBatchRoots(t *testing.T) {
 	if err := db.QueryRow("SELECT COUNT(*) FROM purchase_order_data").Scan(&before); err != nil {
 		t.Fatal(err)
 	}
-	a := lib.Q.PurchaseOrders().Comment("Prepare the first independent owner").
+	a, aCreationErr := lib.Q.PurchaseOrders().Comment("Prepare the first independent owner").
 		Purpose("Verify a shared context is not a shared mutation boundary").NewEntity(context)
+	if aCreationErr != nil {
+		t.Fatal(aCreationErr)
+	}
 	a.UpdateContactPhone("5550300").UpdateInternalNote(nil)
-	b := lib.Q.PurchaseOrders().Comment("Prepare the second independent owner").
+	b, bCreationErr := lib.Q.PurchaseOrders().Comment("Prepare the second independent owner").
 		Purpose("Verify a shared context is not a shared mutation boundary").NewEntity(context)
+	if bCreationErr != nil {
+		t.Fatal(bCreationErr)
+	}
 	b.UpdateContactPhone("5550400").UpdateInternalNote(nil)
 	savedA, err := a.AuditAs("Save only the first new owner").Save(context)
 	if err != nil {

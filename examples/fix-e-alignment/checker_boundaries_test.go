@@ -166,12 +166,19 @@ func TestGeneratedCheckerBoundaries(t *testing.T) {
 		return string(b)
 	}
 	parent := func(context *runtime.UserContext) *purchase_order.PurchaseOrder {
-		return lib.Q.PurchaseOrders().Comment("Prepare a real Checker boundary").
+		created, createdCreationErr := lib.Q.PurchaseOrders().Comment("Prepare a real Checker boundary").
 			Purpose("Validate the fixed graph before provider entry").NewEntity(context)
+		if createdCreationErr != nil {
+			t.Fatal(createdCreationErr)
+		}
+		return created
 	}
 	child := func(name string) *order_item.OrderItem {
-		row := lib.Q.OrderItems().Comment("Prepare a bounded child constraint").
+		row, rowCreationErr := lib.Q.OrderItems().Comment("Prepare a bounded child constraint").
 			Purpose("Use generated audited graph persistence").NewEntity(ctx)
+		if rowCreationErr != nil {
+			t.Fatal(rowCreationErr)
+		}
 		if name != "" {
 			row.UpdateProductName(name)
 		}

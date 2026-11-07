@@ -135,8 +135,11 @@ func configured(t *testing.T, suffix string) (*runtime.UserContext, *observedPro
 }
 
 func prepared(ctx *runtime.UserContext) *scalar_type_probe.ScalarTypeProbe {
-	row := lib.Q.ScalarTypeProbes().Comment("prepare portable scalar boundaries").
+	row, rowCreationErr := lib.Q.ScalarTypeProbes().Comment("prepare portable scalar boundaries").
 		Purpose("verify generated APIs against the selected runtime").NewEntity(ctx)
+	if rowCreationErr != nil {
+		panic(rowCreationErr)
+	}
 	row.UpdateTypePlatformId(1)
 	row.UpdateRequiredString("Portable scalar boundaries")
 	row.UpdateOptionalString(pointer(""))
