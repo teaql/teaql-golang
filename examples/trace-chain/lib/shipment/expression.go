@@ -5,6 +5,7 @@ import (
 	"github.com/shopspring/decimal"
 	"github.com/teaql/teaql-golang/runtime"
 	"github.com/teaql/teaql-golang/core"
+	"trace-chain-service-core-workspace/lib/internal/expressiongraph"
 )
 
 var _ = time.Time{}
@@ -92,6 +93,7 @@ func (e *ShipmentExpression) Version() *ValueExpression[int64] {
 }
 type CustomerOrderRelationExpression struct {
 	value core.Record
+	entity core.Entity
 	root string
 	path runtime.ExpressionPath
 	err *runtime.NotLoadedError
@@ -145,6 +147,23 @@ func (e *CustomerOrderRelationExpression) Version() *ValueExpression[int64] {
 	value, valid := raw.TryI64(); if !valid { return missingExpression[int64]() }
 		return valueExpression(value)
 }
+func (e *CustomerOrderRelationExpression) Platform() *expressiongraph.PlatformExpression {
+	return expressiongraph.NewCustomerOrderExpression(e.entity, e.path, e.err).Platform()
+}
+func (e *CustomerOrderRelationExpression) PlatformId() *expressiongraph.ValueExpression[uint64] {
+	return expressiongraph.NewCustomerOrderExpression(e.entity, e.path, e.err).PlatformId()
+}
+func (e *CustomerOrderRelationExpression) OrderItemList() *expressiongraph.CustomerOrderOrderItemListExpression {
+	return expressiongraph.NewCustomerOrderExpression(e.entity, e.path, e.err).OrderItemList()
+}
+
+func (e *CustomerOrderRelationExpression) PaymentList() *expressiongraph.CustomerOrderPaymentListExpression {
+	return expressiongraph.NewCustomerOrderExpression(e.entity, e.path, e.err).PaymentList()
+}
+
+func (e *CustomerOrderRelationExpression) ShipmentList() *expressiongraph.CustomerOrderShipmentListExpression {
+	return expressiongraph.NewCustomerOrderExpression(e.entity, e.path, e.err).ShipmentList()
+}
 
 func (e *ShipmentExpression) CustomerOrderId() *ValueExpression[uint64] {
 	path := e.path.Member("customer_order", "CustomerOrderId")
@@ -168,5 +187,20 @@ func (e *ShipmentExpression) CustomerOrder() *CustomerOrderRelationExpression {
 	if !e.value.isRelationLoaded("customerOrderEntity") { return &CustomerOrderRelationExpression{root:e.root,path:path,err:runtime.NewNotLoadedError(path.MarkMissing(), "customer_order")} }
 	related, ok := e.value.RelationEntity("customerOrderEntity")
 	if !ok || related == nil { return &CustomerOrderRelationExpression{root:e.root,path:path} }
-	return &CustomerOrderRelationExpression{value:related.IntoRecord(),root:e.root,path:path}
+	return &CustomerOrderRelationExpression{value:related.IntoRecord(),entity:related,root:e.root,path:path}
+}
+
+// Generated graph adapters expose loaded state only; no context or provider is available.
+func (e *Shipment) TeaqlExpressionRelationLoaded(name string) bool {
+	return e.isRelationLoaded(name)
+}
+func (e *Shipment) TeaqlExpressionListSize(name string) (int, bool) {
+	switch name {
+	default: return 0, false
+	}
+}
+func (e *Shipment) TeaqlExpressionListItem(name string, index int) core.Entity {
+	switch name {
+	default: return nil
+	}
 }

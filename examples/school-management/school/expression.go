@@ -5,6 +5,7 @@ import (
 	"github.com/shopspring/decimal"
 	"github.com/teaql/teaql-golang/runtime"
 	"github.com/teaql/teaql-golang/core"
+	"school-management-service-core-workspace/lib/internal/expressiongraph"
 )
 
 var _ = time.Time{}
@@ -153,6 +154,7 @@ func (e *SchoolExpression) Version() *ValueExpression[int64] {
 }
 type PlatformRelationExpression struct {
 	value core.Record
+	entity core.Entity
 	root string
 	path runtime.ExpressionPath
 	err *runtime.NotLoadedError
@@ -228,6 +230,13 @@ func (e *PlatformRelationExpression) Version() *ValueExpression[int64] {
 	value, valid := raw.TryI64(); if !valid { return missingExpression[int64]() }
 		return valueExpression(value)
 }
+func (e *PlatformRelationExpression) SchoolTypeList() *expressiongraph.PlatformSchoolTypeListExpression {
+	return expressiongraph.NewPlatformExpression(e.entity, e.path, e.err).SchoolTypeList()
+}
+
+func (e *PlatformRelationExpression) SchoolList() *expressiongraph.PlatformSchoolListExpression {
+	return expressiongraph.NewPlatformExpression(e.entity, e.path, e.err).SchoolList()
+}
 
 func (e *SchoolExpression) PlatformId() *ValueExpression[uint64] {
 	path := e.path.Member("platform", "PlatformId")
@@ -251,11 +260,12 @@ func (e *SchoolExpression) Platform() *PlatformRelationExpression {
 	if !e.value.isRelationLoaded("platformEntity") { return &PlatformRelationExpression{root:e.root,path:path,err:runtime.NewNotLoadedError(path.MarkMissing(), "platform")} }
 	related, ok := e.value.RelationEntity("platformEntity")
 	if !ok || related == nil { return &PlatformRelationExpression{root:e.root,path:path} }
-	return &PlatformRelationExpression{value:related.IntoRecord(),root:e.root,path:path}
+	return &PlatformRelationExpression{value:related.IntoRecord(),entity:related,root:e.root,path:path}
 }
 
 type SchoolTypeRelationExpression struct {
 	value core.Record
+	entity core.Entity
 	root string
 	path runtime.ExpressionPath
 	err *runtime.NotLoadedError
@@ -320,6 +330,15 @@ func (e *SchoolTypeRelationExpression) Version() *ValueExpression[int64] {
 	value, valid := raw.TryI64(); if !valid { return missingExpression[int64]() }
 		return valueExpression(value)
 }
+func (e *SchoolTypeRelationExpression) Platform() *expressiongraph.PlatformExpression {
+	return expressiongraph.NewSchoolTypeExpression(e.entity, e.path, e.err).Platform()
+}
+func (e *SchoolTypeRelationExpression) PlatformId() *expressiongraph.ValueExpression[uint64] {
+	return expressiongraph.NewSchoolTypeExpression(e.entity, e.path, e.err).PlatformId()
+}
+func (e *SchoolTypeRelationExpression) SchoolList() *expressiongraph.SchoolTypeSchoolListExpression {
+	return expressiongraph.NewSchoolTypeExpression(e.entity, e.path, e.err).SchoolList()
+}
 
 func (e *SchoolExpression) SchoolTypeId() *ValueExpression[uint64] {
 	path := e.path.Member("school_type", "SchoolTypeId")
@@ -343,5 +362,20 @@ func (e *SchoolExpression) SchoolType() *SchoolTypeRelationExpression {
 	if !e.value.isRelationLoaded("schoolTypeEntity") { return &SchoolTypeRelationExpression{root:e.root,path:path,err:runtime.NewNotLoadedError(path.MarkMissing(), "school_type")} }
 	related, ok := e.value.RelationEntity("schoolTypeEntity")
 	if !ok || related == nil { return &SchoolTypeRelationExpression{root:e.root,path:path} }
-	return &SchoolTypeRelationExpression{value:related.IntoRecord(),root:e.root,path:path}
+	return &SchoolTypeRelationExpression{value:related.IntoRecord(),entity:related,root:e.root,path:path}
+}
+
+// Generated graph adapters expose loaded state only; no context or provider is available.
+func (e *School) TeaqlExpressionRelationLoaded(name string) bool {
+	return e.isRelationLoaded(name)
+}
+func (e *School) TeaqlExpressionListSize(name string) (int, bool) {
+	switch name {
+	default: return 0, false
+	}
+}
+func (e *School) TeaqlExpressionListItem(name string, index int) core.Entity {
+	switch name {
+	default: return nil
+	}
 }

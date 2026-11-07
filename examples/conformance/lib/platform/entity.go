@@ -153,6 +153,8 @@ func (e *Platform) IdValue() core.Value {
 
 
 
+// FromRecord replaces this entity's loaded snapshot and its obsolete pending
+// intent only after validation. Other entities in the ledger are unaffected.
 func (e *Platform) FromRecord(record core.Record) error {
 	return e.teaqlFromRecord(record, true)
 }
@@ -162,6 +164,12 @@ func (e *Platform) teaqlFromRecord(record core.Record, captureLoaded bool) error
 	base, err := core.BaseEntityDataFromRecord(record)
 	if err != nil {
 		return err
+	}
+	if captureLoaded {
+		e.root.ClearEntity(oldKey)
+		e.markedAsDelete = false
+	} else {
+		base.PreserveAllocatedIDFrom(e.base)
 	}
 	e.base = base
 	e.root.Rekey(oldKey, e.EntityKey())
@@ -339,9 +347,38 @@ func (e *Platform) Save(context *runtime.UserContext) (*Platform, error) {
 // first provider mutation. It is generated infrastructure, not application API.
 func (e *Platform) TeaqlPreflightGraph(context *runtime.UserContext, intent core.MutationIntent) error {
 	if err := intent.Validate(); err != nil { return err }
+	if err := e.TeaqlPrepareMutationViews(context); err != nil { return err }
 	if err := e.TeaqlNormalizeMutationGraph(context); err != nil { return err }
 	if err := context.ValidateGraphMutationVersions(e.root); err != nil { return err }
+	if err := e.TeaqlAdmitMutationGraph(context); err != nil { return err }
 	return e.TeaqlPreflightWithinGraph(context, intent, nil)
+}
+
+// Preserve instance-local intent before automatic ledger attachment can merge
+// aliases. Known-baseline equal assignments are not writable intent.
+func (e *Platform) TeaqlPrepareMutationViews(context *runtime.UserContext) error {
+	if e.isNew && e.markedAsDelete { return nil }
+	restoredFields, err := context.DiscardRestoredScalarChanges(e.root, e.EntityKey(), e.loadedSnapshot)
+	if err != nil { return err }
+	for _, field := range restoredFields { delete(e.dirtyFields, field) }
+	if e.isNew || e.markedAsDelete || len(e.root.Change(e.EntityKey())) > 0 {
+		if err := context.AdmitPreparedGraphEntityView(e.EntityKey(), e); err != nil { return err }
+	}
+	for index, child := range e.workItemList.Items() {
+		if child.IsNew() && child.IsMarkedAsDelete() { continue }
+		if err := child.TeaqlPrepareMutationViews(context); err != nil {
+			var checkError *runtime.RuntimeError
+			if errors.As(err, &checkError) && checkError.Type == "Check" {
+				prefix := runtime.Location().Property("work_item_list").At(index)
+				prefixed := make([]runtime.CheckResult, len(checkError.CheckResults))
+				for resultIndex, result := range checkError.CheckResults { prefixed[resultIndex] = result.PrefixedBy(prefix) }
+				context.TranslateCheckResults(prefixed)
+				return &runtime.RuntimeError{Type: "Check", CheckResults: prefixed}
+			}
+			return fmt.Errorf("prepare views from workItemList: %w", err)
+		}
+	}
+	return nil
 }
 
 // Cancel known-baseline equal assignments and attach the complete pending graph
@@ -367,6 +404,34 @@ func (e *Platform) TeaqlNormalizeMutationGraph(context *runtime.UserContext) err
 				return &runtime.RuntimeError{Type: "Check", CheckResults: prefixed}
 			}
 			return fmt.Errorf("normalize child from workItemList: %w", err)
+		}
+	}
+	return nil
+}
+
+// Admit all writable object instances before any Checker/Fix can rewrite a
+// carrier. Explicit compatible ledger composition into one view stays legal.
+func (e *Platform) TeaqlAdmitMutationGraph(context *runtime.UserContext) error {
+	if e.isNew && e.markedAsDelete { return nil }
+	if e.isNew || e.markedAsDelete || len(e.root.Change(e.EntityKey())) > 0 {
+		if err := context.AdmitPreparedGraphEntityView(e.EntityKey(), e); err != nil { return err }
+	}
+	if err := runtime.RememberPreparedGraphRelation(context, e.EntityKey(), "work_item_list", func() []*work_item.WorkItem {
+		if e.workItemList == nil { return nil }
+		return e.workItemList.Items()
+	}); err != nil { return err }
+	for index, child := range e.workItemList.Items() {
+		if child.IsNew() && child.IsMarkedAsDelete() { continue }
+		if err := child.TeaqlAdmitMutationGraph(context); err != nil {
+			var checkError *runtime.RuntimeError
+			if errors.As(err, &checkError) && checkError.Type == "Check" {
+				prefix := runtime.Location().Property("work_item_list").At(index)
+				prefixed := make([]runtime.CheckResult, len(checkError.CheckResults))
+				for resultIndex, result := range checkError.CheckResults { prefixed[resultIndex] = result.PrefixedBy(prefix) }
+				context.TranslateCheckResults(prefixed)
+				return &runtime.RuntimeError{Type: "Check", CheckResults: prefixed}
+			}
+			return fmt.Errorf("admit child from workItemList: %w", err)
 		}
 	}
 	return nil
@@ -464,7 +529,9 @@ func (e *Platform) teaqlSaveSnapshot() teaqlPlatformSaveSnapshot {
 
 func (e *Platform) teaqlRegisterGraphOutcome(context *runtime.UserContext, snapshot teaqlPlatformSaveSnapshot) {
 	context.AfterGraphRollback(func() {
-		if err := e.FromRecord(snapshot.record); err != nil { panic(err) }
+		// Rollback restores the native view, not a newly loaded snapshot. Keep
+		// pending insert/update/delete intent available for the same graph retry.
+		if err := e.teaqlFromRecord(snapshot.record, false); err != nil { panic(err) }
 		e.base.CaptureQueryProperties(snapshot.queryProperties)
 		e.loadedSnapshot = snapshot.loadedSnapshot
 		e.dirtyFields = snapshot.dirtyFields
@@ -479,8 +546,15 @@ func (e *Platform) teaqlRegisterGraphOutcome(context *runtime.UserContext, snaps
 
 // TeaqlSaveWithinGraph is generated infrastructure used by related entity
 // packages after the public root Save has opened the graph transaction.
-func (e *Platform) TeaqlSaveWithinGraph(context *runtime.UserContext, intent core.MutationIntent, parentScope *core.MutationTraceScope, privacy *data_service.MutationPrivacy) (*Platform, error) {
+func (e *Platform) TeaqlSaveWithinGraph(context *runtime.UserContext, intent core.MutationIntent, parentScope *core.MutationTraceScope, privacy *data_service.MutationPrivacy, visited ...map[any]struct{}) (*Platform, error) {
 	if err := intent.Validate(); err != nil { return nil, err }
+	// This traversal owns its pointer-identity set. Never deduplicate distinct
+	// views by entity ID, or keep a guard on Context/entities across saves.
+	var seen map[any]struct{}
+	if len(visited) > 0 { seen = visited[0] }
+	if seen == nil { seen = make(map[any]struct{}) }
+	if _, exists := seen[e]; exists { return e, nil }
+	seen[e] = struct{}{}
 	if e.isNew && e.markedAsDelete {
 		if parentScope == nil { return nil, fmt.Errorf("cancelled new root %s: create-then-delete has no persisted entity to return", e.EntityName()) }
 		return e, nil
@@ -490,7 +564,7 @@ func (e *Platform) TeaqlSaveWithinGraph(context *runtime.UserContext, intent cor
 	if !e.isNew && !e.markedAsDelete && len(e.root.Change(e.EntityKey())) == 0 {
 		scope, err := core.MutationScopeForEntity(parentScope, e.EntityKey(), intent, e.comment)
 		if err != nil { return nil, err }
-		if err := e.saveCascade(context, intent, scope, privacy); err != nil { return nil, err }
+		if err := e.saveCascade(context, intent, scope, privacy, seen); err != nil { return nil, err }
 		return e, nil
 	}
 	snapshot := e.teaqlSaveSnapshot()
@@ -529,7 +603,7 @@ func (e *Platform) TeaqlSaveWithinGraph(context *runtime.UserContext, intent cor
 			}
 			e.base.Id = id
 			if err := context.RekeyPreparedGraphEntity(e.root, core.NewEntityKey(e.EntityName(), e.ledgerID), e.EntityKey()); err != nil { return nil, err }
-		} else {
+		} else if !e.base.HasAllocatedID() {
 			if err := context.EnsureInternalIdFloor(context.Context, e.EntityName(), e.base.Id); err != nil {
 				return nil, fmt.Errorf("synchronize id floor for %s: %w", e.EntityName(), err)
 			}
@@ -569,7 +643,7 @@ func (e *Platform) TeaqlSaveWithinGraph(context *runtime.UserContext, intent cor
 		if err := e.teaqlAcceptPersisted(context, res.PersistedRecord); err != nil {
 			return nil, err
 		}
-		if err := e.saveCascade(context, intent, scope, privacy); err != nil { return nil, err }
+		if err := e.saveCascade(context, intent, scope, privacy, seen); err != nil { return nil, err }
 		return e, nil
 	} else if e.markedAsDelete {
 		scope, err := core.MutationScopeForEntity(parentScope, e.EntityKey(), intent, e.comment)
@@ -616,7 +690,7 @@ func (e *Platform) TeaqlSaveWithinGraph(context *runtime.UserContext, intent cor
 		// A clean parent still carries the scope for changed descendants, but
 		// must not emit an empty UPDATE or bump its optimistic version.
 		if len(cmd.Values) == 0 {
-			if err := e.saveCascade(context, intent, scope, privacy); err != nil { return nil, err }
+			if err := e.saveCascade(context, intent, scope, privacy, seen); err != nil { return nil, err }
 			return e, nil
 		}
 		expectedVersion := e.base.Version
@@ -641,17 +715,17 @@ func (e *Platform) TeaqlSaveWithinGraph(context *runtime.UserContext, intent cor
 			return nil, fmt.Errorf("mutation did not return the authoritative persisted record")
 		}
 		if err := e.teaqlAcceptPersisted(context, res.PersistedRecord); err != nil { return nil, err }
-		if err := e.saveCascade(context, intent, scope, privacy); err != nil { return nil, err }
+		if err := e.saveCascade(context, intent, scope, privacy, seen); err != nil { return nil, err }
 		return e, nil
 	}
 }
 
-func (e *Platform) saveCascade(context *runtime.UserContext, intent core.MutationIntent, scope *core.MutationTraceScope, privacy *data_service.MutationPrivacy) error {
+func (e *Platform) saveCascade(context *runtime.UserContext, intent core.MutationIntent, scope *core.MutationTraceScope, privacy *data_service.MutationPrivacy, seen map[any]struct{}) error {
 	for index, child := range e.workItemList.Items() {
 		if child.IsNew() && child.IsMarkedAsDelete() { continue }
 		child.AttachEntityRoot(e.root)
 		child.Base().PutDynamic("platform_id", core.ValU64(e.base.Id))
-		if _, err := child.TeaqlSaveWithinGraph(context, intent, scope, privacy); err != nil {
+		if _, err := child.TeaqlSaveWithinGraph(context, intent, scope, privacy, seen); err != nil {
 			var checkError *runtime.RuntimeError
 			if errors.As(err, &checkError) && checkError.Type == "Check" {
 				prefix := runtime.Location().Property("work_item_list").At(index)

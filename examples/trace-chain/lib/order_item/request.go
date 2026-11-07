@@ -535,16 +535,22 @@ func (r *OrderItemRequest) WithoutCustomerOrderMatching(child interface {
 
 
 
-func (e *ExecutableOrderItemRequest) NewEntity(context *runtime.UserContext) *OrderItem {
+func (e *ExecutableOrderItemRequest) NewEntity(context *runtime.UserContext) (*OrderItem, error) {
 	r := e.request
 	if _, err := core.NewQueryIntent(&r.commentText, &r.purposeText); err != nil { panic(err) }
+	if context == nil { return nil, fmt.Errorf("UserContext is required for entity creation") }
+	// Reserve before constructing mutation state or invoking trusted defaults.
+	id, err := context.GenerateInternalId("Order Item")
+	if err != nil { return nil, err }
 	entity := NewOrderItem()
 	initialized := context.InitializeEntity("OrderItem", entity)
 	typed, ok := initialized.(*OrderItem)
-	if !ok {
-		panic("entity initializer changed OrderItem to an incompatible type")
+	if !ok || typed == nil {
+		return nil, fmt.Errorf("entity initializer changed OrderItem to an incompatible type")
 	}
-	return typed
+	typed.UpdateId(id)
+	if err := typed.base.RecordAllocatedID(id); err != nil { return nil, err }
+	return typed, nil
 }
 
 func (e *ExecutableOrderItemRequest) ExecuteForOne(context *runtime.UserContext) (*OrderItem, error) {
@@ -673,15 +679,39 @@ func (r *OrderItemRequest) GroupById() *OrderItemRequest {
 	r.Query.WithGroupBy("id")
 	return r
 }
+
+func (r *OrderItemRequest) GroupByIdAs(alias string) *OrderItemRequest {
+	r.Query.WithGroupBy("id")
+	r.Query.ProjectExpr(alias, core.ExprColumnNode("id"))
+	return r
+}
 func (r *OrderItemRequest) GroupByCustomerOrder() *OrderItemRequest {
 	r.Query.WithGroupBy("customer_order_id")
+	return r
+}
+
+func (r *OrderItemRequest) GroupByCustomerOrderAs(alias string) *OrderItemRequest {
+	r.Query.WithGroupBy("customer_order_id")
+	r.Query.ProjectExpr(alias, core.ExprColumnNode("customer_order_id"))
 	return r
 }
 func (r *OrderItemRequest) GroupByName() *OrderItemRequest {
 	r.Query.WithGroupBy("name")
 	return r
 }
+
+func (r *OrderItemRequest) GroupByNameAs(alias string) *OrderItemRequest {
+	r.Query.WithGroupBy("name")
+	r.Query.ProjectExpr(alias, core.ExprColumnNode("name"))
+	return r
+}
 func (r *OrderItemRequest) GroupByVersion() *OrderItemRequest {
 	r.Query.WithGroupBy("version")
+	return r
+}
+
+func (r *OrderItemRequest) GroupByVersionAs(alias string) *OrderItemRequest {
+	r.Query.WithGroupBy("version")
+	r.Query.ProjectExpr(alias, core.ExprColumnNode("version"))
 	return r
 }

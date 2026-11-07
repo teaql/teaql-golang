@@ -128,3 +128,24 @@ func (e *PlatformExpression) WorkItemList() *WorkItemListExpression {
 	if !e.value.IsLoaded("workItemList") { return &WorkItemListExpression{err: runtime.NewNotLoadedError(path.MarkMissing(), "work_item_list"), root:e.root, path:path} }
 	return &WorkItemListExpression{value: e.value.WorkItemList(), root: e.root, path:path}
 }
+
+// Generated graph adapters expose loaded state only; no context or provider is available.
+func (e *Platform) TeaqlExpressionRelationLoaded(name string) bool {
+	return e.isRelationLoaded(name)
+}
+func (e *Platform) TeaqlExpressionListSize(name string) (int, bool) {
+	switch name {
+	case "workItemList":
+		if !e.IsLoaded(name) { return 0, false }
+		return len(e.WorkItemList().Items()), true
+	default: return 0, false
+	}
+}
+func (e *Platform) TeaqlExpressionListItem(name string, index int) core.Entity {
+	switch name {
+	case "workItemList":
+		if !e.IsLoaded(name) || index < 0 || index >= len(e.WorkItemList().Items()) { return nil }
+		return e.WorkItemList().Items()[index]
+	default: return nil
+	}
+}

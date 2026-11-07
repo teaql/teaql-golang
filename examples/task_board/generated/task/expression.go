@@ -5,6 +5,7 @@ import (
 	"github.com/shopspring/decimal"
 	"github.com/teaql/teaql-golang/runtime"
 	"github.com/teaql/teaql-golang/core"
+	"robot-kanban-service-core-workspace/lib/internal/expressiongraph"
 	"robot-kanban-service-core-workspace/lib/task_execution_log"
 )
 
@@ -93,6 +94,7 @@ func (e *TaskExpression) Version() *ValueExpression[int64] {
 }
 type StatusRelationExpression struct {
 	value core.Record
+	entity core.Entity
 	root string
 	path runtime.ExpressionPath
 	err *runtime.NotLoadedError
@@ -179,6 +181,15 @@ func (e *StatusRelationExpression) Version() *ValueExpression[int64] {
 	value, valid := raw.TryI64(); if !valid { return missingExpression[int64]() }
 		return valueExpression(value)
 }
+func (e *StatusRelationExpression) Platform() *expressiongraph.PlatformExpression {
+	return expressiongraph.NewTaskStatusExpression(e.entity, e.path, e.err).Platform()
+}
+func (e *StatusRelationExpression) PlatformId() *expressiongraph.ValueExpression[uint64] {
+	return expressiongraph.NewTaskStatusExpression(e.entity, e.path, e.err).PlatformId()
+}
+func (e *StatusRelationExpression) TaskList() *expressiongraph.TaskStatusTaskListExpression {
+	return expressiongraph.NewTaskStatusExpression(e.entity, e.path, e.err).TaskList()
+}
 
 func (e *TaskExpression) StatusId() *ValueExpression[uint64] {
 	path := e.path.Member("status", "StatusId")
@@ -202,11 +213,12 @@ func (e *TaskExpression) Status() *StatusRelationExpression {
 	if !e.value.isRelationLoaded("statusEntity") { return &StatusRelationExpression{root:e.root,path:path,err:runtime.NewNotLoadedError(path.MarkMissing(), "status")} }
 	related, ok := e.value.RelationEntity("statusEntity")
 	if !ok || related == nil { return &StatusRelationExpression{root:e.root,path:path} }
-	return &StatusRelationExpression{value:related.IntoRecord(),root:e.root,path:path}
+	return &StatusRelationExpression{value:related.IntoRecord(),entity:related,root:e.root,path:path}
 }
 
 type PlatformRelationExpression struct {
 	value core.Record
+	entity core.Entity
 	root string
 	path runtime.ExpressionPath
 	err *runtime.NotLoadedError
@@ -271,6 +283,13 @@ func (e *PlatformRelationExpression) Version() *ValueExpression[int64] {
 	value, valid := raw.TryI64(); if !valid { return missingExpression[int64]() }
 		return valueExpression(value)
 }
+func (e *PlatformRelationExpression) TaskStatusList() *expressiongraph.PlatformTaskStatusListExpression {
+	return expressiongraph.NewPlatformExpression(e.entity, e.path, e.err).TaskStatusList()
+}
+
+func (e *PlatformRelationExpression) TaskList() *expressiongraph.PlatformTaskListExpression {
+	return expressiongraph.NewPlatformExpression(e.entity, e.path, e.err).TaskList()
+}
 
 func (e *TaskExpression) PlatformId() *ValueExpression[uint64] {
 	path := e.path.Member("platform", "PlatformId")
@@ -294,7 +313,7 @@ func (e *TaskExpression) Platform() *PlatformRelationExpression {
 	if !e.value.isRelationLoaded("platformEntity") { return &PlatformRelationExpression{root:e.root,path:path,err:runtime.NewNotLoadedError(path.MarkMissing(), "platform")} }
 	related, ok := e.value.RelationEntity("platformEntity")
 	if !ok || related == nil { return &PlatformRelationExpression{root:e.root,path:path} }
-	return &PlatformRelationExpression{value:related.IntoRecord(),root:e.root,path:path}
+	return &PlatformRelationExpression{value:related.IntoRecord(),entity:related,root:e.root,path:path}
 }
 type TaskExecutionLogListExpression struct {
 	value *TaskExecutionLogList
@@ -332,4 +351,25 @@ func (e *TaskExpression) TaskExecutionLogList() *TaskExecutionLogListExpression 
 	if e.value == nil { return &TaskExecutionLogListExpression{root:e.root, path:path} }
 	if !e.value.IsLoaded("taskExecutionLogList") { return &TaskExecutionLogListExpression{err: runtime.NewNotLoadedError(path.MarkMissing(), "task_execution_log_list"), root:e.root, path:path} }
 	return &TaskExecutionLogListExpression{value: e.value.TaskExecutionLogList(), root: e.root, path:path}
+}
+
+// Generated graph adapters expose loaded state only; no context or provider is available.
+func (e *Task) TeaqlExpressionRelationLoaded(name string) bool {
+	return e.isRelationLoaded(name)
+}
+func (e *Task) TeaqlExpressionListSize(name string) (int, bool) {
+	switch name {
+	case "taskExecutionLogList":
+		if !e.IsLoaded(name) { return 0, false }
+		return len(e.TaskExecutionLogList().Items()), true
+	default: return 0, false
+	}
+}
+func (e *Task) TeaqlExpressionListItem(name string, index int) core.Entity {
+	switch name {
+	case "taskExecutionLogList":
+		if !e.IsLoaded(name) || index < 0 || index >= len(e.TaskExecutionLogList().Items()) { return nil }
+		return e.TaskExecutionLogList().Items()[index]
+	default: return nil
+	}
 }

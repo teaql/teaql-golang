@@ -5,6 +5,7 @@ import (
 	"github.com/shopspring/decimal"
 	"github.com/teaql/teaql-golang/runtime"
 	"github.com/teaql/teaql-golang/core"
+	"school-management-service-core-workspace/lib/internal/expressiongraph"
 	"school-management-service-core-workspace/lib/school"
 )
 
@@ -113,6 +114,7 @@ func (e *SchoolTypeExpression) Version() *ValueExpression[int64] {
 }
 type PlatformRelationExpression struct {
 	value core.Record
+	entity core.Entity
 	root string
 	path runtime.ExpressionPath
 	err *runtime.NotLoadedError
@@ -188,6 +190,13 @@ func (e *PlatformRelationExpression) Version() *ValueExpression[int64] {
 	value, valid := raw.TryI64(); if !valid { return missingExpression[int64]() }
 		return valueExpression(value)
 }
+func (e *PlatformRelationExpression) SchoolTypeList() *expressiongraph.PlatformSchoolTypeListExpression {
+	return expressiongraph.NewPlatformExpression(e.entity, e.path, e.err).SchoolTypeList()
+}
+
+func (e *PlatformRelationExpression) SchoolList() *expressiongraph.PlatformSchoolListExpression {
+	return expressiongraph.NewPlatformExpression(e.entity, e.path, e.err).SchoolList()
+}
 
 func (e *SchoolTypeExpression) PlatformId() *ValueExpression[uint64] {
 	path := e.path.Member("platform", "PlatformId")
@@ -211,7 +220,7 @@ func (e *SchoolTypeExpression) Platform() *PlatformRelationExpression {
 	if !e.value.isRelationLoaded("platformEntity") { return &PlatformRelationExpression{root:e.root,path:path,err:runtime.NewNotLoadedError(path.MarkMissing(), "platform")} }
 	related, ok := e.value.RelationEntity("platformEntity")
 	if !ok || related == nil { return &PlatformRelationExpression{root:e.root,path:path} }
-	return &PlatformRelationExpression{value:related.IntoRecord(),root:e.root,path:path}
+	return &PlatformRelationExpression{value:related.IntoRecord(),entity:related,root:e.root,path:path}
 }
 type SchoolListExpression struct {
 	value *SchoolList
@@ -249,4 +258,25 @@ func (e *SchoolTypeExpression) SchoolList() *SchoolListExpression {
 	if e.value == nil { return &SchoolListExpression{root:e.root, path:path} }
 	if !e.value.IsLoaded("schoolList") { return &SchoolListExpression{err: runtime.NewNotLoadedError(path.MarkMissing(), "school_list"), root:e.root, path:path} }
 	return &SchoolListExpression{value: e.value.SchoolList(), root: e.root, path:path}
+}
+
+// Generated graph adapters expose loaded state only; no context or provider is available.
+func (e *SchoolType) TeaqlExpressionRelationLoaded(name string) bool {
+	return e.isRelationLoaded(name)
+}
+func (e *SchoolType) TeaqlExpressionListSize(name string) (int, bool) {
+	switch name {
+	case "schoolList":
+		if !e.IsLoaded(name) { return 0, false }
+		return len(e.SchoolList().Items()), true
+	default: return 0, false
+	}
+}
+func (e *SchoolType) TeaqlExpressionListItem(name string, index int) core.Entity {
+	switch name {
+	case "schoolList":
+		if !e.IsLoaded(name) || index < 0 || index >= len(e.SchoolList().Items()) { return nil }
+		return e.SchoolList().Items()[index]
+	default: return nil
+	}
 }

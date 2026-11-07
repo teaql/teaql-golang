@@ -5,6 +5,7 @@ import (
 	"github.com/shopspring/decimal"
 	"github.com/teaql/teaql-golang/runtime"
 	"github.com/teaql/teaql-golang/core"
+	"order-management-service-core-workspace/lib/internal/expressiongraph"
 )
 
 var _ = time.Time{}
@@ -123,6 +124,7 @@ func (e *OrderLineExpression) Version() *ValueExpression[int64] {
 }
 type CustomerOrderRelationExpression struct {
 	value core.Record
+	entity core.Entity
 	root string
 	path runtime.ExpressionPath
 	err *runtime.NotLoadedError
@@ -209,6 +211,29 @@ func (e *CustomerOrderRelationExpression) Version() *ValueExpression[int64] {
 	value, valid := raw.TryI64(); if !valid { return missingExpression[int64]() }
 		return valueExpression(value)
 }
+func (e *CustomerOrderRelationExpression) Status() *expressiongraph.OrderStatusExpression {
+	return expressiongraph.NewCustomerOrderExpression(e.entity, e.path, e.err).Status()
+}
+func (e *CustomerOrderRelationExpression) StatusId() *expressiongraph.ValueExpression[uint64] {
+	return expressiongraph.NewCustomerOrderExpression(e.entity, e.path, e.err).StatusId()
+}
+
+func (e *CustomerOrderRelationExpression) Customer() *expressiongraph.CustomerExpression {
+	return expressiongraph.NewCustomerOrderExpression(e.entity, e.path, e.err).Customer()
+}
+func (e *CustomerOrderRelationExpression) CustomerId() *expressiongraph.ValueExpression[uint64] {
+	return expressiongraph.NewCustomerOrderExpression(e.entity, e.path, e.err).CustomerId()
+}
+
+func (e *CustomerOrderRelationExpression) CommercePlatform() *expressiongraph.CommercePlatformExpression {
+	return expressiongraph.NewCustomerOrderExpression(e.entity, e.path, e.err).CommercePlatform()
+}
+func (e *CustomerOrderRelationExpression) CommercePlatformId() *expressiongraph.ValueExpression[uint64] {
+	return expressiongraph.NewCustomerOrderExpression(e.entity, e.path, e.err).CommercePlatformId()
+}
+func (e *CustomerOrderRelationExpression) OrderLineList() *expressiongraph.CustomerOrderOrderLineListExpression {
+	return expressiongraph.NewCustomerOrderExpression(e.entity, e.path, e.err).OrderLineList()
+}
 
 func (e *OrderLineExpression) CustomerOrderId() *ValueExpression[uint64] {
 	path := e.path.Member("customer_order", "CustomerOrderId")
@@ -232,11 +257,12 @@ func (e *OrderLineExpression) CustomerOrder() *CustomerOrderRelationExpression {
 	if !e.value.isRelationLoaded("customerOrderEntity") { return &CustomerOrderRelationExpression{root:e.root,path:path,err:runtime.NewNotLoadedError(path.MarkMissing(), "customer_order")} }
 	related, ok := e.value.RelationEntity("customerOrderEntity")
 	if !ok || related == nil { return &CustomerOrderRelationExpression{root:e.root,path:path} }
-	return &CustomerOrderRelationExpression{value:related.IntoRecord(),root:e.root,path:path}
+	return &CustomerOrderRelationExpression{value:related.IntoRecord(),entity:related,root:e.root,path:path}
 }
 
 type ProductRelationExpression struct {
 	value core.Record
+	entity core.Entity
 	root string
 	path runtime.ExpressionPath
 	err *runtime.NotLoadedError
@@ -323,6 +349,15 @@ func (e *ProductRelationExpression) Version() *ValueExpression[int64] {
 	value, valid := raw.TryI64(); if !valid { return missingExpression[int64]() }
 		return valueExpression(value)
 }
+func (e *ProductRelationExpression) CommercePlatform() *expressiongraph.CommercePlatformExpression {
+	return expressiongraph.NewProductExpression(e.entity, e.path, e.err).CommercePlatform()
+}
+func (e *ProductRelationExpression) CommercePlatformId() *expressiongraph.ValueExpression[uint64] {
+	return expressiongraph.NewProductExpression(e.entity, e.path, e.err).CommercePlatformId()
+}
+func (e *ProductRelationExpression) OrderLineList() *expressiongraph.ProductOrderLineListExpression {
+	return expressiongraph.NewProductExpression(e.entity, e.path, e.err).OrderLineList()
+}
 
 func (e *OrderLineExpression) ProductId() *ValueExpression[uint64] {
 	path := e.path.Member("product", "ProductId")
@@ -346,11 +381,12 @@ func (e *OrderLineExpression) Product() *ProductRelationExpression {
 	if !e.value.isRelationLoaded("productEntity") { return &ProductRelationExpression{root:e.root,path:path,err:runtime.NewNotLoadedError(path.MarkMissing(), "product")} }
 	related, ok := e.value.RelationEntity("productEntity")
 	if !ok || related == nil { return &ProductRelationExpression{root:e.root,path:path} }
-	return &ProductRelationExpression{value:related.IntoRecord(),root:e.root,path:path}
+	return &ProductRelationExpression{value:related.IntoRecord(),entity:related,root:e.root,path:path}
 }
 
 type CommercePlatformRelationExpression struct {
 	value core.Record
+	entity core.Entity
 	root string
 	path runtime.ExpressionPath
 	err *runtime.NotLoadedError
@@ -415,6 +451,29 @@ func (e *CommercePlatformRelationExpression) Version() *ValueExpression[int64] {
 	value, valid := raw.TryI64(); if !valid { return missingExpression[int64]() }
 		return valueExpression(value)
 }
+func (e *CommercePlatformRelationExpression) CustomerList() *expressiongraph.CommercePlatformCustomerListExpression {
+	return expressiongraph.NewCommercePlatformExpression(e.entity, e.path, e.err).CustomerList()
+}
+
+func (e *CommercePlatformRelationExpression) OrderStatusList() *expressiongraph.CommercePlatformOrderStatusListExpression {
+	return expressiongraph.NewCommercePlatformExpression(e.entity, e.path, e.err).OrderStatusList()
+}
+
+func (e *CommercePlatformRelationExpression) CustomerOrderList() *expressiongraph.CommercePlatformCustomerOrderListExpression {
+	return expressiongraph.NewCommercePlatformExpression(e.entity, e.path, e.err).CustomerOrderList()
+}
+
+func (e *CommercePlatformRelationExpression) ProductList() *expressiongraph.CommercePlatformProductListExpression {
+	return expressiongraph.NewCommercePlatformExpression(e.entity, e.path, e.err).ProductList()
+}
+
+func (e *CommercePlatformRelationExpression) OrderLineList() *expressiongraph.CommercePlatformOrderLineListExpression {
+	return expressiongraph.NewCommercePlatformExpression(e.entity, e.path, e.err).OrderLineList()
+}
+
+func (e *CommercePlatformRelationExpression) OrderSearchPresetList() *expressiongraph.CommercePlatformOrderSearchPresetListExpression {
+	return expressiongraph.NewCommercePlatformExpression(e.entity, e.path, e.err).OrderSearchPresetList()
+}
 
 func (e *OrderLineExpression) CommercePlatformId() *ValueExpression[uint64] {
 	path := e.path.Member("commerce_platform", "CommercePlatformId")
@@ -438,5 +497,20 @@ func (e *OrderLineExpression) CommercePlatform() *CommercePlatformRelationExpres
 	if !e.value.isRelationLoaded("commercePlatformEntity") { return &CommercePlatformRelationExpression{root:e.root,path:path,err:runtime.NewNotLoadedError(path.MarkMissing(), "commerce_platform")} }
 	related, ok := e.value.RelationEntity("commercePlatformEntity")
 	if !ok || related == nil { return &CommercePlatformRelationExpression{root:e.root,path:path} }
-	return &CommercePlatformRelationExpression{value:related.IntoRecord(),root:e.root,path:path}
+	return &CommercePlatformRelationExpression{value:related.IntoRecord(),entity:related,root:e.root,path:path}
+}
+
+// Generated graph adapters expose loaded state only; no context or provider is available.
+func (e *OrderLine) TeaqlExpressionRelationLoaded(name string) bool {
+	return e.isRelationLoaded(name)
+}
+func (e *OrderLine) TeaqlExpressionListSize(name string) (int, bool) {
+	switch name {
+	default: return 0, false
+	}
+}
+func (e *OrderLine) TeaqlExpressionListItem(name string, index int) core.Entity {
+	switch name {
+	default: return nil
+	}
 }

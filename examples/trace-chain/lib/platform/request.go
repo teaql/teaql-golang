@@ -473,16 +473,22 @@ func (r *PlatformRequest) WithoutCustomerOrderListMatching(child *customer_order
 	return r
 }
 
-func (e *ExecutablePlatformRequest) NewEntity(context *runtime.UserContext) *Platform {
+func (e *ExecutablePlatformRequest) NewEntity(context *runtime.UserContext) (*Platform, error) {
 	r := e.request
 	if _, err := core.NewQueryIntent(&r.commentText, &r.purposeText); err != nil { panic(err) }
+	if context == nil { return nil, fmt.Errorf("UserContext is required for entity creation") }
+	// Reserve before constructing mutation state or invoking trusted defaults.
+	id, err := context.GenerateInternalId("Platform")
+	if err != nil { return nil, err }
 	entity := NewPlatform()
 	initialized := context.InitializeEntity("Platform", entity)
 	typed, ok := initialized.(*Platform)
-	if !ok {
-		panic("entity initializer changed Platform to an incompatible type")
+	if !ok || typed == nil {
+		return nil, fmt.Errorf("entity initializer changed Platform to an incompatible type")
 	}
-	return typed
+	typed.UpdateId(id)
+	if err := typed.base.RecordAllocatedID(id); err != nil { return nil, err }
+	return typed, nil
 }
 
 func (e *ExecutablePlatformRequest) ExecuteForOne(context *runtime.UserContext) (*Platform, error) {
@@ -611,11 +617,29 @@ func (r *PlatformRequest) GroupById() *PlatformRequest {
 	r.Query.WithGroupBy("id")
 	return r
 }
+
+func (r *PlatformRequest) GroupByIdAs(alias string) *PlatformRequest {
+	r.Query.WithGroupBy("id")
+	r.Query.ProjectExpr(alias, core.ExprColumnNode("id"))
+	return r
+}
 func (r *PlatformRequest) GroupByName() *PlatformRequest {
 	r.Query.WithGroupBy("name")
 	return r
 }
+
+func (r *PlatformRequest) GroupByNameAs(alias string) *PlatformRequest {
+	r.Query.WithGroupBy("name")
+	r.Query.ProjectExpr(alias, core.ExprColumnNode("name"))
+	return r
+}
 func (r *PlatformRequest) GroupByVersion() *PlatformRequest {
 	r.Query.WithGroupBy("version")
+	return r
+}
+
+func (r *PlatformRequest) GroupByVersionAs(alias string) *PlatformRequest {
+	r.Query.WithGroupBy("version")
+	r.Query.ProjectExpr(alias, core.ExprColumnNode("version"))
 	return r
 }

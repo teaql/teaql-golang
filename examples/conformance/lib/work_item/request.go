@@ -632,16 +632,22 @@ func (r *WorkItemRequest) WithoutPlatformMatching(child interface {
 
 
 
-func (e *ExecutableWorkItemRequest) NewEntity(context *runtime.UserContext) *WorkItem {
+func (e *ExecutableWorkItemRequest) NewEntity(context *runtime.UserContext) (*WorkItem, error) {
 	r := e.request
 	if _, err := core.NewQueryIntent(&r.commentText, &r.purposeText); err != nil { panic(err) }
+	if context == nil { return nil, fmt.Errorf("UserContext is required for entity creation") }
+	// Reserve before constructing mutation state or invoking trusted defaults.
+	id, err := context.GenerateInternalId("Work Item")
+	if err != nil { return nil, err }
 	entity := NewWorkItem()
 	initialized := context.InitializeEntity("WorkItem", entity)
 	typed, ok := initialized.(*WorkItem)
-	if !ok {
-		panic("entity initializer changed WorkItem to an incompatible type")
+	if !ok || typed == nil {
+		return nil, fmt.Errorf("entity initializer changed WorkItem to an incompatible type")
 	}
-	return typed
+	typed.UpdateId(id)
+	if err := typed.base.RecordAllocatedID(id); err != nil { return nil, err }
+	return typed, nil
 }
 
 func (e *ExecutableWorkItemRequest) ExecuteForOne(context *runtime.UserContext) (*WorkItem, error) {
@@ -770,19 +776,49 @@ func (r *WorkItemRequest) GroupById() *WorkItemRequest {
 	r.Query.WithGroupBy("id")
 	return r
 }
+
+func (r *WorkItemRequest) GroupByIdAs(alias string) *WorkItemRequest {
+	r.Query.WithGroupBy("id")
+	r.Query.ProjectExpr(alias, core.ExprColumnNode("id"))
+	return r
+}
 func (r *WorkItemRequest) GroupByTitle() *WorkItemRequest {
 	r.Query.WithGroupBy("title")
+	return r
+}
+
+func (r *WorkItemRequest) GroupByTitleAs(alias string) *WorkItemRequest {
+	r.Query.WithGroupBy("title")
+	r.Query.ProjectExpr(alias, core.ExprColumnNode("title"))
 	return r
 }
 func (r *WorkItemRequest) GroupByDescription() *WorkItemRequest {
 	r.Query.WithGroupBy("description")
 	return r
 }
+
+func (r *WorkItemRequest) GroupByDescriptionAs(alias string) *WorkItemRequest {
+	r.Query.WithGroupBy("description")
+	r.Query.ProjectExpr(alias, core.ExprColumnNode("description"))
+	return r
+}
 func (r *WorkItemRequest) GroupByPlatform() *WorkItemRequest {
 	r.Query.WithGroupBy("platform_id")
 	return r
 }
+
+func (r *WorkItemRequest) GroupByPlatformAs(alias string) *WorkItemRequest {
+	r.Query.WithGroupBy("platform_id")
+	r.Query.ProjectExpr(alias, core.ExprColumnNode("platform_id"))
+	return r
+}
 func (r *WorkItemRequest) GroupByVersion() *WorkItemRequest {
 	r.Query.WithGroupBy("version")
+	return r
+}
+
+func (r *WorkItemRequest) GroupByVersionAs(alias string) *WorkItemRequest {
+	r.Query.WithGroupBy("version")
+	r.Query.ProjectExpr(alias, core.ExprColumnNode("version"))
 	return r
 }

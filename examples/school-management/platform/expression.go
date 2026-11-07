@@ -197,3 +197,30 @@ func (e *PlatformExpression) SchoolList() *SchoolListExpression {
 	if !e.value.IsLoaded("schoolList") { return &SchoolListExpression{err: runtime.NewNotLoadedError(path.MarkMissing(), "school_list"), root:e.root, path:path} }
 	return &SchoolListExpression{value: e.value.SchoolList(), root: e.root, path:path}
 }
+
+// Generated graph adapters expose loaded state only; no context or provider is available.
+func (e *Platform) TeaqlExpressionRelationLoaded(name string) bool {
+	return e.isRelationLoaded(name)
+}
+func (e *Platform) TeaqlExpressionListSize(name string) (int, bool) {
+	switch name {
+	case "schoolTypeList":
+		if !e.IsLoaded(name) { return 0, false }
+		return len(e.SchoolTypeList().Items()), true
+	case "schoolList":
+		if !e.IsLoaded(name) { return 0, false }
+		return len(e.SchoolList().Items()), true
+	default: return 0, false
+	}
+}
+func (e *Platform) TeaqlExpressionListItem(name string, index int) core.Entity {
+	switch name {
+	case "schoolTypeList":
+		if !e.IsLoaded(name) || index < 0 || index >= len(e.SchoolTypeList().Items()) { return nil }
+		return e.SchoolTypeList().Items()[index]
+	case "schoolList":
+		if !e.IsLoaded(name) || index < 0 || index >= len(e.SchoolList().Items()) { return nil }
+		return e.SchoolList().Items()[index]
+	default: return nil
+	}
+}

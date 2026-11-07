@@ -193,6 +193,8 @@ func (e *Tenant) teaqlFromRecord(record core.Record, captureLoaded bool) error {
 	if captureLoaded {
 		e.root.ClearEntity(oldKey)
 		e.markedAsDelete = false
+	} else {
+		base.PreserveAllocatedIDFrom(e.base)
 	}
 	e.base = base
 	e.root.Rekey(oldKey, e.EntityKey())
@@ -713,7 +715,7 @@ func (e *Tenant) TeaqlSaveWithinGraph(context *runtime.UserContext, intent core.
 			}
 			e.base.Id = id
 			if err := context.RekeyPreparedGraphEntity(e.root, core.NewEntityKey(e.EntityName(), e.ledgerID), e.EntityKey()); err != nil { return nil, err }
-		} else {
+		} else if !e.base.HasAllocatedID() {
 			if err := context.EnsureInternalIdFloor(context.Context, e.EntityName(), e.base.Id); err != nil {
 				return nil, fmt.Errorf("synchronize id floor for %s: %w", e.EntityName(), err)
 			}

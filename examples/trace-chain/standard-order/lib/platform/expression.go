@@ -167,3 +167,30 @@ func (e *PlatformExpression) CustomerList() *CustomerListExpression {
 	if !e.value.IsLoaded("customerList") { return &CustomerListExpression{err: runtime.NewNotLoadedError(path.MarkMissing(), "customer_list"), root:e.root, path:path} }
 	return &CustomerListExpression{value: e.value.CustomerList(), root: e.root, path:path}
 }
+
+// Generated graph adapters expose loaded state only; no context or provider is available.
+func (e *Platform) TeaqlExpressionRelationLoaded(name string) bool {
+	return e.isRelationLoaded(name)
+}
+func (e *Platform) TeaqlExpressionListSize(name string) (int, bool) {
+	switch name {
+	case "orderStatusList":
+		if !e.IsLoaded(name) { return 0, false }
+		return len(e.OrderStatusList().Items()), true
+	case "customerList":
+		if !e.IsLoaded(name) { return 0, false }
+		return len(e.CustomerList().Items()), true
+	default: return 0, false
+	}
+}
+func (e *Platform) TeaqlExpressionListItem(name string, index int) core.Entity {
+	switch name {
+	case "orderStatusList":
+		if !e.IsLoaded(name) || index < 0 || index >= len(e.OrderStatusList().Items()) { return nil }
+		return e.OrderStatusList().Items()[index]
+	case "customerList":
+		if !e.IsLoaded(name) || index < 0 || index >= len(e.CustomerList().Items()) { return nil }
+		return e.CustomerList().Items()[index]
+	default: return nil
+	}
+}

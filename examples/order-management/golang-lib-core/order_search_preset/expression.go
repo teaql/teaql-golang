@@ -5,6 +5,7 @@ import (
 	"github.com/shopspring/decimal"
 	"github.com/teaql/teaql-golang/runtime"
 	"github.com/teaql/teaql-golang/core"
+	"order-management-service-core-workspace/lib/internal/expressiongraph"
 )
 
 var _ = time.Time{}
@@ -142,6 +143,7 @@ func (e *OrderSearchPresetExpression) Version() *ValueExpression[int64] {
 }
 type CommercePlatformRelationExpression struct {
 	value core.Record
+	entity core.Entity
 	root string
 	path runtime.ExpressionPath
 	err *runtime.NotLoadedError
@@ -206,6 +208,29 @@ func (e *CommercePlatformRelationExpression) Version() *ValueExpression[int64] {
 	value, valid := raw.TryI64(); if !valid { return missingExpression[int64]() }
 		return valueExpression(value)
 }
+func (e *CommercePlatformRelationExpression) CustomerList() *expressiongraph.CommercePlatformCustomerListExpression {
+	return expressiongraph.NewCommercePlatformExpression(e.entity, e.path, e.err).CustomerList()
+}
+
+func (e *CommercePlatformRelationExpression) OrderStatusList() *expressiongraph.CommercePlatformOrderStatusListExpression {
+	return expressiongraph.NewCommercePlatformExpression(e.entity, e.path, e.err).OrderStatusList()
+}
+
+func (e *CommercePlatformRelationExpression) CustomerOrderList() *expressiongraph.CommercePlatformCustomerOrderListExpression {
+	return expressiongraph.NewCommercePlatformExpression(e.entity, e.path, e.err).CustomerOrderList()
+}
+
+func (e *CommercePlatformRelationExpression) ProductList() *expressiongraph.CommercePlatformProductListExpression {
+	return expressiongraph.NewCommercePlatformExpression(e.entity, e.path, e.err).ProductList()
+}
+
+func (e *CommercePlatformRelationExpression) OrderLineList() *expressiongraph.CommercePlatformOrderLineListExpression {
+	return expressiongraph.NewCommercePlatformExpression(e.entity, e.path, e.err).OrderLineList()
+}
+
+func (e *CommercePlatformRelationExpression) OrderSearchPresetList() *expressiongraph.CommercePlatformOrderSearchPresetListExpression {
+	return expressiongraph.NewCommercePlatformExpression(e.entity, e.path, e.err).OrderSearchPresetList()
+}
 
 func (e *OrderSearchPresetExpression) CommercePlatformId() *ValueExpression[uint64] {
 	path := e.path.Member("commerce_platform", "CommercePlatformId")
@@ -229,5 +254,20 @@ func (e *OrderSearchPresetExpression) CommercePlatform() *CommercePlatformRelati
 	if !e.value.isRelationLoaded("commercePlatformEntity") { return &CommercePlatformRelationExpression{root:e.root,path:path,err:runtime.NewNotLoadedError(path.MarkMissing(), "commerce_platform")} }
 	related, ok := e.value.RelationEntity("commercePlatformEntity")
 	if !ok || related == nil { return &CommercePlatformRelationExpression{root:e.root,path:path} }
-	return &CommercePlatformRelationExpression{value:related.IntoRecord(),root:e.root,path:path}
+	return &CommercePlatformRelationExpression{value:related.IntoRecord(),entity:related,root:e.root,path:path}
+}
+
+// Generated graph adapters expose loaded state only; no context or provider is available.
+func (e *OrderSearchPreset) TeaqlExpressionRelationLoaded(name string) bool {
+	return e.isRelationLoaded(name)
+}
+func (e *OrderSearchPreset) TeaqlExpressionListSize(name string) (int, bool) {
+	switch name {
+	default: return 0, false
+	}
+}
+func (e *OrderSearchPreset) TeaqlExpressionListItem(name string, index int) core.Entity {
+	switch name {
+	default: return nil
+	}
 }

@@ -1438,16 +1438,22 @@ func (r *CommercePlatformRequest) WithoutOrderSearchPresetListMatching(child *or
 	return r
 }
 
-func (e *ExecutableCommercePlatformRequest) NewEntity(context *runtime.UserContext) *CommercePlatform {
+func (e *ExecutableCommercePlatformRequest) NewEntity(context *runtime.UserContext) (*CommercePlatform, error) {
 	r := e.request
 	if _, err := core.NewQueryIntent(&r.commentText, &r.purposeText); err != nil { panic(err) }
+	if context == nil { return nil, fmt.Errorf("UserContext is required for entity creation") }
+	// Reserve before constructing mutation state or invoking trusted defaults.
+	id, err := context.GenerateInternalId("commerce_platform")
+	if err != nil { return nil, err }
 	entity := NewCommercePlatform()
 	initialized := context.InitializeEntity("CommercePlatform", entity)
 	typed, ok := initialized.(*CommercePlatform)
-	if !ok {
-		panic("entity initializer changed CommercePlatform to an incompatible type")
+	if !ok || typed == nil {
+		return nil, fmt.Errorf("entity initializer changed CommercePlatform to an incompatible type")
 	}
-	return typed
+	typed.UpdateId(id)
+	if err := typed.base.RecordAllocatedID(id); err != nil { return nil, err }
+	return typed, nil
 }
 
 func (e *ExecutableCommercePlatformRequest) ExecuteForOne(context *runtime.UserContext) (*CommercePlatform, error) {
@@ -1576,19 +1582,49 @@ func (r *CommercePlatformRequest) GroupById() *CommercePlatformRequest {
 	r.Query.WithGroupBy("id")
 	return r
 }
+
+func (r *CommercePlatformRequest) GroupByIdAs(alias string) *CommercePlatformRequest {
+	r.Query.WithGroupBy("id")
+	r.Query.ProjectExpr(alias, core.ExprColumnNode("id"))
+	return r
+}
 func (r *CommercePlatformRequest) GroupByName() *CommercePlatformRequest {
 	r.Query.WithGroupBy("name")
+	return r
+}
+
+func (r *CommercePlatformRequest) GroupByNameAs(alias string) *CommercePlatformRequest {
+	r.Query.WithGroupBy("name")
+	r.Query.ProjectExpr(alias, core.ExprColumnNode("name"))
 	return r
 }
 func (r *CommercePlatformRequest) GroupByCreateTime() *CommercePlatformRequest {
 	r.Query.WithGroupBy("create_time")
 	return r
 }
+
+func (r *CommercePlatformRequest) GroupByCreateTimeAs(alias string) *CommercePlatformRequest {
+	r.Query.WithGroupBy("create_time")
+	r.Query.ProjectExpr(alias, core.ExprColumnNode("create_time"))
+	return r
+}
 func (r *CommercePlatformRequest) GroupByUpdateTime() *CommercePlatformRequest {
 	r.Query.WithGroupBy("update_time")
 	return r
 }
+
+func (r *CommercePlatformRequest) GroupByUpdateTimeAs(alias string) *CommercePlatformRequest {
+	r.Query.WithGroupBy("update_time")
+	r.Query.ProjectExpr(alias, core.ExprColumnNode("update_time"))
+	return r
+}
 func (r *CommercePlatformRequest) GroupByVersion() *CommercePlatformRequest {
 	r.Query.WithGroupBy("version")
+	return r
+}
+
+func (r *CommercePlatformRequest) GroupByVersionAs(alias string) *CommercePlatformRequest {
+	r.Query.WithGroupBy("version")
+	r.Query.ProjectExpr(alias, core.ExprColumnNode("version"))
 	return r
 }

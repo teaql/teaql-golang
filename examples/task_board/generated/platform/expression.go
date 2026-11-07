@@ -187,3 +187,30 @@ func (e *PlatformExpression) TaskList() *TaskListExpression {
 	if !e.value.IsLoaded("taskList") { return &TaskListExpression{err: runtime.NewNotLoadedError(path.MarkMissing(), "task_list"), root:e.root, path:path} }
 	return &TaskListExpression{value: e.value.TaskList(), root: e.root, path:path}
 }
+
+// Generated graph adapters expose loaded state only; no context or provider is available.
+func (e *Platform) TeaqlExpressionRelationLoaded(name string) bool {
+	return e.isRelationLoaded(name)
+}
+func (e *Platform) TeaqlExpressionListSize(name string) (int, bool) {
+	switch name {
+	case "taskStatusList":
+		if !e.IsLoaded(name) { return 0, false }
+		return len(e.TaskStatusList().Items()), true
+	case "taskList":
+		if !e.IsLoaded(name) { return 0, false }
+		return len(e.TaskList().Items()), true
+	default: return 0, false
+	}
+}
+func (e *Platform) TeaqlExpressionListItem(name string, index int) core.Entity {
+	switch name {
+	case "taskStatusList":
+		if !e.IsLoaded(name) || index < 0 || index >= len(e.TaskStatusList().Items()) { return nil }
+		return e.TaskStatusList().Items()[index]
+	case "taskList":
+		if !e.IsLoaded(name) || index < 0 || index >= len(e.TaskList().Items()) { return nil }
+		return e.TaskList().Items()[index]
+	default: return nil
+	}
+}

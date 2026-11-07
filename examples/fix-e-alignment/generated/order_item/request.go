@@ -865,16 +865,22 @@ func (r *OrderItemRequest) WithoutTenantMatching(child interface {
 
 
 
-func (e *ExecutableOrderItemRequest) NewEntity(context *runtime.UserContext) *OrderItem {
+func (e *ExecutableOrderItemRequest) NewEntity(context *runtime.UserContext) (*OrderItem, error) {
 	r := e.request
 	if _, err := core.NewQueryIntent(&r.commentText, &r.purposeText); err != nil { panic(err) }
+	if context == nil { return nil, fmt.Errorf("UserContext is required for entity creation") }
+	// Reserve before constructing mutation state or invoking trusted defaults.
+	id, err := context.GenerateInternalId("order_item")
+	if err != nil { return nil, err }
 	entity := NewOrderItem()
 	initialized := context.InitializeEntity("OrderItem", entity)
 	typed, ok := initialized.(*OrderItem)
-	if !ok {
-		panic("entity initializer changed OrderItem to an incompatible type")
+	if !ok || typed == nil {
+		return nil, fmt.Errorf("entity initializer changed OrderItem to an incompatible type")
 	}
-	return typed
+	typed.UpdateId(id)
+	if err := typed.base.RecordAllocatedID(id); err != nil { return nil, err }
+	return typed, nil
 }
 
 func (e *ExecutableOrderItemRequest) ExecuteForOne(context *runtime.UserContext) (*OrderItem, error) {

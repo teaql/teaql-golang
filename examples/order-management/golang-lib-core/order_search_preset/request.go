@@ -964,16 +964,22 @@ func (r *OrderSearchPresetRequest) WithoutCommercePlatformMatching(child interfa
 
 
 
-func (e *ExecutableOrderSearchPresetRequest) NewEntity(context *runtime.UserContext) *OrderSearchPreset {
+func (e *ExecutableOrderSearchPresetRequest) NewEntity(context *runtime.UserContext) (*OrderSearchPreset, error) {
 	r := e.request
 	if _, err := core.NewQueryIntent(&r.commentText, &r.purposeText); err != nil { panic(err) }
+	if context == nil { return nil, fmt.Errorf("UserContext is required for entity creation") }
+	// Reserve before constructing mutation state or invoking trusted defaults.
+	id, err := context.GenerateInternalId("order_search_preset")
+	if err != nil { return nil, err }
 	entity := NewOrderSearchPreset()
 	initialized := context.InitializeEntity("OrderSearchPreset", entity)
 	typed, ok := initialized.(*OrderSearchPreset)
-	if !ok {
-		panic("entity initializer changed OrderSearchPreset to an incompatible type")
+	if !ok || typed == nil {
+		return nil, fmt.Errorf("entity initializer changed OrderSearchPreset to an incompatible type")
 	}
-	return typed
+	typed.UpdateId(id)
+	if err := typed.base.RecordAllocatedID(id); err != nil { return nil, err }
+	return typed, nil
 }
 
 func (e *ExecutableOrderSearchPresetRequest) ExecuteForOne(context *runtime.UserContext) (*OrderSearchPreset, error) {
@@ -1102,35 +1108,89 @@ func (r *OrderSearchPresetRequest) GroupById() *OrderSearchPresetRequest {
 	r.Query.WithGroupBy("id")
 	return r
 }
+
+func (r *OrderSearchPresetRequest) GroupByIdAs(alias string) *OrderSearchPresetRequest {
+	r.Query.WithGroupBy("id")
+	r.Query.ProjectExpr(alias, core.ExprColumnNode("id"))
+	return r
+}
 func (r *OrderSearchPresetRequest) GroupByName() *OrderSearchPresetRequest {
 	r.Query.WithGroupBy("name")
+	return r
+}
+
+func (r *OrderSearchPresetRequest) GroupByNameAs(alias string) *OrderSearchPresetRequest {
+	r.Query.WithGroupBy("name")
+	r.Query.ProjectExpr(alias, core.ExprColumnNode("name"))
 	return r
 }
 func (r *OrderSearchPresetRequest) GroupByFilterJson() *OrderSearchPresetRequest {
 	r.Query.WithGroupBy("filter_json")
 	return r
 }
+
+func (r *OrderSearchPresetRequest) GroupByFilterJsonAs(alias string) *OrderSearchPresetRequest {
+	r.Query.WithGroupBy("filter_json")
+	r.Query.ProjectExpr(alias, core.ExprColumnNode("filter_json"))
+	return r
+}
 func (r *OrderSearchPresetRequest) GroupByRequestId() *OrderSearchPresetRequest {
 	r.Query.WithGroupBy("request_id")
+	return r
+}
+
+func (r *OrderSearchPresetRequest) GroupByRequestIdAs(alias string) *OrderSearchPresetRequest {
+	r.Query.WithGroupBy("request_id")
+	r.Query.ProjectExpr(alias, core.ExprColumnNode("request_id"))
 	return r
 }
 func (r *OrderSearchPresetRequest) GroupByOwnerUserId() *OrderSearchPresetRequest {
 	r.Query.WithGroupBy("owner_user_id")
 	return r
 }
+
+func (r *OrderSearchPresetRequest) GroupByOwnerUserIdAs(alias string) *OrderSearchPresetRequest {
+	r.Query.WithGroupBy("owner_user_id")
+	r.Query.ProjectExpr(alias, core.ExprColumnNode("owner_user_id"))
+	return r
+}
 func (r *OrderSearchPresetRequest) GroupByCommercePlatform() *OrderSearchPresetRequest {
 	r.Query.WithGroupBy("commerce_platform_id")
+	return r
+}
+
+func (r *OrderSearchPresetRequest) GroupByCommercePlatformAs(alias string) *OrderSearchPresetRequest {
+	r.Query.WithGroupBy("commerce_platform_id")
+	r.Query.ProjectExpr(alias, core.ExprColumnNode("commerce_platform_id"))
 	return r
 }
 func (r *OrderSearchPresetRequest) GroupByCreateTime() *OrderSearchPresetRequest {
 	r.Query.WithGroupBy("create_time")
 	return r
 }
+
+func (r *OrderSearchPresetRequest) GroupByCreateTimeAs(alias string) *OrderSearchPresetRequest {
+	r.Query.WithGroupBy("create_time")
+	r.Query.ProjectExpr(alias, core.ExprColumnNode("create_time"))
+	return r
+}
 func (r *OrderSearchPresetRequest) GroupByUpdateTime() *OrderSearchPresetRequest {
 	r.Query.WithGroupBy("update_time")
 	return r
 }
+
+func (r *OrderSearchPresetRequest) GroupByUpdateTimeAs(alias string) *OrderSearchPresetRequest {
+	r.Query.WithGroupBy("update_time")
+	r.Query.ProjectExpr(alias, core.ExprColumnNode("update_time"))
+	return r
+}
 func (r *OrderSearchPresetRequest) GroupByVersion() *OrderSearchPresetRequest {
 	r.Query.WithGroupBy("version")
+	return r
+}
+
+func (r *OrderSearchPresetRequest) GroupByVersionAs(alias string) *OrderSearchPresetRequest {
+	r.Query.WithGroupBy("version")
+	r.Query.ProjectExpr(alias, core.ExprColumnNode("version"))
 	return r
 }

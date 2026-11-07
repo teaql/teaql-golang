@@ -2021,16 +2021,22 @@ func (r *ScalarTypeProbeRequest) WithoutTypePlatformMatching(child interface {
 
 
 
-func (e *ExecutableScalarTypeProbeRequest) NewEntity(context *runtime.UserContext) *ScalarTypeProbe {
+func (e *ExecutableScalarTypeProbeRequest) NewEntity(context *runtime.UserContext) (*ScalarTypeProbe, error) {
 	r := e.request
 	if _, err := core.NewQueryIntent(&r.commentText, &r.purposeText); err != nil { panic(err) }
+	if context == nil { return nil, fmt.Errorf("UserContext is required for entity creation") }
+	// Reserve before constructing mutation state or invoking trusted defaults.
+	id, err := context.GenerateInternalId("Scalar Type Probe")
+	if err != nil { return nil, err }
 	entity := NewScalarTypeProbe()
 	initialized := context.InitializeEntity("ScalarTypeProbe", entity)
 	typed, ok := initialized.(*ScalarTypeProbe)
-	if !ok {
-		panic("entity initializer changed ScalarTypeProbe to an incompatible type")
+	if !ok || typed == nil {
+		return nil, fmt.Errorf("entity initializer changed ScalarTypeProbe to an incompatible type")
 	}
-	return typed
+	typed.UpdateId(id)
+	if err := typed.base.RecordAllocatedID(id); err != nil { return nil, err }
+	return typed, nil
 }
 
 func (e *ExecutableScalarTypeProbeRequest) ExecuteForOne(context *runtime.UserContext) (*ScalarTypeProbe, error) {
@@ -2799,103 +2805,259 @@ func (r *ScalarTypeProbeRequest) GroupById() *ScalarTypeProbeRequest {
 	r.Query.WithGroupBy("id")
 	return r
 }
+
+func (r *ScalarTypeProbeRequest) GroupByIdAs(alias string) *ScalarTypeProbeRequest {
+	r.Query.WithGroupBy("id")
+	r.Query.ProjectExpr(alias, core.ExprColumnNode("id"))
+	return r
+}
 func (r *ScalarTypeProbeRequest) GroupByTypePlatform() *ScalarTypeProbeRequest {
 	r.Query.WithGroupBy("type_platform_id")
+	return r
+}
+
+func (r *ScalarTypeProbeRequest) GroupByTypePlatformAs(alias string) *ScalarTypeProbeRequest {
+	r.Query.WithGroupBy("type_platform_id")
+	r.Query.ProjectExpr(alias, core.ExprColumnNode("type_platform_id"))
 	return r
 }
 func (r *ScalarTypeProbeRequest) GroupByRequiredString() *ScalarTypeProbeRequest {
 	r.Query.WithGroupBy("required_string")
 	return r
 }
+
+func (r *ScalarTypeProbeRequest) GroupByRequiredStringAs(alias string) *ScalarTypeProbeRequest {
+	r.Query.WithGroupBy("required_string")
+	r.Query.ProjectExpr(alias, core.ExprColumnNode("required_string"))
+	return r
+}
 func (r *ScalarTypeProbeRequest) GroupByOptionalString() *ScalarTypeProbeRequest {
 	r.Query.WithGroupBy("optional_string")
+	return r
+}
+
+func (r *ScalarTypeProbeRequest) GroupByOptionalStringAs(alias string) *ScalarTypeProbeRequest {
+	r.Query.WithGroupBy("optional_string")
+	r.Query.ProjectExpr(alias, core.ExprColumnNode("optional_string"))
 	return r
 }
 func (r *ScalarTypeProbeRequest) GroupByLargeText() *ScalarTypeProbeRequest {
 	r.Query.WithGroupBy("large_text")
 	return r
 }
+
+func (r *ScalarTypeProbeRequest) GroupByLargeTextAs(alias string) *ScalarTypeProbeRequest {
+	r.Query.WithGroupBy("large_text")
+	r.Query.ProjectExpr(alias, core.ExprColumnNode("large_text"))
+	return r
+}
 func (r *ScalarTypeProbeRequest) GroupByRequiredBoolean() *ScalarTypeProbeRequest {
 	r.Query.WithGroupBy("required_boolean")
+	return r
+}
+
+func (r *ScalarTypeProbeRequest) GroupByRequiredBooleanAs(alias string) *ScalarTypeProbeRequest {
+	r.Query.WithGroupBy("required_boolean")
+	r.Query.ProjectExpr(alias, core.ExprColumnNode("required_boolean"))
 	return r
 }
 func (r *ScalarTypeProbeRequest) GroupByOptionalBoolean() *ScalarTypeProbeRequest {
 	r.Query.WithGroupBy("optional_boolean")
 	return r
 }
+
+func (r *ScalarTypeProbeRequest) GroupByOptionalBooleanAs(alias string) *ScalarTypeProbeRequest {
+	r.Query.WithGroupBy("optional_boolean")
+	r.Query.ProjectExpr(alias, core.ExprColumnNode("optional_boolean"))
+	return r
+}
 func (r *ScalarTypeProbeRequest) GroupByRequiredInteger() *ScalarTypeProbeRequest {
 	r.Query.WithGroupBy("required_integer")
+	return r
+}
+
+func (r *ScalarTypeProbeRequest) GroupByRequiredIntegerAs(alias string) *ScalarTypeProbeRequest {
+	r.Query.WithGroupBy("required_integer")
+	r.Query.ProjectExpr(alias, core.ExprColumnNode("required_integer"))
 	return r
 }
 func (r *ScalarTypeProbeRequest) GroupByOptionalInteger() *ScalarTypeProbeRequest {
 	r.Query.WithGroupBy("optional_integer")
 	return r
 }
+
+func (r *ScalarTypeProbeRequest) GroupByOptionalIntegerAs(alias string) *ScalarTypeProbeRequest {
+	r.Query.WithGroupBy("optional_integer")
+	r.Query.ProjectExpr(alias, core.ExprColumnNode("optional_integer"))
+	return r
+}
 func (r *ScalarTypeProbeRequest) GroupByRequiredLong() *ScalarTypeProbeRequest {
 	r.Query.WithGroupBy("required_long")
+	return r
+}
+
+func (r *ScalarTypeProbeRequest) GroupByRequiredLongAs(alias string) *ScalarTypeProbeRequest {
+	r.Query.WithGroupBy("required_long")
+	r.Query.ProjectExpr(alias, core.ExprColumnNode("required_long"))
 	return r
 }
 func (r *ScalarTypeProbeRequest) GroupByOptionalLong() *ScalarTypeProbeRequest {
 	r.Query.WithGroupBy("optional_long")
 	return r
 }
+
+func (r *ScalarTypeProbeRequest) GroupByOptionalLongAs(alias string) *ScalarTypeProbeRequest {
+	r.Query.WithGroupBy("optional_long")
+	r.Query.ProjectExpr(alias, core.ExprColumnNode("optional_long"))
+	return r
+}
 func (r *ScalarTypeProbeRequest) GroupByRequiredDecimal() *ScalarTypeProbeRequest {
 	r.Query.WithGroupBy("required_decimal")
+	return r
+}
+
+func (r *ScalarTypeProbeRequest) GroupByRequiredDecimalAs(alias string) *ScalarTypeProbeRequest {
+	r.Query.WithGroupBy("required_decimal")
+	r.Query.ProjectExpr(alias, core.ExprColumnNode("required_decimal"))
 	return r
 }
 func (r *ScalarTypeProbeRequest) GroupByOptionalDecimal() *ScalarTypeProbeRequest {
 	r.Query.WithGroupBy("optional_decimal")
 	return r
 }
+
+func (r *ScalarTypeProbeRequest) GroupByOptionalDecimalAs(alias string) *ScalarTypeProbeRequest {
+	r.Query.WithGroupBy("optional_decimal")
+	r.Query.ProjectExpr(alias, core.ExprColumnNode("optional_decimal"))
+	return r
+}
 func (r *ScalarTypeProbeRequest) GroupByRequiredFloat() *ScalarTypeProbeRequest {
 	r.Query.WithGroupBy("required_float")
+	return r
+}
+
+func (r *ScalarTypeProbeRequest) GroupByRequiredFloatAs(alias string) *ScalarTypeProbeRequest {
+	r.Query.WithGroupBy("required_float")
+	r.Query.ProjectExpr(alias, core.ExprColumnNode("required_float"))
 	return r
 }
 func (r *ScalarTypeProbeRequest) GroupByOptionalFloat() *ScalarTypeProbeRequest {
 	r.Query.WithGroupBy("optional_float")
 	return r
 }
+
+func (r *ScalarTypeProbeRequest) GroupByOptionalFloatAs(alias string) *ScalarTypeProbeRequest {
+	r.Query.WithGroupBy("optional_float")
+	r.Query.ProjectExpr(alias, core.ExprColumnNode("optional_float"))
+	return r
+}
 func (r *ScalarTypeProbeRequest) GroupByRequiredDouble() *ScalarTypeProbeRequest {
 	r.Query.WithGroupBy("required_double")
+	return r
+}
+
+func (r *ScalarTypeProbeRequest) GroupByRequiredDoubleAs(alias string) *ScalarTypeProbeRequest {
+	r.Query.WithGroupBy("required_double")
+	r.Query.ProjectExpr(alias, core.ExprColumnNode("required_double"))
 	return r
 }
 func (r *ScalarTypeProbeRequest) GroupByOptionalDouble() *ScalarTypeProbeRequest {
 	r.Query.WithGroupBy("optional_double")
 	return r
 }
+
+func (r *ScalarTypeProbeRequest) GroupByOptionalDoubleAs(alias string) *ScalarTypeProbeRequest {
+	r.Query.WithGroupBy("optional_double")
+	r.Query.ProjectExpr(alias, core.ExprColumnNode("optional_double"))
+	return r
+}
 func (r *ScalarTypeProbeRequest) GroupByRequiredDate() *ScalarTypeProbeRequest {
 	r.Query.WithGroupBy("required_date")
+	return r
+}
+
+func (r *ScalarTypeProbeRequest) GroupByRequiredDateAs(alias string) *ScalarTypeProbeRequest {
+	r.Query.WithGroupBy("required_date")
+	r.Query.ProjectExpr(alias, core.ExprColumnNode("required_date"))
 	return r
 }
 func (r *ScalarTypeProbeRequest) GroupByOptionalDate() *ScalarTypeProbeRequest {
 	r.Query.WithGroupBy("optional_date")
 	return r
 }
+
+func (r *ScalarTypeProbeRequest) GroupByOptionalDateAs(alias string) *ScalarTypeProbeRequest {
+	r.Query.WithGroupBy("optional_date")
+	r.Query.ProjectExpr(alias, core.ExprColumnNode("optional_date"))
+	return r
+}
 func (r *ScalarTypeProbeRequest) GroupByRequiredTime() *ScalarTypeProbeRequest {
 	r.Query.WithGroupBy("required_time")
+	return r
+}
+
+func (r *ScalarTypeProbeRequest) GroupByRequiredTimeAs(alias string) *ScalarTypeProbeRequest {
+	r.Query.WithGroupBy("required_time")
+	r.Query.ProjectExpr(alias, core.ExprColumnNode("required_time"))
 	return r
 }
 func (r *ScalarTypeProbeRequest) GroupByOptionalTime() *ScalarTypeProbeRequest {
 	r.Query.WithGroupBy("optional_time")
 	return r
 }
+
+func (r *ScalarTypeProbeRequest) GroupByOptionalTimeAs(alias string) *ScalarTypeProbeRequest {
+	r.Query.WithGroupBy("optional_time")
+	r.Query.ProjectExpr(alias, core.ExprColumnNode("optional_time"))
+	return r
+}
 func (r *ScalarTypeProbeRequest) GroupByRequiredDatetime() *ScalarTypeProbeRequest {
 	r.Query.WithGroupBy("required_datetime")
+	return r
+}
+
+func (r *ScalarTypeProbeRequest) GroupByRequiredDatetimeAs(alias string) *ScalarTypeProbeRequest {
+	r.Query.WithGroupBy("required_datetime")
+	r.Query.ProjectExpr(alias, core.ExprColumnNode("required_datetime"))
 	return r
 }
 func (r *ScalarTypeProbeRequest) GroupByOptionalDatetime() *ScalarTypeProbeRequest {
 	r.Query.WithGroupBy("optional_datetime")
 	return r
 }
+
+func (r *ScalarTypeProbeRequest) GroupByOptionalDatetimeAs(alias string) *ScalarTypeProbeRequest {
+	r.Query.WithGroupBy("optional_datetime")
+	r.Query.ProjectExpr(alias, core.ExprColumnNode("optional_datetime"))
+	return r
+}
 func (r *ScalarTypeProbeRequest) GroupByCreateTime() *ScalarTypeProbeRequest {
 	r.Query.WithGroupBy("create_time")
+	return r
+}
+
+func (r *ScalarTypeProbeRequest) GroupByCreateTimeAs(alias string) *ScalarTypeProbeRequest {
+	r.Query.WithGroupBy("create_time")
+	r.Query.ProjectExpr(alias, core.ExprColumnNode("create_time"))
 	return r
 }
 func (r *ScalarTypeProbeRequest) GroupByUpdateTime() *ScalarTypeProbeRequest {
 	r.Query.WithGroupBy("update_time")
 	return r
 }
+
+func (r *ScalarTypeProbeRequest) GroupByUpdateTimeAs(alias string) *ScalarTypeProbeRequest {
+	r.Query.WithGroupBy("update_time")
+	r.Query.ProjectExpr(alias, core.ExprColumnNode("update_time"))
+	return r
+}
 func (r *ScalarTypeProbeRequest) GroupByVersion() *ScalarTypeProbeRequest {
 	r.Query.WithGroupBy("version")
+	return r
+}
+
+func (r *ScalarTypeProbeRequest) GroupByVersionAs(alias string) *ScalarTypeProbeRequest {
+	r.Query.WithGroupBy("version")
+	r.Query.ProjectExpr(alias, core.ExprColumnNode("version"))
 	return r
 }
