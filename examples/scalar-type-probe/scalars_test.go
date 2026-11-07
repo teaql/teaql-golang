@@ -95,6 +95,18 @@ type observedTransactionIDs struct {
 	ids runtime.InternalIdGenerator
 }
 
+// Observe the selected creation allocator itself: IDs are now reserved before
+// save, so observing only transaction.GenerateId would miss that work entirely.
+type observedCreationIDs struct {
+	delegate runtime.InternalIdGenerator
+	observer *observedProvider
+}
+
+func (p *observedCreationIDs) GenerateId(entity string) (uint64, error) {
+	p.observer.bump("id")
+	return p.delegate.GenerateId(entity)
+}
+
 func (p *observedTransactionIDs) GenerateId(entity string) (uint64, error) {
 	p.observer.bump("id")
 	return p.ids.GenerateId(entity)
@@ -130,6 +142,7 @@ func configured(t *testing.T, suffix string) (*runtime.UserContext, *observedPro
 		t.Fatal(err)
 	}
 	provider := &observedProvider{DataServiceExecutor: ctx.GetResource("dataService").(data_service.DataServiceExecutor)}
+	ctx.WithInternalIdGenerator(&observedCreationIDs{delegate: ctx.InternalIdGenerator(), observer: provider})
 	ctx.InsertResource("dataService", provider)
 	return ctx, provider
 }
@@ -139,6 +152,9 @@ func prepared(ctx *runtime.UserContext) *scalar_type_probe.ScalarTypeProbe {
 		Purpose("verify generated APIs against the selected runtime").NewEntity(ctx)
 	if rowCreationErr != nil {
 		panic(rowCreationErr)
+	}
+	if row.Id() == 0 {
+		panic("generated creation returned an unallocated scalar entity")
 	}
 	row.UpdateTypePlatformId(1)
 	row.UpdateRequiredString("Portable scalar boundaries")
