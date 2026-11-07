@@ -77,7 +77,7 @@ func (r *CommercePlatformRequest) GetQuerySelection() *core.QuerySelection {
 }
 
 func (r *CommercePlatformRequest) GetEntityDescriptor() *core.EntityDescriptor {
-	return NewCommercePlatform().EntityDescriptor()
+	return newLoadedCommercePlatform().EntityDescriptor()
 }
 
 func (r *CommercePlatformRequest) NewRelationEntity() core.Entity {
@@ -1441,19 +1441,7 @@ func (r *CommercePlatformRequest) WithoutOrderSearchPresetListMatching(child *or
 func (e *ExecutableCommercePlatformRequest) NewEntity(context *runtime.UserContext) (*CommercePlatform, error) {
 	r := e.request
 	if _, err := core.NewQueryIntent(&r.commentText, &r.purposeText); err != nil { panic(err) }
-	if context == nil { return nil, fmt.Errorf("UserContext is required for entity creation") }
-	// Reserve before constructing mutation state or invoking trusted defaults.
-	id, err := context.GenerateInternalId("commerce_platform")
-	if err != nil { return nil, err }
-	entity := NewCommercePlatform()
-	initialized := context.InitializeEntity("CommercePlatform", entity)
-	typed, ok := initialized.(*CommercePlatform)
-	if !ok || typed == nil {
-		return nil, fmt.Errorf("entity initializer changed CommercePlatform to an incompatible type")
-	}
-	typed.UpdateId(id)
-	if err := typed.base.RecordAllocatedID(id); err != nil { return nil, err }
-	return typed, nil
+	return NewCommercePlatform(context)
 }
 
 func (e *ExecutableCommercePlatformRequest) ExecuteForOne(context *runtime.UserContext) (*CommercePlatform, error) {

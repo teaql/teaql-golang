@@ -21,6 +21,7 @@ func must(err error) {
 		panic(err)
 	}
 }
+func mustCreated[T any](result T, err error) T { must(err); return result }
 func require(ok bool, reason string) {
 	if !ok {
 		panic(reason)
@@ -62,7 +63,7 @@ func main() {
 	must(lib.EnsureSchema(context))
 	require(audit.count == first, "repeated seed")
 	secret := fmt.Sprintf("ORDER-PRIVATE-%d", time.Now().UnixNano())
-	account := customer.NewCustomer().UpdatePlatformId(1).UpdateName("North Star Retail").UpdateVersion(1)
+	account := mustCreated(customer.NewCustomer(context)).UpdatePlatformId(1).UpdateName("North Star Retail").UpdateVersion(1)
 	account, err = account.AuditAs("seed standard customer").Save(context)
 	must(err)
 	for index := 1; index <= 4; index++ {
@@ -76,13 +77,13 @@ func main() {
 			number = "OTHER-004"
 			amount = 900
 		}
-		order := customer_order.NewCustomerOrder().UpdateCustomerId(account.Id()).UpdateStatusId(state).
+		order := mustCreated(customer_order.NewCustomerOrder(context)).UpdateCustomerId(account.Id()).UpdateStatusId(state).
 			UpdateOrderNumber(number).UpdateOrderDate(time.Date(2026, 10, index, 0, 0, 0, 0, time.UTC)).
 			UpdateTotalAmount(decimal.NewFromInt(amount)).UpdateVersion(1)
 		order, err = order.AuditAs("seed standard order").Save(context)
 		must(err)
 		for item := 1; item <= 5; item++ {
-			line := order_item.NewOrderItem().UpdateCustomerOrderId(order.Id()).UpdateProductName(fmt.Sprintf("Box %d", item)).
+			line := mustCreated(order_item.NewOrderItem(context)).UpdateCustomerOrderId(order.Id()).UpdateProductName(fmt.Sprintf("Box %d", item)).
 				UpdateQuantity(int64(item)).UpdateUnitPrice(decimal.NewFromInt(20)).UpdateVersion(1)
 			_, err = line.AuditAs("seed standard item").Save(context)
 			must(err)

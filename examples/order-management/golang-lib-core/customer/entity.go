@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"reflect"
 	"strings"
-	"sync/atomic"
 
 	"time"
 	"github.com/shopspring/decimal"
@@ -25,12 +24,11 @@ var (
 	_ = errors.As
 )
 
-var teaqlTemporaryEntityID int64
-
 
 type Customer struct {
 	base        *core.BaseEntityData
 	loadedSnapshot core.LoadedScalarSnapshot
+	creationState core.EntityCreationState
 	dirtyFields map[string]bool
 	isNew       bool
 	markedAsDelete bool
@@ -69,33 +67,61 @@ func (e *Customer) CustomerOrderListFacet(name string) (*core.SmartList[core.Rec
 	return e.base.RelationFacet("customerOrderList", name)
 }
 
-func NewCustomer() *Customer {
-	temporaryID := -atomic.AddInt64(&teaqlTemporaryEntityID, 1)
+// newUninitialized allocates only local carriers; it does not grant insert intent.
+func newUninitializedCustomer() *Customer {
 	entity := &Customer{
 		base:        core.NewBaseEntityData(),
 		dirtyFields: make(map[string]bool),
-		isNew:       true,
 		loadState:   make(map[string]bool),
 		root:        core.NewEntityRoot(),
-		ledgerID:    core.ValI64(temporaryID),
+		ledgerID:    core.ValU64(0),
 		relations:   make(map[string]core.Entity),
 		loadedRelations: make(map[string]bool),
 		customerOrderList: newCustomerOrderList(),
 	}
-	entity.root.MarkAsNew(entity.EntityKey())
 	return entity
 }
 
-// Hydration is not a create request. Keep this constructor private so public
-// NewEntity still records new-object intent, while a loaded snapshot starts
-// with independent mutation ownership and no pending insert.
+// New reserves through Context before constructing mutation state or defaults.
+func NewCustomer(context *runtime.UserContext) (*Customer, error) {
+	if context == nil { return nil, &core.EntityCreationError{Entity: "customer"} }
+	id, err := context.GenerateInternalId("customer")
+	if err != nil { return nil, err }
+	entity := newUninitializedCustomer()
+	entity.UpdateId(id)
+	if err := entity.creationState.Reserve(entity.EntityName(), id); err != nil { return nil, err }
+	entity.isNew = true
+	entity.root.MarkAsNew(entity.EntityKey())
+	initialized := context.InitializeEntity("Customer", entity)
+	typed, ok := initialized.(*Customer)
+	if !ok || typed == nil { return nil, fmt.Errorf("entity initializer changed Customer to an incompatible type") }
+	typed.teaqlEnsureState()
+	if err := typed.creationState.Reserve(typed.EntityName(), id); err != nil { return nil, err }
+	typed.UpdateId(id)
+	if err := typed.base.RecordAllocatedID(id); err != nil { return nil, err }
+	typed.isNew = true
+	typed.root.MarkAsNew(typed.EntityKey())
+	return typed, nil
+}
+
+// A hydrated read view is independent and never starts an insert ledger.
 func newLoadedCustomer() *Customer {
-	entity := NewCustomer()
-	entity.root.ClearEntity(entity.EntityKey())
+	entity := newUninitializedCustomer()
+	entity.creationState.Hydrated()
 	return entity
+}
+
+func (e *Customer) teaqlEnsureState() {
+	if e.base == nil { e.base = core.NewBaseEntityData() }
+	if e.root == nil { e.root = core.NewEntityRoot() }
+	if e.dirtyFields == nil { e.dirtyFields = make(map[string]bool) }
+	if e.loadState == nil { e.loadState = make(map[string]bool) }
+	if e.relations == nil { e.relations = make(map[string]core.Entity) }
+	if e.loadedRelations == nil { e.loadedRelations = make(map[string]bool) }
 }
 
 func (e *Customer) EntityKey() core.EntityKey {
+	e.teaqlEnsureState()
 	if e.base.Id != 0 { return core.NewEntityKey(e.EntityName(), core.ValU64(e.base.Id)) }
 	return core.NewEntityKey(e.EntityName(), e.ledgerID)
 }
@@ -164,6 +190,7 @@ func (e *Customer) FromRecord(record core.Record) error {
 }
 
 func (e *Customer) teaqlFromRecord(record core.Record, captureLoaded bool) error {
+	e.teaqlEnsureState()
 	oldKey := e.EntityKey()
 	base, err := core.BaseEntityDataFromRecord(record)
 	if err != nil {
@@ -172,6 +199,7 @@ func (e *Customer) teaqlFromRecord(record core.Record, captureLoaded bool) error
 	if captureLoaded {
 		e.root.ClearEntity(oldKey)
 		e.markedAsDelete = false
+		e.creationState.Hydrated()
 	} else {
 		base.PreserveAllocatedIDFrom(e.base)
 	}
@@ -198,7 +226,7 @@ func (e *Customer) teaqlLoadedScalarSnapshot(record core.Record) core.LoadedScal
 func (e *Customer) teaqlAcceptPersisted(context *runtime.UserContext, record core.Record) error {
 	if err := e.teaqlFromRecord(record, false); err != nil { return err }
 	committed := e.teaqlLoadedScalarSnapshot(record)
-	context.AfterGraphCommit(func() { e.loadedSnapshot = committed })
+	context.AfterGraphCommit(func() { e.loadedSnapshot = committed; e.creationState.Hydrated() })
 	return nil
 }
 
@@ -343,6 +371,7 @@ func TeaqlCustomerFromJSONRecord(record core.Record, factory func(string, core.R
 }
 
 func (e *Customer) Save(context *runtime.UserContext) (*Customer, error) {
+	if e == nil || e.base == nil || e.root == nil { return nil, &core.EntityCreationError{Entity: "customer"} }
 	intent, intentErr := core.NewMutationIntent(e.comment)
 	if intentErr != nil { return nil, intentErr }
 	var saved *Customer
@@ -363,6 +392,7 @@ func (e *Customer) Save(context *runtime.UserContext) (*Customer, error) {
 // TeaqlPreflightGraph runs Checker/Fix for the complete aggregate before the
 // first provider mutation. It is generated infrastructure, not application API.
 func (e *Customer) TeaqlPreflightGraph(context *runtime.UserContext, intent core.MutationIntent) error {
+	if e == nil || e.base == nil || e.root == nil { return &core.EntityCreationError{Entity: "customer"} }
 	if err := intent.Validate(); err != nil { return err }
 	if err := e.TeaqlPrepareMutationViews(context); err != nil { return err }
 	if err := e.TeaqlNormalizeMutationGraph(context); err != nil { return err }
@@ -374,6 +404,8 @@ func (e *Customer) TeaqlPreflightGraph(context *runtime.UserContext, intent core
 // Preserve instance-local intent before automatic ledger attachment can merge
 // aliases. Known-baseline equal assignments are not writable intent.
 func (e *Customer) TeaqlPrepareMutationViews(context *runtime.UserContext) error {
+	if e == nil || e.base == nil || e.root == nil { return &core.EntityCreationError{Entity: "customer"} }
+	if e.isNew { if err := e.creationState.RequireNew(e.EntityName(), e.base.Id); err != nil { return err } }
 	if e.isNew && e.markedAsDelete { return nil }
 	restoredFields, err := context.DiscardRestoredScalarChanges(e.root, e.EntityKey(), e.loadedSnapshot)
 	if err != nil { return err }
@@ -536,6 +568,7 @@ func (e *Customer) TeaqlPreflightWithinGraph(context *runtime.UserContext, inten
 
 type teaqlCustomerSaveSnapshot struct {
 	loadedSnapshot core.LoadedScalarSnapshot
+	creationState core.EntityCreationState
 	record core.Record
 	queryProperties core.Record
 	dirtyFields map[string]bool
@@ -553,6 +586,7 @@ func (e *Customer) teaqlSaveSnapshot() teaqlCustomerSaveSnapshot {
 	for field, value := range e.loadState { loaded[field] = value }
 	return teaqlCustomerSaveSnapshot{
 		loadedSnapshot: e.loadedSnapshot,
+		creationState: e.creationState,
 		queryProperties: e.base.QueryProperties(),
 		record: e.IntoRecord(), dirtyFields: dirty, isNew: e.isNew,
 		markedAsDelete: e.markedAsDelete, loadState: loaded,
@@ -567,6 +601,7 @@ func (e *Customer) teaqlRegisterGraphOutcome(context *runtime.UserContext, snaps
 		if err := e.teaqlFromRecord(snapshot.record, false); err != nil { panic(err) }
 		e.base.CaptureQueryProperties(snapshot.queryProperties)
 		e.loadedSnapshot = snapshot.loadedSnapshot
+		e.creationState = snapshot.creationState
 		e.dirtyFields = snapshot.dirtyFields
 		e.isNew = snapshot.isNew
 		e.markedAsDelete = snapshot.markedAsDelete
@@ -580,6 +615,8 @@ func (e *Customer) teaqlRegisterGraphOutcome(context *runtime.UserContext, snaps
 // TeaqlSaveWithinGraph is generated infrastructure used by related entity
 // packages after the public root Save has opened the graph transaction.
 func (e *Customer) TeaqlSaveWithinGraph(context *runtime.UserContext, intent core.MutationIntent, parentScope *core.MutationTraceScope, privacy *data_service.MutationPrivacy, visited ...map[any]struct{}) (*Customer, error) {
+	if e == nil || e.base == nil || e.root == nil { return nil, &core.EntityCreationError{Entity: "customer"} }
+	if e.isNew { if err := e.creationState.RequireNew(e.EntityName(), e.base.Id); err != nil { return nil, err } }
 	if err := intent.Validate(); err != nil { return nil, err }
 	// This traversal owns its pointer-identity set. Never deduplicate distinct
 	// views by entity ID, or keep a guard on Context/entities across saves.
@@ -630,12 +667,7 @@ func (e *Customer) TeaqlSaveWithinGraph(context *runtime.UserContext, intent cor
 		if checkErr != nil { return nil, checkErr }
 		if err := e.teaqlFromRecord(checkedValues, false); err != nil { return nil, err }
 		if e.base.Id == 0 {
-			id, err := context.GenerateInternalId(e.EntityName())
-			if err != nil {
-				return nil, fmt.Errorf("generate id for %s: %w", e.EntityName(), err)
-			}
-			e.base.Id = id
-			if err := context.RekeyPreparedGraphEntity(e.root, core.NewEntityKey(e.EntityName(), e.ledgerID), e.EntityKey()); err != nil { return nil, err }
+			return nil, &core.EntityCreationError{Entity: e.EntityName()}
 		} else if !e.base.HasAllocatedID() {
 			if err := context.EnsureInternalIdFloor(context.Context, e.EntityName(), e.base.Id); err != nil {
 				return nil, fmt.Errorf("synchronize id floor for %s: %w", e.EntityName(), err)
@@ -778,6 +810,7 @@ func (e *Customer) Id() uint64 {
 }
 
 func (e *Customer) UpdateId(value uint64) *Customer {
+	e.teaqlEnsureState()
 	oldKey := e.EntityKey()
 	e.base.Id = value
 	e.root.Rekey(oldKey, e.EntityKey())
@@ -791,6 +824,7 @@ func (e *Customer) Name() string {
 	return res}
 
 func (e *Customer) UpdateName(value string) *Customer {
+	e.teaqlEnsureState()
 	e.base.PutDynamic("name", core.ValText(value))
 	e.dirtyFields["name"] = true
 	e.root.Set(e.EntityKey(), "name", core.ValText(value))
@@ -804,6 +838,7 @@ func (e *Customer) Email() string {
 	return res}
 
 func (e *Customer) UpdateEmail(value string) *Customer {
+	e.teaqlEnsureState()
 	e.base.PutDynamic("email", core.ValText(value))
 	e.dirtyFields["email"] = true
 	e.root.Set(e.EntityKey(), "email", core.ValText(value))
@@ -817,6 +852,7 @@ func (e *Customer) CreateTime() time.Time {
 	return res}
 
 func (e *Customer) UpdateCreateTime(value time.Time) *Customer {
+	e.teaqlEnsureState()
 	e.base.PutDynamic("create_time", core.ValTimestamp(value.UnixMilli()))
 	e.dirtyFields["create_time"] = true
 	e.root.Set(e.EntityKey(), "create_time", core.ValTimestamp(value.UnixMilli()))
@@ -830,6 +866,7 @@ func (e *Customer) UpdateTime() time.Time {
 	return res}
 
 func (e *Customer) UpdateUpdateTime(value time.Time) *Customer {
+	e.teaqlEnsureState()
 	e.base.PutDynamic("update_time", core.ValTimestamp(value.UnixMilli()))
 	e.dirtyFields["update_time"] = true
 	e.root.Set(e.EntityKey(), "update_time", core.ValTimestamp(value.UnixMilli()))
@@ -842,6 +879,7 @@ func (e *Customer) Version() int64 {
 }
 
 func (e *Customer) UpdateVersion(value int64) *Customer {
+	e.teaqlEnsureState()
 	e.base.Version = value
 	e.loadState["version"] = true
 	return e

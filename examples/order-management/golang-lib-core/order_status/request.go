@@ -72,7 +72,7 @@ func (r *OrderStatusRequest) GetQuerySelection() *core.QuerySelection {
 }
 
 func (r *OrderStatusRequest) GetEntityDescriptor() *core.EntityDescriptor {
-	return NewOrderStatus().EntityDescriptor()
+	return newLoadedOrderStatus().EntityDescriptor()
 }
 
 func (r *OrderStatusRequest) NewRelationEntity() core.Entity {
@@ -1029,19 +1029,7 @@ func (r *OrderStatusRequest) WithoutCustomerOrderListMatching(child *customer_or
 func (e *ExecutableOrderStatusRequest) NewEntity(context *runtime.UserContext) (*OrderStatus, error) {
 	r := e.request
 	if _, err := core.NewQueryIntent(&r.commentText, &r.purposeText); err != nil { panic(err) }
-	if context == nil { return nil, fmt.Errorf("UserContext is required for entity creation") }
-	// Reserve before constructing mutation state or invoking trusted defaults.
-	id, err := context.GenerateInternalId("order_status")
-	if err != nil { return nil, err }
-	entity := NewOrderStatus()
-	initialized := context.InitializeEntity("OrderStatus", entity)
-	typed, ok := initialized.(*OrderStatus)
-	if !ok || typed == nil {
-		return nil, fmt.Errorf("entity initializer changed OrderStatus to an incompatible type")
-	}
-	typed.UpdateId(id)
-	if err := typed.base.RecordAllocatedID(id); err != nil { return nil, err }
-	return typed, nil
+	return NewOrderStatus(context)
 }
 
 func (e *ExecutableOrderStatusRequest) ExecuteForOne(context *runtime.UserContext) (*OrderStatus, error) {

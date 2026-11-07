@@ -72,7 +72,7 @@ func (r *PurchaseOrderRequest) GetQuerySelection() *core.QuerySelection {
 }
 
 func (r *PurchaseOrderRequest) GetEntityDescriptor() *core.EntityDescriptor {
-	return NewPurchaseOrder().EntityDescriptor()
+	return newLoadedPurchaseOrder().EntityDescriptor()
 }
 
 func (r *PurchaseOrderRequest) NewRelationEntity() core.Entity {
@@ -977,19 +977,7 @@ func (r *PurchaseOrderRequest) WithoutOrderItemListMatching(child *order_item.Or
 func (e *ExecutablePurchaseOrderRequest) NewEntity(context *runtime.UserContext) (*PurchaseOrder, error) {
 	r := e.request
 	if _, err := core.NewQueryIntent(&r.commentText, &r.purposeText); err != nil { panic(err) }
-	if context == nil { return nil, fmt.Errorf("UserContext is required for entity creation") }
-	// Reserve before constructing mutation state or invoking trusted defaults.
-	id, err := context.GenerateInternalId("purchase_order")
-	if err != nil { return nil, err }
-	entity := NewPurchaseOrder()
-	initialized := context.InitializeEntity("PurchaseOrder", entity)
-	typed, ok := initialized.(*PurchaseOrder)
-	if !ok || typed == nil {
-		return nil, fmt.Errorf("entity initializer changed PurchaseOrder to an incompatible type")
-	}
-	typed.UpdateId(id)
-	if err := typed.base.RecordAllocatedID(id); err != nil { return nil, err }
-	return typed, nil
+	return NewPurchaseOrder(context)
 }
 
 func (e *ExecutablePurchaseOrderRequest) ExecuteForOne(context *runtime.UserContext) (*PurchaseOrder, error) {

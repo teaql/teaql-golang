@@ -72,7 +72,7 @@ func (r *CustomerRequest) GetQuerySelection() *core.QuerySelection {
 }
 
 func (r *CustomerRequest) GetEntityDescriptor() *core.EntityDescriptor {
-	return NewCustomer().EntityDescriptor()
+	return newLoadedCustomer().EntityDescriptor()
 }
 
 func (r *CustomerRequest) NewRelationEntity() core.Entity {
@@ -1001,19 +1001,7 @@ func (r *CustomerRequest) WithoutCustomerOrderListMatching(child *customer_order
 func (e *ExecutableCustomerRequest) NewEntity(context *runtime.UserContext) (*Customer, error) {
 	r := e.request
 	if _, err := core.NewQueryIntent(&r.commentText, &r.purposeText); err != nil { panic(err) }
-	if context == nil { return nil, fmt.Errorf("UserContext is required for entity creation") }
-	// Reserve before constructing mutation state or invoking trusted defaults.
-	id, err := context.GenerateInternalId("customer")
-	if err != nil { return nil, err }
-	entity := NewCustomer()
-	initialized := context.InitializeEntity("Customer", entity)
-	typed, ok := initialized.(*Customer)
-	if !ok || typed == nil {
-		return nil, fmt.Errorf("entity initializer changed Customer to an incompatible type")
-	}
-	typed.UpdateId(id)
-	if err := typed.base.RecordAllocatedID(id); err != nil { return nil, err }
-	return typed, nil
+	return NewCustomer(context)
 }
 
 func (e *ExecutableCustomerRequest) ExecuteForOne(context *runtime.UserContext) (*Customer, error) {

@@ -38,7 +38,9 @@ func ensureGeneratedBootstrapOnce(context *runtime.UserContext) error {
 	platform1, err := Q.Platforms().WithIdIs(uint64(1)).Comment("what: locate generated bootstrap entity").Purpose("why: idempotent runtime bootstrap").ExecuteForOne(context)
 	if err != nil { return fmt.Errorf("query bootstrap Platform(1): %w", err) }
 	if platform1 == nil {
-		platform1 = platform.NewPlatform().UpdateId(uint64(1))
+		platform1, err = Q.Platforms().Comment("Create generated bootstrap entity").Purpose("Initialize runtime bootstrap").NewEntity(context)
+		if err != nil { return err }
+		platform1.UpdateId(uint64(1))
 		platform1.UpdateName("Campus Learning Platform")
 		platform1.UpdateBaseUrl("https://campus.example.com")
 		if _, err = platform1.AuditAs("create model root Platform(1)").Save(context); err != nil {
@@ -56,7 +58,9 @@ func ensureGeneratedBootstrapOnce(context *runtime.UserContext) error {
 	school_type1001, err := Q.SchoolTypes().WithIdIs(uint64(1001)).Comment("what: locate generated bootstrap entity").Purpose("why: idempotent runtime bootstrap").ExecuteForOne(context)
 	if err != nil { return fmt.Errorf("query bootstrap SchoolType(1001): %w", err) }
 	if school_type1001 == nil {
-		school_type1001 = school_type.NewSchoolType().UpdateId(uint64(1001))
+		school_type1001, err = Q.SchoolTypes().Comment("Create generated bootstrap entity").Purpose("Initialize runtime bootstrap").NewEntity(context)
+		if err != nil { return err }
+		school_type1001.UpdateId(uint64(1001))
 		school_type1001.UpdatePlatformId(uint64(1))
 		school_type1001.UpdateName("Primary")
 		school_type1001.UpdateCode("PRIMARY")
@@ -91,7 +95,9 @@ func ensureGeneratedBootstrapOnce(context *runtime.UserContext) error {
 	school_type1002, err := Q.SchoolTypes().WithIdIs(uint64(1002)).Comment("what: locate generated bootstrap entity").Purpose("why: idempotent runtime bootstrap").ExecuteForOne(context)
 	if err != nil { return fmt.Errorf("query bootstrap SchoolType(1002): %w", err) }
 	if school_type1002 == nil {
-		school_type1002 = school_type.NewSchoolType().UpdateId(uint64(1002))
+		school_type1002, err = Q.SchoolTypes().Comment("Create generated bootstrap entity").Purpose("Initialize runtime bootstrap").NewEntity(context)
+		if err != nil { return err }
+		school_type1002.UpdateId(uint64(1002))
 		school_type1002.UpdatePlatformId(uint64(1))
 		school_type1002.UpdateName("Secondary")
 		school_type1002.UpdateCode("SECONDARY")

@@ -71,7 +71,7 @@ func (r *PaymentAttemptRequest) GetQuerySelection() *core.QuerySelection {
 }
 
 func (r *PaymentAttemptRequest) GetEntityDescriptor() *core.EntityDescriptor {
-	return NewPaymentAttempt().EntityDescriptor()
+	return newLoadedPaymentAttempt().EntityDescriptor()
 }
 
 func (r *PaymentAttemptRequest) NewRelationEntity() core.Entity {
@@ -538,19 +538,7 @@ func (r *PaymentAttemptRequest) WithoutPaymentMatching(child interface {
 func (e *ExecutablePaymentAttemptRequest) NewEntity(context *runtime.UserContext) (*PaymentAttempt, error) {
 	r := e.request
 	if _, err := core.NewQueryIntent(&r.commentText, &r.purposeText); err != nil { panic(err) }
-	if context == nil { return nil, fmt.Errorf("UserContext is required for entity creation") }
-	// Reserve before constructing mutation state or invoking trusted defaults.
-	id, err := context.GenerateInternalId("Payment Attempt")
-	if err != nil { return nil, err }
-	entity := NewPaymentAttempt()
-	initialized := context.InitializeEntity("PaymentAttempt", entity)
-	typed, ok := initialized.(*PaymentAttempt)
-	if !ok || typed == nil {
-		return nil, fmt.Errorf("entity initializer changed PaymentAttempt to an incompatible type")
-	}
-	typed.UpdateId(id)
-	if err := typed.base.RecordAllocatedID(id); err != nil { return nil, err }
-	return typed, nil
+	return NewPaymentAttempt(context)
 }
 
 func (e *ExecutablePaymentAttemptRequest) ExecuteForOne(context *runtime.UserContext) (*PaymentAttempt, error) {

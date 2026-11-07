@@ -44,7 +44,10 @@ func TestGeneratedExplicitRecordHydration(t *testing.T) {
 		}
 	}
 	before := f.counts()
-	row := purchase_order.NewPurchaseOrder()
+	row, err := purchase_order.NewPurchaseOrder(f.ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
 	temporary := row.EntityKey()
 	if !row.EntityRoot().IsNew(temporary) {
 		t.Fatal("new constructor control is not new")
@@ -64,7 +67,10 @@ func TestGeneratedExplicitRecordHydration(t *testing.T) {
 	if _, err := row.AuditAs("Keep a manually hydrated complete row unchanged").Save(f.ctx); err != nil {
 		t.Fatal(err)
 	}
-	sparse := purchase_order.NewPurchaseOrder()
+	sparse, err := purchase_order.NewPurchaseOrder(f.ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
 	if err := sparse.FromRecord(core.Record{"id": core.ValU64(row.Id()), "version": core.ValI64(1)}); err != nil {
 		t.Fatal(err)
 	}

@@ -72,7 +72,7 @@ func (r *TypePlatformRequest) GetQuerySelection() *core.QuerySelection {
 }
 
 func (r *TypePlatformRequest) GetEntityDescriptor() *core.EntityDescriptor {
-	return NewTypePlatform().EntityDescriptor()
+	return newLoadedTypePlatform().EntityDescriptor()
 }
 
 func (r *TypePlatformRequest) NewRelationEntity() core.Entity {
@@ -1579,19 +1579,7 @@ func (r *TypePlatformRequest) WithoutScalarTypeProbeListMatching(child *scalar_t
 func (e *ExecutableTypePlatformRequest) NewEntity(context *runtime.UserContext) (*TypePlatform, error) {
 	r := e.request
 	if _, err := core.NewQueryIntent(&r.commentText, &r.purposeText); err != nil { panic(err) }
-	if context == nil { return nil, fmt.Errorf("UserContext is required for entity creation") }
-	// Reserve before constructing mutation state or invoking trusted defaults.
-	id, err := context.GenerateInternalId("Type Platform")
-	if err != nil { return nil, err }
-	entity := NewTypePlatform()
-	initialized := context.InitializeEntity("TypePlatform", entity)
-	typed, ok := initialized.(*TypePlatform)
-	if !ok || typed == nil {
-		return nil, fmt.Errorf("entity initializer changed TypePlatform to an incompatible type")
-	}
-	typed.UpdateId(id)
-	if err := typed.base.RecordAllocatedID(id); err != nil { return nil, err }
-	return typed, nil
+	return NewTypePlatform(context)
 }
 
 func (e *ExecutableTypePlatformRequest) ExecuteForOne(context *runtime.UserContext) (*TypePlatform, error) {

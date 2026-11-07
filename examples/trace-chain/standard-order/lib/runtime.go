@@ -40,7 +40,9 @@ func ensureGeneratedBootstrapOnce(context *runtime.UserContext) error {
 	platform1, err := Q.Platforms().WithIdIs(uint64(1)).Comment("what: locate generated bootstrap entity").Purpose("why: idempotent runtime bootstrap").ExecuteForOne(context)
 	if err != nil { return fmt.Errorf("query bootstrap Platform(1): %w", err) }
 	if platform1 == nil {
-		platform1 = platform.NewPlatform().UpdateId(uint64(1))
+		platform1, err = Q.Platforms().Comment("Create generated bootstrap entity").Purpose("Initialize runtime bootstrap").NewEntity(context)
+		if err != nil { return err }
+		platform1.UpdateId(uint64(1))
 		platform1.UpdateName("Commerce Test Platform")
 		if _, err = platform1.AuditAs("create model root Platform(1)").Save(context); err != nil {
 			createErr := err
@@ -57,7 +59,9 @@ func ensureGeneratedBootstrapOnce(context *runtime.UserContext) error {
 	order_status1001, err := Q.OrderStatuses().WithIdIs(uint64(1001)).Comment("what: locate generated bootstrap entity").Purpose("why: idempotent runtime bootstrap").ExecuteForOne(context)
 	if err != nil { return fmt.Errorf("query bootstrap OrderStatus(1001): %w", err) }
 	if order_status1001 == nil {
-		order_status1001 = order_status.NewOrderStatus().UpdateId(uint64(1001))
+		order_status1001, err = Q.OrderStatuses().Comment("Create generated bootstrap entity").Purpose("Initialize runtime bootstrap").NewEntity(context)
+		if err != nil { return err }
+		order_status1001.UpdateId(uint64(1001))
 		order_status1001.UpdatePlatformId(uint64(1))
 		order_status1001.UpdateName("New")
 		order_status1001.UpdateCode("NEW")
@@ -96,7 +100,9 @@ func ensureGeneratedBootstrapOnce(context *runtime.UserContext) error {
 	order_status1002, err := Q.OrderStatuses().WithIdIs(uint64(1002)).Comment("what: locate generated bootstrap entity").Purpose("why: idempotent runtime bootstrap").ExecuteForOne(context)
 	if err != nil { return fmt.Errorf("query bootstrap OrderStatus(1002): %w", err) }
 	if order_status1002 == nil {
-		order_status1002 = order_status.NewOrderStatus().UpdateId(uint64(1002))
+		order_status1002, err = Q.OrderStatuses().Comment("Create generated bootstrap entity").Purpose("Initialize runtime bootstrap").NewEntity(context)
+		if err != nil { return err }
+		order_status1002.UpdateId(uint64(1002))
 		order_status1002.UpdatePlatformId(uint64(1))
 		order_status1002.UpdateName("Paid")
 		order_status1002.UpdateCode("PAID")
@@ -135,7 +141,9 @@ func ensureGeneratedBootstrapOnce(context *runtime.UserContext) error {
 	order_status1003, err := Q.OrderStatuses().WithIdIs(uint64(1003)).Comment("what: locate generated bootstrap entity").Purpose("why: idempotent runtime bootstrap").ExecuteForOne(context)
 	if err != nil { return fmt.Errorf("query bootstrap OrderStatus(1003): %w", err) }
 	if order_status1003 == nil {
-		order_status1003 = order_status.NewOrderStatus().UpdateId(uint64(1003))
+		order_status1003, err = Q.OrderStatuses().Comment("Create generated bootstrap entity").Purpose("Initialize runtime bootstrap").NewEntity(context)
+		if err != nil { return err }
+		order_status1003.UpdateId(uint64(1003))
 		order_status1003.UpdatePlatformId(uint64(1))
 		order_status1003.UpdateName("Cancelled")
 		order_status1003.UpdateCode("CANCELLED")

@@ -71,7 +71,7 @@ func (r *OrderLineRequest) GetQuerySelection() *core.QuerySelection {
 }
 
 func (r *OrderLineRequest) GetEntityDescriptor() *core.EntityDescriptor {
-	return NewOrderLine().EntityDescriptor()
+	return newLoadedOrderLine().EntityDescriptor()
 }
 
 func (r *OrderLineRequest) NewRelationEntity() core.Entity {
@@ -1019,19 +1019,7 @@ func (r *OrderLineRequest) WithoutCommercePlatformMatching(child interface {
 func (e *ExecutableOrderLineRequest) NewEntity(context *runtime.UserContext) (*OrderLine, error) {
 	r := e.request
 	if _, err := core.NewQueryIntent(&r.commentText, &r.purposeText); err != nil { panic(err) }
-	if context == nil { return nil, fmt.Errorf("UserContext is required for entity creation") }
-	// Reserve before constructing mutation state or invoking trusted defaults.
-	id, err := context.GenerateInternalId("order_line")
-	if err != nil { return nil, err }
-	entity := NewOrderLine()
-	initialized := context.InitializeEntity("OrderLine", entity)
-	typed, ok := initialized.(*OrderLine)
-	if !ok || typed == nil {
-		return nil, fmt.Errorf("entity initializer changed OrderLine to an incompatible type")
-	}
-	typed.UpdateId(id)
-	if err := typed.base.RecordAllocatedID(id); err != nil { return nil, err }
-	return typed, nil
+	return NewOrderLine(context)
 }
 
 func (e *ExecutableOrderLineRequest) ExecuteForOne(context *runtime.UserContext) (*OrderLine, error) {

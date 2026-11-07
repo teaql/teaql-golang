@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"reflect"
 	"strings"
-	"sync/atomic"
 
 	"time"
 	"github.com/shopspring/decimal"
@@ -24,12 +23,11 @@ var (
 	_ = errors.As
 )
 
-var teaqlTemporaryEntityID int64
-
 
 type ScalarTypeProbe struct {
 	base        *core.BaseEntityData
 	loadedSnapshot core.LoadedScalarSnapshot
+	creationState core.EntityCreationState
 	dirtyFields map[string]bool
 	isNew       bool
 	markedAsDelete bool
@@ -48,32 +46,60 @@ func (e *ScalarTypeProbe) TypePlatformFacet(name string) (*core.SmartList[core.R
 	return e.base.RelationFacet("typePlatformEntity", name)
 }
 
-func NewScalarTypeProbe() *ScalarTypeProbe {
-	temporaryID := -atomic.AddInt64(&teaqlTemporaryEntityID, 1)
+// newUninitialized allocates only local carriers; it does not grant insert intent.
+func newUninitializedScalarTypeProbe() *ScalarTypeProbe {
 	entity := &ScalarTypeProbe{
 		base:        core.NewBaseEntityData(),
 		dirtyFields: make(map[string]bool),
-		isNew:       true,
 		loadState:   make(map[string]bool),
 		root:        core.NewEntityRoot(),
-		ledgerID:    core.ValI64(temporaryID),
+		ledgerID:    core.ValU64(0),
 		relations:   make(map[string]core.Entity),
 		loadedRelations: make(map[string]bool),
 	}
-	entity.root.MarkAsNew(entity.EntityKey())
 	return entity
 }
 
-// Hydration is not a create request. Keep this constructor private so public
-// NewEntity still records new-object intent, while a loaded snapshot starts
-// with independent mutation ownership and no pending insert.
+// New reserves through Context before constructing mutation state or defaults.
+func NewScalarTypeProbe(context *runtime.UserContext) (*ScalarTypeProbe, error) {
+	if context == nil { return nil, &core.EntityCreationError{Entity: "Scalar Type Probe"} }
+	id, err := context.GenerateInternalId("Scalar Type Probe")
+	if err != nil { return nil, err }
+	entity := newUninitializedScalarTypeProbe()
+	entity.UpdateId(id)
+	if err := entity.creationState.Reserve(entity.EntityName(), id); err != nil { return nil, err }
+	entity.isNew = true
+	entity.root.MarkAsNew(entity.EntityKey())
+	initialized := context.InitializeEntity("ScalarTypeProbe", entity)
+	typed, ok := initialized.(*ScalarTypeProbe)
+	if !ok || typed == nil { return nil, fmt.Errorf("entity initializer changed ScalarTypeProbe to an incompatible type") }
+	typed.teaqlEnsureState()
+	if err := typed.creationState.Reserve(typed.EntityName(), id); err != nil { return nil, err }
+	typed.UpdateId(id)
+	if err := typed.base.RecordAllocatedID(id); err != nil { return nil, err }
+	typed.isNew = true
+	typed.root.MarkAsNew(typed.EntityKey())
+	return typed, nil
+}
+
+// A hydrated read view is independent and never starts an insert ledger.
 func newLoadedScalarTypeProbe() *ScalarTypeProbe {
-	entity := NewScalarTypeProbe()
-	entity.root.ClearEntity(entity.EntityKey())
+	entity := newUninitializedScalarTypeProbe()
+	entity.creationState.Hydrated()
 	return entity
+}
+
+func (e *ScalarTypeProbe) teaqlEnsureState() {
+	if e.base == nil { e.base = core.NewBaseEntityData() }
+	if e.root == nil { e.root = core.NewEntityRoot() }
+	if e.dirtyFields == nil { e.dirtyFields = make(map[string]bool) }
+	if e.loadState == nil { e.loadState = make(map[string]bool) }
+	if e.relations == nil { e.relations = make(map[string]core.Entity) }
+	if e.loadedRelations == nil { e.loadedRelations = make(map[string]bool) }
 }
 
 func (e *ScalarTypeProbe) EntityKey() core.EntityKey {
+	e.teaqlEnsureState()
 	if e.base.Id != 0 { return core.NewEntityKey(e.EntityName(), core.ValU64(e.base.Id)) }
 	return core.NewEntityKey(e.EntityName(), e.ledgerID)
 }
@@ -141,6 +167,7 @@ func (e *ScalarTypeProbe) FromRecord(record core.Record) error {
 }
 
 func (e *ScalarTypeProbe) teaqlFromRecord(record core.Record, captureLoaded bool) error {
+	e.teaqlEnsureState()
 	oldKey := e.EntityKey()
 	base, err := core.BaseEntityDataFromRecord(record)
 	if err != nil {
@@ -191,6 +218,7 @@ func (e *ScalarTypeProbe) teaqlFromRecord(record core.Record, captureLoaded bool
 	if captureLoaded {
 		e.root.ClearEntity(oldKey)
 		e.markedAsDelete = false
+		e.creationState.Hydrated()
 	} else {
 		base.PreserveAllocatedIDFrom(e.base)
 	}
@@ -217,7 +245,7 @@ func (e *ScalarTypeProbe) teaqlLoadedScalarSnapshot(record core.Record) core.Loa
 func (e *ScalarTypeProbe) teaqlAcceptPersisted(context *runtime.UserContext, record core.Record) error {
 	if err := e.teaqlFromRecord(record, false); err != nil { return err }
 	committed := e.teaqlLoadedScalarSnapshot(record)
-	context.AfterGraphCommit(func() { e.loadedSnapshot = committed })
+	context.AfterGraphCommit(func() { e.loadedSnapshot = committed; e.creationState.Hydrated() })
 	return nil
 }
 
@@ -363,6 +391,7 @@ func TeaqlScalarTypeProbeFromJSONRecord(record core.Record, factory func(string,
 }
 
 func (e *ScalarTypeProbe) Save(context *runtime.UserContext) (*ScalarTypeProbe, error) {
+	if e == nil || e.base == nil || e.root == nil { return nil, &core.EntityCreationError{Entity: "Scalar Type Probe"} }
 	intent, intentErr := core.NewMutationIntent(e.comment)
 	if intentErr != nil { return nil, intentErr }
 	var saved *ScalarTypeProbe
@@ -383,6 +412,7 @@ func (e *ScalarTypeProbe) Save(context *runtime.UserContext) (*ScalarTypeProbe, 
 // TeaqlPreflightGraph runs Checker/Fix for the complete aggregate before the
 // first provider mutation. It is generated infrastructure, not application API.
 func (e *ScalarTypeProbe) TeaqlPreflightGraph(context *runtime.UserContext, intent core.MutationIntent) error {
+	if e == nil || e.base == nil || e.root == nil { return &core.EntityCreationError{Entity: "Scalar Type Probe"} }
 	if err := intent.Validate(); err != nil { return err }
 	if err := e.TeaqlPrepareMutationViews(context); err != nil { return err }
 	if err := e.TeaqlNormalizeMutationGraph(context); err != nil { return err }
@@ -394,6 +424,8 @@ func (e *ScalarTypeProbe) TeaqlPreflightGraph(context *runtime.UserContext, inte
 // Preserve instance-local intent before automatic ledger attachment can merge
 // aliases. Known-baseline equal assignments are not writable intent.
 func (e *ScalarTypeProbe) TeaqlPrepareMutationViews(context *runtime.UserContext) error {
+	if e == nil || e.base == nil || e.root == nil { return &core.EntityCreationError{Entity: "Scalar Type Probe"} }
+	if e.isNew { if err := e.creationState.RequireNew(e.EntityName(), e.base.Id); err != nil { return err } }
 	if e.isNew && e.markedAsDelete { return nil }
 	restoredFields, err := context.DiscardRestoredScalarChanges(e.root, e.EntityKey(), e.loadedSnapshot)
 	if err != nil { return err }
@@ -563,6 +595,7 @@ func (e *ScalarTypeProbe) TeaqlPreflightWithinGraph(context *runtime.UserContext
 
 type teaqlScalarTypeProbeSaveSnapshot struct {
 	loadedSnapshot core.LoadedScalarSnapshot
+	creationState core.EntityCreationState
 	record core.Record
 	queryProperties core.Record
 	dirtyFields map[string]bool
@@ -580,6 +613,7 @@ func (e *ScalarTypeProbe) teaqlSaveSnapshot() teaqlScalarTypeProbeSaveSnapshot {
 	for field, value := range e.loadState { loaded[field] = value }
 	return teaqlScalarTypeProbeSaveSnapshot{
 		loadedSnapshot: e.loadedSnapshot,
+		creationState: e.creationState,
 		queryProperties: e.base.QueryProperties(),
 		record: e.IntoRecord(), dirtyFields: dirty, isNew: e.isNew,
 		markedAsDelete: e.markedAsDelete, loadState: loaded,
@@ -594,6 +628,7 @@ func (e *ScalarTypeProbe) teaqlRegisterGraphOutcome(context *runtime.UserContext
 		if err := e.teaqlFromRecord(snapshot.record, false); err != nil { panic(err) }
 		e.base.CaptureQueryProperties(snapshot.queryProperties)
 		e.loadedSnapshot = snapshot.loadedSnapshot
+		e.creationState = snapshot.creationState
 		e.dirtyFields = snapshot.dirtyFields
 		e.isNew = snapshot.isNew
 		e.markedAsDelete = snapshot.markedAsDelete
@@ -607,6 +642,8 @@ func (e *ScalarTypeProbe) teaqlRegisterGraphOutcome(context *runtime.UserContext
 // TeaqlSaveWithinGraph is generated infrastructure used by related entity
 // packages after the public root Save has opened the graph transaction.
 func (e *ScalarTypeProbe) TeaqlSaveWithinGraph(context *runtime.UserContext, intent core.MutationIntent, parentScope *core.MutationTraceScope, privacy *data_service.MutationPrivacy, visited ...map[any]struct{}) (*ScalarTypeProbe, error) {
+	if e == nil || e.base == nil || e.root == nil { return nil, &core.EntityCreationError{Entity: "Scalar Type Probe"} }
+	if e.isNew { if err := e.creationState.RequireNew(e.EntityName(), e.base.Id); err != nil { return nil, err } }
 	if err := intent.Validate(); err != nil { return nil, err }
 	// This traversal owns its pointer-identity set. Never deduplicate distinct
 	// views by entity ID, or keep a guard on Context/entities across saves.
@@ -657,12 +694,7 @@ func (e *ScalarTypeProbe) TeaqlSaveWithinGraph(context *runtime.UserContext, int
 		if checkErr != nil { return nil, checkErr }
 		if err := e.teaqlFromRecord(checkedValues, false); err != nil { return nil, err }
 		if e.base.Id == 0 {
-			id, err := context.GenerateInternalId(e.EntityName())
-			if err != nil {
-				return nil, fmt.Errorf("generate id for %s: %w", e.EntityName(), err)
-			}
-			e.base.Id = id
-			if err := context.RekeyPreparedGraphEntity(e.root, core.NewEntityKey(e.EntityName(), e.ledgerID), e.EntityKey()); err != nil { return nil, err }
+			return nil, &core.EntityCreationError{Entity: e.EntityName()}
 		} else if !e.base.HasAllocatedID() {
 			if err := context.EnsureInternalIdFloor(context.Context, e.EntityName(), e.base.Id); err != nil {
 				return nil, fmt.Errorf("synchronize id floor for %s: %w", e.EntityName(), err)
@@ -789,6 +821,7 @@ func (e *ScalarTypeProbe) Id() uint64 {
 }
 
 func (e *ScalarTypeProbe) UpdateId(value uint64) *ScalarTypeProbe {
+	e.teaqlEnsureState()
 	oldKey := e.EntityKey()
 	e.base.Id = value
 	e.root.Rekey(oldKey, e.EntityKey())
@@ -802,6 +835,7 @@ func (e *ScalarTypeProbe) RequiredString() string {
 	return res}
 
 func (e *ScalarTypeProbe) UpdateRequiredString(value string) *ScalarTypeProbe {
+	e.teaqlEnsureState()
 	e.base.PutDynamic("required_string", core.ValText(value))
 	e.dirtyFields["required_string"] = true
 	e.root.Set(e.EntityKey(), "required_string", core.ValText(value))
@@ -816,6 +850,7 @@ func (e *ScalarTypeProbe) OptionalString() *string {
 	return &res}
 
 func (e *ScalarTypeProbe) UpdateOptionalString(value *string) *ScalarTypeProbe {
+	e.teaqlEnsureState()
 	e.base.PutDynamic("optional_string", func() core.Value { if value == nil { return core.ValNull() }; return core.ValText((*value)) }())
 	e.dirtyFields["optional_string"] = true
 	e.root.Set(e.EntityKey(), "optional_string", func() core.Value { if value == nil { return core.ValNull() }; return core.ValText((*value)) }())
@@ -830,6 +865,7 @@ func (e *ScalarTypeProbe) LargeText() *string {
 	return &res}
 
 func (e *ScalarTypeProbe) UpdateLargeText(value *string) *ScalarTypeProbe {
+	e.teaqlEnsureState()
 	e.base.PutDynamic("large_text", func() core.Value { if value == nil { return core.ValNull() }; return core.ValText((*value)) }())
 	e.dirtyFields["large_text"] = true
 	e.root.Set(e.EntityKey(), "large_text", func() core.Value { if value == nil { return core.ValNull() }; return core.ValText((*value)) }())
@@ -843,6 +879,7 @@ func (e *ScalarTypeProbe) RequiredBoolean() bool {
 	return res}
 
 func (e *ScalarTypeProbe) UpdateRequiredBoolean(value bool) *ScalarTypeProbe {
+	e.teaqlEnsureState()
 	e.base.PutDynamic("required_boolean", core.ValBool(value))
 	e.dirtyFields["required_boolean"] = true
 	e.root.Set(e.EntityKey(), "required_boolean", core.ValBool(value))
@@ -857,6 +894,7 @@ func (e *ScalarTypeProbe) OptionalBoolean() *bool {
 	return &res}
 
 func (e *ScalarTypeProbe) UpdateOptionalBoolean(value *bool) *ScalarTypeProbe {
+	e.teaqlEnsureState()
 	e.base.PutDynamic("optional_boolean", func() core.Value { if value == nil { return core.ValNull() }; return core.ValBool((*value)) }())
 	e.dirtyFields["optional_boolean"] = true
 	e.root.Set(e.EntityKey(), "optional_boolean", func() core.Value { if value == nil { return core.ValNull() }; return core.ValBool((*value)) }())
@@ -870,6 +908,7 @@ func (e *ScalarTypeProbe) RequiredInteger() int64 {
 	return res}
 
 func (e *ScalarTypeProbe) UpdateRequiredInteger(value int64) *ScalarTypeProbe {
+	e.teaqlEnsureState()
 	e.base.PutDynamic("required_integer", core.ValI64(value))
 	e.dirtyFields["required_integer"] = true
 	e.root.Set(e.EntityKey(), "required_integer", core.ValI64(value))
@@ -884,6 +923,7 @@ func (e *ScalarTypeProbe) OptionalInteger() *int64 {
 	return &res}
 
 func (e *ScalarTypeProbe) UpdateOptionalInteger(value *int64) *ScalarTypeProbe {
+	e.teaqlEnsureState()
 	e.base.PutDynamic("optional_integer", func() core.Value { if value == nil { return core.ValNull() }; return core.ValI64((*value)) }())
 	e.dirtyFields["optional_integer"] = true
 	e.root.Set(e.EntityKey(), "optional_integer", func() core.Value { if value == nil { return core.ValNull() }; return core.ValI64((*value)) }())
@@ -897,6 +937,7 @@ func (e *ScalarTypeProbe) RequiredLong() int64 {
 	return res}
 
 func (e *ScalarTypeProbe) UpdateRequiredLong(value int64) *ScalarTypeProbe {
+	e.teaqlEnsureState()
 	e.base.PutDynamic("required_long", core.ValI64(value))
 	e.dirtyFields["required_long"] = true
 	e.root.Set(e.EntityKey(), "required_long", core.ValI64(value))
@@ -911,6 +952,7 @@ func (e *ScalarTypeProbe) OptionalLong() *int64 {
 	return &res}
 
 func (e *ScalarTypeProbe) UpdateOptionalLong(value *int64) *ScalarTypeProbe {
+	e.teaqlEnsureState()
 	e.base.PutDynamic("optional_long", func() core.Value { if value == nil { return core.ValNull() }; return core.ValI64((*value)) }())
 	e.dirtyFields["optional_long"] = true
 	e.root.Set(e.EntityKey(), "optional_long", func() core.Value { if value == nil { return core.ValNull() }; return core.ValI64((*value)) }())
@@ -924,6 +966,7 @@ func (e *ScalarTypeProbe) RequiredDecimal() decimal.Decimal {
 	return res}
 
 func (e *ScalarTypeProbe) UpdateRequiredDecimal(value decimal.Decimal) *ScalarTypeProbe {
+	e.teaqlEnsureState()
 	e.base.PutDynamic("required_decimal", core.ValDecimal(value))
 	e.dirtyFields["required_decimal"] = true
 	e.root.Set(e.EntityKey(), "required_decimal", core.ValDecimal(value))
@@ -938,6 +981,7 @@ func (e *ScalarTypeProbe) OptionalDecimal() *decimal.Decimal {
 	return &res}
 
 func (e *ScalarTypeProbe) UpdateOptionalDecimal(value *decimal.Decimal) *ScalarTypeProbe {
+	e.teaqlEnsureState()
 	e.base.PutDynamic("optional_decimal", func() core.Value { if value == nil { return core.ValNull() }; return core.ValDecimal((*value)) }())
 	e.dirtyFields["optional_decimal"] = true
 	e.root.Set(e.EntityKey(), "optional_decimal", func() core.Value { if value == nil { return core.ValNull() }; return core.ValDecimal((*value)) }())
@@ -953,6 +997,7 @@ func (e *ScalarTypeProbe) RequiredFloat() float32 {
 }
 
 func (e *ScalarTypeProbe) UpdateRequiredFloat(value float32) *ScalarTypeProbe {
+	e.teaqlEnsureState()
 	e.base.PutDynamic("required_float", core.ValF64(float64(value)))
 	e.dirtyFields["required_float"] = true
 	e.root.Set(e.EntityKey(), "required_float", core.ValF64(float64(value)))
@@ -969,6 +1014,7 @@ func (e *ScalarTypeProbe) OptionalFloat() *float32 {
 }
 
 func (e *ScalarTypeProbe) UpdateOptionalFloat(value *float32) *ScalarTypeProbe {
+	e.teaqlEnsureState()
 	e.base.PutDynamic("optional_float", func() core.Value { if value == nil { return core.ValNull() }; return core.ValF64(float64((*value))) }())
 	e.dirtyFields["optional_float"] = true
 	e.root.Set(e.EntityKey(), "optional_float", func() core.Value { if value == nil { return core.ValNull() }; return core.ValF64(float64((*value))) }())
@@ -982,6 +1028,7 @@ func (e *ScalarTypeProbe) RequiredDouble() float64 {
 	return res}
 
 func (e *ScalarTypeProbe) UpdateRequiredDouble(value float64) *ScalarTypeProbe {
+	e.teaqlEnsureState()
 	e.base.PutDynamic("required_double", core.ValF64(value))
 	e.dirtyFields["required_double"] = true
 	e.root.Set(e.EntityKey(), "required_double", core.ValF64(value))
@@ -996,6 +1043,7 @@ func (e *ScalarTypeProbe) OptionalDouble() *float64 {
 	return &res}
 
 func (e *ScalarTypeProbe) UpdateOptionalDouble(value *float64) *ScalarTypeProbe {
+	e.teaqlEnsureState()
 	e.base.PutDynamic("optional_double", func() core.Value { if value == nil { return core.ValNull() }; return core.ValF64((*value)) }())
 	e.dirtyFields["optional_double"] = true
 	e.root.Set(e.EntityKey(), "optional_double", func() core.Value { if value == nil { return core.ValNull() }; return core.ValF64((*value)) }())
@@ -1009,6 +1057,7 @@ func (e *ScalarTypeProbe) RequiredDate() time.Time {
 	return res}
 
 func (e *ScalarTypeProbe) UpdateRequiredDate(value time.Time) *ScalarTypeProbe {
+	e.teaqlEnsureState()
 	e.base.PutDynamic("required_date", core.ValDate(value))
 	e.dirtyFields["required_date"] = true
 	e.root.Set(e.EntityKey(), "required_date", core.ValDate(value))
@@ -1023,6 +1072,7 @@ func (e *ScalarTypeProbe) OptionalDate() *time.Time {
 	return &res}
 
 func (e *ScalarTypeProbe) UpdateOptionalDate(value *time.Time) *ScalarTypeProbe {
+	e.teaqlEnsureState()
 	e.base.PutDynamic("optional_date", func() core.Value { if value == nil { return core.ValNull() }; return core.ValDate((*value)) }())
 	e.dirtyFields["optional_date"] = true
 	e.root.Set(e.EntityKey(), "optional_date", func() core.Value { if value == nil { return core.ValNull() }; return core.ValDate((*value)) }())
@@ -1036,6 +1086,7 @@ func (e *ScalarTypeProbe) RequiredTime() core.TimeOfDay {
 	return res}
 
 func (e *ScalarTypeProbe) UpdateRequiredTime(value core.TimeOfDay) *ScalarTypeProbe {
+	e.teaqlEnsureState()
 	e.base.PutDynamic("required_time", core.ValTimeOfDay(value))
 	e.dirtyFields["required_time"] = true
 	e.root.Set(e.EntityKey(), "required_time", core.ValTimeOfDay(value))
@@ -1050,6 +1101,7 @@ func (e *ScalarTypeProbe) OptionalTime() *core.TimeOfDay {
 	return &res}
 
 func (e *ScalarTypeProbe) UpdateOptionalTime(value *core.TimeOfDay) *ScalarTypeProbe {
+	e.teaqlEnsureState()
 	e.base.PutDynamic("optional_time", func() core.Value { if value == nil { return core.ValNull() }; return core.ValTimeOfDay((*value)) }())
 	e.dirtyFields["optional_time"] = true
 	e.root.Set(e.EntityKey(), "optional_time", func() core.Value { if value == nil { return core.ValNull() }; return core.ValTimeOfDay((*value)) }())
@@ -1063,6 +1115,7 @@ func (e *ScalarTypeProbe) RequiredDatetime() time.Time {
 	return res}
 
 func (e *ScalarTypeProbe) UpdateRequiredDatetime(value time.Time) *ScalarTypeProbe {
+	e.teaqlEnsureState()
 	e.base.PutDynamic("required_datetime", core.ValTimestamp(value.UnixMilli()))
 	e.dirtyFields["required_datetime"] = true
 	e.root.Set(e.EntityKey(), "required_datetime", core.ValTimestamp(value.UnixMilli()))
@@ -1077,6 +1130,7 @@ func (e *ScalarTypeProbe) OptionalDatetime() *time.Time {
 	return &res}
 
 func (e *ScalarTypeProbe) UpdateOptionalDatetime(value *time.Time) *ScalarTypeProbe {
+	e.teaqlEnsureState()
 	e.base.PutDynamic("optional_datetime", func() core.Value { if value == nil { return core.ValNull() }; return core.ValTimestamp((*value).UnixMilli()) }())
 	e.dirtyFields["optional_datetime"] = true
 	e.root.Set(e.EntityKey(), "optional_datetime", func() core.Value { if value == nil { return core.ValNull() }; return core.ValTimestamp((*value).UnixMilli()) }())
@@ -1090,6 +1144,7 @@ func (e *ScalarTypeProbe) CreateTime() time.Time {
 	return res}
 
 func (e *ScalarTypeProbe) UpdateCreateTime(value time.Time) *ScalarTypeProbe {
+	e.teaqlEnsureState()
 	e.base.PutDynamic("create_time", core.ValTimestamp(value.UnixMilli()))
 	e.dirtyFields["create_time"] = true
 	e.root.Set(e.EntityKey(), "create_time", core.ValTimestamp(value.UnixMilli()))
@@ -1103,6 +1158,7 @@ func (e *ScalarTypeProbe) UpdateTime() time.Time {
 	return res}
 
 func (e *ScalarTypeProbe) UpdateUpdateTime(value time.Time) *ScalarTypeProbe {
+	e.teaqlEnsureState()
 	e.base.PutDynamic("update_time", core.ValTimestamp(value.UnixMilli()))
 	e.dirtyFields["update_time"] = true
 	e.root.Set(e.EntityKey(), "update_time", core.ValTimestamp(value.UnixMilli()))
@@ -1115,6 +1171,7 @@ func (e *ScalarTypeProbe) Version() int64 {
 }
 
 func (e *ScalarTypeProbe) UpdateVersion(value int64) *ScalarTypeProbe {
+	e.teaqlEnsureState()
 	e.base.Version = value
 	e.loadState["version"] = true
 	return e

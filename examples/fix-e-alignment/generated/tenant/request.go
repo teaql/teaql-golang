@@ -73,7 +73,7 @@ func (r *TenantRequest) GetQuerySelection() *core.QuerySelection {
 }
 
 func (r *TenantRequest) GetEntityDescriptor() *core.EntityDescriptor {
-	return NewTenant().EntityDescriptor()
+	return newLoadedTenant().EntityDescriptor()
 }
 
 func (r *TenantRequest) NewRelationEntity() core.Entity {
@@ -727,19 +727,7 @@ func (r *TenantRequest) WithoutOrderItemListMatching(child *order_item.OrderItem
 func (e *ExecutableTenantRequest) NewEntity(context *runtime.UserContext) (*Tenant, error) {
 	r := e.request
 	if _, err := core.NewQueryIntent(&r.commentText, &r.purposeText); err != nil { panic(err) }
-	if context == nil { return nil, fmt.Errorf("UserContext is required for entity creation") }
-	// Reserve before constructing mutation state or invoking trusted defaults.
-	id, err := context.GenerateInternalId("tenant")
-	if err != nil { return nil, err }
-	entity := NewTenant()
-	initialized := context.InitializeEntity("Tenant", entity)
-	typed, ok := initialized.(*Tenant)
-	if !ok || typed == nil {
-		return nil, fmt.Errorf("entity initializer changed Tenant to an incompatible type")
-	}
-	typed.UpdateId(id)
-	if err := typed.base.RecordAllocatedID(id); err != nil { return nil, err }
-	return typed, nil
+	return NewTenant(context)
 }
 
 func (e *ExecutableTenantRequest) ExecuteForOne(context *runtime.UserContext) (*Tenant, error) {

@@ -71,7 +71,7 @@ func (r *SchoolRequest) GetQuerySelection() *core.QuerySelection {
 }
 
 func (r *SchoolRequest) GetEntityDescriptor() *core.EntityDescriptor {
-	return NewSchool().EntityDescriptor()
+	return newLoadedSchool().EntityDescriptor()
 }
 
 func (r *SchoolRequest) NewRelationEntity() core.Entity {
@@ -1063,19 +1063,7 @@ func (r *SchoolRequest) WithoutSchoolTypeMatching(child interface {
 func (e *ExecutableSchoolRequest) NewEntity(context *runtime.UserContext) (*School, error) {
 	r := e.request
 	if _, err := core.NewQueryIntent(&r.commentText, &r.purposeText); err != nil { panic(err) }
-	if context == nil { return nil, fmt.Errorf("UserContext is required for entity creation") }
-	// Reserve before constructing mutation state or invoking trusted defaults.
-	id, err := context.GenerateInternalId("School")
-	if err != nil { return nil, err }
-	entity := NewSchool()
-	initialized := context.InitializeEntity("School", entity)
-	typed, ok := initialized.(*School)
-	if !ok || typed == nil {
-		return nil, fmt.Errorf("entity initializer changed School to an incompatible type")
-	}
-	typed.UpdateId(id)
-	if err := typed.base.RecordAllocatedID(id); err != nil { return nil, err }
-	return typed, nil
+	return NewSchool(context)
 }
 
 func (e *ExecutableSchoolRequest) ExecuteForOne(context *runtime.UserContext) (*School, error) {

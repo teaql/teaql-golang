@@ -27,6 +27,7 @@ func must(err error) {
 		panic(err)
 	}
 }
+func mustCreated[T any](v T, err error) T { must(err); return v }
 func require(ok bool, message string) {
 	if !ok {
 		panic(message)
@@ -85,13 +86,13 @@ func (f *faultTransaction) EnsureIdFloor(ctx stdcontext.Context, name string, fl
 	}).EnsureIdFloor(ctx, name, floor)
 }
 
-func graph(account uint64, number string) *customer_order.CustomerOrder {
-	order := customer_order.NewCustomerOrder().UpdateCustomerId(account).UpdateStatusId(1002).
+func graph(context *runtime.UserContext, account uint64, number string) *customer_order.CustomerOrder {
+	order := mustCreated(customer_order.NewCustomerOrder(context)).UpdateCustomerId(account).UpdateStatusId(1002).
 		UpdateOrderNumber(number).UpdateOrderDate(time.Date(2026, 10, 12, 0, 0, 0, 0, time.UTC)).
 		UpdateTotalAmount(decimal.NewFromInt(100)).UpdateVersion(1)
-	first := order_item.NewOrderItem().UpdateProductName("Explicit Item").UpdateQuantity(1).
+	first := mustCreated(order_item.NewOrderItem(context)).UpdateProductName("Explicit Item").UpdateQuantity(1).
 		UpdateUnitPrice(decimal.NewFromInt(40)).UpdateVersion(1).AuditAs("approve explicit item")
-	second := order_item.NewOrderItem().UpdateProductName("Inherited Item").UpdateQuantity(1).
+	second := mustCreated(order_item.NewOrderItem(context)).UpdateProductName("Inherited Item").UpdateQuantity(1).
 		UpdateUnitPrice(decimal.NewFromInt(60)).UpdateVersion(1)
 	order.OrderItemList().Add(first)
 	order.OrderItemList().Add(second)
@@ -124,11 +125,11 @@ func main() {
 	require(first == 0 || first == 4, "bootstrap audit")
 	must(lib.EnsureSchema(context))
 	require(sink.count == first, "repeat seed")
-	account, err := customer.NewCustomer().UpdatePlatformId(1).UpdateName("Graph Customer").UpdateVersion(1).
+	account, err := mustCreated(customer.NewCustomer(context)).UpdatePlatformId(1).UpdateName("Graph Customer").UpdateVersion(1).
 		AuditAs("seed graph customer").Save(context)
 	must(err)
 	secret := fmt.Sprintf("GRAPH-PRIVATE-%d", time.Now().UnixNano())
-	order, err := graph(account.Id(), secret+"-SUCCESS").AuditAs("save standard graph").Save(context)
+	order, err := graph(context, account.Id(), secret+"-SUCCESS").AuditAs("save standard graph").Save(context)
 	must(err)
 	require(sink.count == first+4, "three committed graph audit records")
 	sink.graphLineage("save standard graph")
@@ -141,7 +142,7 @@ func main() {
 	original := context.GetResource("dataService")
 	injected := errors.New("private synthetic commit transport failure")
 	context.InsertResource("dataService", &commitFault{TransactionExecutor: original.(data_service.TransactionExecutor), failure: injected})
-	_, err = graph(account.Id(), secret+"-ROLLBACK").AuditAs("rollback standard graph").Save(context)
+	_, err = graph(context, account.Id(), secret+"-ROLLBACK").AuditAs("rollback standard graph").Save(context)
 	require(errors.Is(err, injected), "original commit failure")
 	require(sink.count == first+4, "rolled-back graph cannot emit committed audit")
 	context.InsertResource("dataService", original)
@@ -149,7 +150,7 @@ func main() {
 		Comment("inspect graph rollback").Purpose("verify atomic graph failure").ExecuteForList(context)
 	must(err)
 	require(len(missing.Data) == 0, "rollback must remove all written rows")
-	_, err = graph(account.Id(), secret+"-RECOVERY").AuditAs("recover standard graph").Save(context)
+	_, err = graph(context, account.Id(), secret+"-RECOVERY").AuditAs("recover standard graph").Save(context)
 	must(err)
 	require(sink.count == first+7 && len(ordinary.Snapshot()) == 0, "recovery audit and independent ordinary logging")
 	sink.graphLineage("recover standard graph")

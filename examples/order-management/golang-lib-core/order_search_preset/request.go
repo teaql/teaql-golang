@@ -71,7 +71,7 @@ func (r *OrderSearchPresetRequest) GetQuerySelection() *core.QuerySelection {
 }
 
 func (r *OrderSearchPresetRequest) GetEntityDescriptor() *core.EntityDescriptor {
-	return NewOrderSearchPreset().EntityDescriptor()
+	return newLoadedOrderSearchPreset().EntityDescriptor()
 }
 
 func (r *OrderSearchPresetRequest) NewRelationEntity() core.Entity {
@@ -967,19 +967,7 @@ func (r *OrderSearchPresetRequest) WithoutCommercePlatformMatching(child interfa
 func (e *ExecutableOrderSearchPresetRequest) NewEntity(context *runtime.UserContext) (*OrderSearchPreset, error) {
 	r := e.request
 	if _, err := core.NewQueryIntent(&r.commentText, &r.purposeText); err != nil { panic(err) }
-	if context == nil { return nil, fmt.Errorf("UserContext is required for entity creation") }
-	// Reserve before constructing mutation state or invoking trusted defaults.
-	id, err := context.GenerateInternalId("order_search_preset")
-	if err != nil { return nil, err }
-	entity := NewOrderSearchPreset()
-	initialized := context.InitializeEntity("OrderSearchPreset", entity)
-	typed, ok := initialized.(*OrderSearchPreset)
-	if !ok || typed == nil {
-		return nil, fmt.Errorf("entity initializer changed OrderSearchPreset to an incompatible type")
-	}
-	typed.UpdateId(id)
-	if err := typed.base.RecordAllocatedID(id); err != nil { return nil, err }
-	return typed, nil
+	return NewOrderSearchPreset(context)
 }
 
 func (e *ExecutableOrderSearchPresetRequest) ExecuteForOne(context *runtime.UserContext) (*OrderSearchPreset, error) {

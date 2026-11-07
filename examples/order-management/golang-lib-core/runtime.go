@@ -42,7 +42,9 @@ func ensureGeneratedBootstrapOnce(context *runtime.UserContext) error {
 	commerce_platform1, err := Q.CommercePlatforms().WithIdIs(uint64(1)).Comment("what: locate generated bootstrap entity").Purpose("why: idempotent runtime bootstrap").ExecuteForOne(context)
 	if err != nil { return fmt.Errorf("query bootstrap CommercePlatform(1): %w", err) }
 	if commerce_platform1 == nil {
-		commerce_platform1 = commerce_platform.NewCommercePlatform().UpdateId(uint64(1))
+		commerce_platform1, err = Q.CommercePlatforms().Comment("Create generated bootstrap entity").Purpose("Initialize runtime bootstrap").NewEntity(context)
+		if err != nil { return err }
+		commerce_platform1.UpdateId(uint64(1))
 		commerce_platform1.UpdateName("Northwind Demo")
 		if _, err = commerce_platform1.AuditAs("create model root CommercePlatform(1)").Save(context); err != nil {
 			createErr := err
@@ -59,7 +61,9 @@ func ensureGeneratedBootstrapOnce(context *runtime.UserContext) error {
 	order_status1001, err := Q.OrderStatuses().WithIdIs(uint64(1001)).Comment("what: locate generated bootstrap entity").Purpose("why: idempotent runtime bootstrap").ExecuteForOne(context)
 	if err != nil { return fmt.Errorf("query bootstrap OrderStatus(1001): %w", err) }
 	if order_status1001 == nil {
-		order_status1001 = order_status.NewOrderStatus().UpdateId(uint64(1001))
+		order_status1001, err = Q.OrderStatuses().Comment("Create generated bootstrap entity").Purpose("Initialize runtime bootstrap").NewEntity(context)
+		if err != nil { return err }
+		order_status1001.UpdateId(uint64(1001))
 		order_status1001.UpdateName("Pending")
 		order_status1001.UpdateCode("PENDING")
 		order_status1001.UpdateColor(generatedPtr("#F59E0B"))
@@ -98,7 +102,9 @@ func ensureGeneratedBootstrapOnce(context *runtime.UserContext) error {
 	order_status1002, err := Q.OrderStatuses().WithIdIs(uint64(1002)).Comment("what: locate generated bootstrap entity").Purpose("why: idempotent runtime bootstrap").ExecuteForOne(context)
 	if err != nil { return fmt.Errorf("query bootstrap OrderStatus(1002): %w", err) }
 	if order_status1002 == nil {
-		order_status1002 = order_status.NewOrderStatus().UpdateId(uint64(1002))
+		order_status1002, err = Q.OrderStatuses().Comment("Create generated bootstrap entity").Purpose("Initialize runtime bootstrap").NewEntity(context)
+		if err != nil { return err }
+		order_status1002.UpdateId(uint64(1002))
 		order_status1002.UpdateName("Confirmed")
 		order_status1002.UpdateCode("CONFIRMED")
 		order_status1002.UpdateColor(generatedPtr("#10B981"))

@@ -72,7 +72,7 @@ func (r *PlatformRequest) GetQuerySelection() *core.QuerySelection {
 }
 
 func (r *PlatformRequest) GetEntityDescriptor() *core.EntityDescriptor {
-	return NewPlatform().EntityDescriptor()
+	return newLoadedPlatform().EntityDescriptor()
 }
 
 func (r *PlatformRequest) NewRelationEntity() core.Entity {
@@ -476,19 +476,7 @@ func (r *PlatformRequest) WithoutWorkItemListMatching(child *work_item.WorkItemR
 func (e *ExecutablePlatformRequest) NewEntity(context *runtime.UserContext) (*Platform, error) {
 	r := e.request
 	if _, err := core.NewQueryIntent(&r.commentText, &r.purposeText); err != nil { panic(err) }
-	if context == nil { return nil, fmt.Errorf("UserContext is required for entity creation") }
-	// Reserve before constructing mutation state or invoking trusted defaults.
-	id, err := context.GenerateInternalId("Platform")
-	if err != nil { return nil, err }
-	entity := NewPlatform()
-	initialized := context.InitializeEntity("Platform", entity)
-	typed, ok := initialized.(*Platform)
-	if !ok || typed == nil {
-		return nil, fmt.Errorf("entity initializer changed Platform to an incompatible type")
-	}
-	typed.UpdateId(id)
-	if err := typed.base.RecordAllocatedID(id); err != nil { return nil, err }
-	return typed, nil
+	return NewPlatform(context)
 }
 
 func (e *ExecutablePlatformRequest) ExecuteForOne(context *runtime.UserContext) (*Platform, error) {

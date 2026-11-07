@@ -72,7 +72,7 @@ func (r *TaskRequest) GetQuerySelection() *core.QuerySelection {
 }
 
 func (r *TaskRequest) GetEntityDescriptor() *core.EntityDescriptor {
-	return NewTask().EntityDescriptor()
+	return newLoadedTask().EntityDescriptor()
 }
 
 func (r *TaskRequest) NewRelationEntity() core.Entity {
@@ -738,19 +738,7 @@ func (r *TaskRequest) WithoutTaskExecutionLogListMatching(child *task_execution_
 func (e *ExecutableTaskRequest) NewEntity(context *runtime.UserContext) (*Task, error) {
 	r := e.request
 	if _, err := core.NewQueryIntent(&r.commentText, &r.purposeText); err != nil { panic(err) }
-	if context == nil { return nil, fmt.Errorf("UserContext is required for entity creation") }
-	// Reserve before constructing mutation state or invoking trusted defaults.
-	id, err := context.GenerateInternalId("Task")
-	if err != nil { return nil, err }
-	entity := NewTask()
-	initialized := context.InitializeEntity("Task", entity)
-	typed, ok := initialized.(*Task)
-	if !ok || typed == nil {
-		return nil, fmt.Errorf("entity initializer changed Task to an incompatible type")
-	}
-	typed.UpdateId(id)
-	if err := typed.base.RecordAllocatedID(id); err != nil { return nil, err }
-	return typed, nil
+	return NewTask(context)
 }
 
 func (e *ExecutableTaskRequest) ExecuteForOne(context *runtime.UserContext) (*Task, error) {

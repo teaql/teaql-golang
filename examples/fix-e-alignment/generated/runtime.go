@@ -38,7 +38,9 @@ func ensureGeneratedBootstrapOnce(context *runtime.UserContext) error {
 	tenant1, err := Q.Tenants().WithIdIs(uint64(1)).Comment("what: locate generated bootstrap entity").Purpose("why: idempotent runtime bootstrap").ExecuteForOne(context)
 	if err != nil { return fmt.Errorf("query bootstrap Tenant(1): %w", err) }
 	if tenant1 == nil {
-		tenant1 = tenant.NewTenant().UpdateId(uint64(1))
+		tenant1, err = Q.Tenants().Comment("Create generated bootstrap entity").Purpose("Initialize runtime bootstrap").NewEntity(context)
+		if err != nil { return err }
+		tenant1.UpdateId(uint64(1))
 		tenant1.UpdateName("Tenant Name")
 		if _, err = tenant1.AuditAs("create model root Tenant(1)").Save(context); err != nil {
 			createErr := err

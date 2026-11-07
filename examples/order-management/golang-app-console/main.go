@@ -28,6 +28,8 @@ func must(err error) {
 	}
 }
 
+func mustCreated[T any](value T, err error) T { must(err); return value }
+
 func main() {
 	db := os.Getenv("TEAQL_ORDER_MANAGEMENT_DB")
 	if db == "" {
@@ -60,7 +62,7 @@ func main() {
 	must(err)
 	if len(orders.Data) == 0 {
 		now := time.Date(2026, 8, 13, 9, 0, 0, 0, time.UTC)
-		buyer := customer.NewCustomer().
+		buyer := mustCreated(customer.NewCustomer(context)).
 			UpdateName("Acme Retail").
 			UpdateEmail("masked-in-quick-start").
 			UpdateCommercePlatformId(platformID).
@@ -70,7 +72,7 @@ func main() {
 			panic(err)
 		}
 		orderDate := time.Date(2026, 8, 12, 0, 0, 0, 0, time.UTC)
-		order := customer_order.NewCustomerOrder().
+		order := mustCreated(customer_order.NewCustomerOrder(context)).
 			UpdateOrderNumber("WEB-2026-001").
 			UpdateOrderDate(orderDate).
 			UpdateTotalAmount(decimal.RequireFromString("129.95")).
@@ -99,7 +101,7 @@ func main() {
 		Comment("Check idempotent quick-start preset").Purpose("Persist the operator's reusable search").ExecuteForList(context)
 	must(err)
 	if len(presets.Data) == 0 {
-		preset := order_search_preset.NewOrderSearchPreset().
+		preset := mustCreated(order_search_preset.NewOrderSearchPreset(context)).
 			UpdateName("Pending web orders").
 			UpdateFilterJson(`{"order_number":"WEB-"}`).
 			UpdateRequestId("quick-start-pending-orders").

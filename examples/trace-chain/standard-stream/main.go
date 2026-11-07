@@ -23,6 +23,7 @@ func must(err error) {
 		panic(err)
 	}
 }
+func mustCreated[T any](v T, err error) T { must(err); return v }
 func require(ok bool, reason string) {
 	if !ok {
 		panic(reason)
@@ -61,17 +62,17 @@ func main() {
 	require(first == 0 || first == 4, "bootstrap audit")
 	must(lib.EnsureSchema(context))
 	require(first == sink.count, "repeated seed")
-	account, err := customer.NewCustomer().UpdatePlatformId(1).UpdateName("Stream Customer").UpdateVersion(1).AuditAs("seed stream customer").Save(context)
+	account, err := mustCreated(customer.NewCustomer(context)).UpdatePlatformId(1).UpdateName("Stream Customer").UpdateVersion(1).AuditAs("seed stream customer").Save(context)
 	must(err)
 	secret := fmt.Sprintf("STREAM-PRIVATE-%d", time.Now().UnixNano())
-	order := customer_order.NewCustomerOrder().UpdateCustomerId(account.Id()).UpdateStatusId(1002).
+	order := mustCreated(customer_order.NewCustomerOrder(context)).UpdateCustomerId(account.Id()).UpdateStatusId(1002).
 		UpdateOrderNumber(secret).UpdateOrderDate(time.Date(2026, 10, 12, 0, 0, 0, 0, time.UTC)).
 		UpdateTotalAmount(decimal.NewFromInt(3)).UpdateVersion(1)
 	names := []string{}
 	for index := 1; index <= 3; index++ {
 		name := fmt.Sprintf("%s-%d", secret, index)
 		names = append(names, name)
-		order.OrderItemList().Add(order_item.NewOrderItem().UpdateProductName(name).UpdateQuantity(1).
+		order.OrderItemList().Add(mustCreated(order_item.NewOrderItem(context)).UpdateProductName(name).UpdateQuantity(1).
 			UpdateUnitPrice(decimal.NewFromInt(1)).UpdateVersion(1))
 	}
 	_, err = order.AuditAs("seed standard stream graph").Save(context)

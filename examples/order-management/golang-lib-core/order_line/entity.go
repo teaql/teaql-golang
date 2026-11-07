@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"reflect"
 	"strings"
-	"sync/atomic"
 
 	"time"
 	"github.com/shopspring/decimal"
@@ -24,12 +23,11 @@ var (
 	_ = errors.As
 )
 
-var teaqlTemporaryEntityID int64
-
 
 type OrderLine struct {
 	base        *core.BaseEntityData
 	loadedSnapshot core.LoadedScalarSnapshot
+	creationState core.EntityCreationState
 	dirtyFields map[string]bool
 	isNew       bool
 	markedAsDelete bool
@@ -58,32 +56,60 @@ func (e *OrderLine) CommercePlatformFacet(name string) (*core.SmartList[core.Rec
 	return e.base.RelationFacet("commercePlatformEntity", name)
 }
 
-func NewOrderLine() *OrderLine {
-	temporaryID := -atomic.AddInt64(&teaqlTemporaryEntityID, 1)
+// newUninitialized allocates only local carriers; it does not grant insert intent.
+func newUninitializedOrderLine() *OrderLine {
 	entity := &OrderLine{
 		base:        core.NewBaseEntityData(),
 		dirtyFields: make(map[string]bool),
-		isNew:       true,
 		loadState:   make(map[string]bool),
 		root:        core.NewEntityRoot(),
-		ledgerID:    core.ValI64(temporaryID),
+		ledgerID:    core.ValU64(0),
 		relations:   make(map[string]core.Entity),
 		loadedRelations: make(map[string]bool),
 	}
-	entity.root.MarkAsNew(entity.EntityKey())
 	return entity
 }
 
-// Hydration is not a create request. Keep this constructor private so public
-// NewEntity still records new-object intent, while a loaded snapshot starts
-// with independent mutation ownership and no pending insert.
+// New reserves through Context before constructing mutation state or defaults.
+func NewOrderLine(context *runtime.UserContext) (*OrderLine, error) {
+	if context == nil { return nil, &core.EntityCreationError{Entity: "order_line"} }
+	id, err := context.GenerateInternalId("order_line")
+	if err != nil { return nil, err }
+	entity := newUninitializedOrderLine()
+	entity.UpdateId(id)
+	if err := entity.creationState.Reserve(entity.EntityName(), id); err != nil { return nil, err }
+	entity.isNew = true
+	entity.root.MarkAsNew(entity.EntityKey())
+	initialized := context.InitializeEntity("OrderLine", entity)
+	typed, ok := initialized.(*OrderLine)
+	if !ok || typed == nil { return nil, fmt.Errorf("entity initializer changed OrderLine to an incompatible type") }
+	typed.teaqlEnsureState()
+	if err := typed.creationState.Reserve(typed.EntityName(), id); err != nil { return nil, err }
+	typed.UpdateId(id)
+	if err := typed.base.RecordAllocatedID(id); err != nil { return nil, err }
+	typed.isNew = true
+	typed.root.MarkAsNew(typed.EntityKey())
+	return typed, nil
+}
+
+// A hydrated read view is independent and never starts an insert ledger.
 func newLoadedOrderLine() *OrderLine {
-	entity := NewOrderLine()
-	entity.root.ClearEntity(entity.EntityKey())
+	entity := newUninitializedOrderLine()
+	entity.creationState.Hydrated()
 	return entity
+}
+
+func (e *OrderLine) teaqlEnsureState() {
+	if e.base == nil { e.base = core.NewBaseEntityData() }
+	if e.root == nil { e.root = core.NewEntityRoot() }
+	if e.dirtyFields == nil { e.dirtyFields = make(map[string]bool) }
+	if e.loadState == nil { e.loadState = make(map[string]bool) }
+	if e.relations == nil { e.relations = make(map[string]core.Entity) }
+	if e.loadedRelations == nil { e.loadedRelations = make(map[string]bool) }
 }
 
 func (e *OrderLine) EntityKey() core.EntityKey {
+	e.teaqlEnsureState()
 	if e.base.Id != 0 { return core.NewEntityKey(e.EntityName(), core.ValU64(e.base.Id)) }
 	return core.NewEntityKey(e.EntityName(), e.ledgerID)
 }
@@ -151,6 +177,7 @@ func (e *OrderLine) FromRecord(record core.Record) error {
 }
 
 func (e *OrderLine) teaqlFromRecord(record core.Record, captureLoaded bool) error {
+	e.teaqlEnsureState()
 	oldKey := e.EntityKey()
 	base, err := core.BaseEntityDataFromRecord(record)
 	if err != nil {
@@ -166,6 +193,7 @@ func (e *OrderLine) teaqlFromRecord(record core.Record, captureLoaded bool) erro
 	if captureLoaded {
 		e.root.ClearEntity(oldKey)
 		e.markedAsDelete = false
+		e.creationState.Hydrated()
 	} else {
 		base.PreserveAllocatedIDFrom(e.base)
 	}
@@ -192,7 +220,7 @@ func (e *OrderLine) teaqlLoadedScalarSnapshot(record core.Record) core.LoadedSca
 func (e *OrderLine) teaqlAcceptPersisted(context *runtime.UserContext, record core.Record) error {
 	if err := e.teaqlFromRecord(record, false); err != nil { return err }
 	committed := e.teaqlLoadedScalarSnapshot(record)
-	context.AfterGraphCommit(func() { e.loadedSnapshot = committed })
+	context.AfterGraphCommit(func() { e.loadedSnapshot = committed; e.creationState.Hydrated() })
 	return nil
 }
 
@@ -339,6 +367,7 @@ func TeaqlOrderLineFromJSONRecord(record core.Record, factory func(string, core.
 }
 
 func (e *OrderLine) Save(context *runtime.UserContext) (*OrderLine, error) {
+	if e == nil || e.base == nil || e.root == nil { return nil, &core.EntityCreationError{Entity: "order_line"} }
 	intent, intentErr := core.NewMutationIntent(e.comment)
 	if intentErr != nil { return nil, intentErr }
 	var saved *OrderLine
@@ -359,6 +388,7 @@ func (e *OrderLine) Save(context *runtime.UserContext) (*OrderLine, error) {
 // TeaqlPreflightGraph runs Checker/Fix for the complete aggregate before the
 // first provider mutation. It is generated infrastructure, not application API.
 func (e *OrderLine) TeaqlPreflightGraph(context *runtime.UserContext, intent core.MutationIntent) error {
+	if e == nil || e.base == nil || e.root == nil { return &core.EntityCreationError{Entity: "order_line"} }
 	if err := intent.Validate(); err != nil { return err }
 	if err := e.TeaqlPrepareMutationViews(context); err != nil { return err }
 	if err := e.TeaqlNormalizeMutationGraph(context); err != nil { return err }
@@ -370,6 +400,8 @@ func (e *OrderLine) TeaqlPreflightGraph(context *runtime.UserContext, intent cor
 // Preserve instance-local intent before automatic ledger attachment can merge
 // aliases. Known-baseline equal assignments are not writable intent.
 func (e *OrderLine) TeaqlPrepareMutationViews(context *runtime.UserContext) error {
+	if e == nil || e.base == nil || e.root == nil { return &core.EntityCreationError{Entity: "order_line"} }
+	if e.isNew { if err := e.creationState.RequireNew(e.EntityName(), e.base.Id); err != nil { return err } }
 	if e.isNew && e.markedAsDelete { return nil }
 	restoredFields, err := context.DiscardRestoredScalarChanges(e.root, e.EntityKey(), e.loadedSnapshot)
 	if err != nil { return err }
@@ -471,6 +503,7 @@ func (e *OrderLine) TeaqlPreflightWithinGraph(context *runtime.UserContext, inte
 
 type teaqlOrderLineSaveSnapshot struct {
 	loadedSnapshot core.LoadedScalarSnapshot
+	creationState core.EntityCreationState
 	record core.Record
 	queryProperties core.Record
 	dirtyFields map[string]bool
@@ -488,6 +521,7 @@ func (e *OrderLine) teaqlSaveSnapshot() teaqlOrderLineSaveSnapshot {
 	for field, value := range e.loadState { loaded[field] = value }
 	return teaqlOrderLineSaveSnapshot{
 		loadedSnapshot: e.loadedSnapshot,
+		creationState: e.creationState,
 		queryProperties: e.base.QueryProperties(),
 		record: e.IntoRecord(), dirtyFields: dirty, isNew: e.isNew,
 		markedAsDelete: e.markedAsDelete, loadState: loaded,
@@ -502,6 +536,7 @@ func (e *OrderLine) teaqlRegisterGraphOutcome(context *runtime.UserContext, snap
 		if err := e.teaqlFromRecord(snapshot.record, false); err != nil { panic(err) }
 		e.base.CaptureQueryProperties(snapshot.queryProperties)
 		e.loadedSnapshot = snapshot.loadedSnapshot
+		e.creationState = snapshot.creationState
 		e.dirtyFields = snapshot.dirtyFields
 		e.isNew = snapshot.isNew
 		e.markedAsDelete = snapshot.markedAsDelete
@@ -515,6 +550,8 @@ func (e *OrderLine) teaqlRegisterGraphOutcome(context *runtime.UserContext, snap
 // TeaqlSaveWithinGraph is generated infrastructure used by related entity
 // packages after the public root Save has opened the graph transaction.
 func (e *OrderLine) TeaqlSaveWithinGraph(context *runtime.UserContext, intent core.MutationIntent, parentScope *core.MutationTraceScope, privacy *data_service.MutationPrivacy, visited ...map[any]struct{}) (*OrderLine, error) {
+	if e == nil || e.base == nil || e.root == nil { return nil, &core.EntityCreationError{Entity: "order_line"} }
+	if e.isNew { if err := e.creationState.RequireNew(e.EntityName(), e.base.Id); err != nil { return nil, err } }
 	if err := intent.Validate(); err != nil { return nil, err }
 	// This traversal owns its pointer-identity set. Never deduplicate distinct
 	// views by entity ID, or keep a guard on Context/entities across saves.
@@ -565,12 +602,7 @@ func (e *OrderLine) TeaqlSaveWithinGraph(context *runtime.UserContext, intent co
 		if checkErr != nil { return nil, checkErr }
 		if err := e.teaqlFromRecord(checkedValues, false); err != nil { return nil, err }
 		if e.base.Id == 0 {
-			id, err := context.GenerateInternalId(e.EntityName())
-			if err != nil {
-				return nil, fmt.Errorf("generate id for %s: %w", e.EntityName(), err)
-			}
-			e.base.Id = id
-			if err := context.RekeyPreparedGraphEntity(e.root, core.NewEntityKey(e.EntityName(), e.ledgerID), e.EntityKey()); err != nil { return nil, err }
+			return nil, &core.EntityCreationError{Entity: e.EntityName()}
 		} else if !e.base.HasAllocatedID() {
 			if err := context.EnsureInternalIdFloor(context.Context, e.EntityName(), e.base.Id); err != nil {
 				return nil, fmt.Errorf("synchronize id floor for %s: %w", e.EntityName(), err)
@@ -697,6 +729,7 @@ func (e *OrderLine) Id() uint64 {
 }
 
 func (e *OrderLine) UpdateId(value uint64) *OrderLine {
+	e.teaqlEnsureState()
 	oldKey := e.EntityKey()
 	e.base.Id = value
 	e.root.Rekey(oldKey, e.EntityKey())
@@ -710,6 +743,7 @@ func (e *OrderLine) ProductName() string {
 	return res}
 
 func (e *OrderLine) UpdateProductName(value string) *OrderLine {
+	e.teaqlEnsureState()
 	e.base.PutDynamic("product_name", core.ValText(value))
 	e.dirtyFields["product_name"] = true
 	e.root.Set(e.EntityKey(), "product_name", core.ValText(value))
@@ -723,6 +757,7 @@ func (e *OrderLine) Sku() string {
 	return res}
 
 func (e *OrderLine) UpdateSku(value string) *OrderLine {
+	e.teaqlEnsureState()
 	e.base.PutDynamic("sku", core.ValText(value))
 	e.dirtyFields["sku"] = true
 	e.root.Set(e.EntityKey(), "sku", core.ValText(value))
@@ -736,6 +771,7 @@ func (e *OrderLine) Quantity() int64 {
 	return res}
 
 func (e *OrderLine) UpdateQuantity(value int64) *OrderLine {
+	e.teaqlEnsureState()
 	e.base.PutDynamic("quantity", core.ValI64(value))
 	e.dirtyFields["quantity"] = true
 	e.root.Set(e.EntityKey(), "quantity", core.ValI64(value))
@@ -749,6 +785,7 @@ func (e *OrderLine) CreateTime() time.Time {
 	return res}
 
 func (e *OrderLine) UpdateCreateTime(value time.Time) *OrderLine {
+	e.teaqlEnsureState()
 	e.base.PutDynamic("create_time", core.ValTimestamp(value.UnixMilli()))
 	e.dirtyFields["create_time"] = true
 	e.root.Set(e.EntityKey(), "create_time", core.ValTimestamp(value.UnixMilli()))
@@ -761,6 +798,7 @@ func (e *OrderLine) Version() int64 {
 }
 
 func (e *OrderLine) UpdateVersion(value int64) *OrderLine {
+	e.teaqlEnsureState()
 	e.base.Version = value
 	e.loadState["version"] = true
 	return e

@@ -71,7 +71,7 @@ func (r *TaskExecutionLogRequest) GetQuerySelection() *core.QuerySelection {
 }
 
 func (r *TaskExecutionLogRequest) GetEntityDescriptor() *core.EntityDescriptor {
-	return NewTaskExecutionLog().EntityDescriptor()
+	return newLoadedTaskExecutionLog().EntityDescriptor()
 }
 
 func (r *TaskExecutionLogRequest) NewRelationEntity() core.Entity {
@@ -635,19 +635,7 @@ func (r *TaskExecutionLogRequest) WithoutTaskMatching(child interface {
 func (e *ExecutableTaskExecutionLogRequest) NewEntity(context *runtime.UserContext) (*TaskExecutionLog, error) {
 	r := e.request
 	if _, err := core.NewQueryIntent(&r.commentText, &r.purposeText); err != nil { panic(err) }
-	if context == nil { return nil, fmt.Errorf("UserContext is required for entity creation") }
-	// Reserve before constructing mutation state or invoking trusted defaults.
-	id, err := context.GenerateInternalId("Task Execution Log")
-	if err != nil { return nil, err }
-	entity := NewTaskExecutionLog()
-	initialized := context.InitializeEntity("TaskExecutionLog", entity)
-	typed, ok := initialized.(*TaskExecutionLog)
-	if !ok || typed == nil {
-		return nil, fmt.Errorf("entity initializer changed TaskExecutionLog to an incompatible type")
-	}
-	typed.UpdateId(id)
-	if err := typed.base.RecordAllocatedID(id); err != nil { return nil, err }
-	return typed, nil
+	return NewTaskExecutionLog(context)
 }
 
 func (e *ExecutableTaskExecutionLogRequest) ExecuteForOne(context *runtime.UserContext) (*TaskExecutionLog, error) {
