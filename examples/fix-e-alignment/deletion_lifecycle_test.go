@@ -67,7 +67,7 @@ func TestGeneratedCancelledNewRootAndChildLifecycle(t *testing.T) {
 		QueryExecutor: original.(data_service.QueryExecutor), transaction: original.(data_service.TransactionExecutor),
 	}}}
 	ctx.InsertResource("dataService", probe)
-	ids := &lateExampleIDs{context: ctx}
+	ids := &lateExampleIDs{delegate: ctx.InternalIdGenerator()}
 	ctx.WithInternalIdGenerator(ids)
 	audit := &restorationAudit{}
 	ctx.WithAppAuditEventSink(audit)
@@ -86,6 +86,10 @@ func TestGeneratedCancelledNewRootAndChildLifecycle(t *testing.T) {
 			t.Fatal(rowCreationErr)
 		}
 		row.UpdateContactPhone("5550920").UpdateInternalNote(nil)
+		reservedID := row.Id()
+		if reservedID == 0 {
+			t.Fatal("cancelled creation must first reserve an identity")
+		}
 		reset()
 		row.MarkForDeletion()
 		if got := counts(); got["begins"] != 0 || got["mutations"] != 0 || got["ids"] != 0 {
@@ -95,7 +99,7 @@ func TestGeneratedCancelledNewRootAndChildLifecycle(t *testing.T) {
 		if err == nil || probe.begins != 0 || probe.queries != 0 || probe.mutations != 0 || probe.commits != 0 || probe.rollbacks != 0 || ids.calls != 0 || audit.events != 0 {
 			t.Fatal("cancelled root did not reject before provider/ID entry", err, counts())
 		}
-		if !row.IsNew() || !row.IsMarkedAsDelete() || !row.EntityRoot().IsNew(row.EntityKey()) || !row.EntityRoot().IsDeleted(row.EntityKey()) {
+		if row.Id() != reservedID || !row.IsNew() || !row.IsMarkedAsDelete() || !row.EntityRoot().IsNew(row.EntityKey()) || !row.EntityRoot().IsDeleted(row.EntityKey()) {
 			t.Fatal("rejected root lost its cancellation intent")
 		}
 		frames = append(frames, map[string]any{"case": "cancelled-root", "rejected": true, "counts": counts()})
@@ -125,6 +129,10 @@ func TestGeneratedCancelledNewRootAndChildLifecycle(t *testing.T) {
 			kept.UpdateProductName("Retained synthetic widget").UpdateUnitPrice(decimal.NewFromInt(12))
 			parent.OrderItemList().Add(cancelled)
 			parent.OrderItemList().Add(kept)
+			reservedParent, reservedChild, reservedCancelled := parent.Id(), kept.Id(), cancelled.Id()
+			if reservedParent == 0 || reservedChild == 0 || reservedCancelled == 0 || reservedChild == reservedCancelled {
+				t.Fatal("all three creations require valid reserved identities")
+			}
 			reset()
 			var rejected map[string]int
 			if variant == "rollback-retry" {
@@ -147,7 +155,7 @@ func TestGeneratedCancelledNewRootAndChildLifecycle(t *testing.T) {
 				if err := db.QueryRow("SELECT COUNT(*) FROM order_item_data").Scan(&childrenAfter); err != nil {
 					t.Fatal(err)
 				}
-				if parentsAfter != parentsBefore || childrenAfter != childrenBefore || parent.Id() != 0 || kept.Id() != 0 || !parent.IsNew() || !kept.IsNew() || !cancelled.IsMarkedAsDelete() {
+				if parentsAfter != parentsBefore || childrenAfter != childrenBefore || parent.Id() != reservedParent || kept.Id() != reservedChild || cancelled.Id() != reservedCancelled || !parent.IsNew() || !kept.IsNew() || !cancelled.IsMarkedAsDelete() {
 					t.Fatal("failed graph lost retry state or left physical rows", parentsBefore, parentsAfter, childrenBefore, childrenAfter)
 				}
 				rejected = counts()
@@ -157,7 +165,7 @@ func TestGeneratedCancelledNewRootAndChildLifecycle(t *testing.T) {
 			if err != nil {
 				t.Fatal("cancelled child rejected the parent save", err, counts())
 			}
-			if saved != parent || probe.begins != 1 || probe.mutations != 2 || probe.commits != 1 || probe.rollbacks != 0 || ids.calls != 2 || audit.events != 2 || cancelled.Id() != 0 || !cancelled.IsNew() || !cancelled.IsMarkedAsDelete() {
+			if saved != parent || probe.begins != 1 || probe.mutations != 2 || probe.commits != 1 || probe.rollbacks != 0 || ids.calls != 0 || audit.events != 2 || parent.Id() != reservedParent || kept.Id() != reservedChild || cancelled.Id() != reservedCancelled || !cancelled.IsNew() || !cancelled.IsMarkedAsDelete() {
 				t.Fatal("cancelled child was allocated, written or incorrectly committed", counts(), cancelled.Id())
 			}
 			written := counts()
@@ -177,6 +185,10 @@ func TestGeneratedCancelledNewRootAndChildLifecycle(t *testing.T) {
 			var rows, version int64
 			if err := db.QueryRow("SELECT COUNT(*), MIN(version) FROM order_item_data WHERE purchase_order = ?", parent.Id()).Scan(&rows, &version); err != nil || rows != 1 || version != 1 {
 				t.Fatal("physical child rows disagree", rows, version, err)
+			}
+			var cancelledRows int
+			if err := db.QueryRow("SELECT COUNT(*) FROM order_item_data WHERE id = ?", reservedCancelled).Scan(&cancelledRows); err != nil || cancelledRows != 0 {
+				t.Fatal("a reserved but cancelled child was persisted", cancelledRows, err)
 			}
 			reset()
 			if _, err := parent.AuditAs("Resave the unchanged surviving graph").Save(ctx); err != nil || probe.begins != 0 || probe.mutations != 0 || ids.calls != 0 || audit.events != 0 {

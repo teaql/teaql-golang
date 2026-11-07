@@ -143,7 +143,7 @@ func newGraphFixFixture(t *testing.T, suffix string) *graphFixFixture {
 	}
 	original := ctx.GetResource("dataService")
 	p := &graphFixProvider{guardedExampleProvider: &guardedExampleProvider{&restorationProvider{QueryExecutor: original.(data_service.QueryExecutor), transaction: original.(data_service.TransactionExecutor)}}}
-	f := &graphFixFixture{ctx: ctx, db: db, provider: p, ids: &lateExampleIDs{context: ctx}}
+	f := &graphFixFixture{ctx: ctx, db: db, provider: p, ids: &lateExampleIDs{delegate: ctx.InternalIdGenerator()}}
 	f.checker = &graphFixChecker{delegate: lib.Module().CheckerRegistry, effects: f.effects}
 	ctx.InsertResource("dataService", p)
 	ctx.WithInternalIdGenerator(f.ids).WithCheckerRegistry(f.checker)

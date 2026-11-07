@@ -109,7 +109,7 @@ func TestGeneratedContextRootInjectionAndOwnershipBoundaries(t *testing.T) {
 		QueryExecutor: provider.(data_service.QueryExecutor), transaction: provider.(data_service.TransactionExecutor)}}}
 	audit := &restorationAudit{}
 	policyCalls := 0
-	ids := &lateExampleIDs{}
+	ids := &lateExampleIDs{delegate: bootstrap.InternalIdGenerator()}
 	effects := func() map[string]int {
 		return map[string]int{"begins": probe.begins, "queries": probe.queries,
 			"mutations": probe.mutations, "commits": probe.commits, "rollbacks": probe.rollbacks,
@@ -132,7 +132,6 @@ func TestGeneratedContextRootInjectionAndOwnershipBoundaries(t *testing.T) {
 		if root != nil {
 			ctx.WithActiveRoot(*root)
 		}
-		ids.context = ctx
 		ctx.WithInternalIdGenerator(ids)
 		return ctx
 	}
@@ -152,13 +151,16 @@ func TestGeneratedContextRootInjectionAndOwnershipBoundaries(t *testing.T) {
 	}
 	child.UpdateProductName("Context root child").UpdateUnitPrice(decimal.RequireFromString("10.00"))
 	parent.OrderItemList().Add(child)
+	if parent.Id() == 0 || child.Id() == 0 || ids.calls != 2 {
+		t.Fatal("both creations must reserve an identity before save", parent.Id(), child.Id(), ids.calls)
+	}
 	reset()
 	parent, err = parent.AuditAs("Persist a graph with trusted context ownership").Save(ctx)
 	if err != nil {
 		t.Fatal(err)
 	}
 	calibration := effects()
-	if calibration["mutations"] != 2 || calibration["idAllocations"] != 2 || calibration["commits"] != 1 || calibration["audits"] != 2 || calibration["policies"] == 0 || calibration["rootLookups"] != 0 {
+	if calibration["mutations"] != 2 || calibration["idAllocations"] != 0 || calibration["commits"] != 1 || calibration["audits"] != 2 || calibration["policies"] == 0 || calibration["rootLookups"] != 0 {
 		t.Fatal("positive graph did not calibrate the real observers without root lookup", calibration)
 	}
 	rootID, present := lib.E.PurchaseOrder(parent).TenantId().Eval()
