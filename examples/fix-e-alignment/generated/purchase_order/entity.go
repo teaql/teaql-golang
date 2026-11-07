@@ -157,6 +157,8 @@ func (e *PurchaseOrder) IdValue() core.Value {
 
 
 
+// FromRecord replaces this entity's loaded snapshot and its obsolete pending
+// intent only after validation. Other entities in the ledger are unaffected.
 func (e *PurchaseOrder) FromRecord(record core.Record) error {
 	return e.teaqlFromRecord(record, true)
 }
@@ -166,6 +168,10 @@ func (e *PurchaseOrder) teaqlFromRecord(record core.Record, captureLoaded bool) 
 	base, err := core.BaseEntityDataFromRecord(record)
 	if err != nil {
 		return err
+	}
+	if captureLoaded {
+		e.root.ClearEntity(oldKey)
+		e.markedAsDelete = false
 	}
 	e.base = base
 	e.root.Rekey(oldKey, e.EntityKey())
@@ -554,7 +560,9 @@ func (e *PurchaseOrder) teaqlSaveSnapshot() teaqlPurchaseOrderSaveSnapshot {
 
 func (e *PurchaseOrder) teaqlRegisterGraphOutcome(context *runtime.UserContext, snapshot teaqlPurchaseOrderSaveSnapshot) {
 	context.AfterGraphRollback(func() {
-		if err := e.FromRecord(snapshot.record); err != nil { panic(err) }
+		// Rollback restores the native view, not a newly loaded snapshot. Keep
+		// pending insert/update/delete intent available for the same graph retry.
+		if err := e.teaqlFromRecord(snapshot.record, false); err != nil { panic(err) }
 		e.base.CaptureQueryProperties(snapshot.queryProperties)
 		e.loadedSnapshot = snapshot.loadedSnapshot
 		e.dirtyFields = snapshot.dirtyFields

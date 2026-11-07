@@ -862,11 +862,29 @@ func (r *TenantRequest) GroupById() *TenantRequest {
 	r.Query.WithGroupBy("id")
 	return r
 }
+
+func (r *TenantRequest) GroupByIdAs(alias string) *TenantRequest {
+	r.Query.WithGroupBy("id")
+	r.Query.ProjectExpr(alias, core.ExprColumnNode("id"))
+	return r
+}
 func (r *TenantRequest) GroupByName() *TenantRequest {
 	r.Query.WithGroupBy("name")
 	return r
 }
+
+func (r *TenantRequest) GroupByNameAs(alias string) *TenantRequest {
+	r.Query.WithGroupBy("name")
+	r.Query.ProjectExpr(alias, core.ExprColumnNode("name"))
+	return r
+}
 func (r *TenantRequest) GroupByVersion() *TenantRequest {
 	r.Query.WithGroupBy("version")
+	return r
+}
+
+func (r *TenantRequest) GroupByVersionAs(alias string) *TenantRequest {
+	r.Query.WithGroupBy("version")
+	r.Query.ProjectExpr(alias, core.ExprColumnNode("version"))
 	return r
 }

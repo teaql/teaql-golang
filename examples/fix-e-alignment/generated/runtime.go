@@ -164,7 +164,7 @@ func checkPurchaseOrder(context *runtime.UserContext, input *runtime.CheckAndFix
 	if input.Operation == core.MutationInsert {
 		root, err := context.RequireActiveRoot("Tenant")
 		if err != nil {
-			results = append(results, runtime.CheckResult{RuleID: "context_root", CanonicalLocation: runtime.Location().Property("tenant"), SystemValue: "Tenant"})
+			return []runtime.CheckResult{{RuleID: "context_root_missing", EntityType: "PurchaseOrder", CanonicalLocation: runtime.Location().Property("tenant")}}
 		} else if value, exists := input.Values["tenant"]; exists && value.V != nil {
 			if supplied, ok := value.TryU64(); !ok || supplied != root.ID { results = append(results, runtime.CheckResult{RuleID: "context_root_mismatch", CanonicalLocation: runtime.Location().Property("tenant"), InputValue: value.V, SystemValue: root.ID}) }
 		} else {
@@ -175,7 +175,7 @@ func checkPurchaseOrder(context *runtime.UserContext, input *runtime.CheckAndFix
 		if value, exists := input.Values["tenant"]; exists && value.V != nil {
 			root, err := context.RequireActiveRoot("Tenant")
 			if err != nil {
-				results = append(results, runtime.CheckResult{RuleID: "context_root", CanonicalLocation: runtime.Location().Property("tenant"), SystemValue: "Tenant"})
+				return []runtime.CheckResult{{RuleID: "context_root_missing", EntityType: "PurchaseOrder", CanonicalLocation: runtime.Location().Property("tenant")}}
 			} else if supplied, ok := value.TryU64(); !ok || supplied != root.ID {
 				results = append(results, runtime.CheckResult{RuleID: "context_root_mismatch", CanonicalLocation: runtime.Location().Property("tenant"), InputValue: value.V, SystemValue: root.ID})
 			}
@@ -241,7 +241,7 @@ func checkOrderItem(context *runtime.UserContext, input *runtime.CheckAndFixInpu
 	if input.Operation == core.MutationInsert {
 		root, err := context.RequireActiveRoot("Tenant")
 		if err != nil {
-			results = append(results, runtime.CheckResult{RuleID: "context_root", CanonicalLocation: runtime.Location().Property("tenant"), SystemValue: "Tenant"})
+			return []runtime.CheckResult{{RuleID: "context_root_missing", EntityType: "OrderItem", CanonicalLocation: runtime.Location().Property("tenant")}}
 		} else if value, exists := input.Values["tenant"]; exists && value.V != nil {
 			if supplied, ok := value.TryU64(); !ok || supplied != root.ID { results = append(results, runtime.CheckResult{RuleID: "context_root_mismatch", CanonicalLocation: runtime.Location().Property("tenant"), InputValue: value.V, SystemValue: root.ID}) }
 		} else {
@@ -252,7 +252,7 @@ func checkOrderItem(context *runtime.UserContext, input *runtime.CheckAndFixInpu
 		if value, exists := input.Values["tenant"]; exists && value.V != nil {
 			root, err := context.RequireActiveRoot("Tenant")
 			if err != nil {
-				results = append(results, runtime.CheckResult{RuleID: "context_root", CanonicalLocation: runtime.Location().Property("tenant"), SystemValue: "Tenant"})
+				return []runtime.CheckResult{{RuleID: "context_root_missing", EntityType: "OrderItem", CanonicalLocation: runtime.Location().Property("tenant")}}
 			} else if supplied, ok := value.TryU64(); !ok || supplied != root.ID {
 				results = append(results, runtime.CheckResult{RuleID: "context_root_mismatch", CanonicalLocation: runtime.Location().Property("tenant"), InputValue: value.V, SystemValue: root.ID})
 			}

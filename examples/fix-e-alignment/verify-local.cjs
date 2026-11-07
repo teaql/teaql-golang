@@ -28,6 +28,9 @@ async function main() {
 try {
   const disk = fs.statfsSync(scratch); assert(disk.bavail * disk.bsize > 4 * 1024 ** 3);
   const m = fingerprint(); report.modelSha256 = m.modelSha256;
+  report.fixtureGeneratorCommit = m.generatorCommit;
+  report.explicitHydrationApplicationSha256 = sha(fs.readFileSync(path.join(example, 'explicit_hydration_test.go')));
+  report.explicitHydrationRounds = [];
   report.contextRootApplicationSha256 = sha(fs.readFileSync(path.join(example, 'context_root_test.go')));
   report.partialAncestorApplicationSha256 = sha(fs.readFileSync(path.join(example, 'partial_ancestors_test.go')));
   report.partialRootApplicationSha256 = sha(fs.readFileSync(path.join(example, 'partial_root_test.go')));
@@ -79,7 +82,16 @@ try {
     env.CORE236_GO_GRAPH_ROUND = String(round);
     const log = await run([binary, '-test.v', '-test.count=1', '-test.run', '^TestGenerated|^TestCore236Graph'], 'round-' + round + '.log', 90000);
     assert(!log.includes('WARNING: DATA RACE'));
-    assert.equal([...log.matchAll(/^--- PASS: /gm)].length, 31);
+    assert.equal([...log.matchAll(/^--- PASS: /gm)].length, 32);
+    const hydration = log.split(/\r?\n/).filter(line => line.startsWith('GO_EXPLICIT_HYDRATION='))
+      .map(line => JSON.parse(line.slice('GO_EXPLICIT_HYDRATION='.length)));
+    assert.equal(hydration.length, 1);
+    const h = hydration[0];
+    assert(h.passed && h.round === round && h.version === 2 && h.noOpSaves === 2 && h.denials === 2 && h.storedRows === round);
+    for (const flag of ['invalidReplacementRejected', 'pendingIntentRetained', 'knownNullPreserved', 'sparseNotLoadedPreserved']) assert.equal(h[flag], true);
+    for (const effects of [h.noOpEffects, h.deniedEffects]) assert(Object.values(effects).every(value => value === 0));
+    assert.deepEqual(h.writes, {begins: 1, queries: 0, mutations: 1, commits: 1, rollbacks: 0, audits: 1, policies: 1});
+    report.explicitHydrationRounds.push(h);
     const concurrent = log.split(/\r?\n/).filter(line => line.startsWith('GO_CONCURRENT_QUERY='))
       .map(line => JSON.parse(line.slice('GO_CONCURRENT_QUERY='.length)));
     assert.equal(concurrent.length, 1);
@@ -114,7 +126,7 @@ try {
     const distinct = graph.find(row => row.case === 'distinct-views');
     assert.equal(distinct.facts.rejectedBeforeProvider, true);
     assert(Object.values(distinct.facts.effects).every(value => value === 0));
-    report.graphRounds.push({round, methodPasses: 31, observations: graph});
+    report.graphRounds.push({round, methodPasses: 32, observations: graph});
     for (const marker of ['FIX_E_EXAMPLE=', 'CORE_LOAD_EXAMPLE=', 'CORE_MUTATION_OWNERSHIP=', 'CORE_MUTATION_PAGING=', 'CORE_VERSION_LIFECYCLE=', 'GO_CHECKER_METADATA=', 'GO_CHECKER_EXACT_RANGES=', 'GO_CONTEXT_ROOT_RESULT=', 'GO_PARTIAL_ANCESTORS_RESULT=', 'GO_PARTIAL_ROOT_RESULT=', 'GO_CHECKER_BOUNDARY_RESULT=']) {
       const values = log.split(/\r?\n/).filter(line => line.startsWith(marker)).map(line => JSON.parse(line.slice(marker.length)));
       assert.equal(values.length, 1, marker); assert.equal(values[0].passed, true, marker);
@@ -174,6 +186,8 @@ try {
     sha256: sha(fs.readFileSync(path.join(evidence, 'fixture.sqlite.projection-views.sqlite')))};
   report.unchangedDatabase = {file: 'fixture.sqlite.unchanged.projection-views.sqlite',
     sha256: sha(fs.readFileSync(path.join(evidence, 'fixture.sqlite.unchanged.projection-views.sqlite')))};
+  report.explicitHydrationDatabase = {file: 'fixture.sqlite.explicit-hydration.projection-views.sqlite',
+    sha256: sha(fs.readFileSync(path.join(evidence, 'fixture.sqlite.explicit-hydration.projection-views.sqlite')))};
   report.passed = true;
   console.log('PASS Go retained Fix/E/loading/ownership/graph example twice without resetting databases');
 } catch (error) { report.passed = false; report.error = error.stack; console.error(error.stack); process.exitCode ||= 1; }

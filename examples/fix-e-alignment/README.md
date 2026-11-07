@@ -10,9 +10,20 @@ compiler outputs after the processes exit. Compact evidence and databases remain
 
 `graph_fix_test.go` and `graph_view_test.go` exercise actual generated Q/E and
 audited graph saves. They are required by this default gate, which now runs
-30 top-level methods twice with the race detector, retaining the same databases
+32 top-level methods twice with the race detector, retaining the same databases
 between rounds. The generated library is copied unchanged from its evaluated
 generator output and checked against `fixture-manifest.json`.
+
+`explicit_hydration_test.go` verifies public `New + FromRecord` through real
+SQLite. Loading complete and identity-only snapshots leaves no constructor
+insert intent; unchanged saves have zero provider/policy/audit effects. Invalid
+replacement, wrong-context writes and edits of incomplete objects preserve
+pending intent without provider work. A valid retry commits one update, and
+generated Q/E plus read-only SQL observe exactly one retained row per round.
+The refreshed fixture comes from the integrated generator candidate recorded
+in the manifest, preserving recursive E traversal, pointer-identity graph saves
+and all five graph-admission stages. Internal Fix/rollback hydration remains
+separate from explicit snapshot replacement.
 
 The graph cases verify one Business Clock instant, once-per-entity Fix,
 rollback/cancellation and retry, repeated-pointer idempotence, and independent
