@@ -42,7 +42,11 @@ func TestGeneratedSchoolRequestIntentWithLoggingDisabled(t *testing.T) {
 	assertRequired(err, "REQUEST_COMMENT_REQUIRED")
 	err = Q.Schools().Comment(" ").Purpose("render schools").ExecuteForStream(context, 1, func(*school.School) error { t.Fatal("invalid request yielded an entity"); return nil })
 	assertRequired(err, "REQUEST_COMMENT_REQUIRED")
-	_, err = school.NewSchool().Save(context)
+	unapproved, creationErr := school.NewSchool(context)
+	if creationErr != nil {
+		t.Fatal(creationErr)
+	}
+	_, err = unapproved.Save(context)
 	assertRequired(err, "REQUEST_COMMENT_REQUIRED")
 	rows, err := Q.Schools().Comment("verify rejected write absence").Purpose("verify request intent gates").ExecuteForList(context)
 	if err != nil || len(rows.Data) != 0 {
