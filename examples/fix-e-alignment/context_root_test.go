@@ -202,6 +202,9 @@ func TestGeneratedContextRootInjectionAndOwnershipBoundaries(t *testing.T) {
 				}
 			}
 		}
+		if rule == "context_root_missing" {
+			matched = matched && check != nil && len(check.CheckResults) == 1 && check.CheckResults[0].EntityType == "PurchaseOrder"
+		}
 		counts := effects()
 		zero := true
 		for _, count := range counts {
@@ -220,11 +223,11 @@ func TestGeneratedContextRootInjectionAndOwnershipBoundaries(t *testing.T) {
 		fmt.Println("GO_CONTEXT_ROOT_CASE=" + string(bytes))
 	}
 	missing := contextFor(nil)
-	reject("missing-root", missing, newOrder(missing), "context_root")
+	reject("missing-root", missing, newOrder(missing), "context_root_missing")
 	wrongType := contextFor(&runtime.EntityReference{Entity: "UnrelatedRoot", ID: active.ID})
-	reject("type-mismatch", wrongType, newOrder(wrongType), "context_root")
+	reject("type-mismatch", wrongType, newOrder(wrongType), "context_root_missing")
 	zero := contextFor(&runtime.EntityReference{Entity: "Tenant", ID: 0})
-	reject("zero-root", zero, newOrder(zero), "context_root")
+	reject("zero-root", zero, newOrder(zero), "context_root_missing")
 	valid := contextFor(&active)
 	conflicting := newOrder(valid)
 	conflicting.EntityRoot().Set(conflicting.EntityKey(), "tenant", core.ValU64(active.ID+1))
