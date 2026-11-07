@@ -74,6 +74,31 @@ type BaseEntityData struct {
 	identityProjection bool
 	idLoaded           bool
 	versionLoaded      bool
+	allocatedID        uint64
+}
+
+// RecordAllocatedID binds the current new-entity identity to a completed
+// context allocator reservation. Generated framework wiring calls this only
+// after allocation succeeds; explicit/imported IDs remain a separate path.
+func (b *BaseEntityData) RecordAllocatedID(id uint64) error {
+	if id == 0 || b.Id != id {
+		return fmt.Errorf("allocated identity must match the nonzero entity ID")
+	}
+	b.allocatedID = id
+	return nil
+}
+
+// HasAllocatedID never transfers a reservation to a subsequently assigned ID.
+func (b *BaseEntityData) HasAllocatedID() bool {
+	return b.Id != 0 && b.Id == b.allocatedID
+}
+
+// PreserveAllocatedIDFrom is for internal Fix write-back, not public hydration.
+// A new carrier may keep a reservation only while the identity is unchanged.
+func (b *BaseEntityData) PreserveAllocatedIDFrom(previous *BaseEntityData) {
+	if previous != nil && previous.HasAllocatedID() && b.Id == previous.Id {
+		b.allocatedID = previous.allocatedID
+	}
 }
 
 func NewBaseEntityData() *BaseEntityData {
