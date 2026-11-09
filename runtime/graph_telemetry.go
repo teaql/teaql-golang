@@ -17,7 +17,10 @@ type graphTelemetryTransaction struct {
 }
 
 func (t *graphTelemetryTransaction) Mutate(ctx context.Context, request data_service.MutationRequest) (*data_service.MutationResult, error) {
-	carrier := graphMutationContext{Context: ctx, parent: t.context}
+	// database/sql may keep reading this carrier after Mutate returns. Capture
+	// the native parent before delegation, rather than retaining a reusable
+	// UserContext whose ambient Context can belong to the next invocation.
+	carrier := graphMutationContext{Context: preserveRuntimeContextServices(ctx), parent: t.context}
 	if t.guard != nil {
 		return t.guard.mutate(carrier, request, t.Transaction)
 	}

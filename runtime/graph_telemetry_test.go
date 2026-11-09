@@ -186,6 +186,40 @@ func TestGraphCarrierPreservesInvocationLocalServiceOwners(t *testing.T) {
 	}
 }
 
+func TestGraphMutationCarrierPinsNativeContextBeforeProviderRetention(t *testing.T) {
+	user := NewUserContext()
+	native, cancel := context.WithTimeout(context.Background(), time.Minute)
+	defer cancel()
+	user.Context = native
+	inner := &carrierProbeTransaction{}
+	bound := bindGraphTelemetryTransaction(inner, context.WithValue(context.Background(), graphCarrierKey{}, 7))
+	_, _ = bound.Mutate(user, nil)
+	// A provider may retain the carrier for its cancellation watcher. Reusing
+	// the ambient Context later must not change that previous call's lifetime.
+	replacement, cancelReplacement := context.WithCancel(context.Background())
+	cancelReplacement()
+	user.Context = replacement
+	if inner.mutated.Err() != nil || inner.mutated.Done() != native.Done() {
+		t.Fatal("retained mutation carrier followed the next invocation's cancellation")
+	}
+	deadline, _ := native.Deadline()
+	if got, ok := inner.mutated.Deadline(); !ok || got != deadline {
+		t.Fatal("retained mutation carrier lost its own native deadline")
+	}
+	for _, key := range []any{userContextKey{}, mutationaudit.ContextKey{}, data_service.SQLStatementObserverKey{}} {
+		if inner.mutated.Value(key) != user {
+			t.Fatal("native snapshot detached the original service owner")
+		}
+	}
+	if inner.mutated.Value(graphCarrierKey{}) != 7 {
+		t.Fatal("native snapshot detached the captured graph parent")
+	}
+	cancel()
+	if !errors.Is(inner.mutated.Err(), context.Canceled) {
+		t.Fatal("retained mutation carrier ignored its own native cancellation")
+	}
+}
+
 type graphBeginPanicProvider struct {
 	*graphTransactionProbe
 	failure error
