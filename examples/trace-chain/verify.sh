@@ -49,8 +49,14 @@ go test ./... -count=1 -v -timeout 120s | tee "$verification/generated-1.log"
 # Same paths and databases; no deletion or schema reset between executions.
 go test ./... -count=1 -v -timeout 120s | tee "$verification/generated-2.log"
 for iteration in 1 2; do
-  if [[ "$(rg -c '^--- PASS: TestGenerated' "$verification/generated-$iteration.log")" != 27 ]]; then
-    echo "FAIL: all twenty-seven generated graph scenarios must execute" >&2
+  if [[ "$(rg -c '^--- PASS: TestGenerated' "$verification/generated-$iteration.log")" != 28 ]]; then
+    echo "FAIL: all twenty-eight generated graph scenarios must execute" >&2
+    exit 1
+  fi
+  rg -q '^--- PASS: TestBlockedGeneratedSaveStackRequiresActualCancellableGateWait ' "$verification/generated-$iteration.log"
+  rg -q '^--- PASS: TestGeneratedCancelledQueuedSaveRetainsPendingMutation ' "$verification/generated-$iteration.log"
+  if [[ "$(rg -c '^GO_QUEUED_SAVE_CANCELLATION=' "$verification/generated-$iteration.log")" != 2 ]]; then
+    echo "FAIL: both logging modes must verify generated queued cancellation and retry" >&2
     exit 1
   fi
   rg -q '^--- PASS: TestGeneratedStreamsOverlapWithIndependentSavesAndSafeTermination ' "$verification/generated-$iteration.log"

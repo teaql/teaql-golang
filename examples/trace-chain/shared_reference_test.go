@@ -22,12 +22,19 @@ import (
 // channel as proof that the save requests overlap. This does not change the
 // runtime or claim simultaneous SQLite writers.
 func blockedGeneratedSaveStack(stack string) bool {
-	// Go versions differ in the goroutine wait-state label. Require the real
-	// mutex slow path and both invocation frames, not a version-specific label
-	// or a goroutine merely scheduled to call Save.
-	return strings.Contains(stack, "(*Mutex).lockSlow(") &&
-		strings.Contains(stack, "(*UserContext).ExecutePreparedGraphSave(") &&
-		strings.Contains(stack, "(*CustomerOrder).Save(")
+	if !strings.Contains(stack, "(*UserContext).ExecutePreparedGraphSave(") ||
+		!strings.Contains(stack, "(*CustomerOrder).Save(") {
+		return false
+	}
+	// Retain the historical mutex witness. For the cancellable gate, require
+	// the gate's own top frame to be suspended in select: a scheduled Save,
+	// another channel or a Context callback is not evidence of gate contention.
+	if strings.Contains(stack, "(*Mutex).lockSlow(") {
+		return true
+	}
+	lines := strings.SplitN(stack, "\n", 3)
+	return len(lines) >= 2 && strings.Contains(lines[0], "[select") &&
+		strings.Contains(lines[1], "(*cancellableGraphSaveGate).LockContext(")
 }
 
 func awaitBlockedGeneratedSave(t *testing.T) {
