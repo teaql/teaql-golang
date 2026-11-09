@@ -130,3 +130,110 @@ func TestGraphSaveGateCancelledWaiterReturnsBeforeOwnerFinishes(t *testing.T) {
 		})
 	}
 }
+
+// Additional candidate controls follow the byte-identical failing regressions.
+func TestGraphSaveGateZeroValueAndExpiredDeadline(t *testing.T) {
+	var gate cancellableGraphSaveGate
+	if !gate.TryLock() || gate.TryLock() {
+		t.Fatal("zero-value gate did not enforce one owner")
+	}
+	gate.Unlock()
+	parent, cancel := context.WithDeadline(context.Background(), time.Unix(1, 0))
+	defer cancel()
+	if err := gate.LockContext(parent); !errors.Is(err, context.DeadlineExceeded) {
+		t.Fatalf("expired deadline returned %v", err)
+	}
+	if !gate.TryLock() {
+		t.Fatal("cancelled admission poisoned the gate")
+	}
+	gate.Unlock()
+}
+
+type graphGatePanicContext struct {
+	context.Context
+	calls int
+}
+
+func (p *graphGatePanicContext) Err() error {
+	p.calls++
+	if p.calls == 2 {
+		panic("synthetic post-acquisition Context.Err failure")
+	}
+	return nil
+}
+
+func TestGraphSaveGatePostAcquisitionContextPanicReleasesOwner(t *testing.T) {
+	var gate cancellableGraphSaveGate
+	func() {
+		defer func() {
+			if recover() != "synthetic post-acquisition Context.Err failure" {
+				t.Error("gate lost the original customer Context panic")
+			}
+		}()
+		_ = gate.LockContext(&graphGatePanicContext{Context: context.Background()})
+	}()
+	if !gate.TryLock() {
+		t.Fatal("Context panic poisoned the graph gate")
+	}
+	gate.Unlock()
+}
+
+type graphGateObservedContext struct {
+	context.Context
+	observed chan struct{}
+	calls    int32
+}
+
+func (p *graphGateObservedContext) Err() error {
+	if atomic.AddInt32(&p.calls, 1) == 1 {
+		close(p.observed)
+	}
+	return p.Context.Err()
+}
+
+type graphGateSnapshotKey struct{}
+type graphGateSnapshotTelemetry struct {
+	*graphGateCancellationTelemetry
+	observed chan context.Context
+}
+
+func (p *graphGateSnapshotTelemetry) Start(ctx context.Context, op RuntimeOperation) (context.Context, RuntimeTelemetryScope) {
+	p.observed <- ctx
+	return p.graphGateCancellationTelemetry.Start(ctx, op)
+}
+
+func TestGraphSaveGatePinsNativeContextBeforeWaiting(t *testing.T) {
+	parent := &graphGateObservedContext{
+		Context:  context.WithValue(context.Background(), graphGateSnapshotKey{}, "queued invocation"),
+		observed: make(chan struct{}),
+	}
+	telemetry := &graphGateSnapshotTelemetry{&graphGateCancellationTelemetry{}, make(chan context.Context, 1)}
+	user := NewUserContext().WithRuntimeTelemetry(telemetry)
+	user.Context = parent
+	user.InsertResource("dataService", &graphTransactionProbe{})
+	if !user.graphSaveGate.TryLock() {
+		t.Fatal("fixture failed to own the graph gate")
+	}
+	done := make(chan error, 1)
+	go func() { done <- user.ExecuteGraphSave(graphTestIntent(), func() error { return nil }) }()
+	select {
+	case <-parent.observed:
+	case <-time.After(2 * time.Second):
+		user.graphSaveGate.Unlock()
+		t.Fatal("queued save failed to capture its native parent")
+	}
+	replacement := context.WithValue(context.Background(), graphGateSnapshotKey{}, "next invocation")
+	user.Context = replacement
+	user.graphSaveGate.Unlock()
+	select {
+	case err := <-done:
+		if err != nil {
+			t.Fatal(err)
+		}
+	case <-time.After(2 * time.Second):
+		t.Fatal("queued save did not finish")
+	}
+	if captured := <-telemetry.observed; captured.Value(graphGateSnapshotKey{}) != "queued invocation" || user.Context != replacement {
+		t.Fatal("queued save followed or rewrote the owner's replaceable native Context")
+	}
+}

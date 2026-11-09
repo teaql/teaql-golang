@@ -292,7 +292,7 @@ type UserContext struct {
 	mutationGovernanceMu              sync.Mutex
 	emittedMutationGovernanceWarnings map[string]struct{}
 	activeMutationGovernance          *MutationGovernanceSnapshot
-	graphSaveGate                     sync.Mutex
+	graphSaveGate                     cancellableGraphSaveGate
 	graphSaveMu                       sync.Mutex
 	graphSaveActive                   bool
 	graphCommitActions                []func() error
@@ -766,7 +766,8 @@ func (c *UserContext) GetResource(name string) interface{} {
 }
 
 // ExecuteGraphSave coordinates one generated object graph through one provider
-// transaction. Nested entity saves join the active graph transaction.
+// transaction. Generated descendants use their within-graph entry points;
+// independent public/root saves remain isolated.
 func (c *UserContext) ExecuteGraphSave(intent core.MutationIntent, work func() error) error {
 	if err := intent.Validate(); err != nil {
 		return err
@@ -774,18 +775,24 @@ func (c *UserContext) ExecuteGraphSave(intent core.MutationIntent, work func() e
 	// Generated child entities use their within-graph save entry point directly.
 	// Every public/root save is serialized here, preventing an unrelated goroutine
 	// from joining whichever transaction happens to be active on this context.
-	c.graphSaveGate.Lock()
+	parent := preserveRuntimeContextServices(c)
+	if err := c.graphSaveGate.LockContext(parent); err != nil {
+		return err
+	}
 	defer c.graphSaveGate.Unlock()
-	return c.observeGraphSave(func(ctx stdcontext.Context) error { return c.executeGraphSave(ctx, work, false) })
+	return c.observeGraphSave(parent, func(ctx stdcontext.Context) error { return c.executeGraphSave(ctx, work, false) })
 }
 
 // ExecutePlannedGraphSave reviews the immutable, complete graph mutation plan
 // before starting a provider transaction. Generated root Save methods should
 // use this entry point once they can provide the full aggregate plan.
 func (c *UserContext) ExecutePlannedGraphSave(plan *MutationPlan, work func() error) error {
-	c.graphSaveGate.Lock()
+	parent := preserveRuntimeContextServices(c)
+	if err := c.graphSaveGate.LockContext(parent); err != nil {
+		return err
+	}
 	defer c.graphSaveGate.Unlock()
-	return c.observeGraphSave(func(ctx stdcontext.Context) error { return c.executePlannedGraphSave(ctx, plan, work) })
+	return c.observeGraphSave(parent, func(ctx stdcontext.Context) error { return c.executePlannedGraphSave(ctx, plan, work) })
 }
 
 func (c *UserContext) executePlannedGraphSave(ctx stdcontext.Context, plan *MutationPlan, work func() error) error {
@@ -815,9 +822,12 @@ func (c *UserContext) ExecutePreparedGraphSave(
 	if prepare == nil || work == nil {
 		return fmt.Errorf("prepared graph save requires prepare and work callbacks")
 	}
-	c.graphSaveGate.Lock()
+	parent := preserveRuntimeContextServices(c)
+	if err := c.graphSaveGate.LockContext(parent); err != nil {
+		return err
+	}
 	defer c.graphSaveGate.Unlock()
-	return c.observeGraphSave(func(ctx stdcontext.Context) error { return c.executePreparedGraphSave(ctx, intent, prepare, work) })
+	return c.observeGraphSave(parent, func(ctx stdcontext.Context) error { return c.executePreparedGraphSave(ctx, intent, prepare, work) })
 }
 
 func (c *UserContext) executePreparedGraphSave(ctx stdcontext.Context, intent core.MutationIntent,
@@ -892,8 +902,8 @@ func (c *UserContext) finishGraphPreparation() {
 	c.graphSaveMu.Unlock()
 }
 
-func (c *UserContext) observeGraphSave(work func(stdcontext.Context) error) (err error) {
-	operationContext, operation := StartRuntimeOperation(c, c.RuntimeTelemetry(), NewRuntimeOperation("mutation", "graph.save", nil))
+func (c *UserContext) observeGraphSave(parent stdcontext.Context, work func(stdcontext.Context) error) (err error) {
+	operationContext, operation := StartRuntimeOperation(parent, c.RuntimeTelemetry(), NewRuntimeOperation("mutation", "graph.save", nil))
 	completed := false
 	defer func() {
 		if err != nil {
