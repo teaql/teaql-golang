@@ -172,7 +172,7 @@ func (s *SmartList[T]) SummaryValue(key string) (Value, bool) {
 }
 
 func (s *SmartList[T]) IntoVec() []T {
-	return s.Data
+	return append([]T{}, s.Data...)
 }
 
 func MapSmartList[T, U any](s *SmartList[T], mapper func(T) U) *SmartList[U] {
@@ -182,12 +182,48 @@ func MapSmartList[T, U any](s *SmartList[T], mapper func(T) U) *SmartList[U] {
 	}
 	return &SmartList[U]{
 		Data:         data,
-		TotalCount:   s.TotalCount,
-		Aggregations: s.Aggregations,
-		Summary:      s.Summary,
-		Facets:       s.Facets,
+		TotalCount:   copyListCount(s.TotalCount),
+		Aggregations: CloneRecord(s.Aggregations),
+		Summary:      CloneRecord(s.Summary),
+		Facets:       copyListFacets(s.Facets),
 		IsLoaded:     s.IsLoaded,
 	}
+}
+
+func copyListCount(count *uint64) *uint64 {
+	if count == nil {
+		return nil
+	}
+	value := *count
+	return &value
+}
+
+func copyListFacets(facets map[string]*SmartList[Record]) map[string]*SmartList[Record] {
+	result := make(map[string]*SmartList[Record], len(facets))
+	for name, facet := range facets {
+		result[name] = MapSmartList(facet, CloneRecord)
+	}
+	return result
+}
+
+func FilterSmartList[T any](s *SmartList[T], predicate func(T) bool) *SmartList[T] {
+	result := NewSmartList([]T{})
+	for _, item := range s.Data {
+		if predicate(item) {
+			result.Push(item)
+		}
+	}
+	result.IsLoaded = s.IsLoaded
+	return result
+}
+
+func FlatMapSmartList[T, U any](s *SmartList[T], mapper func(T) []U) *SmartList[U] {
+	result := NewSmartList([]U{})
+	for _, item := range s.Data {
+		result.Extend(mapper(item))
+	}
+	result.IsLoaded = s.IsLoaded
+	return result
 }
 
 func ToList[T, U any](s *SmartList[T], mapper func(T) U) []U {
@@ -224,18 +260,7 @@ func GroupBy[T any, K comparable](s *SmartList[T], keyFn func(T) K) map[K][]T {
 }
 
 func IntoRecords[T Entity](s *SmartList[T]) *SmartList[Record] {
-	data := make([]Record, len(s.Data))
-	for i, v := range s.Data {
-		data[i] = v.IntoRecord()
-	}
-	return &SmartList[Record]{
-		Data:         data,
-		TotalCount:   s.TotalCount,
-		Aggregations: s.Aggregations,
-		Summary:      s.Summary,
-		Facets:       s.Facets,
-		IsLoaded:     s.IsLoaded,
-	}
+	return MapSmartList(s, func(item T) Record { return item.IntoRecord() })
 }
 
 func Ids[T IdentifiableEntity](s *SmartList[T]) []Value {
@@ -271,7 +296,14 @@ func IdKey(value Value) string {
 func MapById[T IdentifiableEntity](s *SmartList[T]) map[string]T {
 	result := make(map[string]T)
 	for _, v := range s.Data {
-		result[IdKey(v.IdValue())] = v
+		id := v.IdValue()
+		if id.V == nil {
+			continue
+		}
+		if _, missing := id.V.(DataType); missing {
+			continue
+		}
+		result[IdKey(id)] = v
 	}
 	return result
 }
