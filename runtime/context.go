@@ -328,13 +328,18 @@ type FixEvidence struct {
 // CheckAndFixInput is the provider-independent mutation state seen by model checkers.
 // Values may be amended by declared fixes before SQL compilation.
 type CheckAndFixInput struct {
-	Entity        string
-	Operation     core.MutationKind
-	Values        core.Record
-	OldValues     core.Record
-	Now           time.Time
-	changedFields map[string]bool
+	Entity             string
+	Operation          core.MutationKind
+	Values             core.Record
+	OldValues          core.Record
+	Now                time.Time
+	changedFields      map[string]bool
+	contextFixEligible bool
 }
+
+// ContextFixAllowed is frozen by Context before the first Fix assignment.
+// A changed clock, IP or actor is not independent business mutation intent.
+func (input *CheckAndFixInput) ContextFixAllowed() bool { return input.contextFixEligible }
 
 // FieldChanged distinguishes an explicitly mutated field from the complete
 // loaded record supplied for graph validation. Standalone requests retain the
@@ -895,11 +900,17 @@ func (c *UserContext) startGraphPreparation() {
 
 func (c *UserContext) finishGraphPreparation() {
 	c.graphSaveMu.Lock()
+	state := c.preparedGraphSnapshot
 	c.graphFixTime = time.Time{}
 	c.lastFixEvidence = append([]FixEvidence(nil), c.currentFixEvidence...)
 	c.currentFixEvidence = nil
 	c.preparedGraphSnapshot = nil
 	c.graphSaveMu.Unlock()
+	if state != nil && !state.contextFixCommitted {
+		for index := len(state.contextFixUndo) - 1; index >= 0; index-- {
+			state.contextFixUndo[index]()
+		}
+	}
 }
 
 func (c *UserContext) observeGraphSave(parent stdcontext.Context, work func(stdcontext.Context) error) (err error) {
@@ -975,11 +986,8 @@ func (c *UserContext) executeGraphSave(operationContext stdcontext.Context, work
 		c.graphSaveActive = false
 		c.graphCommitActions = nil
 		c.graphRollbackActions = nil
-		c.graphFixTime = time.Time{}
-		c.lastFixEvidence = append([]FixEvidence(nil), c.currentFixEvidence...)
-		c.currentFixEvidence = nil
-		c.preparedGraphSnapshot = nil
 		c.graphSaveMu.Unlock()
+		c.finishGraphPreparation()
 	}()
 	var now time.Time
 	if !preparationStarted {
@@ -1020,6 +1028,11 @@ func (c *UserContext) executeGraphSave(operationContext stdcontext.Context, work
 		}
 	} else {
 		transactionFinished = true
+		c.graphSaveMu.Lock()
+		if state := c.preparedGraphSnapshot; state != nil {
+			state.contextFixCommitted = true
+		}
+		c.graphSaveMu.Unlock()
 		for _, action := range c.graphCommitActions {
 			if actionErr := action(); actionErr != nil && err == nil {
 				err = &GraphCommittedError{Cause: actionErr}
@@ -1640,7 +1653,20 @@ func (c *UserContext) CheckAndFix(input *CheckAndFixInput) error {
 	if input == nil {
 		return nil
 	}
-	return c.checkAndFix(input)
+	// Only automatic Context assignments are staged here. Preserve the existing
+	// public contract for application-owned business repairs on a rejected check.
+	undo := c.captureInputContextFix(input)
+	succeeded := false
+	defer func() {
+		if !succeeded {
+			undo()
+		}
+	}()
+	if err := c.checkAndFix(input); err != nil {
+		return err
+	}
+	succeeded = true
+	return nil
 }
 
 func (c *UserContext) checkAndFix(input *CheckAndFixInput) error {
@@ -1653,6 +1679,7 @@ func (c *UserContext) checkAndFixWithReferences(input *CheckAndFixInput, referen
 	if err := c.mapCheckerInput(input, true); err != nil {
 		return checkerMappingError(entity, err)
 	}
+	input.contextFixEligible = c.contextFixEligible(input)
 	allow := plaintextLogsEnabled()
 	known := c.checkerKnownValues(entity, allow, input.Values, input.OldValues)
 	if c.checkerRegistry != nil {

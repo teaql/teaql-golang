@@ -12,17 +12,19 @@ import (
 // This state exists only inside one serialized save invocation. It is neither
 // a Context-owned mutation ledger nor a cache shared by independent saves.
 type preparedGraphSnapshot struct {
-	sealed      bool
-	plan        *MutationPlan
-	checks      []preparedGraphCheck
-	assignments map[string]core.EntityKey
-	metadata    map[string]*core.EntityDescriptor
-	lineage     map[string]preparedGraphLineage
-	views       map[string]*preparedGraphView
-	viewOrder   []*preparedGraphView
-	viewsSealed bool
-	relations   []func() error
-	source      []preparedLedgerEntry
+	sealed              bool
+	plan                *MutationPlan
+	checks              []preparedGraphCheck
+	assignments         map[string]core.EntityKey
+	metadata            map[string]*core.EntityDescriptor
+	lineage             map[string]preparedGraphLineage
+	views               map[string]*preparedGraphView
+	viewOrder           []*preparedGraphView
+	viewsSealed         bool
+	relations           []func() error
+	source              []preparedLedgerEntry
+	contextFixUndo      []func()
+	contextFixCommitted bool
 }
 
 type preparedLedgerEntry struct {
