@@ -398,7 +398,7 @@ func (e *Entry) TeaqlPreflightWithinGraph(context *runtime.UserContext, intent c
 		checkedValues := e.IntoRecord()
 		valuesBeforeCheck := e.IntoRecord()
 		context.CaptureContextFixUndo(e.EntityName(), func() *core.BaseEntityData { return e.base }, e.root, e.EntityKey())
-		checkErr := runtime.CheckAndFixGraphEntity(context, &runtime.CheckAndFixInput{Entity: "entry", Operation: operation, Values: checkedValues}, e.root, e.EntityKey())
+		checkErr := runtime.CheckAndFixGraphEntity(context, &runtime.CheckAndFixInput{Entity: "entry", Operation: operation, Values: checkedValues, OldValues: e.loadedSnapshot.ValuesFor(e.EntityKey(), e.base.Version)}, e.root, e.EntityKey())
 		for field, value := range checkedValues {
 			if before, exists := valuesBeforeCheck[field]; !exists || !reflect.DeepEqual(before, value) {
 				e.base.PutDynamic(field, value)
@@ -409,7 +409,7 @@ func (e *Entry) TeaqlPreflightWithinGraph(context *runtime.UserContext, intent c
 		}
 		if checkErr != nil { return checkErr }
 	}
-	return nil
+	return e.TeaqlNormalizeMutationGraph(context)
 }
 
 type teaqlEntrySaveSnapshot struct {
@@ -574,7 +574,7 @@ func (e *Entry) TeaqlSaveWithinGraph(context *runtime.UserContext, intent core.M
 	} else {
 		checkedValues := e.IntoRecord()
 		valuesBeforeCheck := e.IntoRecord()
-		checkErr := runtime.CheckAndFixGraphEntity(context, &runtime.CheckAndFixInput{Entity: "entry", Operation: core.MutationUpdate, Values: checkedValues}, e.root, e.EntityKey())
+		checkErr := runtime.CheckAndFixGraphEntity(context, &runtime.CheckAndFixInput{Entity: "entry", Operation: core.MutationUpdate, Values: checkedValues, OldValues: e.loadedSnapshot.ValuesFor(e.EntityKey(), e.base.Version)}, e.root, e.EntityKey())
 		for field, value := range checkedValues {
 			if before, exists := valuesBeforeCheck[field]; !exists || !reflect.DeepEqual(before, value) {
 				canonical, mappingErr := context.CanonicalLedgerField(e.EntityName(), field)

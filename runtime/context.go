@@ -1680,6 +1680,8 @@ func (c *UserContext) checkAndFixWithReferences(input *CheckAndFixInput, referen
 		return checkerMappingError(entity, err)
 	}
 	input.contextFixEligible = c.contextFixEligible(input)
+	undoContext := c.captureInputContextFix(input)
+	beforeFix := core.CloneRecord(input.Values)
 	allow := plaintextLogsEnabled()
 	known := c.checkerKnownValues(entity, allow, input.Values, input.OldValues)
 	if c.checkerRegistry != nil {
@@ -1718,6 +1720,24 @@ func (c *UserContext) checkAndFixWithReferences(input *CheckAndFixInput, referen
 	}
 	if len(results) != 0 {
 		return &RuntimeError{Type: "Check", CheckResults: results}
+	}
+	// A custom business repair may remove the last effective change. Recheck
+	// without re-running Fix, including newly repaired business fields, and
+	// discard only automatic Context assignments when no real intent remains.
+	final := *input
+	if input.changedFields != nil {
+		final.changedFields = make(map[string]bool, len(input.changedFields))
+		for field, changed := range input.changedFields {
+			final.changedFields[field] = changed
+		}
+		for field, value := range input.Values {
+			if before, known := beforeFix[field]; !known || !core.ExactValueEqual(before, value) {
+				final.changedFields[field] = true
+			}
+		}
+	}
+	if !c.contextFixEligible(&final) {
+		undoContext()
 	}
 	return nil
 }

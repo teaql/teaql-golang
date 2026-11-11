@@ -83,7 +83,13 @@ func (c applicationChecker) CheckAndFix(ctx *runtime.UserContext, input *runtime
 			}
 		}
 	}
-	return append(results, c.generated.CheckAndFix(ctx, input)...)
+	results = append(results, c.generated.CheckAndFix(ctx, input)...)
+	if input.Entity == "entry" {
+		if value, _ := input.Values["name"].TryText(); value == "NORMALIZE" {
+			input.Values["name"] = core.ValText("first")
+		}
+	}
+	return results
 }
 
 type applicationResolver struct {
@@ -200,6 +206,16 @@ func TestGeneratedContextFixSQLite(t *testing.T) {
 	}
 	if !reflect.DeepEqual(load(first.Id()).IntoRecord(), before) {
 		t.Fatal("no-op changed stored Context values")
+	}
+	first.UpdateName("NORMALIZE")
+	if _, err = first.AuditAs("Normalize a business edit back to its persisted value").Save(ctx); err != nil {
+		t.Fatal(err)
+	}
+	if probe.begins != beforeBegins || probe.mutations != beforeWrites || audits.mutations != beforeAudits {
+		t.Fatal("normalized no-op reached provider/audit")
+	}
+	if first.Version() != oldVersion || first.Name() != "first" || first.TouchedAt().UnixMilli() != clockA {
+		t.Fatal("normalized no-op changed the stored view")
 	}
 	first.UpdateName(strings.Repeat("n", 101))
 	_, err = first.AuditAs("Reject invalid business value").Save(ctx)

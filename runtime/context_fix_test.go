@@ -41,6 +41,9 @@ func (r *contextFixRegistry) CheckAndFix(ctx *UserContext, input *CheckAndFixInp
 	if r.reject {
 		results = append(results, CheckResult{RuleID: "required", CanonicalLocation: Location().Property("label")})
 	}
+	if value, _ := input.Values["label"].TryText(); value == "NORMALIZE" {
+		input.Values["label"] = core.ValText("original")
+	}
 	return results
 }
 
@@ -131,6 +134,45 @@ func TestContextFixOnlyManagedBookkeepingAndReadonlyFieldsCannotEnableFix(t *tes
 	}
 	if registry.assignments != 0 {
 		t.Fatal("restored ordinary values established intent")
+	}
+}
+
+func TestContextFixBusinessRepairCannotLeaveOnlyContextChanges(t *testing.T) {
+	ctx, _ := contextFixContext()
+	values := contextFixLoaded()
+	values["label"] = core.ValText("NORMALIZE")
+	input := &CheckAndFixInput{Entity: "Probe", Operation: core.MutationUpdate, Values: values, OldValues: contextFixLoaded()}
+	if err := ctx.CheckAndFix(input); err != nil {
+		t.Fatal(err)
+	}
+	if !reflect.DeepEqual(values, contextFixLoaded()) {
+		t.Fatal("normalized business edit retained automatic Context", values)
+	}
+}
+
+func TestContextFixBusinessRepairAddingAnotherEditRemainsEligible(t *testing.T) {
+	ctx, _ := contextFixContext()
+	ctx.Entity("Probe").Property(core.NewPropertyDescriptor("memo", core.TypeText))
+	old := contextFixLoaded()
+	old["memo"] = core.ValText("before")
+	values := core.CloneRecord(old)
+	values["label"] = core.ValText("NORMALIZE")
+	ctx.WithCheckerRegistry(canonicalChecker(func(input *CheckAndFixInput) {
+		if failure := ctx.ApplyContextFix(input, "last_ip", "identity"); failure != nil {
+			t.Fatal(failure)
+		}
+		input.Values["label"] = core.ValText("original")
+		input.Values["memo"] = core.ValText("business repair")
+	}))
+	ledger := core.NewEntityRoot()
+	owner := core.NewEntityKey("Probe", core.ValU64(7))
+	ledger.Set(owner, "label", core.ValText("NORMALIZE"))
+	input := &CheckAndFixInput{Entity: "Probe", Operation: core.MutationUpdate, Values: values, OldValues: old}
+	if err := CheckAndFixGraphEntity(ctx, input, ledger, owner); err != nil {
+		t.Fatal(err)
+	}
+	if input.Values["memo"] != core.ValText("business repair") || input.Values["last_ip"] != core.ValText("B:last_ip") {
+		t.Fatal("valid business repair lost Context", input.Values)
 	}
 }
 
