@@ -245,6 +245,15 @@ func (c *UserContext) translateCheckerResults(results []CheckResult, declaring s
 			}
 		}
 		policy := c.checkerFieldPolicy(r.EntityType, field)
+		// Generated diagnostics can have an explicit wire type while the real
+		// checked input uses a different internal registry key. Keep that public
+		// type unchanged, but never lose the checked owner's stronger policy.
+		// Both names are supplied explicitly; do not guess a casing conversion.
+		if native := c.checkerFieldPolicy(declaring, field); policy != "credential" {
+			if native == "credential" || policy == "" {
+				policy = native
+			}
+		}
 		info := inspectCheckerValue(r.InputValue)
 		credential = credential || policy == "credential" || info.credential
 		masked := credential || !allow && (policy == "masked" || strings.HasPrefix(field, "#"))

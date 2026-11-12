@@ -11,47 +11,14 @@ import (
 	"testing"
 	"time"
 
-	lib "context-fix-service-core-workspace/lib"
-	"context-fix-service-core-workspace/lib/entry"
-	"github.com/teaql/teaql-golang/core"
 	"github.com/teaql/teaql-golang/data_service"
 	"github.com/teaql/teaql-golang/runtime"
+	lib "natural-message-service-core-workspace/lib"
+	"natural-message-service-core-workspace/lib/catalog"
+	"natural-message-service-core-workspace/lib/entry"
 )
 
-const secret = "密钥🔑abcdef" // Nine Unicode scalar values, ten UTF-16 code units.
-
-// This is application code around the unchanged generated Checker. It declares
-// a local sensitivity policy and a deliberately small display-name limit.
-type checker struct{ generated runtime.CheckerRegistry }
-
-func (c checker) CheckAndFix(ctx *runtime.UserContext, input *runtime.CheckAndFixInput) []runtime.CheckResult {
-	if input.Entity == "entry" && input.Operation == core.MutationInsert {
-		for _, field := range []string{"source_ip", "last_ip", "opened_by", "changed_by"} {
-			if _, exists := input.Values[field]; !exists {
-				input.Values[field] = core.ValText("local")
-			}
-		}
-	}
-	results := c.generated.CheckAndFix(ctx, input)
-	if input.Entity == "entry" {
-		name, _ := input.Values["name"].TryText()
-		if strings.TrimSpace(name) == "" {
-			present := false
-			for _, r := range results {
-				if r.RuleID == "required" && r.ObjectLocation().ModelPath() == "name" {
-					present = true
-				}
-			}
-			if !present {
-				results = append(results, runtime.CheckResult{RuleID: "required", CanonicalLocation: runtime.Location().Property("name")})
-			}
-		}
-		if len([]rune(name)) > 8 {
-			results = append(results, runtime.CheckResult{RuleID: "max_length", CanonicalLocation: runtime.Location().Property("name"), InputValue: name, SystemValue: 8})
-		}
-	}
-	return results
-}
+var secret = "密钥🔑" + strings.Repeat("x", 98) // 101 scalars, 102 UTF-16 code units.
 
 type provider struct {
 	data_service.TransactionExecutor
@@ -103,7 +70,7 @@ func TestGeneratedNaturalMessagesSQLite(t *testing.T) {
 	if file == "" {
 		t.Fatal("use examples/natural-messages/verify-local.cjs")
 	}
-	t.Setenv("CONTEXT_FIX_SERVICE_CORE_DATABASE_URL", file)
+	t.Setenv("NATURAL_MESSAGE_SERVICE_CORE_DATABASE_URL", file)
 	ctx, err := lib.ServiceRuntimeFromEnv()
 	if err != nil {
 		t.Fatal(err)
@@ -113,22 +80,13 @@ func TestGeneratedNaturalMessagesSQLite(t *testing.T) {
 	ctx.DisableSqlLog()
 	ctx.WithBusinessClock(runtime.NewFixedBusinessClock(time.UnixMilli(1988247845000)))
 	_ = ctx.InstallCheckerMessageWarning(func(runtime.CheckerMessageWarning) {})
-	presentation, err := runtime.ParseCheckerPresentationModel([]byte(`{
-      "schema":"teaql.checker-model/v1","revision":"generated-natural-example-v1","entities":{
-        "catalog":{"labels":{"en":"catalog","zh-CN":"目录"},"fields":[
-          {"name":"name","labels":{"en":"name","zh-CN":"名称"}},
-          {"name":"entry_list","aliases":["entryList"],"targetType":"entry","labels":{"en":"entry","zh-CN":"明细"},"classifiers":{"zh-CN":"条"}}]},
-        "entry":{"labels":{"en":"entry","zh-CN":"明细"},"fields":[
-          {"name":"name","labels":{"en":"name","zh-CN":"名称"}}]}}
-    }`))
-	if err != nil {
-		t.Fatal(err)
+	// Only generated module composition supplies metadata, sensitivity and Checkers.
+	if lib.Module().CheckerMessagesModel == nil || lib.Module().CheckerMessagesModel.Revision() == "" {
+		t.Fatal("generated module did not provide presentation metadata")
 	}
-	if err = ctx.InstallCheckerPresentationModel(presentation); err != nil {
-		t.Fatal(err)
+	if fields := ctx.Entity("entry").AuditMaskFlds; len(fields) != 1 || fields[0] != "name" {
+		t.Fatal("generated sensitivity missing")
 	}
-	ctx.WithCheckerRegistry(checker{generated: lib.Module().CheckerRegistry})
-	ctx.Entity("entry").AuditMaskFlds = append(ctx.Entity("entry").AuditMaskFlds, "name")
 	if err = lib.EnsureSchema(ctx); err != nil {
 		t.Fatal(err)
 	}
@@ -165,16 +123,17 @@ func TestGeneratedNaturalMessagesSQLite(t *testing.T) {
 	if err != nil || parent == nil {
 		t.Fatal(err)
 	}
-	parent.EntryList().Add(first)
-	parent.EntryList().Add(second)
-	first.UpdateName("changed")
+	parentVersion := parent.Version()
 	beforeQueries, beforeBegins, beforeWrites, beforeAudits := probe.queries, probe.begins, probe.writes, audits.updates
 	responses := 0
-	reject := func(value, locale, expected string) {
+	reject := func(graph *catalog.Catalog, change func(), locale, expected string) {
 		t.Helper()
 		_ = ctx.SetLocaleCode(locale)
-		second.UpdateName(value)
-		_, failure := parent.AuditAs("Reject the second child before provider activity").Save(ctx)
+		if change != nil {
+			change()
+		}
+		beforeQueries, beforeBegins, beforeWrites, beforeAudits = probe.queries, probe.begins, probe.writes, audits.updates
+		_, failure := graph.AuditAs("Reject the second child before provider activity").Save(ctx)
 		var check *runtime.RuntimeError
 		if !errors.As(failure, &check) || check.Type != "Check" {
 			t.Fatalf("expected structured Check: %v", failure)
@@ -184,14 +143,14 @@ func TestGeneratedNaturalMessagesSQLite(t *testing.T) {
 		for _, result := range check.CheckResults {
 			v := result.ToWire(runtime.JsonFieldCamelCase)
 			wire = append(wire, v)
-			if v.InstancePath == "/entryList/1/name" && v.EntityType == "entry" && v.Message == expected {
+			if v.InstancePath == "/entryList/1/name" && v.EntityType == "Entry" && v.Message == expected {
 				found = true
 			}
 		}
-		if !found {
-			t.Fatalf("missing natural indexed error: %v", failure)
-		}
 		data, _ := json.Marshal(map[string]any{"violations": wire})
+		if !found {
+			t.Fatalf("missing natural indexed error: %v; safe violations=%s", failure, data)
+		}
 		if strings.Contains(string(data), secret) || strings.Contains(failure.Error(), secret) {
 			t.Fatal("secret leaked")
 		}
@@ -201,9 +160,39 @@ func TestGeneratedNaturalMessagesSQLite(t *testing.T) {
 		responses++
 		fmt.Println("GO_NATURAL_RESPONSE=" + string(data))
 	}
-	reject("", "en", "The name of the 2nd entry is required.")
-	reject("", "zh-CN", "请填写第2条明细的名称。")
-	reject(secret, "en", "The name of the 2nd entry must not exceed 8 Unicode scalar values; its current length is 9.")
+	// A required Go string cannot receive nil through its typed setter. Omit it
+	// on a new child instead; do not replace the generated required validator.
+	requiredParent, err := lib.Q.Catalogs().WithIdIs(1).Limit(1).Comment("Load owner for missing-input validation").Purpose("Verify generated required checking before IDs").ExecuteForOne(ctx)
+	if err != nil || requiredParent == nil {
+		t.Fatal(err)
+	}
+	missing := lib.Q.Entries().Comment("Prepare a child with missing required input").Purpose("Exercise the native generated required constraint").NewEntity(ctx).UpdateCatalogId(1)
+	requiredFirst := load(first.Id()).UpdateName("changed")
+	requiredParent.EntryList().Add(requiredFirst)
+	requiredParent.EntryList().Add(missing)
+	reject(requiredParent, nil, "en", "The name of the 2nd entry is required.")
+	reject(requiredParent, nil, "zh-CN", "请填写第2项明细的名称。")
+	if missing.Id() != 0 {
+		t.Fatal("required failure reserved an identity")
+	}
+	parent.EntryList().Add(first)
+	parent.EntryList().Add(second)
+	first.UpdateName("changed")
+	reject(parent, func() { second.UpdateName(secret) }, "en", "The name of the 2nd entry must not exceed 100 Unicode scalar values; its current length is 101.")
+	rendererCalls := 0
+	if err = ctx.InstallCheckerMessageRenderer(runtime.CheckerMessageRendererFunc(func(request runtime.CheckerMessageRequest) (runtime.CheckerMessageOutput, error) {
+		rendererCalls++
+		if request.Arguments["input"] != "密钥"+strings.Repeat("*", 97)+"xx" || request.Arguments["input_len"] != "101" {
+			return runtime.CheckerMessageOutput{}, fmt.Errorf("customer renderer received incorrect projected arguments")
+		}
+		return runtime.CheckerMessageOutput{Message: "Private " + secret}, nil
+	})); err != nil {
+		t.Fatal(err)
+	}
+	reject(parent, nil, "en", "Private [REDACTED]")
+	if rendererCalls != 1 {
+		t.Fatal("graph relocation called the customer renderer again")
+	}
 	if second.Name() != secret || second.Version() != version {
 		t.Fatal("failed validation lost caller input or changed version")
 	}
@@ -220,12 +209,16 @@ func TestGeneratedNaturalMessagesSQLite(t *testing.T) {
 	if !present || name != "renamed" || stored.Version() != version+1 {
 		t.Fatal("persisted typed E mismatch")
 	}
+	if parent.Version() != parentVersion || rendererCalls != 1 {
+		t.Fatal("unchanged parent or renderer state changed")
+	}
 	// Independent readback is the oracle, not an alternative application API.
 	var storedName string
 	var storedVersion int64
 	if err = db.QueryRow("SELECT name,version FROM entry_data WHERE id=?", second.Id()).Scan(&storedName, &storedVersion); err != nil || storedName != "renamed" || storedVersion != int64(version+1) {
 		t.Fatal("SQLite readback mismatch", err)
 	}
-	frame, _ := json.Marshal(map[string]any{"passed": true, "first": first.Id(), "child": second.Id(), "version": stored.Version(), "responses": responses, "providerCallsOnRejection": 0, "transactionCallsOnRejection": 0, "updatedAudits": 1, "typedQ": true, "typedE": true})
+	frame, _ := json.Marshal(map[string]any{"passed": true, "first": first.Id(), "child": second.Id(), "version": stored.Version(), "responses": responses, "providerCallsOnRejection": 0, "transactionCallsOnRejection": 0, "updatedAudits": 1, "typedQ": true, "typedE": true,
+		"automaticMetadata": true, "originalGeneratedChecker": true, "unchangedParent": true, "requiredBeforeIds": true, "customerRendererCalls": rendererCalls})
 	fmt.Println("GO_NATURAL_SQLITE_PASS=" + string(frame))
 }

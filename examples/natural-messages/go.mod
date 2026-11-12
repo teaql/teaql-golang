@@ -3,9 +3,9 @@ module teaql-natural-messages-example
 go 1.18
 
 require (
-    context-fix-service-core-workspace/lib v0.0.0
-    github.com/teaql/teaql-golang v0.4.0
+    natural-message-service-core-workspace/lib v0.0.0
+    github.com/teaql/teaql-golang v0.5.0-dev.0
 )
 
-replace context-fix-service-core-workspace/lib => ../context-derived/fixture
+replace natural-message-service-core-workspace/lib => ./fixture
 replace github.com/teaql/teaql-golang => ../..

@@ -103,6 +103,49 @@ func TestNaturalCheckerSharedTwentyFourCases(t *testing.T) {
 		})
 	}
 }
+func TestNaturalCheckerNativePolicySurvivesExplicitWireType(t *testing.T) {
+	secret := "密钥🔑" + strings.Repeat("x", 98)
+	for _, policy := range []string{"masked", "credential", "plain"} {
+		t.Run(policy, func(t *testing.T) {
+			property := core.NewPropertyDescriptor("name", core.TypeText)
+			property.LogPolicy = policy
+			descriptor := core.NewEntityDescriptor("entry").Property(property)
+			ctx := NewRuntimeModule().Entity(descriptor).IntoContext().WithCheckerRegistry(checkerEntityTypeRegistry(func(*CheckAndFixInput) []CheckResult {
+				return []CheckResult{{RuleID: "max_length", EntityType: "Entry", CanonicalLocation: Location().Property("name"), InputValue: secret, SystemValue: 100}}
+			}))
+			_ = ctx.InstallCheckerMessageWarning(func(CheckerMessageWarning) {})
+			var failure *RuntimeError
+			err := ctx.CheckAndFix(&CheckAndFixInput{Entity: "entry", Operation: core.MutationInsert, Values: core.Record{"name": core.ValText(secret)}})
+			if !errors.As(err, &failure) || len(failure.CheckResults) != 1 {
+				t.Fatal(err)
+			}
+			result := failure.CheckResults[0]
+			if result.EntityType != "Entry" || result.ToWire(JsonFieldCamelCase).EntityType != "Entry" || result.InstancePath() != "/name" {
+				t.Fatal("wire identity or structured location changed", result)
+			}
+			want := secret
+			if policy == "masked" {
+				want = "密钥" + strings.Repeat("*", 97) + "xx"
+			}
+			if policy == "credential" {
+				want = "[REDACTED]"
+			}
+			if result.InputValue != want {
+				t.Fatal("checked native owner policy was not applied")
+			}
+			if !strings.Contains(result.Message, "current length is 101.") || result.SystemValue != 100 {
+				t.Fatal("original measurement or bound changed", result.Message)
+			}
+			if policy != "plain" {
+				wire, _ := json.Marshal(result.ToWire(JsonFieldCamelCase))
+				if strings.Contains(string(wire), secret) || strings.Contains(failure.Error(), secret) {
+					t.Fatal("secret leaked")
+				}
+			}
+		})
+	}
+}
+
 func TestNaturalCheckerAllFifteenLocalesAnd270Templates(t *testing.T) {
 	count := 0
 	for _, locale := range Locales {

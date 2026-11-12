@@ -1,0 +1,12 @@
+{
+  "schema": "teaql.generated-example-provenance/v1",
+  "generatorCommit": "3c4a836e53a2d3d5303178fe65fc69de7cfccdb9",
+  "upstreamTest": "com.skynet.codegenerator.GolangNaturalMessagesGenerationTest",
+  "fixtureOutputProperty": "teaql.go.natural.fixture.output",
+  "scope": "golang-lib-core",
+  "runtimeDependency": "local repository source",
+  "generationReceipt": "teaql-conformance/evidence/2026-11-12-natural-checker-go-generation-qualified/receipt.json",
+  "generationReceiptSha256": "f599e31d142f44f05a5ae16c9c7d877f085c96eb860fa9f5c0dc3d43596c4304",
+  "implementationHandEdited": false,
+  "publicPublication": false
+}

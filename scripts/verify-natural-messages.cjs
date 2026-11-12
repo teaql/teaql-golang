@@ -27,7 +27,7 @@ function testSummary(log){
     packageNames:events.filter(e=>['pass','skip'].includes(e.Action)&&!e.Test).map(e=>e.Package).sort()};
 }
 function generated(){
-  const fixture=path.join(repo,'examples/context-derived/fixture'),bytes=fs.readFileSync(path.join(fixture,'generated-files.json')),files=JSON.parse(bytes);
+  const fixture=path.join(repo,'examples/natural-messages/fixture'),bytes=fs.readFileSync(path.join(fixture,'generated-files.json')),files=JSON.parse(bytes);
   for(const [name,digest]of Object.entries(files)){assert(!path.isAbsolute(name)&&!name.split('/').includes('..'));const file=path.join(fixture,name);assert.equal(fs.realpathSync(file),file);assert.equal(sha(fs.readFileSync(file)),digest,name);}
   return {files,manifestSha256:sha(bytes),modelSha256:sha(fs.readFileSync(path.join(fixture,'model.xml')))};
 }
@@ -52,16 +52,18 @@ async function main(){
       report.fixture=generated();const app=path.join(scratch,'consumer');fs.mkdirSync(app);
       fs.copyFileSync(path.join(repo,'examples/natural-messages/natural_messages_test.go'),path.join(app,'natural_messages_test.go'));
       const mod=fs.readFileSync(path.join(repo,'examples/natural-messages/go.mod'),'utf8')
-        .replace('=> ../context-derived/fixture','=> '+JSON.stringify(path.join(repo,'examples/context-derived/fixture'))).replace('=> ../..','=> '+JSON.stringify(repo));
+        .replace('=> ./fixture','=> '+JSON.stringify(path.join(repo,'examples/natural-messages/fixture'))).replace('=> ../..','=> '+JSON.stringify(repo));
       fs.writeFileSync(path.join(app,'go.mod'),mod);
       report.runtimeOrigin=JSON.parse(await run('origin',[go,'list','-m','-json','github.com/teaql/teaql-golang'],app));assert.equal(report.runtimeOrigin.Replace?.Dir,repo);
       const binary=path.join(scratch,'natural.test');await run('example-build',[go,'test','-race','-mod=mod','-c','-o',binary,'.'],app);
       report.binarySha256=sha(fs.readFileSync(binary));report.rounds=[];
       for(const round of [1,2]){
         const log=await run('example-'+round,[binary,'-test.v','-test.count=1','-test.timeout=60s'],app,90000,{TEAQL_NATURAL_MESSAGES_DB:path.join(output,'example.sqlite')});
-        const responses=[...log.matchAll(/^GO_NATURAL_RESPONSE=(.+)$/gm)].map(m=>JSON.parse(m[1]));assert.equal(responses.length,3);
+        const responses=[...log.matchAll(/^GO_NATURAL_RESPONSE=(.+)$/gm)].map(m=>JSON.parse(m[1]));assert.equal(responses.length,4);
         const frames=[...log.matchAll(/^GO_NATURAL_SQLITE_PASS=(.+)$/gm)].map(m=>JSON.parse(m[1]));assert.equal(frames.length,1);assert.equal(frames[0].passed,true);
         assert.equal(frames[0].providerCallsOnRejection,0);assert.equal(frames[0].transactionCallsOnRejection,0);assert.equal(frames[0].updatedAudits,1);
+        assert(frames[0].automaticMetadata&&frames[0].originalGeneratedChecker&&frames[0].unchangedParent&&frames[0].requiredBeforeIds);
+        assert.equal(frames[0].customerRendererCalls,1);
         fs.writeFileSync(path.join(output,'responses-'+round+'.json'),JSON.stringify(responses,null,2)+'\n');report.rounds.push({round,...frames[0]});
         assert.deepEqual(generated(),report.fixture);assert.deepEqual(source(),report.sourceHashes,'candidate changed during verification');
       }
