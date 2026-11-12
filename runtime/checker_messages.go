@@ -240,12 +240,13 @@ func renderNaturalChecker(config checkerMessageConfig, result *CheckResult, secr
 			presentation = CaptureCheckerPresentation(config.model, "", result.ObjectLocation())
 		}
 	}
-	if ready, output := renderPreparedCheckerPlan(config, result, presentation, automatic); ready {
+	if ready, output, plan := renderPreparedCheckerPlan(config, result, presentation, automatic, secrets); ready {
 		for _, code := range output.Warnings {
 			warn(code)
 		}
 		state, _ := naturalCheckerState(*result)
 		state.snapshot = presentation
+		state.plan = plan
 		state.automatic = sha256.Sum256([]byte(output.Message))
 		result.Message = output.Message
 		result.naturalPresentation = logprivacy.NewProjectionState(state)

@@ -441,6 +441,24 @@ func TestNaturalCheckerOriginUsesExplicitAncestryNotFirstWritableChild(t *testin
 		t.Fatal(failure.CheckResults[0].Message)
 	}
 }
+
+func TestNaturalCheckerRetainedPlanReprojectsNewSensitiveValues(t *testing.T) {
+	secret := "newly-sensitive-literal"
+	c := naturalContext(t)
+	if err := c.InstallCheckerMessageCatalog(naturalCatalog(`{"en":{"rules":{"checker.minLength":{"one":"{field} needs {system} {unit}; got {input_len}. Private ` + secret + `"}}}}`)); err != nil {
+		t.Fatal(err)
+	}
+	values := []CheckResult{{RuleID: "min_length", CanonicalLocation: Location().Property("password"), InputValue: "old-private", SystemValue: 50}}
+	c.TranslateCheckResultsFrom("Entry", values)
+	if !strings.Contains(values[0].Message, secret) {
+		t.Fatal("expected ordinary application text in initial invocation")
+	}
+	values[0].InputValue = secret
+	c.TranslateCheckResults(values)
+	if strings.Contains(values[0].Message, secret) || !strings.Contains(values[0].Message, "Private [REDACTED]") || !strings.Contains(values[0].Message, fmt.Sprint(len(secret))) || values[0].InputValue != "[REDACTED]" {
+		t.Fatal("retained custom plan restored a newly sensitive value")
+	}
+}
 func TestNaturalCheckerConcurrentOriginsAndRetainedMetadata(t *testing.T) {
 	c := naturalContext(t)
 	var wait sync.WaitGroup

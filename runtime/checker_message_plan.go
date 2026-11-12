@@ -25,12 +25,36 @@ func projectCheckerNodes(nodes checkerMessageTemplate, secrets []string) checker
 	return result
 }
 func safeCheckerPatterns(catalog *CheckerMessageCatalog, locale Locale, secrets []string) *CheckerMessageCatalog {
-	if catalog == nil || !catalog.application || catalog.locales[locale].patterns == nil {
+	if catalog == nil || catalog == builtinCheckerMessages || catalog.locales[locale].patterns == nil {
 		return builtinCheckerMessages
 	}
 	original := catalog.locales[locale].patterns
 	patterns := &checkerMessagePatterns{projectCheckerNodes(original.reference, secrets), projectCheckerNodes(original.item, secrets), scrubCheckerText(original.separator, secrets)}
 	return &CheckerMessageCatalog{locales: map[Locale]checkerMessageLocale{locale: {patterns: patterns}}}
+}
+
+// A new invocation can make an earlier public custom literal sensitive. Project
+// the already-safe nodes again, without recovering raw templates or changing
+// built-in vocabulary, positions or constraint arguments.
+func (plan *checkerMessagePlan) project(secrets []string) *checkerMessagePlan {
+	if len(secrets) == 0 {
+		return plan
+	}
+	if plan.custom {
+		return &checkerMessagePlan{custom: true, literal: scrubCheckerText(plan.literal, secrets)}
+	}
+	result := &checkerMessagePlan{shapes: map[Locale]map[CheckerMessageShape]checkerPreparedMessage{}}
+	for locale, shapes := range plan.shapes {
+		result.shapes[locale] = map[CheckerMessageShape]checkerPreparedMessage{}
+		for shape, item := range shapes {
+			if item.selection.application {
+				item.selection.template = projectCheckerNodes(item.selection.template, secrets)
+			}
+			item.catalog = safeCheckerPatterns(item.catalog, item.selection.locale, secrets)
+			result.shapes[locale][shape] = item
+		}
+	}
+	return result
 }
 func prepareCheckerMessagePlan(config checkerMessageConfig, result *CheckResult, secrets []string) *checkerMessagePlan {
 	plan := &checkerMessagePlan{shapes: map[Locale]map[CheckerMessageShape]checkerPreparedMessage{}}
@@ -93,20 +117,21 @@ func (plan *checkerMessagePlan) render(snapshot *CheckerPresentation, result *Ch
 	return snapshot.Render(item.catalog, item.selection, args)
 }
 
-func renderPreparedCheckerPlan(config checkerMessageConfig, result *CheckResult, presentation *CheckerPresentation, automatic bool) (bool, CheckerMessageOutput) {
+func renderPreparedCheckerPlan(config checkerMessageConfig, result *CheckResult, presentation *CheckerPresentation, automatic bool, secrets []string) (bool, CheckerMessageOutput, *checkerMessagePlan) {
 	if !automatic {
-		return false, CheckerMessageOutput{}
+		return false, CheckerMessageOutput{}, nil
 	}
 	state, ok := naturalCheckerState(*result)
 	if !ok || state.plan == nil {
-		return false, CheckerMessageOutput{}
+		return false, CheckerMessageOutput{}, nil
 	}
 	// New validations get fresh plans. An already-projected customer message
 	// lacks original redactions; preserve its safe plan rather than recovering
 	// a raw template/provider output from a later mutable Context.
-	output := state.plan.render(presentation, result, config.locale)
+	plan := state.plan.project(secrets)
+	output := plan.render(presentation, result, config.locale)
 	if strings.TrimSpace(output.Message) == "" {
-		return false, CheckerMessageOutput{}
+		return false, CheckerMessageOutput{}, nil
 	}
-	return true, output
+	return true, output, plan
 }
