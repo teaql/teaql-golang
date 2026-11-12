@@ -286,6 +286,11 @@ type UserContext struct {
 	userIdentifier                    string
 	requestPolicy                     RequestPolicy
 	checkerRegistry                   CheckerRegistry
+	checkerMessageMu                  sync.RWMutex
+	checkerPresentationModel          *CheckerPresentationModel
+	checkerMessageCatalog             *CheckerMessageCatalog
+	checkerMessageRenderer            CheckerMessageRenderer
+	checkerMessageWarning             func(CheckerMessageWarning)
 	mutationPolicyRegistry            MutationPolicyRegistry
 	mutationPolicyApprovalProvider    MutationPolicyApprovalProvider
 	mutationGovernanceSink            MutationGovernanceSink
@@ -847,6 +852,10 @@ func (c *UserContext) executePreparedGraphSave(ctx stdcontext.Context, intent co
 	}()
 	plan, err := prepare()
 	if err != nil {
+		c.graphSaveMu.Lock()
+		state := c.preparedGraphSnapshot
+		c.graphSaveMu.Unlock()
+		rerenderGraphCheckerError(err, state)
 		return err
 	}
 	if plan != nil {
@@ -891,10 +900,12 @@ func (c *UserContext) startGraphPreparation() {
 	// BusinessClock is an application SPI. Do not call it while holding the
 	// state mutex: it may panic or inspect Context diagnostics itself.
 	now := c.BusinessTime()
+	checkerMessages := c.captureCheckerMessages()
 	c.graphSaveMu.Lock()
 	c.graphFixTime = now
 	c.currentFixEvidence = nil
 	c.preparedGraphSnapshot = &preparedGraphSnapshot{assignments: make(map[string]core.EntityKey), metadata: clonePreparedMetadata(c), lineage: make(map[string]preparedGraphLineage)}
+	c.preparedGraphSnapshot.checkerMessages = checkerMessages
 	c.graphSaveMu.Unlock()
 }
 
@@ -1675,6 +1686,7 @@ func (c *UserContext) checkAndFix(input *CheckAndFixInput) error {
 
 func (c *UserContext) checkAndFixWithReferences(input *CheckAndFixInput, references *deferredReferenceState) error {
 	var results []CheckResult
+	checkerMessages := c.captureCheckerMessages()
 	entity, operation := input.Entity, input.Operation
 	if err := c.mapCheckerInput(input, true); err != nil {
 		return checkerMappingError(entity, err)
@@ -1716,7 +1728,8 @@ func (c *UserContext) checkAndFixWithReferences(input *CheckAndFixInput, referen
 	}
 	if len(results) != 0 {
 		known = append(known, c.checkerKnownValues(entity, allow, input.Values, input.OldValues)...)
-		c.translateCheckerResults(results, entity, known, allow)
+		bindNaturalCheckerOrigin(results, checkerMessages.model, entity)
+		c.translateCheckerResults(results, entity, known, allow, checkerMessages)
 	}
 	if len(results) != 0 {
 		return &RuntimeError{Type: "Check", CheckResults: results}

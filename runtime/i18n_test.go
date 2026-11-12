@@ -62,8 +62,9 @@ func TestRelocatedCheckerMessagesPreserveLocaleAndMetadata(t *testing.T) {
 			relocated := []CheckResult{original[0].PrefixedBy(prefix)}
 			ctx.TranslateCheckResults(relocated)
 			expected := rule.PrefixedBy(prefix)
-			BuiltinI18nCatalog().Translate(&expected, locale)
-			if relocated[0].Message != expected.Message || !strings.Contains(relocated[0].Message, relocated[0].NativePath()) {
+			expectedResults := []CheckResult{expected}
+			ctx.TranslateCheckResults(expectedResults)
+			if relocated[0].Message != expectedResults[0].Message || relocated[0].Message == retained.Message || !reflect.DeepEqual(relocated[0].ObjectLocation(), expected.ObjectLocation()) {
 				t.Fatalf("%s %s: stale message %q", locale, rule.RuleID, relocated[0].Message)
 			}
 			if relocated[0].EntityType != rule.EntityType || relocated[0].SourceInstancePath != rule.SourceInstancePath ||

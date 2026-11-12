@@ -27,6 +27,12 @@ func (c *UserContext) PrepareGraphMutationLineage(ledger *core.EntityRoot, owner
 	if state == nil || state.sealed || ledger == nil {
 		return preparedMutationChanged(owner.Entity, "traceChain")
 	}
+	// An unchanged graph root need not be a writable admitted view. Generated
+	// ancestry explicitly identifies that root with parent == nil; the first
+	// writable child is not a substitute for the validation origin.
+	if parent == nil && state.checkerOrigin == "" {
+		state.checkerOrigin = owner.Entity
+	}
 	entry := preparedGraphLineage{ledger: ledger, owner: owner, rootReason: intent.Comment(), explicit: ledger.TraceChain(owner)}
 	if parent != nil {
 		owned := *parent

@@ -12,6 +12,8 @@ import (
 // This state exists only inside one serialized save invocation. It is neither
 // a Context-owned mutation ledger nor a cache shared by independent saves.
 type preparedGraphSnapshot struct {
+	checkerMessages     checkerMessageConfig
+	checkerOrigin       string
 	sealed              bool
 	plan                *MutationPlan
 	checks              []preparedGraphCheck

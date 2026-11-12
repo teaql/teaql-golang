@@ -19,6 +19,7 @@ type CheckResult struct {
 	SourceInstancePath  string
 	presentation        logprivacy.ProjectionState
 	messagePresentation logprivacy.ProjectionState
+	naturalPresentation logprivacy.ProjectionState
 }
 
 func (c *CheckResult) String() string { return c.Message }

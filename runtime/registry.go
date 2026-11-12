@@ -145,14 +145,15 @@ func (r *InMemoryEntityDataServiceBehaviorRegistry) Behavior(entity string) Enti
 }
 
 type RuntimeModule struct {
-	Metadata        *InMemoryMetadataStore
-	EntityRegistry  *InMemoryEntityRegistry
-	Behaviors       *InMemoryEntityDataServiceBehaviorRegistry
-	EventSinks      *InMemoryRawAuditEventSink
-	InitialGraphs   []*GraphNode
-	RootGraphs      []*GraphNode
-	CheckerRegistry CheckerRegistry
-	WireMetadata    map[string]WireEntityMetadata
+	Metadata             *InMemoryMetadataStore
+	EntityRegistry       *InMemoryEntityRegistry
+	Behaviors            *InMemoryEntityDataServiceBehaviorRegistry
+	EventSinks           *InMemoryRawAuditEventSink
+	InitialGraphs        []*GraphNode
+	RootGraphs           []*GraphNode
+	CheckerRegistry      CheckerRegistry
+	WireMetadata         map[string]WireEntityMetadata
+	CheckerMessagesModel *CheckerPresentationModel
 }
 
 func NewRuntimeModule() *RuntimeModule {
@@ -215,6 +216,11 @@ func (m *RuntimeModule) Checkers(registry CheckerRegistry) *RuntimeModule {
 	return m
 }
 
+func (m *RuntimeModule) CheckerPresentation(model *CheckerPresentationModel) *RuntimeModule {
+	m.CheckerMessagesModel = model
+	return m
+}
+
 func (m *RuntimeModule) AddInitialGraphs(graphs []*GraphNode) *RuntimeModule {
 	m.InitialGraphs = append(m.InitialGraphs, graphs...)
 	return m
@@ -222,7 +228,12 @@ func (m *RuntimeModule) AddInitialGraphs(graphs []*GraphNode) *RuntimeModule {
 
 // And creates a composed manifest without modifying either input module.
 func (m *RuntimeModule) And(other *RuntimeModule) *RuntimeModule {
+	presentation, err := m.CheckerMessagesModel.Merge(other.CheckerMessagesModel)
+	if err != nil {
+		panic(err)
+	} // Invalid composition is rejected before mutating either module.
 	combined := NewRuntimeModule()
+	combined.CheckerMessagesModel = presentation
 	for name, metadata := range m.WireMetadata {
 		combined.WireMetadata[name] = metadata
 	}
@@ -256,6 +267,9 @@ func (m *RuntimeModule) And(other *RuntimeModule) *RuntimeModule {
 
 // ApplyTo sets the module's registries into the given UserContext
 func (m *RuntimeModule) ApplyTo(context *UserContext) {
+	if m.CheckerMessagesModel != nil {
+		_ = context.InstallCheckerPresentationModel(m.CheckerMessagesModel)
+	}
 	context.Metadata = m.Metadata
 	context.EntityRegistry = m.EntityRegistry
 	context.Behaviors = m.Behaviors
