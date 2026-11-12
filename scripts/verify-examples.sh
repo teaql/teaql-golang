@@ -18,7 +18,7 @@ export PATH="$(dirname "$go_binary"):$PATH"
 "$GO" version
 inventory_evidence="${TEAQL_EXAMPLES_EVIDENCE_DIR:-$(mktemp -d -t teaql-go-examples-evidence.XXXXXXXX)}"
 mkdir -p "$inventory_evidence"
-node examples/fix-e-alignment/verify-local.cjs
+TEAQL_FIX_E_EVIDENCE_DIR="$inventory_evidence/fix-e" node examples/fix-e-alignment/verify-local.cjs
 TEAQL_CONTEXT_FIX_EVIDENCE_DIR="$inventory_evidence/context-derived" node examples/context-derived/verify-local.cjs
 TEAQL_NATURAL_MESSAGES_EVIDENCE_DIR="$inventory_evidence/natural-messages" node examples/natural-messages/verify-local.cjs
 TEAQL_SQLITE_LIFECYCLE_EVIDENCE_DIR="$inventory_evidence/sqlite-lifecycle" node examples/sqlite-lifecycle/verify-local.cjs
