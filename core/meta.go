@@ -15,6 +15,9 @@ type PropertyDescriptor struct {
 	// Admission rule evaluated before restored-value cancellation or customer
 	// Checker/Fix. Trusted model metadata, never supplied by a mutation request.
 	ImmutableUpdateRule string
+	// Trusted model ownership, not inferred from field names or caller input.
+	CreateFunction string
+	UpdateFunction string
 }
 
 func NewPropertyDescriptor(name string, dataType DataType) *PropertyDescriptor {
@@ -57,6 +60,16 @@ func (p *PropertyDescriptor) Int32() *PropertyDescriptor {
 
 func (p *PropertyDescriptor) ImmutableAfterCreate(rule string) *PropertyDescriptor {
 	p.ImmutableUpdateRule = rule
+	return p
+}
+
+func (p *PropertyDescriptor) OnCreateFromContext(function string) *PropertyDescriptor {
+	p.CreateFunction = function
+	return p
+}
+
+func (p *PropertyDescriptor) OnUpdateFromContext(function string) *PropertyDescriptor {
+	p.UpdateFunction = function
 	return p
 }
 

@@ -228,7 +228,7 @@ func checkerNumericConstraint(value any) bool {
 	return false
 }
 
-func (c *UserContext) translateCheckerResults(results []CheckResult, declaring string, known []string, allow bool) {
+func (c *UserContext) translateCheckerResults(results []CheckResult, declaring string, known []string, allow bool, configuration ...checkerMessageConfig) {
 	if len(results) == 0 {
 		return
 	}
@@ -245,6 +245,15 @@ func (c *UserContext) translateCheckerResults(results []CheckResult, declaring s
 			}
 		}
 		policy := c.checkerFieldPolicy(r.EntityType, field)
+		// Generated diagnostics can have an explicit wire type while the real
+		// checked input uses a different internal registry key. Keep that public
+		// type unchanged, but never lose the checked owner's stronger policy.
+		// Both names are supplied explicitly; do not guess a casing conversion.
+		if native := c.checkerFieldPolicy(declaring, field); policy != "credential" {
+			if native == "credential" || policy == "" {
+				policy = native
+			}
+		}
 		info := inspectCheckerValue(r.InputValue)
 		credential = credential || policy == "credential" || info.credential
 		masked := credential || !allow && (policy == "masked" || strings.HasPrefix(field, "#"))
@@ -270,9 +279,14 @@ func (c *UserContext) translateCheckerResults(results []CheckResult, declaring s
 		}
 	}
 	known = checkerRedactions(known)
-	locale, catalog := c.Language().(Locale), c.I18nCatalog()
+	config := c.captureCheckerMessages()
+	if len(configuration) > 0 {
+		config = configuration[0]
+	}
+	seen := map[CheckerMessageWarning]bool{}
 	for i := range results {
+		automatic := naturalCheckerAutomatic(results[i])
 		results[i].Message = scrubCheckerText(results[i].Message, known)
-		catalog.translateChecker(&results[i], locale, known)
+		renderNaturalChecker(config, &results[i], known, automatic, seen, nil)
 	}
 }

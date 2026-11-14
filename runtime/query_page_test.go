@@ -64,9 +64,9 @@ func TestPagePlanOwnsNamedCountBeforePolicyAndExecutesSeparateRowShape(t *testin
 	if !reflect.DeepEqual(comments, []string{"render school list", "load schools", `CountAs("total\"rows\n")`}) {
 		t.Fatalf("native count chain: %v", comments)
 	}
-	// The executor adds its normal bounded result limit to the one-row count
-	// result; it must not reuse the caller's page offset or page-size limit.
-	if count.Query.Slice == nil || count.Query.Slice.Offset != 0 || *count.Query.Slice.Limit != 10000 || len(count.Query.Relations) != 0 || len(rows.Query.Aggregates) != 0 ||
+	// Count is framework-owned nested work, not an outer page. It must not
+	// acquire an implicit limit or reuse the caller's offset/page-size limit.
+	if count.Query.Slice != nil || len(count.Query.Relations) != 0 || len(rows.Query.Aggregates) != 0 ||
 		rows.Query.Slice == nil || rows.Query.Slice.Offset != 1 || *rows.Query.Slice.Limit != 1 {
 		t.Fatal("count leaked into row projection or page slice leaked into count")
 	}

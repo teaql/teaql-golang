@@ -177,8 +177,8 @@ func TestGeneratedPartialAncestorsRejectWrongActiveRootAndRetry(t *testing.T) {
 			if result.RuleID != "context_root_mismatch" || result.EntityType != "OrderItem" || result.InstancePath() != "/purchaseOrderList/0/orderItemList/0/tenant" {
 				t.Fatalf("wrong selected ownership diagnostic: %+v", result.ToWire(runtime.JsonFieldCamelCase))
 			}
-			if result.Message != "The PurchaseOrderList[0].OrderItemList[0].Tenant does not match the active context root" {
-				t.Fatal("ownership diagnostic must have a readable full-path explanation", result.Message)
+			if result.Message != "The tenant is invalid.\nLocation: the 1st purchase order list → the 1st order item list" {
+				t.Fatal("ownership diagnostic must retain its readable leaf and complete owner chain", result.Message)
 			}
 			wires = append(wires, result.ToWire(runtime.JsonFieldCamelCase))
 		}

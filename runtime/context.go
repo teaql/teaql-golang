@@ -286,6 +286,11 @@ type UserContext struct {
 	userIdentifier                    string
 	requestPolicy                     RequestPolicy
 	checkerRegistry                   CheckerRegistry
+	checkerMessageMu                  sync.RWMutex
+	checkerPresentationModel          *CheckerPresentationModel
+	checkerMessageCatalog             *CheckerMessageCatalog
+	checkerMessageRenderer            CheckerMessageRenderer
+	checkerMessageWarning             func(CheckerMessageWarning)
 	mutationPolicyRegistry            MutationPolicyRegistry
 	mutationPolicyApprovalProvider    MutationPolicyApprovalProvider
 	mutationGovernanceSink            MutationGovernanceSink
@@ -328,13 +333,18 @@ type FixEvidence struct {
 // CheckAndFixInput is the provider-independent mutation state seen by model checkers.
 // Values may be amended by declared fixes before SQL compilation.
 type CheckAndFixInput struct {
-	Entity        string
-	Operation     core.MutationKind
-	Values        core.Record
-	OldValues     core.Record
-	Now           time.Time
-	changedFields map[string]bool
+	Entity             string
+	Operation          core.MutationKind
+	Values             core.Record
+	OldValues          core.Record
+	Now                time.Time
+	changedFields      map[string]bool
+	contextFixEligible bool
 }
+
+// ContextFixAllowed is frozen by Context before the first Fix assignment.
+// A changed clock, IP or actor is not independent business mutation intent.
+func (input *CheckAndFixInput) ContextFixAllowed() bool { return input.contextFixEligible }
 
 // FieldChanged distinguishes an explicitly mutated field from the complete
 // loaded record supplied for graph validation. Standalone requests retain the
@@ -842,6 +852,10 @@ func (c *UserContext) executePreparedGraphSave(ctx stdcontext.Context, intent co
 	}()
 	plan, err := prepare()
 	if err != nil {
+		c.graphSaveMu.Lock()
+		state := c.preparedGraphSnapshot
+		c.graphSaveMu.Unlock()
+		rerenderGraphCheckerError(err, state)
 		return err
 	}
 	if plan != nil {
@@ -886,20 +900,28 @@ func (c *UserContext) startGraphPreparation() {
 	// BusinessClock is an application SPI. Do not call it while holding the
 	// state mutex: it may panic or inspect Context diagnostics itself.
 	now := c.BusinessTime()
+	checkerMessages := c.captureCheckerMessages()
 	c.graphSaveMu.Lock()
 	c.graphFixTime = now
 	c.currentFixEvidence = nil
 	c.preparedGraphSnapshot = &preparedGraphSnapshot{assignments: make(map[string]core.EntityKey), metadata: clonePreparedMetadata(c), lineage: make(map[string]preparedGraphLineage)}
+	c.preparedGraphSnapshot.checkerMessages = checkerMessages
 	c.graphSaveMu.Unlock()
 }
 
 func (c *UserContext) finishGraphPreparation() {
 	c.graphSaveMu.Lock()
+	state := c.preparedGraphSnapshot
 	c.graphFixTime = time.Time{}
 	c.lastFixEvidence = append([]FixEvidence(nil), c.currentFixEvidence...)
 	c.currentFixEvidence = nil
 	c.preparedGraphSnapshot = nil
 	c.graphSaveMu.Unlock()
+	if state != nil && !state.contextFixCommitted {
+		for index := len(state.contextFixUndo) - 1; index >= 0; index-- {
+			state.contextFixUndo[index]()
+		}
+	}
 }
 
 func (c *UserContext) observeGraphSave(parent stdcontext.Context, work func(stdcontext.Context) error) (err error) {
@@ -975,11 +997,8 @@ func (c *UserContext) executeGraphSave(operationContext stdcontext.Context, work
 		c.graphSaveActive = false
 		c.graphCommitActions = nil
 		c.graphRollbackActions = nil
-		c.graphFixTime = time.Time{}
-		c.lastFixEvidence = append([]FixEvidence(nil), c.currentFixEvidence...)
-		c.currentFixEvidence = nil
-		c.preparedGraphSnapshot = nil
 		c.graphSaveMu.Unlock()
+		c.finishGraphPreparation()
 	}()
 	var now time.Time
 	if !preparationStarted {
@@ -1020,6 +1039,11 @@ func (c *UserContext) executeGraphSave(operationContext stdcontext.Context, work
 		}
 	} else {
 		transactionFinished = true
+		c.graphSaveMu.Lock()
+		if state := c.preparedGraphSnapshot; state != nil {
+			state.contextFixCommitted = true
+		}
+		c.graphSaveMu.Unlock()
 		for _, action := range c.graphCommitActions {
 			if actionErr := action(); actionErr != nil && err == nil {
 				err = &GraphCommittedError{Cause: actionErr}
@@ -1640,7 +1664,20 @@ func (c *UserContext) CheckAndFix(input *CheckAndFixInput) error {
 	if input == nil {
 		return nil
 	}
-	return c.checkAndFix(input)
+	// Only automatic Context assignments are staged here. Preserve the existing
+	// public contract for application-owned business repairs on a rejected check.
+	undo := c.captureInputContextFix(input)
+	succeeded := false
+	defer func() {
+		if !succeeded {
+			undo()
+		}
+	}()
+	if err := c.checkAndFix(input); err != nil {
+		return err
+	}
+	succeeded = true
+	return nil
 }
 
 func (c *UserContext) checkAndFix(input *CheckAndFixInput) error {
@@ -1649,10 +1686,14 @@ func (c *UserContext) checkAndFix(input *CheckAndFixInput) error {
 
 func (c *UserContext) checkAndFixWithReferences(input *CheckAndFixInput, references *deferredReferenceState) error {
 	var results []CheckResult
+	checkerMessages := c.captureCheckerMessages()
 	entity, operation := input.Entity, input.Operation
 	if err := c.mapCheckerInput(input, true); err != nil {
 		return checkerMappingError(entity, err)
 	}
+	input.contextFixEligible = c.contextFixEligible(input)
+	undoContext := c.captureInputContextFix(input)
+	beforeFix := core.CloneRecord(input.Values)
 	allow := plaintextLogsEnabled()
 	known := c.checkerKnownValues(entity, allow, input.Values, input.OldValues)
 	if c.checkerRegistry != nil {
@@ -1687,10 +1728,29 @@ func (c *UserContext) checkAndFixWithReferences(input *CheckAndFixInput, referen
 	}
 	if len(results) != 0 {
 		known = append(known, c.checkerKnownValues(entity, allow, input.Values, input.OldValues)...)
-		c.translateCheckerResults(results, entity, known, allow)
+		bindNaturalCheckerOrigin(results, checkerMessages.model, entity)
+		c.translateCheckerResults(results, entity, known, allow, checkerMessages)
 	}
 	if len(results) != 0 {
 		return &RuntimeError{Type: "Check", CheckResults: results}
+	}
+	// A custom business repair may remove the last effective change. Recheck
+	// without re-running Fix, including newly repaired business fields, and
+	// discard only automatic Context assignments when no real intent remains.
+	final := *input
+	if input.changedFields != nil {
+		final.changedFields = make(map[string]bool, len(input.changedFields))
+		for field, changed := range input.changedFields {
+			final.changedFields[field] = changed
+		}
+		for field, value := range input.Values {
+			if before, known := beforeFix[field]; !known || !core.ExactValueEqual(before, value) {
+				final.changedFields[field] = true
+			}
+		}
+	}
+	if !c.contextFixEligible(&final) {
+		undoContext()
 	}
 	return nil
 }

@@ -92,7 +92,7 @@ func TestCheckerPrivacyOriginalUnicodeLength(t *testing.T) {
 		ctx.TranslateCheckResults(results)
 		phrase := "is 6"
 		if locale == "zh-CN" {
-			phrase = "实际长度为 6"
+			phrase = "当前长度为6"
 		}
 		if results[0].InputValue != "[REDACTED]" || results[0].SystemValue != 12 || !strings.Contains(results[0].Message, phrase) {
 			t.Fatal("original length or numeric bound lost")
@@ -181,7 +181,7 @@ func TestCheckerPrivacyRetranslatedLength(t *testing.T) {
 	}
 	relocated := []CheckResult{first[0].PrefixedBy(Location().Property("order_item_list").At(2))}
 	ctx.TranslateCheckResults(relocated)
-	if relocated[0].InputValue != "[REDACTED]" || !strings.Contains(relocated[0].Message, "实际长度为 6") || !strings.Contains(relocated[0].Message, "OrderItemList[2].Password") {
+	if relocated[0].InputValue != "[REDACTED]" || !strings.Contains(relocated[0].Message, "当前长度为6") || !strings.Contains(relocated[0].Message, "第3项order item list") || relocated[0].ObjectLocation().InstancePath() != "/orderItemList/2/password" || relocated[0].SystemValue != 12 {
 		t.Fatal("cached length or relocated path is wrong")
 	}
 }
@@ -240,8 +240,8 @@ func TestCheckerPrivacyPublicRuleVocabulary(t *testing.T) {
 	r.SystemValue = "required"
 	results := []CheckResult{r}
 	NewUserContext().TranslateCheckResults(results)
-	if results[0].InputValue != "[REDACTED]" || results[0].SystemValue != "[REDACTED]" || results[0].Message != "The Password is required" {
-		t.Fatal("credential escaped or public rule text was corrupted")
+	if results[0].InputValue != "[REDACTED]" || results[0].SystemValue != "[REDACTED]" || results[0].Message != "The password is required.\nLocation: current object" {
+		t.Fatalf("credential escaped or public rule text was corrupted: message=%q", results[0].Message)
 	}
 }
 

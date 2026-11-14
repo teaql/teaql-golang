@@ -2,7 +2,7 @@
 set -euo pipefail
 
 repo="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-expected=(basic business-id conformance expression-profiles fix-e-alignment mutation-policy object-storage order-management scalar-type-probe school-management security-foundations sqlite-lifecycle task_board trace-chain typed-runtime-spi)
+expected=(basic business-id conformance context-derived expression-profiles fix-e-alignment mutation-policy natural-messages object-storage order-management scalar-type-probe school-management security-foundations sqlite-lifecycle task_board trace-chain typed-runtime-spi)
 mapfile -t actual < <(find "$repo/examples" -mindepth 1 -maxdepth 1 -type d -printf '%f\n' | sort)
 if [[ "${actual[*]}" != "${expected[*]}" ]]; then
   echo "example inventory changed; update scripts/verify-examples.sh: ${actual[*]}" >&2
@@ -18,7 +18,9 @@ export PATH="$(dirname "$go_binary"):$PATH"
 "$GO" version
 inventory_evidence="${TEAQL_EXAMPLES_EVIDENCE_DIR:-$(mktemp -d -t teaql-go-examples-evidence.XXXXXXXX)}"
 mkdir -p "$inventory_evidence"
-node examples/fix-e-alignment/verify-local.cjs
+TEAQL_FIX_E_EVIDENCE_DIR="$inventory_evidence/fix-e" node examples/fix-e-alignment/verify-local.cjs
+TEAQL_CONTEXT_FIX_EVIDENCE_DIR="$inventory_evidence/context-derived" node examples/context-derived/verify-local.cjs
+TEAQL_NATURAL_MESSAGES_EVIDENCE_DIR="$inventory_evidence/natural-messages" node examples/natural-messages/verify-local.cjs
 TEAQL_SQLITE_LIFECYCLE_EVIDENCE_DIR="$inventory_evidence/sqlite-lifecycle" node examples/sqlite-lifecycle/verify-local.cjs
 TEAQL_GENERATED_E_PROFILE_EVIDENCE_DIR="$inventory_evidence/expression-profiles" node examples/expression-profiles/verify-local.cjs
 bash examples/object-storage/verify.sh

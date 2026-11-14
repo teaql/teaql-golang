@@ -97,8 +97,9 @@ func TestContextRootCatalogAutomaticRerender(t *testing.T) {
 	}
 	ctx.TranslateCheckResults(relocated)
 	expected := catalogRootResult("context_root_mismatch").PrefixedBy(Location().Property("orders").At(2))
-	BuiltinI18nCatalog().Translate(&expected, LocaleChineseSimplified)
-	if relocated[0].Message != expected.Message || relocated[0].Message == original.Message || !strings.Contains(relocated[0].Message, relocated[0].NativePath()) || !reflect.DeepEqual(results[0], original) {
+	expectedResults := []CheckResult{expected}
+	ctx.TranslateCheckResults(expectedResults)
+	if relocated[0].Message != expectedResults[0].Message || relocated[0].Message == original.Message || !strings.Contains(relocated[0].Message, "第3项orders") || !reflect.DeepEqual(results[0], original) || !reflect.DeepEqual(relocated[0].ObjectLocation(), expected.ObjectLocation()) || relocated[0].EntityType != original.EntityType || relocated[0].SourceInstancePath != original.SourceInstancePath {
 		t.Fatal("automatic message froze a locale/path or changed its source", relocated[0].Message)
 	}
 	relocated[0].Message = "Replacement business explanation"

@@ -88,6 +88,41 @@ func (r *EntityRoot) Change(key EntityKey) Record {
 	return result
 }
 
+// CaptureFields is a framework save-attempt undo, not a second ledger. Only
+// the specified fields of this exact typed identity are restored on failure.
+func (r *EntityRoot) CaptureFields(key EntityKey, fields []string) func(EntityKey) {
+	r.mu.RLock()
+	before := make(Record)
+	for _, field := range fields {
+		if value, present := r.changes[key.mapKey()].Values[field]; present {
+			before[field] = CloneValue(value)
+		}
+	}
+	r.mu.RUnlock()
+	owned := append([]string(nil), fields...)
+	return func(key EntityKey) {
+		r.mu.Lock()
+		defer r.mu.Unlock()
+		entry := r.changes[key.mapKey()]
+		entry.Key = key
+		for _, field := range owned {
+			if value, present := before[field]; present {
+				if entry.Values == nil {
+					entry.Values = make(Record)
+				}
+				entry.Values[field] = CloneValue(value)
+			} else {
+				delete(entry.Values, field)
+			}
+		}
+		if len(entry.Values) == 0 {
+			delete(r.changes, key.mapKey())
+		} else {
+			r.changes[key.mapKey()] = entry
+		}
+	}
+}
+
 // DiscardFields removes only the still-observed exact values. Other pending
 // fields, typed entities, original versions, lifecycle and trace are untouched.
 // It cannot erase a value replaced between baseline comparison and admission.

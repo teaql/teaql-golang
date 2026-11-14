@@ -23,6 +23,15 @@ func NewLoadedScalarSnapshot(record Record, fields ...string) LoadedScalarSnapsh
 }
 
 func (s LoadedScalarSnapshot) Values() Record { return CloneRecord(s.values) }
+
+// ValuesFor is trusted generated-Checker evidence. Another owner/version or an
+// unowned privacy snapshot cannot justify cancelling a business mutation.
+func (s LoadedScalarSnapshot) ValuesFor(key EntityKey, version int64) Record {
+	if s.owner == nil || s.owner.version != version || s.owner.key.mapKey() != key.mapKey() {
+		return nil
+	}
+	return s.Values()
+}
 func (LoadedScalarSnapshot) String() string   { return "<loaded scalar snapshot>" }
 func (LoadedScalarSnapshot) GoString() string { return "<loaded scalar snapshot>" }
 
