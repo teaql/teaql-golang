@@ -42,8 +42,11 @@ func (e *SqlDataServiceExecutor) Query(context stdcontext.Context, request *data
 		return nil, err
 	}
 	request = captured
-	if err := request.Query.PrepareForList(); err != nil {
-		return nil, err
+	// Scope ownership is captured by the runtime, never decoded from wire data.
+	if request.Scope().Parent() == nil {
+		if err := request.Query.PrepareForList(); err != nil {
+			return nil, err
+		}
 	}
 	entity := e.metadata.Entity(request.Query.Entity)
 	if entity == nil {

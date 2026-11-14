@@ -141,8 +141,10 @@ func (s *RuntimeDataService) fetchAllWithIntent(context stdcontext.Context, quer
 			protectForwardRelationProjection(prepared, descriptor)
 		}
 	}
-	if err = prepared.PrepareForList(); err != nil {
-		return nil, err
+	if request.Scope().Parent() == nil {
+		if err = prepared.PrepareForList(); err != nil {
+			return nil, err
+		}
 	}
 	prepared, idSetOrder, idSetEmpty := s.prepareIDSetPage(context, prepared)
 	if idSetEmpty {

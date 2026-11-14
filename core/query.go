@@ -305,18 +305,8 @@ func (q *SelectQuery) prepareForList(ceiling uint64) error {
 	} else if *q.Slice.Limit > ceiling {
 		return fmt.Errorf("QUERY_HARD_LIMIT_EXCEEDED: requested limit %d exceeds hard limit %d", *q.Slice.Limit, ceiling)
 	}
-	for _, relation := range q.Relations {
-		if relation.Query != nil {
-			if err := relation.Query.prepareForList(10000); err != nil {
-				return err
-			}
-		}
-	}
-	for _, child := range q.ChildEnhancements {
-		if err := child.prepareForList(10000); err != nil {
-			return err
-		}
-	}
+	// The ceiling belongs to this outer result, not its nested contributors.
+	// Explicit child Top-N/offset remains part of that child's business query.
 	return nil
 }
 
