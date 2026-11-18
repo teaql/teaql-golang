@@ -113,6 +113,22 @@ func (s *failOpenRuntimeTelemetryScope) Failure(errorType string) {
 	s.finish(func() { s.delegate.Failure(errorType) })
 }
 
+type runtimeErrorObservation interface{ failureWithError(error) }
+
+// FailRuntimeOperation keeps native rejection information for local logging
+// while the installed adapter receives its original, value-free error type.
+func FailRuntimeOperation(scope RuntimeTelemetryScope, err error) {
+	if local, ok := scope.(runtimeErrorObservation); ok {
+		local.failureWithError(err)
+	} else {
+		scope.Failure(RuntimeErrorType(err))
+	}
+}
+
+func (s *failOpenRuntimeTelemetryScope) failureWithError(err error) {
+	s.finish(func() { FailRuntimeOperation(s.delegate, err) })
+}
+
 func (s *failOpenRuntimeTelemetryScope) CompleteRuntimeOperation(outcome string, attributes map[string]RuntimeAttributeValue, kind string) {
 	s.finish(func() { CompleteRuntimeOperation(s.delegate, outcome, attributes, kind) })
 }
@@ -144,6 +160,9 @@ func StartRuntimeOperation(
 			delegate = noopRuntimeTelemetryScope{}
 		}
 	}()
+	if user, ok := UserContextFrom(context); ok && user.runtimeLogger != nil {
+		delegate = &loggedRuntimeScope{delegate: delegate, logger: user.runtimeLogger, operation: operation}
+	}
 	return operationContext, &failOpenRuntimeTelemetryScope{delegate: delegate}
 }
 

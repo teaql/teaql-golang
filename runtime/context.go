@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"os"
 	"strings"
 	"sync"
 	"time"
@@ -274,6 +273,7 @@ type UserContext struct {
 	querySQLLogEnabled                bool
 	mutationSQLLogEnabled             bool
 	runtimeTelemetry                  RuntimeTelemetry
+	runtimeLogger                     *RuntimeLogger
 	continuousPageCursorStore         ContinuousPageCursorStore
 	idSetStore                        IDSetStore
 	idSetMu                           sync.Mutex
@@ -641,6 +641,27 @@ func (c *UserContext) RuntimeTelemetry() RuntimeTelemetry {
 }
 
 func NewUserContext() *UserContext {
+	return newUserContext(defaultRuntimeLogger())
+}
+
+// NewUserContextWithLogging resolves application logging before creating a
+// context. Share the returned context's logger with request-scoped contexts.
+func NewUserContextWithLogging(options RuntimeLoggingOptions) (*UserContext, error) {
+	logger, err := NewRuntimeLogger(options)
+	if err != nil {
+		return nil, err
+	}
+	return newUserContext(logger), nil
+}
+
+func NewUserContextWithLogger(logger *RuntimeLogger) *UserContext {
+	if logger == nil {
+		logger = defaultRuntimeLogger()
+	}
+	return newUserContext(logger)
+}
+
+func newUserContext(logger *RuntimeLogger) *UserContext {
 	context := &UserContext{
 		Context:                           stdcontext.Background(),
 		resources:                         make(map[string]interface{}),
@@ -651,7 +672,8 @@ func NewUserContext() *UserContext {
 		continuousPagePlan:                "DISABLED",
 		userIdentifier:                    "main",
 		runtimeTelemetry:                  defaultRuntimeTelemetry(),
-		diagnosticSQLLogSink:              NewTextDiagnosticSQLLogSink(os.Stderr),
+		runtimeLogger:                     logger,
+		diagnosticSQLLogSink:              runtimeSQLLogSink{logger: logger},
 		querySQLLogEnabled:                true,
 		mutationSQLLogEnabled:             true,
 		emittedMutationGovernanceWarnings: make(map[string]struct{}),
@@ -929,7 +951,7 @@ func (c *UserContext) observeGraphSave(parent stdcontext.Context, work func(stdc
 	completed := false
 	defer func() {
 		if err != nil {
-			operation.Failure(RuntimeErrorType(err))
+			FailRuntimeOperation(operation, err)
 		} else if !completed {
 			operation.Failure("graph_interrupted")
 		} else {
@@ -1206,8 +1228,9 @@ func (c *UserContext) sendEvent(context stdcontext.Context, event *RawAuditEvent
 	_ = context
 	defer func() {
 		if err != nil {
-			scope.Failure(RuntimeErrorType(err))
+			FailRuntimeOperation(scope, err)
 		} else {
+			emitDiagnosticSafely(func() { c.logAuditEvent(event) })
 			scope.Success(nil)
 		}
 	}()
