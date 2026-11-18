@@ -129,7 +129,7 @@ func (s *RuntimeDataService) fetchAllWithIntent(context stdcontext.Context, quer
 		context, scope = s.startListOperation(context, query, request.Scope().Root())
 		defer func() {
 			if err != nil {
-				scope.Failure(RuntimeErrorType(err))
+				FailRuntimeOperation(scope, err)
 			} else {
 				scope.Success(map[string]RuntimeAttributeValue{"teaql.result.cardinality": len(rows)})
 			}
@@ -363,7 +363,7 @@ func (s *RuntimeDataService) prepareContinuousPage(context stdcontext.Context, q
 	cacheContext, cacheScope := StartRuntimeOperation(context, userCtx.RuntimeTelemetry(), NewRuntimeOperation("cache", "continuous-page.get", map[string]RuntimeAttributeValue{"teaql.cache.operation": "get"}))
 	cursor, err := userCtx.ContinuousPageCursorStore().GetContinuousPageCursor(cacheContext, queryKey, query.Slice.Offset)
 	if err != nil {
-		cacheScope.Failure(RuntimeErrorType(err))
+		FailRuntimeOperation(cacheScope, err)
 		userCtx.ObserveContinuousPage("OFFSET_FALLBACK:STORE_UNAVAILABLE", "")
 		return query, execution
 	}
@@ -411,7 +411,7 @@ func (s *RuntimeDataService) registerContinuousPage(context stdcontext.Context, 
 	}
 	cacheContext, cacheScope := StartRuntimeOperation(context, userCtx.RuntimeTelemetry(), NewRuntimeOperation("cache", "continuous-page.put", map[string]RuntimeAttributeValue{"teaql.cache.operation": "put"}))
 	if err := userCtx.ContinuousPageCursorStore().PutContinuousPageCursor(cacheContext, cursor); err != nil {
-		cacheScope.Failure(RuntimeErrorType(err))
+		FailRuntimeOperation(cacheScope, err)
 		userCtx.ObserveContinuousPage("OFFSET_FALLBACK:STORE_UNAVAILABLE", "")
 	} else if execution.optimized {
 		cacheScope.Success(map[string]RuntimeAttributeValue{"teaql.cache.result": "stored"})
@@ -446,7 +446,7 @@ func (s *RuntimeDataService) fetchRows(context stdcontext.Context, query *core.S
 	}))
 	defer func() {
 		if err != nil {
-			scope.Failure(RuntimeErrorType(err))
+			FailRuntimeOperation(scope, err)
 		} else {
 			scope.Success(map[string]RuntimeAttributeValue{"teaql.result.cardinality": len(rows)})
 		}
@@ -662,7 +662,7 @@ func (s *RuntimeDataService) enhanceRelations(context stdcontext.Context, parent
 			children, err = s.fetchRows(relationContext, childQuery, &childIntent)
 		}
 		if err != nil {
-			relationScope.Failure(RuntimeErrorType(err))
+			FailRuntimeOperation(relationScope, err)
 			return err
 		}
 		for _, child := range children {
@@ -670,7 +670,7 @@ func (s *RuntimeDataService) enhanceRelations(context stdcontext.Context, parent
 		}
 		childKeys := captureRelationKeys(children, relation.ForKey)
 		if err := s.enhanceQueryRows(relationContext, children, childQuery, childPlan, childIntent); err != nil {
-			relationScope.Failure(RuntimeErrorType(err))
+			FailRuntimeOperation(relationScope, err)
 			return err
 		}
 		attachRelationRows(parents, children, load.Name, relation, parentKeys, childKeys)
@@ -685,7 +685,7 @@ func (s *RuntimeDataService) enhanceRelations(context stdcontext.Context, parent
 				perParent.AndFilter(core.ExprEq(relation.ForKey, key))
 				facets, err := executeCapturedFacets(relationContext, s, perParent, childPlan.facets, childIntent)
 				if err != nil {
-					relationScope.Failure(RuntimeErrorType(err))
+					FailRuntimeOperation(relationScope, err)
 					return err
 				}
 				core.AttachRecordRelationFacets(parent, load.Name, facets)

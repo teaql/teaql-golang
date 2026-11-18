@@ -19,7 +19,7 @@ func ExecuteTypedList[T any](context stdcontext.Context, service *RuntimeDataSer
 	context, operation := service.startListOperation(context, request.Query, request.Scope().Root())
 	defer func() {
 		if err != nil {
-			operation.Failure(RuntimeErrorType(err))
+			FailRuntimeOperation(operation, err)
 		} else if result == nil {
 			operation.Failure("operation_interrupted")
 		} else {
@@ -101,7 +101,7 @@ func (s *RuntimeDataService) FetchListWithFacetPlan(context stdcontext.Context, 
 		context, operation = s.startListOperation(context, query, request.Scope().Root())
 		defer func() {
 			if err != nil {
-				operation.Failure(RuntimeErrorType(err))
+				FailRuntimeOperation(operation, err)
 			} else if result == nil {
 				operation.Failure("operation_interrupted")
 			} else {
@@ -143,7 +143,7 @@ func (s *RuntimeDataService) FetchPageWithFacetPlan(context stdcontext.Context, 
 		context, operation = s.startListOperation(context, query, request.Scope().Root())
 		defer func() {
 			if err != nil {
-				operation.Failure(RuntimeErrorType(err))
+				FailRuntimeOperation(operation, err)
 			} else if result == nil {
 				operation.Failure("operation_interrupted")
 			} else {

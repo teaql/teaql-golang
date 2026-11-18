@@ -111,7 +111,7 @@ func (e *SqlDataServiceExecutor) Mutate(context stdcontext.Context, request data
 	context, mutationScope := StartRuntimeOperation(context, telemetry, NewRuntimeOperation("mutation", "sql.mutate", nil))
 	defer func() {
 		if err != nil {
-			mutationScope.Failure(RuntimeErrorType(err))
+			FailRuntimeOperation(mutationScope, err)
 		} else if result != nil {
 			mutationScope.Success(map[string]RuntimeAttributeValue{"teaql.result.cardinality": result.AffectedRows})
 		}
@@ -160,7 +160,7 @@ func (e *SqlDataServiceExecutor) Mutate(context stdcontext.Context, request data
 	affected, err := e.transport.ExecuteSql(context, compiled)
 	completed = true
 	if err != nil {
-		providerScope.Failure(RuntimeErrorType(err))
+		FailRuntimeOperation(providerScope, err)
 	} else {
 		providerScope.Success(map[string]RuntimeAttributeValue{"teaql.result.cardinality": affected})
 	}

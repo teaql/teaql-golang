@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -11,28 +12,42 @@ import (
 func TestTaskBoardDefaultLogsHaveIntentAndMaskBusinessValues(t *testing.T) {
 	cmd := exec.Command("go", "run", ".")
 	for _, entry := range os.Environ() {
-		if !strings.HasPrefix(entry, "TEAQL_TASK_BOARD_DB=") && !strings.HasPrefix(entry, "TEAQL_ALLOW_SENSITIVE_PLAINTEXT_LOGS=") {
+		if !strings.HasPrefix(entry, "TEAQL_TASK_BOARD_DB=") && !strings.HasPrefix(entry, "TEAQL_ALLOW_SENSITIVE_PLAINTEXT_LOGS=") &&
+			!strings.HasPrefix(entry, "TEAQL_LOG_ENDPOINT=") && !strings.HasPrefix(entry, "TEAQL_LOG_FORMAT=") {
 			cmd.Env = append(cmd.Env, entry)
 		}
 	}
-	cmd.Env = append(cmd.Env, "TEAQL_TASK_BOARD_DB="+filepath.Join(t.TempDir(), "task-board.db"))
+	cmd.Env = append(cmd.Env, "TEAQL_TASK_BOARD_DB="+filepath.Join(t.TempDir(), "task-board.db"), "TEAQL_LOG_ENDPOINT=stdout")
 	output, err := cmd.CombinedOutput()
 	if err != nil {
 		t.Fatalf("example failed: %v\n%s", err, output)
 	}
 	queries, writes := 0, 0
 	for _, line := range strings.Split(string(output), "\n") {
-		if !strings.HasPrefix(line, "[TeaQL SQL]") {
+		if !strings.HasPrefix(line, "{") {
 			continue
 		}
-		if strings.Contains(line, "[query]") || strings.Contains(line, "[select]") {
+		var record struct {
+			Category    string `json:"category"`
+			SQL         string `json:"sql"`
+			Comment     string `json:"comment"`
+			Purpose     string `json:"purpose"`
+			AuditReason string `json:"audit_reason"`
+		}
+		if err := json.Unmarshal([]byte(line), &record); err != nil {
+			t.Fatalf("invalid JSON log: %v: %s", err, line)
+		}
+		if record.Category != "SQL" {
+			continue
+		}
+		if strings.Contains(record.SQL, "SELECT ") {
 			queries++
-			if strings.Contains(line, `comment=""`) || strings.Contains(line, `purpose=""`) {
+			if strings.TrimSpace(record.Comment) == "" || strings.TrimSpace(record.Purpose) == "" {
 				t.Fatalf("query has empty intent: %s", line)
 			}
-		} else if strings.Contains(line, "[insert]") || strings.Contains(line, "[update]") || strings.Contains(line, "[delete]") {
+		} else if strings.Contains(record.SQL, "INSERT ") || strings.Contains(record.SQL, "UPDATE ") || strings.Contains(record.SQL, "DELETE ") {
 			writes++
-			if strings.Contains(line, `auditReason=""`) {
+			if strings.TrimSpace(record.AuditReason) == "" {
 				t.Fatalf("write has empty audit reason: %s", line)
 			}
 		}

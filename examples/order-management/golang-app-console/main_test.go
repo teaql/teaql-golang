@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -14,28 +15,46 @@ func TestOrderExampleGeneratedIntentAndIdempotence(t *testing.T) {
 		cmd := exec.Command("go", "run", ".")
 		for _, entry := range os.Environ() {
 			if !strings.HasPrefix(entry, "TEAQL_ORDER_MANAGEMENT_DB=") &&
-				!strings.HasPrefix(entry, "TEAQL_ALLOW_SENSITIVE_PLAINTEXT_LOGS=") {
+				!strings.HasPrefix(entry, "TEAQL_ALLOW_SENSITIVE_PLAINTEXT_LOGS=") &&
+				!strings.HasPrefix(entry, "TEAQL_LOG_ENDPOINT=") && !strings.HasPrefix(entry, "TEAQL_LOG_FORMAT=") {
 				cmd.Env = append(cmd.Env, entry)
 			}
 		}
-		cmd.Env = append(cmd.Env, "TEAQL_ORDER_MANAGEMENT_DB="+database)
+		cmd.Env = append(cmd.Env, "TEAQL_ORDER_MANAGEMENT_DB="+database, "TEAQL_LOG_ENDPOINT=stdout")
 		output, err := cmd.CombinedOutput()
 		if err != nil {
 			t.Fatalf("example run %d failed: %v\n%s", run, err, output)
 		}
 		queries, writes := 0, 0
+		customerSQL := ""
 		for _, line := range strings.Split(string(output), "\n") {
-			if !strings.HasPrefix(line, "[TeaQL SQL]") {
+			if !strings.HasPrefix(line, "{") {
 				continue
 			}
-			if strings.Contains(line, "[query]") || strings.Contains(line, "[select]") {
+			var record struct {
+				Category    string `json:"category"`
+				SQL         string `json:"sql"`
+				Comment     string `json:"comment"`
+				Purpose     string `json:"purpose"`
+				AuditReason string `json:"audit_reason"`
+			}
+			if err := json.Unmarshal([]byte(line), &record); err != nil {
+				t.Fatalf("invalid JSON log: %v: %s", err, line)
+			}
+			if record.Category != "SQL" {
+				continue
+			}
+			if strings.Contains(record.SQL, "INSERT INTO customer_data") {
+				customerSQL = record.SQL
+			}
+			if strings.Contains(record.SQL, "SELECT ") {
 				queries++
-				if strings.Contains(line, `comment=""`) || strings.Contains(line, `purpose=""`) {
+				if strings.TrimSpace(record.Comment) == "" || strings.TrimSpace(record.Purpose) == "" {
 					t.Fatalf("run %d query lost intent: %s", run, line)
 				}
-			} else if strings.Contains(line, "[insert]") || strings.Contains(line, "[update]") || strings.Contains(line, "[delete]") {
+			} else if strings.Contains(record.SQL, "INSERT ") || strings.Contains(record.SQL, "UPDATE ") || strings.Contains(record.SQL, "DELETE ") {
 				writes++
-				if strings.Contains(line, `auditReason=""`) {
+				if strings.TrimSpace(record.AuditReason) == "" {
 					t.Fatalf("run %d write lost audit reason: %s", run, line)
 				}
 			}
@@ -50,13 +69,6 @@ func TestOrderExampleGeneratedIntentAndIdempotence(t *testing.T) {
 			t.Fatalf("customer email reached diagnostics on run %d", run)
 		}
 		if run == 1 {
-			customerSQL := ""
-			for _, line := range strings.Split(string(output), "\n") {
-				if strings.Contains(line, "INSERT INTO customer_data") {
-					customerSQL = line
-					break
-				}
-			}
 			if !strings.Contains(customerSQL, "/* masked */") || !strings.Contains(customerSQL, "'Acme Retail'") {
 				t.Fatalf("customer SQL did not preserve ordinary name beside masked email: %s", customerSQL)
 			}
