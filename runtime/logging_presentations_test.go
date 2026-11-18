@@ -23,6 +23,80 @@ import (
 
 var presentationHeader = regexp.MustCompile(`^(\S+) \[TeaQL\]\[(.*)\]\[(INFO|WARN|ERROR)\] (.*) runtime=(\S+)$`)
 
+func TestRuntimeLoggingOrdinaryAuditStaysMaskedWithPlaintextDebug(t *testing.T) {
+	for _, format := range []string{"json", "human"} {
+		for _, acknowledged := range []bool{false, true} {
+			t.Run(fmt.Sprintf("%s/ack=%v", format, acknowledged), func(t *testing.T) {
+				ack := ""
+				if acknowledged {
+					ack = plaintextLogAck
+				}
+				t.Setenv(plaintextLogEnv, ack)
+				logger := newTestLogger(t, t.TempDir(), map[string]string{"TEAQL_LOG_FORMAT": format})
+				context := NewUserContextWithLogger(logger)
+				descriptor := core.NewEntityDescriptor("Customer").
+					Property(core.NewPropertyDescriptor("name", core.TypeText)).
+					Property(core.NewPropertyDescriptor("address", core.TypeText)).
+					Property(core.NewPropertyDescriptor("password", core.TypeText))
+				descriptor.AuditMaskFlds = []string{"name"}
+				metadata := NewInMemoryMetadataStore()
+				metadata.Register(descriptor)
+				context.Metadata = metadata
+				event := Created("Customer", core.Record{"id": core.ValI64(42),
+					"name": core.ValText("PRIVATE-AUDIT-BUSINESS"), "address": core.ValText("1 Runtime Road"),
+					"password": core.ValText("PASSWORD-CANARY")})
+				if err := context.SendEvent(event); err != nil {
+					t.Fatal(err)
+				}
+				data, err := os.ReadFile(logger.Path)
+				if err != nil {
+					t.Fatal(err)
+				}
+				if strings.Contains(string(data), "PRIVATE-AUDIT-BUSINESS") || strings.Contains(string(data), "PASSWORD-CANARY") {
+					t.Fatal("ordinary audit file disclosed a protected value")
+				}
+				var audit map[string]interface{}
+				for _, row := range presentationRecords(t, format, data) {
+					if row["event"] == "audit.event" {
+						audit = row
+					}
+				}
+				if audit == nil {
+					t.Fatal("missing ordinary audit event")
+				}
+				encoded, err := json.Marshal(audit["fields"])
+				if err != nil {
+					t.Fatal(err)
+				}
+				var fields []*SafeAuditField
+				if err := json.Unmarshal(encoded, &fields); err != nil {
+					t.Fatal(err)
+				}
+				seenName, seenAddress := false, false
+				for _, field := range fields {
+					if field.Name == "name" {
+						seenName = field.Masked
+					}
+					if field.Name == "address" {
+						seenAddress = field.Value != nil && *field.Value == "1 Runtime Road" && !field.Masked
+					}
+				}
+				if !seenName || !seenAddress {
+					t.Fatal("audit lost masking or ordinary diagnostic values")
+				}
+				if event.Values["name"].V != "PRIVATE-AUDIT-BUSINESS" {
+					t.Fatal("business event was modified")
+				}
+				for _, field := range event.BuildSafeEvent([]string{"name"}, nil).Fields {
+					if field.Name == "name" && field.Masked == acknowledged {
+						t.Fatal("explicit projection opt-in changed")
+					}
+				}
+			})
+		}
+	}
+}
+
 func presentationScalar(t *testing.T, value string) string {
 	t.Helper()
 	decoded, err := strconv.Unquote(`"` + strings.ReplaceAll(value, `"`, `\"`) + `"`)

@@ -506,7 +506,8 @@ func (c *UserContext) logAuditEvent(event *RawAuditEvent) {
 		}
 		limit = descriptor.AuditValueMaxL
 	}
-	safe := event.BuildSafeEvent(masks, limit)
+	// The debug acknowledgement does not relax ordinary runtime file policy.
+	safe := event.buildSafeEvent(masks, limit, false)
 	c.runtimeLogger.Write("INFO", "audit.event", "TeaQL audit event", map[string]interface{}{
 		"category": "AUDIT", "outcome": "success", "entity": safe.Entity, "entity_id": safe.TargetID,
 		"fields": safe.Fields, "audit_reason": safe.AuditReason, "trace_chain": safe.TraceChain,
