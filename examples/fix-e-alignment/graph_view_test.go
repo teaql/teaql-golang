@@ -98,9 +98,9 @@ func TestCore236GraphViewsLateCallbacks(t *testing.T) {
 				mutate := func() {
 					calls++
 					switch change {
-					case "replace": owner.OrderItemList().Items()[0] = alias
+					case "replace": owner.OrderItemList().Set(0, alias)
 					case "append": owner.OrderItemList().Add(alias)
-					case "nil_member": owner.OrderItemList().Items()[0] = nil
+					case "nil_member": owner.OrderItemList().Set(0, nil)
 					}
 				}
 				if stage == "warning" {

@@ -206,6 +206,7 @@ func TestGeneratedIndependentProjectionViews(t *testing.T) {
 			t.Fatal("other view's baseline was silently replaced")
 		}
 		intent, before := other.EntityRoot().Change(other.EntityKey()), f.counts()
+		originalUpdate, originalUpdateLoaded := lib.E.PurchaseOrder(other).UpdateTime().Eval()
 		_, failure := other.AuditAs("Reject a stale independent view while retaining its pending edit").Save(f.ctx)
 		effects := f.counts()
 		for key := range effects {
@@ -241,11 +242,12 @@ func TestGeneratedIndependentProjectionViews(t *testing.T) {
 			}
 		}
 		sort.Strings(derived)
-		if !reflect.DeepEqual(derived, []string{"update_time"}) {
+		if !reflect.DeepEqual(derived, []string{}) {
 			t.Fatal("unexpected post-Fix pending fields", derived)
 		}
-		if millis, ok := after["update_time"].TryTimestamp(); !ok || millis != f.second.UnixMilli() {
-			t.Fatal("wrong BusinessClock Fix retained")
+		// Failed work keeps caller intent and restores staged Context Fix values.
+		if restored, ok := lib.E.PurchaseOrder(other).UpdateTime().Eval(); !originalUpdateLoaded || !ok || !reflect.DeepEqual(restored, originalUpdate) {
+			t.Fatal("rollback did not restore the original BusinessClock field")
 		}
 		if version, ok := lib.E.PurchaseOrder(other).Version().Eval(); !ok || version != 1 {
 			t.Fatal("stale version silently rebased")

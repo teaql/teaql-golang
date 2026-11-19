@@ -249,7 +249,13 @@ func graphFixReceipt(t *testing.T, ctx *runtime.UserContext, create bool) map[st
 	}
 	fields := map[string]bool{}
 	for _, row := range rows {
-		fields[row.EntityType+":"+row.ModelPath] = true
+		// The runtime records Context-function assignments with KSML entity keys;
+		// generated root assignments use the explicit wire type. Both identify
+		// the same modeled entity through this closed, model-specific alias map.
+		entity := map[string]string{"purchase_order": "PurchaseOrder", "order_item": "OrderItem",
+			"PurchaseOrder": "PurchaseOrder", "OrderItem": "OrderItem"}[row.EntityType]
+		if entity == "" { t.Fatal("unknown provenance entity", row.EntityType) }
+		fields[entity+":"+row.ModelPath] = true
 		if row.Source != runtime.FixEvidenceClock && row.Source != runtime.FixEvidenceContext {
 			t.Fatal("invalid provenance source")
 		}
