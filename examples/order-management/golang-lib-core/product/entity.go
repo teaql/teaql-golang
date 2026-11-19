@@ -60,6 +60,11 @@ func (l *OrderLineList) Add(entity *order_line.OrderLine) {
 	l.teaqlRows().Push(entity)
 }
 
+// Set replaces one local relation member without changing its query metadata.
+func (l *OrderLineList) Set(index int, entity *order_line.OrderLine) {
+	l.teaqlRows().Set(index, entity)
+}
+
 func (l *OrderLineList) Items() []*order_line.OrderLine {
 	return l.teaqlRows().IntoVec()
 }

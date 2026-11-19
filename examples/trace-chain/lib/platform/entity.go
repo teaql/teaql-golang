@@ -60,6 +60,11 @@ func (l *CustomerOrderList) Add(entity *customer_order.CustomerOrder) {
 	l.teaqlRows().Push(entity)
 }
 
+// Set replaces one local relation member without changing its query metadata.
+func (l *CustomerOrderList) Set(index int, entity *customer_order.CustomerOrder) {
+	l.teaqlRows().Set(index, entity)
+}
+
 func (l *CustomerOrderList) Items() []*customer_order.CustomerOrder {
 	return l.teaqlRows().IntoVec()
 }

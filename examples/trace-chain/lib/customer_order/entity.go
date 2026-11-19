@@ -64,6 +64,11 @@ func (l *OrderItemList) Add(entity *order_item.OrderItem) {
 	l.teaqlRows().Push(entity)
 }
 
+// Set replaces one local relation member without changing its query metadata.
+func (l *OrderItemList) Set(index int, entity *order_item.OrderItem) {
+	l.teaqlRows().Set(index, entity)
+}
+
 func (l *OrderItemList) Items() []*order_item.OrderItem {
 	return l.teaqlRows().IntoVec()
 }
@@ -92,6 +97,11 @@ func (l *PaymentList) Add(entity *payment.Payment) {
 	l.teaqlRows().Push(entity)
 }
 
+// Set replaces one local relation member without changing its query metadata.
+func (l *PaymentList) Set(index int, entity *payment.Payment) {
+	l.teaqlRows().Set(index, entity)
+}
+
 func (l *PaymentList) Items() []*payment.Payment {
 	return l.teaqlRows().IntoVec()
 }
@@ -118,6 +128,11 @@ func (l *ShipmentList) teaqlRows() *core.SmartList[*shipment.Shipment] {
 
 func (l *ShipmentList) Add(entity *shipment.Shipment) {
 	l.teaqlRows().Push(entity)
+}
+
+// Set replaces one local relation member without changing its query metadata.
+func (l *ShipmentList) Set(index int, entity *shipment.Shipment) {
+	l.teaqlRows().Set(index, entity)
 }
 
 func (l *ShipmentList) Items() []*shipment.Shipment {

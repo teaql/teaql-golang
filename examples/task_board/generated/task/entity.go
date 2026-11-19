@@ -60,6 +60,11 @@ func (l *TaskExecutionLogList) Add(entity *task_execution_log.TaskExecutionLog) 
 	l.teaqlRows().Push(entity)
 }
 
+// Set replaces one local relation member without changing its query metadata.
+func (l *TaskExecutionLogList) Set(index int, entity *task_execution_log.TaskExecutionLog) {
+	l.teaqlRows().Set(index, entity)
+}
+
 func (l *TaskExecutionLogList) Items() []*task_execution_log.TaskExecutionLog {
 	return l.teaqlRows().IntoVec()
 }

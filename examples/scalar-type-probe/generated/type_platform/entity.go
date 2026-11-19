@@ -60,6 +60,11 @@ func (l *ScalarTypeProbeList) Add(entity *scalar_type_probe.ScalarTypeProbe) {
 	l.teaqlRows().Push(entity)
 }
 
+// Set replaces one local relation member without changing its query metadata.
+func (l *ScalarTypeProbeList) Set(index int, entity *scalar_type_probe.ScalarTypeProbe) {
+	l.teaqlRows().Set(index, entity)
+}
+
 func (l *ScalarTypeProbeList) Items() []*scalar_type_probe.ScalarTypeProbe {
 	return l.teaqlRows().IntoVec()
 }

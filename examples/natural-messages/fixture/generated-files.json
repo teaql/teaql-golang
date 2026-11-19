@@ -1,7 +1,7 @@
 {
   "catalog/behavior.go": "3d06e6c6d083269757d4de750dec8f5c814dce12c1531bfc1224a71b81e06d38",
   "catalog/checker.go": "0972a48852e4f71474fc4bcee77b3cf9816c6f31e2cedb8545eb70780e8f837a",
-  "catalog/entity.go": "cef6cd0b9d4f02929ade6f4454c205216f2f91e873d1863d11f44c7e83e2b6ed",
+  "catalog/entity.go": "0038f98eb0f333763b8364e939d95fe1eead47b941d71f54ce2aefb21874f4ce",
   "catalog/expression.go": "c98b7e9d5b12a8e42923fa2b063b3dad9ab8a42df01e073d7ae5a816e682497d",
   "catalog/request.go": "8cc3c3a93f7c026c54393efb20d5520ef7612b7727ba52ce0e129f83b395dca1",
   "e.go": "1b0768716b10e84f59d6a44a3636957b8bae5e15421c7f73b6c6329bb3681a48",
@@ -19,5 +19,5 @@
   "q.go": "f67da9bc73dd3c286e2f93043974d715141358ae77480336f9207410108566c4",
   "runtime.go": "a56086a2f3a27100f6e46b26c9e5cb7dcfa79a0e42b4ec07c8bfd079b704e3cf",
   "teaql/checker-model.json": "56eb9697682034f18e2fa37aae72b3a7543e3e93f1c03df0c6d65e704f18bae8",
-  "teaql/model-provenance.json": "a15d31dcad75cbc6d7d9a648d458eee8cc0210abe9b5a5b1174f8dec2f9f82c2"
+  "teaql/model-provenance.json": "90398872f0dd086b25beea5a2ae1c252a90885137b0b1c278a338d0504681657"
 }

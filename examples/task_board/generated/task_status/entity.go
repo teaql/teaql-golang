@@ -60,6 +60,11 @@ func (l *TaskList) Add(entity *task.Task) {
 	l.teaqlRows().Push(entity)
 }
 
+// Set replaces one local relation member without changing its query metadata.
+func (l *TaskList) Set(index int, entity *task.Task) {
+	l.teaqlRows().Set(index, entity)
+}
+
 func (l *TaskList) Items() []*task.Task {
 	return l.teaqlRows().IntoVec()
 }

@@ -62,6 +62,11 @@ func (l *TaskStatusList) Add(entity *task_status.TaskStatus) {
 	l.teaqlRows().Push(entity)
 }
 
+// Set replaces one local relation member without changing its query metadata.
+func (l *TaskStatusList) Set(index int, entity *task_status.TaskStatus) {
+	l.teaqlRows().Set(index, entity)
+}
+
 func (l *TaskStatusList) Items() []*task_status.TaskStatus {
 	return l.teaqlRows().IntoVec()
 }
@@ -88,6 +93,11 @@ func (l *TaskList) teaqlRows() *core.SmartList[*task.Task] {
 
 func (l *TaskList) Add(entity *task.Task) {
 	l.teaqlRows().Push(entity)
+}
+
+// Set replaces one local relation member without changing its query metadata.
+func (l *TaskList) Set(index int, entity *task.Task) {
+	l.teaqlRows().Set(index, entity)
 }
 
 func (l *TaskList) Items() []*task.Task {

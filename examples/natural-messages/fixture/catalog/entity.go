@@ -60,6 +60,11 @@ func (l *EntryList) Add(entity *entry.Entry) {
 	l.teaqlRows().Push(entity)
 }
 
+// Set replaces one local relation member without changing its query metadata.
+func (l *EntryList) Set(index int, entity *entry.Entry) {
+	l.teaqlRows().Set(index, entity)
+}
+
 func (l *EntryList) Items() []*entry.Entry {
 	return l.teaqlRows().IntoVec()
 }

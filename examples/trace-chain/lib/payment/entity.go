@@ -60,6 +60,11 @@ func (l *PaymentAttemptList) Add(entity *payment_attempt.PaymentAttempt) {
 	l.teaqlRows().Push(entity)
 }
 
+// Set replaces one local relation member without changing its query metadata.
+func (l *PaymentAttemptList) Set(index int, entity *payment_attempt.PaymentAttempt) {
+	l.teaqlRows().Set(index, entity)
+}
+
 func (l *PaymentAttemptList) Items() []*payment_attempt.PaymentAttempt {
 	return l.teaqlRows().IntoVec()
 }

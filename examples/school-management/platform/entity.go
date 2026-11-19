@@ -62,6 +62,11 @@ func (l *SchoolTypeList) Add(entity *school_type.SchoolType) {
 	l.teaqlRows().Push(entity)
 }
 
+// Set replaces one local relation member without changing its query metadata.
+func (l *SchoolTypeList) Set(index int, entity *school_type.SchoolType) {
+	l.teaqlRows().Set(index, entity)
+}
+
 func (l *SchoolTypeList) Items() []*school_type.SchoolType {
 	return l.teaqlRows().IntoVec()
 }
@@ -88,6 +93,11 @@ func (l *SchoolList) teaqlRows() *core.SmartList[*school.School] {
 
 func (l *SchoolList) Add(entity *school.School) {
 	l.teaqlRows().Push(entity)
+}
+
+// Set replaces one local relation member without changing its query metadata.
+func (l *SchoolList) Set(index int, entity *school.School) {
+	l.teaqlRows().Set(index, entity)
 }
 
 func (l *SchoolList) Items() []*school.School {
