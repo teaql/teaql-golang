@@ -2,15 +2,15 @@
   "generator": {
     "artifactKind": "new source build; not the historical v4.2.0 release artifact",
     "baseRelease": "v4.2.0",
-    "jarSHA256": "dc6e26b561f618e1f9574c5c3b4c03b7a21da9ca630cc73a78ae8ccd0d89bd7e",
-    "qualificationReceiptSHA256": "d2ef37d0536f6d5be84baab53eb21ad8c771bee88aefe97a7c591d146cdfee44",
-    "sourceCommit": "19feda8a0608d7c7e0d64c7d9ec371c9021000fd",
-    "tag": "unreleased-source-19feda8a"
+    "jarSHA256": "34dd804dccf05470dad46d086d58412e4a9dfcd0a1c6ed34f8f90c55ff478220",
+    "qualificationReceiptSHA256": "5119b9f3a5c95fb84f527885fdd5bac0fe79a56352a55b8acf116f67fd12787d",
+    "sourceCommit": "021b1ed8bee5db7eef38a6b1e3a3ef2e7ac69daa",
+    "tag": "unreleased-source-021b1ed8"
   },
-  "installationReceiptSHA256": "dfc1dcf93709c84d1b1ba1abd44b62ed2978c7a3e72eba274deeba9493908ef9",
+  "installationReceiptSHA256": "f21153cb45c3168cdfd90e593790ffcae537458bc871b78cd3fdc6bc6fbc6d00",
   "libraries": [
     {
-      "archiveSHA256": "f522bf1f1eabe5c1979e39b0bee87dfa5c4b3d05e0efd78f601c0d75d109cbce",
+      "archiveSHA256": "7733ccaedb7f3507fd089706bfe364b39bad30348c7af95ab56ec6d84db4ac13",
       "destination": "examples/conformance/lib",
       "generatedFiles": {
         "examples/conformance/lib/e.go": {
@@ -71,7 +71,7 @@
         },
         "examples/conformance/lib/teaql/model-provenance.json": {
           "emittedPath": "teaql/model-provenance.json",
-          "sha256": "d8e26b3805fe217d2770df366084f18f64e51b358d918488116c5d84a499e299"
+          "sha256": "25c3c0f1f8b30ca2e94d36c7abdb4aa911bd735e0012ccfe1bb987a0882b9107"
         },
         "examples/conformance/lib/work_item/behavior.go": {
           "emittedPath": "work_item/behavior.go",
@@ -99,17 +99,17 @@
         "evaluatedScope": "golang-lib-core",
         "evaluationErrors": 0,
         "evaluationWarnings": 0,
-        "generatedManifestSha256": "39890186c21d90fa237640cda1de843f286f49eef16f6f70bd6948e984a03616",
-        "generationReceipt": "teaql-conformance/evidence/2026-11-19-runtime-examples-refresh/generation-unified-current-source/go/conformance/model/receipt.json",
-        "generatorCommit": "19feda8a0608d7c7e0d64c7d9ec371c9021000fd",
-        "generatorJarSHA256": "dc6e26b561f618e1f9574c5c3b4c03b7a21da9ca630cc73a78ae8ccd0d89bd7e",
-        "generatorRelease": "unreleased-source-19feda8a",
+        "generatedManifestSha256": "f8eb736f1d6f6ac65ae968ab307c04078d3f52f4250efd8d9c7b4166c5f8cf69",
+        "generationReceipt": "teaql-conformance/evidence/2026-11-19-runtime-examples-refresh/generation-unified-intent-current-source/go/conformance/model/receipt.json",
+        "generatorCommit": "021b1ed8bee5db7eef38a6b1e3a3ef2e7ac69daa",
+        "generatorJarSHA256": "34dd804dccf05470dad46d086d58412e4a9dfcd0a1c6ed34f8f90c55ff478220",
+        "generatorRelease": "unreleased-source-021b1ed8",
         "modelSha256": "0a59f66db2487fdd0430087dd5985ae780225c088ad800679cb57c593c6bcee7",
-        "producerReceiptSha256": "1c9c981481b6c8e8b1b93523a8b6d7644fda9112db8f94bda7801b8272c8b4d2",
+        "producerReceiptSha256": "2130bb00928fbef50eee5357ddef4becd17f43445e56c5e1429bf1fe51213a7e",
         "producerSource": {
-          "commit": "19feda8a0608d7c7e0d64c7d9ec371c9021000fd",
-          "jarSHA256": "dc6e26b561f618e1f9574c5c3b4c03b7a21da9ca630cc73a78ae8ccd0d89bd7e",
-          "release": "unreleased-source-19feda8a"
+          "commit": "021b1ed8bee5db7eef38a6b1e3a3ef2e7ac69daa",
+          "jarSHA256": "34dd804dccf05470dad46d086d58412e4a9dfcd0a1c6ed34f8f90c55ff478220",
+          "release": "unreleased-source-021b1ed8"
         }
       },
       "preservedApplicationFiles": {
@@ -121,7 +121,7 @@
       }
     },
     {
-      "archiveSHA256": "5d8a06ae343bba2fcd84627265ee15fcea40c7f3cae61b5d377a2f32a8c28d90",
+      "archiveSHA256": "ca995990cd08ad1e03be790f778216c2ebbc74ef2ba45b7211a0ff43fc95f045",
       "destination": "examples/expression-profiles/generated/PascalCase",
       "generatedFiles": {
         "examples/expression-profiles/generated/PascalCase/e.go": {
@@ -182,7 +182,7 @@
         },
         "examples/expression-profiles/generated/PascalCase/teaql/model-provenance.json": {
           "emittedPath": "teaql/model-provenance.json",
-          "sha256": "7372010327b04cdfb387dcaf812446c65ab4754df2fcd3af901468fde63f10c0"
+          "sha256": "f7f81c86cc8303bdb2fed7c7bfd33b3ab44b7242bd49311c4525dfa1dcdaad17"
         },
         "examples/expression-profiles/generated/PascalCase/type_platform/behavior.go": {
           "emittedPath": "type_platform/behavior.go",
@@ -210,17 +210,17 @@
         "evaluatedScope": "golang-lib-core",
         "evaluationErrors": 0,
         "evaluationWarnings": 0,
-        "generatedManifestSha256": "7153871ea4c6fd117233f4519ab552d515485ba0663d6b7aa028e1406ee66aaf",
-        "generationReceipt": "teaql-conformance/evidence/2026-11-19-runtime-examples-refresh/generation-unified-current-source/go/expression-profiles/generated/PascalCase/model/receipt.json",
-        "generatorCommit": "19feda8a0608d7c7e0d64c7d9ec371c9021000fd",
-        "generatorJarSHA256": "dc6e26b561f618e1f9574c5c3b4c03b7a21da9ca630cc73a78ae8ccd0d89bd7e",
-        "generatorRelease": "unreleased-source-19feda8a",
+        "generatedManifestSha256": "5d9cd46a2e38bed9cfcbcc56abcb23f87805b7fbb2fd8c5cb106cc62b976b47e",
+        "generationReceipt": "teaql-conformance/evidence/2026-11-19-runtime-examples-refresh/generation-unified-intent-current-source/go/expression-profiles/generated/PascalCase/model/receipt.json",
+        "generatorCommit": "021b1ed8bee5db7eef38a6b1e3a3ef2e7ac69daa",
+        "generatorJarSHA256": "34dd804dccf05470dad46d086d58412e4a9dfcd0a1c6ed34f8f90c55ff478220",
+        "generatorRelease": "unreleased-source-021b1ed8",
         "modelSha256": "f836540a765f8c372bd7103a25a83ca316797253079ac63f8a1ef5ee4ded027d",
-        "producerReceiptSha256": "12cd3539217b6ffac2aca2bb66c3c91a42a8c8196d949590c7b7af154fc2cf6f",
+        "producerReceiptSha256": "a620533b01964694632928ec10220fd5602b66d144744a66babe5bcaa7520ba9",
         "producerSource": {
-          "commit": "19feda8a0608d7c7e0d64c7d9ec371c9021000fd",
-          "jarSHA256": "dc6e26b561f618e1f9574c5c3b4c03b7a21da9ca630cc73a78ae8ccd0d89bd7e",
-          "release": "unreleased-source-19feda8a"
+          "commit": "021b1ed8bee5db7eef38a6b1e3a3ef2e7ac69daa",
+          "jarSHA256": "34dd804dccf05470dad46d086d58412e4a9dfcd0a1c6ed34f8f90c55ff478220",
+          "release": "unreleased-source-021b1ed8"
         }
       },
       "preservedApplicationFiles": {
@@ -232,7 +232,7 @@
       }
     },
     {
-      "archiveSHA256": "e5876904f1b8cd3d96919e4bdedf5372cbffe26b13a04302bd8cb523f3d90740",
+      "archiveSHA256": "ba00d79d3aca9547cfeedce87ecc07eb60715a991d59000ebb1b924dbe9b2afb",
       "destination": "examples/expression-profiles/generated/camelCase",
       "generatedFiles": {
         "examples/expression-profiles/generated/camelCase/e.go": {
@@ -293,7 +293,7 @@
         },
         "examples/expression-profiles/generated/camelCase/teaql/model-provenance.json": {
           "emittedPath": "teaql/model-provenance.json",
-          "sha256": "8d792f1114dddbf61b64f6afbae687abc9bd2410d751ea1ac1fcdef1895696dc"
+          "sha256": "53333a1d944bcd8a9478bf7428598a1f4020a497bdf1d0a264dc58076c635002"
         },
         "examples/expression-profiles/generated/camelCase/type_platform/behavior.go": {
           "emittedPath": "type_platform/behavior.go",
@@ -321,17 +321,17 @@
         "evaluatedScope": "golang-lib-core",
         "evaluationErrors": 0,
         "evaluationWarnings": 0,
-        "generatedManifestSha256": "93ffcec44ff32907c49bdfcc855d09825bd5f2ba0524af5f5d444eca18c5982e",
-        "generationReceipt": "teaql-conformance/evidence/2026-11-19-runtime-examples-refresh/generation-unified-current-source/go/expression-profiles/generated/camelCase/model/receipt.json",
-        "generatorCommit": "19feda8a0608d7c7e0d64c7d9ec371c9021000fd",
-        "generatorJarSHA256": "dc6e26b561f618e1f9574c5c3b4c03b7a21da9ca630cc73a78ae8ccd0d89bd7e",
-        "generatorRelease": "unreleased-source-19feda8a",
+        "generatedManifestSha256": "c0db19c0df695a904888eed9000527bb65d8b2f8aae64a7336981ecf170e89b4",
+        "generationReceipt": "teaql-conformance/evidence/2026-11-19-runtime-examples-refresh/generation-unified-intent-current-source/go/expression-profiles/generated/camelCase/model/receipt.json",
+        "generatorCommit": "021b1ed8bee5db7eef38a6b1e3a3ef2e7ac69daa",
+        "generatorJarSHA256": "34dd804dccf05470dad46d086d58412e4a9dfcd0a1c6ed34f8f90c55ff478220",
+        "generatorRelease": "unreleased-source-021b1ed8",
         "modelSha256": "8d3017392ffd00abbc06be2555ced27ac6360e2d05fabc4299e27a5ef8f1c762",
-        "producerReceiptSha256": "9b24f75dbbb463ec91ec7e94509e57e81c36a71913f0d2fe0dc779e535a44199",
+        "producerReceiptSha256": "da1e2564ca50dbf86260526f73e50273280692f9242d6f285ce567faf441e9f2",
         "producerSource": {
-          "commit": "19feda8a0608d7c7e0d64c7d9ec371c9021000fd",
-          "jarSHA256": "dc6e26b561f618e1f9574c5c3b4c03b7a21da9ca630cc73a78ae8ccd0d89bd7e",
-          "release": "unreleased-source-19feda8a"
+          "commit": "021b1ed8bee5db7eef38a6b1e3a3ef2e7ac69daa",
+          "jarSHA256": "34dd804dccf05470dad46d086d58412e4a9dfcd0a1c6ed34f8f90c55ff478220",
+          "release": "unreleased-source-021b1ed8"
         }
       },
       "preservedApplicationFiles": {
@@ -343,7 +343,7 @@
       }
     },
     {
-      "archiveSHA256": "a86c3d05e7f8014a286206b2c78b305909d9e13f346b02b651f670aaea0eea94",
+      "archiveSHA256": "2ede2a39910814461769b91806e2312dc76df695747785d84cabe3cdbd18f635",
       "destination": "examples/expression-profiles/generated/snake_case",
       "generatedFiles": {
         "examples/expression-profiles/generated/snake_case/e.go": {
@@ -404,7 +404,7 @@
         },
         "examples/expression-profiles/generated/snake_case/teaql/model-provenance.json": {
           "emittedPath": "teaql/model-provenance.json",
-          "sha256": "1d31ade4f5f7f53e0af9398127b568be3615f52977bbf924f0acda23f9299747"
+          "sha256": "1a37f3d936bc281cd9bb78425c3ef25e88776fe545ab420c9a3d588b0b16c0c2"
         },
         "examples/expression-profiles/generated/snake_case/type_platform/behavior.go": {
           "emittedPath": "type_platform/behavior.go",
@@ -432,17 +432,17 @@
         "evaluatedScope": "golang-lib-core",
         "evaluationErrors": 0,
         "evaluationWarnings": 0,
-        "generatedManifestSha256": "aef05080e2e5f32acb70e017bf4a67c8e20d63b1bad3bf55c78cbd755c1b0866",
-        "generationReceipt": "teaql-conformance/evidence/2026-11-19-runtime-examples-refresh/generation-unified-current-source/go/expression-profiles/generated/snake_case/model/receipt.json",
-        "generatorCommit": "19feda8a0608d7c7e0d64c7d9ec371c9021000fd",
-        "generatorJarSHA256": "dc6e26b561f618e1f9574c5c3b4c03b7a21da9ca630cc73a78ae8ccd0d89bd7e",
-        "generatorRelease": "unreleased-source-19feda8a",
+        "generatedManifestSha256": "a472f2bd248782cdd8836290fc878a5dd95ae50554630787c18bc5415552fe86",
+        "generationReceipt": "teaql-conformance/evidence/2026-11-19-runtime-examples-refresh/generation-unified-intent-current-source/go/expression-profiles/generated/snake_case/model/receipt.json",
+        "generatorCommit": "021b1ed8bee5db7eef38a6b1e3a3ef2e7ac69daa",
+        "generatorJarSHA256": "34dd804dccf05470dad46d086d58412e4a9dfcd0a1c6ed34f8f90c55ff478220",
+        "generatorRelease": "unreleased-source-021b1ed8",
         "modelSha256": "2dbbcfea6057a5dc7c7c356ea4d0dacec5d5165538f6a9c5903d4d3b64ee13c6",
-        "producerReceiptSha256": "461657e66be3b455cc7cbc853ffd77ba293f7b9344a74ff609696f1e87a2c152",
+        "producerReceiptSha256": "e7de600d3b7d6887363d14731e955930b470886491d3477544262a469c5d88c4",
         "producerSource": {
-          "commit": "19feda8a0608d7c7e0d64c7d9ec371c9021000fd",
-          "jarSHA256": "dc6e26b561f618e1f9574c5c3b4c03b7a21da9ca630cc73a78ae8ccd0d89bd7e",
-          "release": "unreleased-source-19feda8a"
+          "commit": "021b1ed8bee5db7eef38a6b1e3a3ef2e7ac69daa",
+          "jarSHA256": "34dd804dccf05470dad46d086d58412e4a9dfcd0a1c6ed34f8f90c55ff478220",
+          "release": "unreleased-source-021b1ed8"
         }
       },
       "preservedApplicationFiles": {
@@ -454,7 +454,7 @@
       }
     },
     {
-      "archiveSHA256": "f8695da56440cff0ca31f28a55ee609c77100fe65d1157928122070d46b64f78",
+      "archiveSHA256": "1cb716cfb22e788bbc5512c923d1e7ea118a455250368c0748f59ab94e498327",
       "destination": "examples/fix-e-alignment/generated",
       "generatedFiles": {
         "examples/fix-e-alignment/generated/e.go": {
@@ -535,7 +535,7 @@
         },
         "examples/fix-e-alignment/generated/teaql/model-provenance.json": {
           "emittedPath": "teaql/model-provenance.json",
-          "sha256": "0bff6edd658290902abc7b5222bd00c580955ac31540c3633f9e97dc15bf348d"
+          "sha256": "80eb2676b8ca3b65b6eb913b1eaf159e848cd1234f5158af95ef388d89ec0d40"
         },
         "examples/fix-e-alignment/generated/tenant/behavior.go": {
           "emittedPath": "tenant/behavior.go",
@@ -563,17 +563,17 @@
         "evaluatedScope": "golang-lib-core",
         "evaluationErrors": 0,
         "evaluationWarnings": 4,
-        "generatedManifestSha256": "48513edccc7ed6e8007d4744a54d3f8b72f8ea05766a95a56cb50c65b8d96d50",
-        "generationReceipt": "teaql-conformance/evidence/2026-11-19-runtime-examples-refresh/generation-unified-current-source/go/fix-e-alignment/model/receipt.json",
-        "generatorCommit": "19feda8a0608d7c7e0d64c7d9ec371c9021000fd",
-        "generatorJarSHA256": "dc6e26b561f618e1f9574c5c3b4c03b7a21da9ca630cc73a78ae8ccd0d89bd7e",
-        "generatorRelease": "unreleased-source-19feda8a",
+        "generatedManifestSha256": "caf8e87dac45436a1d130d880b0df83506b0401d5555a6a651b6624b42612fc4",
+        "generationReceipt": "teaql-conformance/evidence/2026-11-19-runtime-examples-refresh/generation-unified-intent-current-source/go/fix-e-alignment/model/receipt.json",
+        "generatorCommit": "021b1ed8bee5db7eef38a6b1e3a3ef2e7ac69daa",
+        "generatorJarSHA256": "34dd804dccf05470dad46d086d58412e4a9dfcd0a1c6ed34f8f90c55ff478220",
+        "generatorRelease": "unreleased-source-021b1ed8",
         "modelSha256": "a2cf4c907cb084cb0946e993eeba586c8c0701a89fdc4a849808aa743be033b7",
-        "producerReceiptSha256": "ebe15afcb8cd5dce659abba1a68969b4b8270cc3eb7b747b17bb6ea3d867eb65",
+        "producerReceiptSha256": "375ac83d00b3e8585b76dc40a8a8b8f66dab014f3100991c2a27ebb5f1e929ac",
         "producerSource": {
-          "commit": "19feda8a0608d7c7e0d64c7d9ec371c9021000fd",
-          "jarSHA256": "dc6e26b561f618e1f9574c5c3b4c03b7a21da9ca630cc73a78ae8ccd0d89bd7e",
-          "release": "unreleased-source-19feda8a"
+          "commit": "021b1ed8bee5db7eef38a6b1e3a3ef2e7ac69daa",
+          "jarSHA256": "34dd804dccf05470dad46d086d58412e4a9dfcd0a1c6ed34f8f90c55ff478220",
+          "release": "unreleased-source-021b1ed8"
         }
       },
       "preservedApplicationFiles": {
@@ -585,7 +585,7 @@
       }
     },
     {
-      "archiveSHA256": "d35c012fbcd6924ba3c8ecedadea169e1bb4e5420fb944dbfed4507f2eb8a2cd",
+      "archiveSHA256": "2eac4cca37c73193d0e3ee97473668a684003d5ddf4e4c9a00d71b8f21c047d3",
       "destination": "examples/natural-messages/fixture",
       "generatedFiles": {
         "examples/natural-messages/fixture/catalog/behavior.go": {
@@ -666,7 +666,7 @@
         },
         "examples/natural-messages/fixture/teaql/model-provenance.json": {
           "emittedPath": "teaql/model-provenance.json",
-          "sha256": "d16b481cac9b68524e8b864838eb69f552254542789695ea1d3f3ffc850f766e"
+          "sha256": "0a299ace909fb0b3fe23bffdaef10a0b87f2b12c71179a8f1d800118b5a9d943"
         }
       },
       "model": "examples/natural-messages/fixture/model.xml",
@@ -674,17 +674,17 @@
         "evaluatedScope": "golang-lib-core",
         "evaluationErrors": 0,
         "evaluationWarnings": 2,
-        "generatedManifestSha256": "204f9abd31c3726cd299de83dbbf639e85f7d3f1a816eec556e0341e654499a6",
-        "generationReceipt": "teaql-conformance/evidence/2026-11-19-runtime-examples-refresh/generation-unified-current-source/go/natural-messages/fixture/model/receipt.json",
-        "generatorCommit": "19feda8a0608d7c7e0d64c7d9ec371c9021000fd",
-        "generatorJarSHA256": "dc6e26b561f618e1f9574c5c3b4c03b7a21da9ca630cc73a78ae8ccd0d89bd7e",
-        "generatorRelease": "unreleased-source-19feda8a",
+        "generatedManifestSha256": "65eb31d06ad3e04c08943bd4e43ed2d8cda55f69b3ea841d0622e2a79ebabc3f",
+        "generationReceipt": "teaql-conformance/evidence/2026-11-19-runtime-examples-refresh/generation-unified-intent-current-source/go/natural-messages/fixture/model/receipt.json",
+        "generatorCommit": "021b1ed8bee5db7eef38a6b1e3a3ef2e7ac69daa",
+        "generatorJarSHA256": "34dd804dccf05470dad46d086d58412e4a9dfcd0a1c6ed34f8f90c55ff478220",
+        "generatorRelease": "unreleased-source-021b1ed8",
         "modelSha256": "871c28ee976d0fc0e35c21305870cf21f83bd0aed0b758bbf217b51ae65299b1",
-        "producerReceiptSha256": "83de795b8a7f8eaa483ea55a4df90f2b2c94b2d7f17e22287fc6ca3bf9202a24",
+        "producerReceiptSha256": "01442dfe009f991f8aeb3e96ce3d76dd1493eacb930bdcbd3857ea43236d27e4",
         "producerSource": {
-          "commit": "19feda8a0608d7c7e0d64c7d9ec371c9021000fd",
-          "jarSHA256": "dc6e26b561f618e1f9574c5c3b4c03b7a21da9ca630cc73a78ae8ccd0d89bd7e",
-          "release": "unreleased-source-19feda8a"
+          "commit": "021b1ed8bee5db7eef38a6b1e3a3ef2e7ac69daa",
+          "jarSHA256": "34dd804dccf05470dad46d086d58412e4a9dfcd0a1c6ed34f8f90c55ff478220",
+          "release": "unreleased-source-021b1ed8"
         }
       },
       "preservedApplicationFiles": {
@@ -696,7 +696,7 @@
       }
     },
     {
-      "archiveSHA256": "99685cacbbc8f85a9d0987c7c33ec0cffe53a1cd15ef2585d57a391e5ff74358",
+      "archiveSHA256": "83ba5d90d077fcc85d61c24cab09151cec98f01beede203433a545d918150447",
       "destination": "examples/order-management/golang-lib-core",
       "generatedFiles": {
         "examples/order-management/golang-lib-core/commerce_platform/behavior.go": {
@@ -877,7 +877,7 @@
         },
         "examples/order-management/golang-lib-core/teaql/model-provenance.json": {
           "emittedPath": "teaql/model-provenance.json",
-          "sha256": "c032bfd506defaddafac02f9ac3ca2f240f12f4ceac492adb5d52cb4e19de8b4"
+          "sha256": "3f324c1a2f69d515c29d002bd8d93ec90c3978d16590657e06f03d2403bb7567"
         }
       },
       "model": "examples/order-management/model.xml",
@@ -885,17 +885,17 @@
         "evaluatedScope": "golang-lib-core",
         "evaluationErrors": 0,
         "evaluationWarnings": 7,
-        "generatedManifestSha256": "681ffa90da430aa77bf114d5679b223047769e7bcbe783879dc081d0f0ccb1ea",
-        "generationReceipt": "teaql-conformance/evidence/2026-11-19-runtime-examples-refresh/generation-unified-current-source/go/order-management/model/receipt.json",
-        "generatorCommit": "19feda8a0608d7c7e0d64c7d9ec371c9021000fd",
-        "generatorJarSHA256": "dc6e26b561f618e1f9574c5c3b4c03b7a21da9ca630cc73a78ae8ccd0d89bd7e",
-        "generatorRelease": "unreleased-source-19feda8a",
+        "generatedManifestSha256": "e12c1c9f1528aeb73565e1ed4102e9c70b2288bc7854d5fc50924ead6439c6d7",
+        "generationReceipt": "teaql-conformance/evidence/2026-11-19-runtime-examples-refresh/generation-unified-intent-current-source/go/order-management/model/receipt.json",
+        "generatorCommit": "021b1ed8bee5db7eef38a6b1e3a3ef2e7ac69daa",
+        "generatorJarSHA256": "34dd804dccf05470dad46d086d58412e4a9dfcd0a1c6ed34f8f90c55ff478220",
+        "generatorRelease": "unreleased-source-021b1ed8",
         "modelSha256": "a50951aa0df35cac1f4ed64ef0646860941916aed1ec0919b5b299ef4ad6a303",
-        "producerReceiptSha256": "fb298c28d63eda8d61ae67226191639056c70b0e0f97db7fe27c3db12f4791de",
+        "producerReceiptSha256": "5f218ac97dd822bb8a5a3a9aecb3f17736d9dbad3ed54a5a869f6cc35f6b7687",
         "producerSource": {
-          "commit": "19feda8a0608d7c7e0d64c7d9ec371c9021000fd",
-          "jarSHA256": "dc6e26b561f618e1f9574c5c3b4c03b7a21da9ca630cc73a78ae8ccd0d89bd7e",
-          "release": "unreleased-source-19feda8a"
+          "commit": "021b1ed8bee5db7eef38a6b1e3a3ef2e7ac69daa",
+          "jarSHA256": "34dd804dccf05470dad46d086d58412e4a9dfcd0a1c6ed34f8f90c55ff478220",
+          "release": "unreleased-source-021b1ed8"
         }
       },
       "preservedApplicationFiles": {
@@ -907,7 +907,7 @@
       }
     },
     {
-      "archiveSHA256": "e5876904f1b8cd3d96919e4bdedf5372cbffe26b13a04302bd8cb523f3d90740",
+      "archiveSHA256": "ba00d79d3aca9547cfeedce87ecc07eb60715a991d59000ebb1b924dbe9b2afb",
       "destination": "examples/scalar-type-probe/generated",
       "generatedFiles": {
         "examples/scalar-type-probe/generated/e.go": {
@@ -968,7 +968,7 @@
         },
         "examples/scalar-type-probe/generated/teaql/model-provenance.json": {
           "emittedPath": "teaql/model-provenance.json",
-          "sha256": "8d792f1114dddbf61b64f6afbae687abc9bd2410d751ea1ac1fcdef1895696dc"
+          "sha256": "53333a1d944bcd8a9478bf7428598a1f4020a497bdf1d0a264dc58076c635002"
         },
         "examples/scalar-type-probe/generated/type_platform/behavior.go": {
           "emittedPath": "type_platform/behavior.go",
@@ -996,17 +996,17 @@
         "evaluatedScope": "golang-lib-core",
         "evaluationErrors": 0,
         "evaluationWarnings": 0,
-        "generatedManifestSha256": "93ffcec44ff32907c49bdfcc855d09825bd5f2ba0524af5f5d444eca18c5982e",
-        "generationReceipt": "teaql-conformance/evidence/2026-11-19-runtime-examples-refresh/generation-unified-current-source/go/scalar-type-probe/model/receipt.json",
-        "generatorCommit": "19feda8a0608d7c7e0d64c7d9ec371c9021000fd",
-        "generatorJarSHA256": "dc6e26b561f618e1f9574c5c3b4c03b7a21da9ca630cc73a78ae8ccd0d89bd7e",
-        "generatorRelease": "unreleased-source-19feda8a",
+        "generatedManifestSha256": "c0db19c0df695a904888eed9000527bb65d8b2f8aae64a7336981ecf170e89b4",
+        "generationReceipt": "teaql-conformance/evidence/2026-11-19-runtime-examples-refresh/generation-unified-intent-current-source/go/scalar-type-probe/model/receipt.json",
+        "generatorCommit": "021b1ed8bee5db7eef38a6b1e3a3ef2e7ac69daa",
+        "generatorJarSHA256": "34dd804dccf05470dad46d086d58412e4a9dfcd0a1c6ed34f8f90c55ff478220",
+        "generatorRelease": "unreleased-source-021b1ed8",
         "modelSha256": "8d3017392ffd00abbc06be2555ced27ac6360e2d05fabc4299e27a5ef8f1c762",
         "producerReceiptSha256": "c7e2c4edfe315e673f3c01bac246eddf364738ef7be0b1c3862ad950b39686e9",
         "producerSource": {
-          "commit": "19feda8a0608d7c7e0d64c7d9ec371c9021000fd",
-          "jarSHA256": "dc6e26b561f618e1f9574c5c3b4c03b7a21da9ca630cc73a78ae8ccd0d89bd7e",
-          "release": "unreleased-source-19feda8a"
+          "commit": "021b1ed8bee5db7eef38a6b1e3a3ef2e7ac69daa",
+          "jarSHA256": "34dd804dccf05470dad46d086d58412e4a9dfcd0a1c6ed34f8f90c55ff478220",
+          "release": "unreleased-source-021b1ed8"
         }
       },
       "preservedApplicationFiles": {
@@ -1018,7 +1018,7 @@
       }
     },
     {
-      "archiveSHA256": "8c8f6bc844d78d7a8439dc49192212462333223db4fcf6973d07f5348459db84",
+      "archiveSHA256": "9f8a97aef1fdb0c47c24b4ac8550cf85554feb474cd64c20e6d25bc0bb9b59f0",
       "destination": "examples/school-management",
       "generatedFiles": {
         "examples/school-management/e.go": {
@@ -1119,7 +1119,7 @@
         },
         "examples/school-management/teaql/model-provenance.json": {
           "emittedPath": "teaql/model-provenance.json",
-          "sha256": "d74ee1c7e93db13222a84a3be79a99b1276b36ea7f5b030917fa8c0eaa27314a"
+          "sha256": "37dfcdffaeb5cabe6ffb233212ec4afec39d19c242b3cbcee53e3634c3715a2e"
         }
       },
       "model": "examples/school-management/models/school-model.xml",
@@ -1127,17 +1127,17 @@
         "evaluatedScope": "golang-lib-core",
         "evaluationErrors": 0,
         "evaluationWarnings": 0,
-        "generatedManifestSha256": "fbc68457254e048bae52d92d57cc41abc1d84c5b00bbf2443e21f9b7da8ddcfb",
-        "generationReceipt": "teaql-conformance/evidence/2026-11-19-runtime-examples-refresh/generation-unified-current-source/go/school-management/models/school-model/receipt.json",
-        "generatorCommit": "19feda8a0608d7c7e0d64c7d9ec371c9021000fd",
-        "generatorJarSHA256": "dc6e26b561f618e1f9574c5c3b4c03b7a21da9ca630cc73a78ae8ccd0d89bd7e",
-        "generatorRelease": "unreleased-source-19feda8a",
+        "generatedManifestSha256": "4137cddca240361e4f7349a3a036fe0e343a3f0698e4a20e607e40b47534b9a9",
+        "generationReceipt": "teaql-conformance/evidence/2026-11-19-runtime-examples-refresh/generation-unified-intent-current-source/go/school-management/models/school-model/receipt.json",
+        "generatorCommit": "021b1ed8bee5db7eef38a6b1e3a3ef2e7ac69daa",
+        "generatorJarSHA256": "34dd804dccf05470dad46d086d58412e4a9dfcd0a1c6ed34f8f90c55ff478220",
+        "generatorRelease": "unreleased-source-021b1ed8",
         "modelSha256": "b5cd06ae44464fc29ed24de82654b47c80f546110496756aa15923cee1c511b4",
-        "producerReceiptSha256": "c7972073cd33ef7bf97a0d6565b1794952b7e875bf150b754c4d679c42688947",
+        "producerReceiptSha256": "23ce55cce773857aad2eb4577f63839c4ae94c1ad2e69c72842bd9efb964c9f4",
         "producerSource": {
-          "commit": "19feda8a0608d7c7e0d64c7d9ec371c9021000fd",
-          "jarSHA256": "dc6e26b561f618e1f9574c5c3b4c03b7a21da9ca630cc73a78ae8ccd0d89bd7e",
-          "release": "unreleased-source-19feda8a"
+          "commit": "021b1ed8bee5db7eef38a6b1e3a3ef2e7ac69daa",
+          "jarSHA256": "34dd804dccf05470dad46d086d58412e4a9dfcd0a1c6ed34f8f90c55ff478220",
+          "release": "unreleased-source-021b1ed8"
         }
       },
       "preservedApplicationFiles": {
@@ -1149,7 +1149,7 @@
       }
     },
     {
-      "archiveSHA256": "a363a47c2abf2c7429272bc4742a7167b2fb9bc179d433af4d540db4bf514c8a",
+      "archiveSHA256": "2438e345c9cf35f828b7cda4525b085a54f018bbeab321b783f3a15666d1741d",
       "destination": "examples/task_board/generated",
       "generatedFiles": {
         "examples/task_board/generated/e.go": {
@@ -1270,7 +1270,7 @@
         },
         "examples/task_board/generated/teaql/model-provenance.json": {
           "emittedPath": "teaql/model-provenance.json",
-          "sha256": "1f2189862a9abe6d593c4210f2d491b37e468d283c969991ba0af1d2e6abcdff"
+          "sha256": "4d8400900ebd58eecbc41c96db2b5355d8d87c901cf31e315b11e763ad3c76ca"
         }
       },
       "model": "examples/task_board/generated/model.xml",
@@ -1278,17 +1278,17 @@
         "evaluatedScope": "golang-lib-core",
         "evaluationErrors": 0,
         "evaluationWarnings": 3,
-        "generatedManifestSha256": "e22f6a5d13351e7677ca99af293a679bbfd512501f20a9c2447af49f6021a224",
-        "generationReceipt": "teaql-conformance/evidence/2026-11-19-runtime-examples-refresh/generation-unified-current-source/go/task_board/generated/model/receipt.json",
-        "generatorCommit": "19feda8a0608d7c7e0d64c7d9ec371c9021000fd",
-        "generatorJarSHA256": "dc6e26b561f618e1f9574c5c3b4c03b7a21da9ca630cc73a78ae8ccd0d89bd7e",
-        "generatorRelease": "unreleased-source-19feda8a",
+        "generatedManifestSha256": "6b7f5d2423fbb67b22aa2a2b1b261463dedbd22a0658c1fa1ca446ad54ecae0b",
+        "generationReceipt": "teaql-conformance/evidence/2026-11-19-runtime-examples-refresh/generation-unified-intent-current-source/go/task_board/generated/model/receipt.json",
+        "generatorCommit": "021b1ed8bee5db7eef38a6b1e3a3ef2e7ac69daa",
+        "generatorJarSHA256": "34dd804dccf05470dad46d086d58412e4a9dfcd0a1c6ed34f8f90c55ff478220",
+        "generatorRelease": "unreleased-source-021b1ed8",
         "modelSha256": "f2fdd5037dbdee7f71e008f3ca04db75d8dd0e3138743de7a4744c197b0b567e",
-        "producerReceiptSha256": "ee9c382f246f1f8b8846a1dd6e946f93be7e592499f21e0a599ca1b834506ab8",
+        "producerReceiptSha256": "5eba70ad73362a3b2a88844c4edb3e165345f205fa021796098c0c5a41c065c5",
         "producerSource": {
-          "commit": "19feda8a0608d7c7e0d64c7d9ec371c9021000fd",
-          "jarSHA256": "dc6e26b561f618e1f9574c5c3b4c03b7a21da9ca630cc73a78ae8ccd0d89bd7e",
-          "release": "unreleased-source-19feda8a"
+          "commit": "021b1ed8bee5db7eef38a6b1e3a3ef2e7ac69daa",
+          "jarSHA256": "34dd804dccf05470dad46d086d58412e4a9dfcd0a1c6ed34f8f90c55ff478220",
+          "release": "unreleased-source-021b1ed8"
         }
       },
       "preservedApplicationFiles": {
@@ -1300,7 +1300,7 @@
       }
     },
     {
-      "archiveSHA256": "0689037b3cc7d1b54853bc0716e4408f0fa4bf6175cccada71a3a1843ce3a74f",
+      "archiveSHA256": "2df8c4f4be7380e3931d42e92979331136e070395abf6e7a852bca139692ca59",
       "destination": "examples/trace-chain/lib",
       "generatedFiles": {
         "examples/trace-chain/lib/customer_order/behavior.go": {
@@ -1461,7 +1461,7 @@
         },
         "examples/trace-chain/lib/teaql/model-provenance.json": {
           "emittedPath": "teaql/model-provenance.json",
-          "sha256": "90311071c90e39a1d7849b5828fa3e05e138bf41f8ba73a082af73f5af3bf2a0"
+          "sha256": "b34f98f91832753bf90101458f7dfb8a0626d8fc4a97a1cfe939546f1fd8a4d8"
         }
       },
       "model": "examples/trace-chain/model.xml",
@@ -1469,17 +1469,17 @@
         "evaluatedScope": "golang-lib-core",
         "evaluationErrors": 0,
         "evaluationWarnings": 0,
-        "generatedManifestSha256": "09adf015b6bfa6458bb1434a6938cf104fa7da9644492edce781f8bbde5e00c4",
-        "generationReceipt": "teaql-conformance/evidence/2026-11-19-runtime-examples-refresh/generation-unified-current-source/go/trace-chain/model/receipt.json",
-        "generatorCommit": "19feda8a0608d7c7e0d64c7d9ec371c9021000fd",
-        "generatorJarSHA256": "dc6e26b561f618e1f9574c5c3b4c03b7a21da9ca630cc73a78ae8ccd0d89bd7e",
-        "generatorRelease": "unreleased-source-19feda8a",
+        "generatedManifestSha256": "6bfeeee743842d30cb0502315436787ab945edef62bfe76501ed2242b12ff8a0",
+        "generationReceipt": "teaql-conformance/evidence/2026-11-19-runtime-examples-refresh/generation-unified-intent-current-source/go/trace-chain/model/receipt.json",
+        "generatorCommit": "021b1ed8bee5db7eef38a6b1e3a3ef2e7ac69daa",
+        "generatorJarSHA256": "34dd804dccf05470dad46d086d58412e4a9dfcd0a1c6ed34f8f90c55ff478220",
+        "generatorRelease": "unreleased-source-021b1ed8",
         "modelSha256": "c9743d776718c7b27c97792f75f492fdc99bf427e4bd0c24bf3492de6520c9a2",
-        "producerReceiptSha256": "1f05619434e852a322bba638e76313d51d8182b262f812b7fa4c3e5fa0ff10c4",
+        "producerReceiptSha256": "73ab6e3c4d488c3d371913980b0491d58677e05714916fb201c8a4ed5b146879",
         "producerSource": {
-          "commit": "19feda8a0608d7c7e0d64c7d9ec371c9021000fd",
-          "jarSHA256": "dc6e26b561f618e1f9574c5c3b4c03b7a21da9ca630cc73a78ae8ccd0d89bd7e",
-          "release": "unreleased-source-19feda8a"
+          "commit": "021b1ed8bee5db7eef38a6b1e3a3ef2e7ac69daa",
+          "jarSHA256": "34dd804dccf05470dad46d086d58412e4a9dfcd0a1c6ed34f8f90c55ff478220",
+          "release": "unreleased-source-021b1ed8"
         }
       },
       "preservedApplicationFiles": {
@@ -1491,7 +1491,7 @@
       }
     },
     {
-      "archiveSHA256": "df37db2fb0839a9e9204be5a59cc5ddba383f30e205f083f047f3f5c8e864860",
+      "archiveSHA256": "bf2f0fe6648c88513fab10c23ab3aa7cd661852b5cb54603e346b4c2ed92dba5",
       "destination": "examples/trace-chain/standard-order/lib",
       "generatedFiles": {
         "examples/trace-chain/standard-order/lib/customer/behavior.go": {
@@ -1632,7 +1632,7 @@
         },
         "examples/trace-chain/standard-order/lib/teaql/model-provenance.json": {
           "emittedPath": "teaql/model-provenance.json",
-          "sha256": "dd948b3b527657ef08cdfd8851a9cbfcd431733666ff26d093f33769d3b02872"
+          "sha256": "ad505a8920576336eb62e57905a7ba5eb52ed024045c23e492df697ed44ee654"
         }
       },
       "model": "examples/trace-chain/standard-order/model.xml",
@@ -1640,17 +1640,17 @@
         "evaluatedScope": "golang-lib-core",
         "evaluationErrors": 0,
         "evaluationWarnings": 0,
-        "generatedManifestSha256": "c53262f173dd06c105a5daca7c05efcec04b03889fcfcf13b567cbe90e049563",
-        "generationReceipt": "teaql-conformance/evidence/2026-11-19-runtime-examples-refresh/generation-unified-current-source/go/trace-chain/standard-order/model/receipt.json",
-        "generatorCommit": "19feda8a0608d7c7e0d64c7d9ec371c9021000fd",
-        "generatorJarSHA256": "dc6e26b561f618e1f9574c5c3b4c03b7a21da9ca630cc73a78ae8ccd0d89bd7e",
-        "generatorRelease": "unreleased-source-19feda8a",
+        "generatedManifestSha256": "d073478ecb59e2e02ceb82b50df21d725e54047c2df7fa2c2f1869de8f5ceb96",
+        "generationReceipt": "teaql-conformance/evidence/2026-11-19-runtime-examples-refresh/generation-unified-intent-current-source/go/trace-chain/standard-order/model/receipt.json",
+        "generatorCommit": "021b1ed8bee5db7eef38a6b1e3a3ef2e7ac69daa",
+        "generatorJarSHA256": "34dd804dccf05470dad46d086d58412e4a9dfcd0a1c6ed34f8f90c55ff478220",
+        "generatorRelease": "unreleased-source-021b1ed8",
         "modelSha256": "9e60ff448b17cbbc38035565643f44e6618841632cf4f08fdc089dc961c3a62c",
-        "producerReceiptSha256": "c08803e9de23a4833beaf797b1f2b87b404ba9ba60f89dae67e89e36caa441ca",
+        "producerReceiptSha256": "f0f13a73e6b2e10aa750200675897b11d86dc011162dc4c9f07e4e62bffd5f03",
         "producerSource": {
-          "commit": "19feda8a0608d7c7e0d64c7d9ec371c9021000fd",
-          "jarSHA256": "dc6e26b561f618e1f9574c5c3b4c03b7a21da9ca630cc73a78ae8ccd0d89bd7e",
-          "release": "unreleased-source-19feda8a"
+          "commit": "021b1ed8bee5db7eef38a6b1e3a3ef2e7ac69daa",
+          "jarSHA256": "34dd804dccf05470dad46d086d58412e4a9dfcd0a1c6ed34f8f90c55ff478220",
+          "release": "unreleased-source-021b1ed8"
         }
       },
       "preservedApplicationFiles": {
@@ -1662,7 +1662,7 @@
       }
     }
   ],
-  "runtimeBaseCommit": "7bf1cee61b9b200b1c14b28dfc7c58917a34c227",
+  "runtimeBaseCommit": "e5fb37782823de2fe0c33912dc10855c1c68da07",
   "schema": "teaql.runtime-current-generated-examples/v1",
   "sourceCodeHandEdited": false
 }
