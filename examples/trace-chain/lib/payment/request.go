@@ -72,7 +72,7 @@ func (r *PaymentRequest) GetQuerySelection() *core.QuerySelection {
 }
 
 func (r *PaymentRequest) GetEntityDescriptor() *core.EntityDescriptor {
-	return NewPayment().EntityDescriptor()
+	return newLoadedPayment().EntityDescriptor()
 }
 
 func (r *PaymentRequest) NewRelationEntity() core.Entity {
@@ -597,16 +597,10 @@ func (r *PaymentRequest) WithoutPaymentAttemptListMatching(child *payment_attemp
 	return r
 }
 
-func (e *ExecutablePaymentRequest) NewEntity(context *runtime.UserContext) *Payment {
+func (e *ExecutablePaymentRequest) NewEntity(context *runtime.UserContext) (*Payment, error) {
 	r := e.request
 	if _, err := core.NewQueryIntent(&r.commentText, &r.purposeText); err != nil { panic(err) }
-	entity := NewPayment()
-	initialized := context.InitializeEntity("Payment", entity)
-	typed, ok := initialized.(*Payment)
-	if !ok {
-		panic("entity initializer changed Payment to an incompatible type")
-	}
-	return typed
+	return NewPayment(context)
 }
 
 func (e *ExecutablePaymentRequest) ExecuteForOne(context *runtime.UserContext) (*Payment, error) {
@@ -735,15 +729,39 @@ func (r *PaymentRequest) GroupById() *PaymentRequest {
 	r.Query.WithGroupBy("id")
 	return r
 }
+
+func (r *PaymentRequest) GroupByIdAs(alias string) *PaymentRequest {
+	r.Query.WithGroupBy("id")
+	r.Query.ProjectExpr(alias, core.ExprColumnNode("id"))
+	return r
+}
 func (r *PaymentRequest) GroupByCustomerOrder() *PaymentRequest {
 	r.Query.WithGroupBy("customer_order_id")
+	return r
+}
+
+func (r *PaymentRequest) GroupByCustomerOrderAs(alias string) *PaymentRequest {
+	r.Query.WithGroupBy("customer_order_id")
+	r.Query.ProjectExpr(alias, core.ExprColumnNode("customer_order_id"))
 	return r
 }
 func (r *PaymentRequest) GroupByReferenceCode() *PaymentRequest {
 	r.Query.WithGroupBy("reference_code")
 	return r
 }
+
+func (r *PaymentRequest) GroupByReferenceCodeAs(alias string) *PaymentRequest {
+	r.Query.WithGroupBy("reference_code")
+	r.Query.ProjectExpr(alias, core.ExprColumnNode("reference_code"))
+	return r
+}
 func (r *PaymentRequest) GroupByVersion() *PaymentRequest {
 	r.Query.WithGroupBy("version")
+	return r
+}
+
+func (r *PaymentRequest) GroupByVersionAs(alias string) *PaymentRequest {
+	r.Query.WithGroupBy("version")
+	r.Query.ProjectExpr(alias, core.ExprColumnNode("version"))
 	return r
 }

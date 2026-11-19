@@ -27,10 +27,13 @@ func CreateWorkItem(
 	platformId uint64,
 	context *runtime.UserContext,
 ) (*work_item.WorkItem, error) {
-	entity := Q.WorkItems().
+	entity, err := Q.WorkItems().
 		Comment("what: initialize Work Item").
 		Purpose("why: create Work Item").
 		NewEntity(context)
+	if err != nil {
+		return nil, err
+	}
 
 	entity.UpdateTitle(title)
 	entity.UpdateDescription(description)

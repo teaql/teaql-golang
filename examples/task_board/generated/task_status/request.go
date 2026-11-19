@@ -72,7 +72,7 @@ func (r *TaskStatusRequest) GetQuerySelection() *core.QuerySelection {
 }
 
 func (r *TaskStatusRequest) GetEntityDescriptor() *core.EntityDescriptor {
-	return NewTaskStatus().EntityDescriptor()
+	return newLoadedTaskStatus().EntityDescriptor()
 }
 
 func (r *TaskStatusRequest) NewRelationEntity() core.Entity {
@@ -929,16 +929,10 @@ func (r *TaskStatusRequest) WithoutTaskListMatching(child *task.TaskRequest) *Ta
 	return r
 }
 
-func (e *ExecutableTaskStatusRequest) NewEntity(context *runtime.UserContext) *TaskStatus {
+func (e *ExecutableTaskStatusRequest) NewEntity(context *runtime.UserContext) (*TaskStatus, error) {
 	r := e.request
 	if _, err := core.NewQueryIntent(&r.commentText, &r.purposeText); err != nil { panic(err) }
-	entity := NewTaskStatus()
-	initialized := context.InitializeEntity("TaskStatus", entity)
-	typed, ok := initialized.(*TaskStatus)
-	if !ok {
-		panic("entity initializer changed TaskStatus to an incompatible type")
-	}
-	return typed
+	return NewTaskStatus(context)
 }
 
 func (e *ExecutableTaskStatusRequest) ExecuteForOne(context *runtime.UserContext) (*TaskStatus, error) {
@@ -1195,31 +1189,79 @@ func (r *TaskStatusRequest) GroupById() *TaskStatusRequest {
 	r.Query.WithGroupBy("id")
 	return r
 }
+
+func (r *TaskStatusRequest) GroupByIdAs(alias string) *TaskStatusRequest {
+	r.Query.WithGroupBy("id")
+	r.Query.ProjectExpr(alias, core.ExprColumnNode("id"))
+	return r
+}
 func (r *TaskStatusRequest) GroupByName() *TaskStatusRequest {
 	r.Query.WithGroupBy("name")
+	return r
+}
+
+func (r *TaskStatusRequest) GroupByNameAs(alias string) *TaskStatusRequest {
+	r.Query.WithGroupBy("name")
+	r.Query.ProjectExpr(alias, core.ExprColumnNode("name"))
 	return r
 }
 func (r *TaskStatusRequest) GroupByCode() *TaskStatusRequest {
 	r.Query.WithGroupBy("code")
 	return r
 }
+
+func (r *TaskStatusRequest) GroupByCodeAs(alias string) *TaskStatusRequest {
+	r.Query.WithGroupBy("code")
+	r.Query.ProjectExpr(alias, core.ExprColumnNode("code"))
+	return r
+}
 func (r *TaskStatusRequest) GroupByColor() *TaskStatusRequest {
 	r.Query.WithGroupBy("color")
+	return r
+}
+
+func (r *TaskStatusRequest) GroupByColorAs(alias string) *TaskStatusRequest {
+	r.Query.WithGroupBy("color")
+	r.Query.ProjectExpr(alias, core.ExprColumnNode("color"))
 	return r
 }
 func (r *TaskStatusRequest) GroupByDisplayOrder() *TaskStatusRequest {
 	r.Query.WithGroupBy("display_order")
 	return r
 }
+
+func (r *TaskStatusRequest) GroupByDisplayOrderAs(alias string) *TaskStatusRequest {
+	r.Query.WithGroupBy("display_order")
+	r.Query.ProjectExpr(alias, core.ExprColumnNode("display_order"))
+	return r
+}
 func (r *TaskStatusRequest) GroupByProgress() *TaskStatusRequest {
 	r.Query.WithGroupBy("progress")
+	return r
+}
+
+func (r *TaskStatusRequest) GroupByProgressAs(alias string) *TaskStatusRequest {
+	r.Query.WithGroupBy("progress")
+	r.Query.ProjectExpr(alias, core.ExprColumnNode("progress"))
 	return r
 }
 func (r *TaskStatusRequest) GroupByPlatform() *TaskStatusRequest {
 	r.Query.WithGroupBy("platform_id")
 	return r
 }
+
+func (r *TaskStatusRequest) GroupByPlatformAs(alias string) *TaskStatusRequest {
+	r.Query.WithGroupBy("platform_id")
+	r.Query.ProjectExpr(alias, core.ExprColumnNode("platform_id"))
+	return r
+}
 func (r *TaskStatusRequest) GroupByVersion() *TaskStatusRequest {
 	r.Query.WithGroupBy("version")
+	return r
+}
+
+func (r *TaskStatusRequest) GroupByVersionAs(alias string) *TaskStatusRequest {
+	r.Query.WithGroupBy("version")
+	r.Query.ProjectExpr(alias, core.ExprColumnNode("version"))
 	return r
 }

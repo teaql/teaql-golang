@@ -43,7 +43,9 @@ func ensureGeneratedBootstrapOnce(context *runtime.UserContext) error {
 	platform1, err := Q.Platforms().WithIdIs(uint64(1)).Comment("what: locate generated bootstrap entity").Purpose("why: idempotent runtime bootstrap").ExecuteForOne(context)
 	if err != nil { return fmt.Errorf("query bootstrap Platform(1): %w", err) }
 	if platform1 == nil {
-		platform1 = platform.NewPlatform().UpdateId(uint64(1))
+		platform1, err = Q.Platforms().Comment("Create generated bootstrap entity").Purpose("Initialize runtime bootstrap").NewEntity(context)
+		if err != nil { return err }
+		platform1.UpdateId(uint64(1))
 		platform1.UpdateName("Runtime Example")
 		if _, err = platform1.AuditAs("create model root Platform(1)").Save(context); err != nil {
 			createErr := err
@@ -207,7 +209,7 @@ func ServiceRuntimeFromEnv() (*runtime.UserContext, error) {
 		return nil, fmt.Errorf("missing environment variable RUNTIME_EXAMPLE_CONFORMANCE_SERVICE_CORE_DATABASE_URL")
 	}
 
-	db, err := sql.Open("sqlite3", dbUrl)
+	db, err := provider.OpenDatabase(dbUrl)
 	if err != nil {
 		return nil, err
 	}

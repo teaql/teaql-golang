@@ -72,7 +72,7 @@ func (r *TypePlatformRequest) GetQuerySelection() *core.QuerySelection {
 }
 
 func (r *TypePlatformRequest) GetEntityDescriptor() *core.EntityDescriptor {
-	return NewTypePlatform().EntityDescriptor()
+	return newLoadedTypePlatform().EntityDescriptor()
 }
 
 func (r *TypePlatformRequest) NewRelationEntity() core.Entity {
@@ -1577,16 +1577,10 @@ func (r *TypePlatformRequest) WithoutScalarTypeProbeListMatching(child *scalar_t
 	return r
 }
 
-func (e *ExecutableTypePlatformRequest) NewEntity(context *runtime.UserContext) *TypePlatform {
+func (e *ExecutableTypePlatformRequest) NewEntity(context *runtime.UserContext) (*TypePlatform, error) {
 	r := e.request
 	if _, err := core.NewQueryIntent(&r.commentText, &r.purposeText); err != nil { panic(err) }
-	entity := NewTypePlatform()
-	initialized := context.InitializeEntity("TypePlatform", entity)
-	typed, ok := initialized.(*TypePlatform)
-	if !ok {
-		panic("entity initializer changed TypePlatform to an incompatible type")
-	}
-	return typed
+	return NewTypePlatform(context)
 }
 
 func (e *ExecutableTypePlatformRequest) ExecuteForOne(context *runtime.UserContext) (*TypePlatform, error) {
@@ -1715,11 +1709,29 @@ func (r *TypePlatformRequest) GroupById() *TypePlatformRequest {
 	r.Query.WithGroupBy("id")
 	return r
 }
+
+func (r *TypePlatformRequest) GroupByIdAs(alias string) *TypePlatformRequest {
+	r.Query.WithGroupBy("id")
+	r.Query.ProjectExpr(alias, core.ExprColumnNode("id"))
+	return r
+}
 func (r *TypePlatformRequest) GroupByName() *TypePlatformRequest {
 	r.Query.WithGroupBy("name")
 	return r
 }
+
+func (r *TypePlatformRequest) GroupByNameAs(alias string) *TypePlatformRequest {
+	r.Query.WithGroupBy("name")
+	r.Query.ProjectExpr(alias, core.ExprColumnNode("name"))
+	return r
+}
 func (r *TypePlatformRequest) GroupByVersion() *TypePlatformRequest {
 	r.Query.WithGroupBy("version")
+	return r
+}
+
+func (r *TypePlatformRequest) GroupByVersionAs(alias string) *TypePlatformRequest {
+	r.Query.WithGroupBy("version")
+	r.Query.ProjectExpr(alias, core.ExprColumnNode("version"))
 	return r
 }

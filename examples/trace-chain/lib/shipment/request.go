@@ -71,7 +71,7 @@ func (r *ShipmentRequest) GetQuerySelection() *core.QuerySelection {
 }
 
 func (r *ShipmentRequest) GetEntityDescriptor() *core.EntityDescriptor {
-	return NewShipment().EntityDescriptor()
+	return newLoadedShipment().EntityDescriptor()
 }
 
 func (r *ShipmentRequest) NewRelationEntity() core.Entity {
@@ -535,16 +535,10 @@ func (r *ShipmentRequest) WithoutCustomerOrderMatching(child interface {
 
 
 
-func (e *ExecutableShipmentRequest) NewEntity(context *runtime.UserContext) *Shipment {
+func (e *ExecutableShipmentRequest) NewEntity(context *runtime.UserContext) (*Shipment, error) {
 	r := e.request
 	if _, err := core.NewQueryIntent(&r.commentText, &r.purposeText); err != nil { panic(err) }
-	entity := NewShipment()
-	initialized := context.InitializeEntity("Shipment", entity)
-	typed, ok := initialized.(*Shipment)
-	if !ok {
-		panic("entity initializer changed Shipment to an incompatible type")
-	}
-	return typed
+	return NewShipment(context)
 }
 
 func (e *ExecutableShipmentRequest) ExecuteForOne(context *runtime.UserContext) (*Shipment, error) {
@@ -673,15 +667,39 @@ func (r *ShipmentRequest) GroupById() *ShipmentRequest {
 	r.Query.WithGroupBy("id")
 	return r
 }
+
+func (r *ShipmentRequest) GroupByIdAs(alias string) *ShipmentRequest {
+	r.Query.WithGroupBy("id")
+	r.Query.ProjectExpr(alias, core.ExprColumnNode("id"))
+	return r
+}
 func (r *ShipmentRequest) GroupByCustomerOrder() *ShipmentRequest {
 	r.Query.WithGroupBy("customer_order_id")
+	return r
+}
+
+func (r *ShipmentRequest) GroupByCustomerOrderAs(alias string) *ShipmentRequest {
+	r.Query.WithGroupBy("customer_order_id")
+	r.Query.ProjectExpr(alias, core.ExprColumnNode("customer_order_id"))
 	return r
 }
 func (r *ShipmentRequest) GroupByReferenceCode() *ShipmentRequest {
 	r.Query.WithGroupBy("reference_code")
 	return r
 }
+
+func (r *ShipmentRequest) GroupByReferenceCodeAs(alias string) *ShipmentRequest {
+	r.Query.WithGroupBy("reference_code")
+	r.Query.ProjectExpr(alias, core.ExprColumnNode("reference_code"))
+	return r
+}
 func (r *ShipmentRequest) GroupByVersion() *ShipmentRequest {
 	r.Query.WithGroupBy("version")
+	return r
+}
+
+func (r *ShipmentRequest) GroupByVersionAs(alias string) *ShipmentRequest {
+	r.Query.WithGroupBy("version")
+	r.Query.ProjectExpr(alias, core.ExprColumnNode("version"))
 	return r
 }

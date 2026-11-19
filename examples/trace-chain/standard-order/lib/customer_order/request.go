@@ -72,7 +72,7 @@ func (r *CustomerOrderRequest) GetQuerySelection() *core.QuerySelection {
 }
 
 func (r *CustomerOrderRequest) GetEntityDescriptor() *core.EntityDescriptor {
-	return NewCustomerOrder().EntityDescriptor()
+	return newLoadedCustomerOrder().EntityDescriptor()
 }
 
 func (r *CustomerOrderRequest) NewRelationEntity() core.Entity {
@@ -1061,16 +1061,10 @@ func (r *CustomerOrderRequest) WithoutOrderItemListMatching(child *order_item.Or
 	return r
 }
 
-func (e *ExecutableCustomerOrderRequest) NewEntity(context *runtime.UserContext) *CustomerOrder {
+func (e *ExecutableCustomerOrderRequest) NewEntity(context *runtime.UserContext) (*CustomerOrder, error) {
 	r := e.request
 	if _, err := core.NewQueryIntent(&r.commentText, &r.purposeText); err != nil { panic(err) }
-	entity := NewCustomerOrder()
-	initialized := context.InitializeEntity("CustomerOrder", entity)
-	typed, ok := initialized.(*CustomerOrder)
-	if !ok {
-		panic("entity initializer changed CustomerOrder to an incompatible type")
-	}
-	return typed
+	return NewCustomerOrder(context)
 }
 
 func (e *ExecutableCustomerOrderRequest) ExecuteForOne(context *runtime.UserContext) (*CustomerOrder, error) {
@@ -1263,27 +1257,69 @@ func (r *CustomerOrderRequest) GroupById() *CustomerOrderRequest {
 	r.Query.WithGroupBy("id")
 	return r
 }
+
+func (r *CustomerOrderRequest) GroupByIdAs(alias string) *CustomerOrderRequest {
+	r.Query.WithGroupBy("id")
+	r.Query.ProjectExpr(alias, core.ExprColumnNode("id"))
+	return r
+}
 func (r *CustomerOrderRequest) GroupByCustomer() *CustomerOrderRequest {
 	r.Query.WithGroupBy("customer_id")
+	return r
+}
+
+func (r *CustomerOrderRequest) GroupByCustomerAs(alias string) *CustomerOrderRequest {
+	r.Query.WithGroupBy("customer_id")
+	r.Query.ProjectExpr(alias, core.ExprColumnNode("customer_id"))
 	return r
 }
 func (r *CustomerOrderRequest) GroupByStatus() *CustomerOrderRequest {
 	r.Query.WithGroupBy("status_id")
 	return r
 }
+
+func (r *CustomerOrderRequest) GroupByStatusAs(alias string) *CustomerOrderRequest {
+	r.Query.WithGroupBy("status_id")
+	r.Query.ProjectExpr(alias, core.ExprColumnNode("status_id"))
+	return r
+}
 func (r *CustomerOrderRequest) GroupByOrderNumber() *CustomerOrderRequest {
 	r.Query.WithGroupBy("order_number")
+	return r
+}
+
+func (r *CustomerOrderRequest) GroupByOrderNumberAs(alias string) *CustomerOrderRequest {
+	r.Query.WithGroupBy("order_number")
+	r.Query.ProjectExpr(alias, core.ExprColumnNode("order_number"))
 	return r
 }
 func (r *CustomerOrderRequest) GroupByOrderDate() *CustomerOrderRequest {
 	r.Query.WithGroupBy("order_date")
 	return r
 }
+
+func (r *CustomerOrderRequest) GroupByOrderDateAs(alias string) *CustomerOrderRequest {
+	r.Query.WithGroupBy("order_date")
+	r.Query.ProjectExpr(alias, core.ExprColumnNode("order_date"))
+	return r
+}
 func (r *CustomerOrderRequest) GroupByTotalAmount() *CustomerOrderRequest {
 	r.Query.WithGroupBy("total_amount")
 	return r
 }
+
+func (r *CustomerOrderRequest) GroupByTotalAmountAs(alias string) *CustomerOrderRequest {
+	r.Query.WithGroupBy("total_amount")
+	r.Query.ProjectExpr(alias, core.ExprColumnNode("total_amount"))
+	return r
+}
 func (r *CustomerOrderRequest) GroupByVersion() *CustomerOrderRequest {
 	r.Query.WithGroupBy("version")
+	return r
+}
+
+func (r *CustomerOrderRequest) GroupByVersionAs(alias string) *CustomerOrderRequest {
+	r.Query.WithGroupBy("version")
+	r.Query.ProjectExpr(alias, core.ExprColumnNode("version"))
 	return r
 }

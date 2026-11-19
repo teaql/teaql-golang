@@ -5,6 +5,7 @@ import (
 	"github.com/shopspring/decimal"
 	"github.com/teaql/teaql-golang/runtime"
 	"github.com/teaql/teaql-golang/core"
+	"natural-message-service-core-workspace/lib/internal/expressiongraph"
 )
 
 var _ = time.Time{}
@@ -112,6 +113,7 @@ func (e *EntryExpression) Version() *ValueExpression[int64] {
 }
 type CatalogRelationExpression struct {
 	value core.Record
+	entity core.Entity
 	root string
 	path runtime.ExpressionPath
 	err *runtime.NotLoadedError
@@ -154,6 +156,9 @@ func (e *CatalogRelationExpression) Version() *ValueExpression[int64] {
 	value, valid := raw.TryI64(); if !valid { return missingExpression[int64]() }
 		return valueExpression(value)
 }
+func (e *CatalogRelationExpression) EntryList() *expressiongraph.CatalogEntryListExpression {
+	return expressiongraph.NewCatalogExpression(e.entity, e.path, e.err).EntryList()
+}
 
 func (e *EntryExpression) CatalogId() *ValueExpression[uint64] {
 	path := e.path.Member("catalog", "CatalogId")
@@ -177,5 +182,20 @@ func (e *EntryExpression) Catalog() *CatalogRelationExpression {
 	if !e.value.isRelationLoaded("catalogEntity") { return &CatalogRelationExpression{root:e.root,path:path,err:runtime.NewNotLoadedError(path.MarkMissing(), "catalog")} }
 	related, ok := e.value.RelationEntity("catalogEntity")
 	if !ok || related == nil { return &CatalogRelationExpression{root:e.root,path:path} }
-	return &CatalogRelationExpression{value:related.IntoRecord(),root:e.root,path:path}
+	return &CatalogRelationExpression{value:related.IntoRecord(),entity:related,root:e.root,path:path}
+}
+
+// Generated graph adapters expose loaded state only; no context or provider is available.
+func (e *Entry) TeaqlExpressionRelationLoaded(name string) bool {
+	return e.isRelationLoaded(name)
+}
+func (e *Entry) TeaqlExpressionListSize(name string) (int, bool) {
+	switch name {
+	default: return 0, false
+	}
+}
+func (e *Entry) TeaqlExpressionListItem(name string, index int) core.Entity {
+	switch name {
+	default: return nil
+	}
 }

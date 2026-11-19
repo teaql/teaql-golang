@@ -45,7 +45,9 @@ func ensureGeneratedBootstrapOnce(context *runtime.UserContext) error {
 	platform1, err := Q.Platforms().WithIdIs(uint64(1)).Comment("what: locate generated bootstrap entity").Purpose("why: idempotent runtime bootstrap").ExecuteForOne(context)
 	if err != nil { return fmt.Errorf("query bootstrap Platform(1): %w", err) }
 	if platform1 == nil {
-		platform1 = platform.NewPlatform().UpdateId(uint64(1))
+		platform1, err = Q.Platforms().Comment("Create generated bootstrap entity").Purpose("Initialize runtime bootstrap").NewEntity(context)
+		if err != nil { return err }
+		platform1.UpdateId(uint64(1))
 		platform1.UpdateName("Robot System")
 		platform1.UpdateUserEmail("string()")
 		if _, err = platform1.AuditAs("create model root Platform(1)").Save(context); err != nil {
@@ -63,7 +65,9 @@ func ensureGeneratedBootstrapOnce(context *runtime.UserContext) error {
 	task_status1001, err := Q.TaskStatuses().WithIdIs(uint64(1001)).Comment("what: locate generated bootstrap entity").Purpose("why: idempotent runtime bootstrap").ExecuteForOne(context)
 	if err != nil { return fmt.Errorf("query bootstrap TaskStatus(1001): %w", err) }
 	if task_status1001 == nil {
-		task_status1001 = task_status.NewTaskStatus().UpdateId(uint64(1001))
+		task_status1001, err = Q.TaskStatuses().Comment("Create generated bootstrap entity").Purpose("Initialize runtime bootstrap").NewEntity(context)
+		if err != nil { return err }
+		task_status1001.UpdateId(uint64(1001))
 		task_status1001.UpdateName("Planned")
 		task_status1001.UpdateCode("PLANNED")
 		task_status1001.UpdateColor("#94A3B8")
@@ -106,7 +110,9 @@ func ensureGeneratedBootstrapOnce(context *runtime.UserContext) error {
 	task_status1002, err := Q.TaskStatuses().WithIdIs(uint64(1002)).Comment("what: locate generated bootstrap entity").Purpose("why: idempotent runtime bootstrap").ExecuteForOne(context)
 	if err != nil { return fmt.Errorf("query bootstrap TaskStatus(1002): %w", err) }
 	if task_status1002 == nil {
-		task_status1002 = task_status.NewTaskStatus().UpdateId(uint64(1002))
+		task_status1002, err = Q.TaskStatuses().Comment("Create generated bootstrap entity").Purpose("Initialize runtime bootstrap").NewEntity(context)
+		if err != nil { return err }
+		task_status1002.UpdateId(uint64(1002))
 		task_status1002.UpdateName("Ready")
 		task_status1002.UpdateCode("READY")
 		task_status1002.UpdateColor("#3B82F6")
@@ -149,7 +155,9 @@ func ensureGeneratedBootstrapOnce(context *runtime.UserContext) error {
 	task_status1003, err := Q.TaskStatuses().WithIdIs(uint64(1003)).Comment("what: locate generated bootstrap entity").Purpose("why: idempotent runtime bootstrap").ExecuteForOne(context)
 	if err != nil { return fmt.Errorf("query bootstrap TaskStatus(1003): %w", err) }
 	if task_status1003 == nil {
-		task_status1003 = task_status.NewTaskStatus().UpdateId(uint64(1003))
+		task_status1003, err = Q.TaskStatuses().Comment("Create generated bootstrap entity").Purpose("Initialize runtime bootstrap").NewEntity(context)
+		if err != nil { return err }
+		task_status1003.UpdateId(uint64(1003))
 		task_status1003.UpdateName("Executing")
 		task_status1003.UpdateCode("EXECUTING")
 		task_status1003.UpdateColor("#F59E0B")
@@ -192,7 +200,9 @@ func ensureGeneratedBootstrapOnce(context *runtime.UserContext) error {
 	task_status1004, err := Q.TaskStatuses().WithIdIs(uint64(1004)).Comment("what: locate generated bootstrap entity").Purpose("why: idempotent runtime bootstrap").ExecuteForOne(context)
 	if err != nil { return fmt.Errorf("query bootstrap TaskStatus(1004): %w", err) }
 	if task_status1004 == nil {
-		task_status1004 = task_status.NewTaskStatus().UpdateId(uint64(1004))
+		task_status1004, err = Q.TaskStatuses().Comment("Create generated bootstrap entity").Purpose("Initialize runtime bootstrap").NewEntity(context)
+		if err != nil { return err }
+		task_status1004.UpdateId(uint64(1004))
 		task_status1004.UpdateName("Verified")
 		task_status1004.UpdateCode("VERIFIED")
 		task_status1004.UpdateColor("#16A34A")
@@ -550,7 +560,7 @@ func ServiceRuntimeFromEnv() (*runtime.UserContext, error) {
 		return nil, fmt.Errorf("missing environment variable ROBOT_KANBAN_SERVICE_CORE_DATABASE_URL")
 	}
 
-	db, err := sql.Open("sqlite3", dbUrl)
+	db, err := provider.OpenDatabase(dbUrl)
 	if err != nil {
 		return nil, err
 	}

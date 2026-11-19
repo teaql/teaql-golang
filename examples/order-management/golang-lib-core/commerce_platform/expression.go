@@ -343,3 +343,54 @@ func (e *CommercePlatformExpression) OrderSearchPresetList() *OrderSearchPresetL
 	if !e.value.IsLoaded("orderSearchPresetList") { return &OrderSearchPresetListExpression{err: runtime.NewNotLoadedError(path.MarkMissing(), "order_search_preset_list"), root:e.root, path:path} }
 	return &OrderSearchPresetListExpression{value: e.value.OrderSearchPresetList(), root: e.root, path:path}
 }
+
+// Generated graph adapters expose loaded state only; no context or provider is available.
+func (e *CommercePlatform) TeaqlExpressionRelationLoaded(name string) bool {
+	return e.isRelationLoaded(name)
+}
+func (e *CommercePlatform) TeaqlExpressionListSize(name string) (int, bool) {
+	switch name {
+	case "customerList":
+		if !e.IsLoaded(name) { return 0, false }
+		return len(e.CustomerList().Items()), true
+	case "orderStatusList":
+		if !e.IsLoaded(name) { return 0, false }
+		return len(e.OrderStatusList().Items()), true
+	case "customerOrderList":
+		if !e.IsLoaded(name) { return 0, false }
+		return len(e.CustomerOrderList().Items()), true
+	case "productList":
+		if !e.IsLoaded(name) { return 0, false }
+		return len(e.ProductList().Items()), true
+	case "orderLineList":
+		if !e.IsLoaded(name) { return 0, false }
+		return len(e.OrderLineList().Items()), true
+	case "orderSearchPresetList":
+		if !e.IsLoaded(name) { return 0, false }
+		return len(e.OrderSearchPresetList().Items()), true
+	default: return 0, false
+	}
+}
+func (e *CommercePlatform) TeaqlExpressionListItem(name string, index int) core.Entity {
+	switch name {
+	case "customerList":
+		if !e.IsLoaded(name) || index < 0 || index >= len(e.CustomerList().Items()) { return nil }
+		return e.CustomerList().Items()[index]
+	case "orderStatusList":
+		if !e.IsLoaded(name) || index < 0 || index >= len(e.OrderStatusList().Items()) { return nil }
+		return e.OrderStatusList().Items()[index]
+	case "customerOrderList":
+		if !e.IsLoaded(name) || index < 0 || index >= len(e.CustomerOrderList().Items()) { return nil }
+		return e.CustomerOrderList().Items()[index]
+	case "productList":
+		if !e.IsLoaded(name) || index < 0 || index >= len(e.ProductList().Items()) { return nil }
+		return e.ProductList().Items()[index]
+	case "orderLineList":
+		if !e.IsLoaded(name) || index < 0 || index >= len(e.OrderLineList().Items()) { return nil }
+		return e.OrderLineList().Items()[index]
+	case "orderSearchPresetList":
+		if !e.IsLoaded(name) || index < 0 || index >= len(e.OrderSearchPresetList().Items()) { return nil }
+		return e.OrderSearchPresetList().Items()[index]
+	default: return nil
+	}
+}

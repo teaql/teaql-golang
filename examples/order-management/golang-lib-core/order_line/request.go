@@ -71,7 +71,7 @@ func (r *OrderLineRequest) GetQuerySelection() *core.QuerySelection {
 }
 
 func (r *OrderLineRequest) GetEntityDescriptor() *core.EntityDescriptor {
-	return NewOrderLine().EntityDescriptor()
+	return newLoadedOrderLine().EntityDescriptor()
 }
 
 func (r *OrderLineRequest) NewRelationEntity() core.Entity {
@@ -1016,16 +1016,10 @@ func (r *OrderLineRequest) WithoutCommercePlatformMatching(child interface {
 
 
 
-func (e *ExecutableOrderLineRequest) NewEntity(context *runtime.UserContext) *OrderLine {
+func (e *ExecutableOrderLineRequest) NewEntity(context *runtime.UserContext) (*OrderLine, error) {
 	r := e.request
 	if _, err := core.NewQueryIntent(&r.commentText, &r.purposeText); err != nil { panic(err) }
-	entity := NewOrderLine()
-	initialized := context.InitializeEntity("OrderLine", entity)
-	typed, ok := initialized.(*OrderLine)
-	if !ok {
-		panic("entity initializer changed OrderLine to an incompatible type")
-	}
-	return typed
+	return NewOrderLine(context)
 }
 
 func (e *ExecutableOrderLineRequest) ExecuteForOne(context *runtime.UserContext) (*OrderLine, error) {
@@ -1218,35 +1212,89 @@ func (r *OrderLineRequest) GroupById() *OrderLineRequest {
 	r.Query.WithGroupBy("id")
 	return r
 }
+
+func (r *OrderLineRequest) GroupByIdAs(alias string) *OrderLineRequest {
+	r.Query.WithGroupBy("id")
+	r.Query.ProjectExpr(alias, core.ExprColumnNode("id"))
+	return r
+}
 func (r *OrderLineRequest) GroupByCustomerOrder() *OrderLineRequest {
 	r.Query.WithGroupBy("customer_order_id")
+	return r
+}
+
+func (r *OrderLineRequest) GroupByCustomerOrderAs(alias string) *OrderLineRequest {
+	r.Query.WithGroupBy("customer_order_id")
+	r.Query.ProjectExpr(alias, core.ExprColumnNode("customer_order_id"))
 	return r
 }
 func (r *OrderLineRequest) GroupByProduct() *OrderLineRequest {
 	r.Query.WithGroupBy("product_id")
 	return r
 }
+
+func (r *OrderLineRequest) GroupByProductAs(alias string) *OrderLineRequest {
+	r.Query.WithGroupBy("product_id")
+	r.Query.ProjectExpr(alias, core.ExprColumnNode("product_id"))
+	return r
+}
 func (r *OrderLineRequest) GroupByProductName() *OrderLineRequest {
 	r.Query.WithGroupBy("product_name")
+	return r
+}
+
+func (r *OrderLineRequest) GroupByProductNameAs(alias string) *OrderLineRequest {
+	r.Query.WithGroupBy("product_name")
+	r.Query.ProjectExpr(alias, core.ExprColumnNode("product_name"))
 	return r
 }
 func (r *OrderLineRequest) GroupBySku() *OrderLineRequest {
 	r.Query.WithGroupBy("sku")
 	return r
 }
+
+func (r *OrderLineRequest) GroupBySkuAs(alias string) *OrderLineRequest {
+	r.Query.WithGroupBy("sku")
+	r.Query.ProjectExpr(alias, core.ExprColumnNode("sku"))
+	return r
+}
 func (r *OrderLineRequest) GroupByQuantity() *OrderLineRequest {
 	r.Query.WithGroupBy("quantity")
+	return r
+}
+
+func (r *OrderLineRequest) GroupByQuantityAs(alias string) *OrderLineRequest {
+	r.Query.WithGroupBy("quantity")
+	r.Query.ProjectExpr(alias, core.ExprColumnNode("quantity"))
 	return r
 }
 func (r *OrderLineRequest) GroupByCommercePlatform() *OrderLineRequest {
 	r.Query.WithGroupBy("commerce_platform_id")
 	return r
 }
+
+func (r *OrderLineRequest) GroupByCommercePlatformAs(alias string) *OrderLineRequest {
+	r.Query.WithGroupBy("commerce_platform_id")
+	r.Query.ProjectExpr(alias, core.ExprColumnNode("commerce_platform_id"))
+	return r
+}
 func (r *OrderLineRequest) GroupByCreateTime() *OrderLineRequest {
 	r.Query.WithGroupBy("create_time")
 	return r
 }
+
+func (r *OrderLineRequest) GroupByCreateTimeAs(alias string) *OrderLineRequest {
+	r.Query.WithGroupBy("create_time")
+	r.Query.ProjectExpr(alias, core.ExprColumnNode("create_time"))
+	return r
+}
 func (r *OrderLineRequest) GroupByVersion() *OrderLineRequest {
 	r.Query.WithGroupBy("version")
+	return r
+}
+
+func (r *OrderLineRequest) GroupByVersionAs(alias string) *OrderLineRequest {
+	r.Query.WithGroupBy("version")
+	r.Query.ProjectExpr(alias, core.ExprColumnNode("version"))
 	return r
 }

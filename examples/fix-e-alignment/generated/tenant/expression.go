@@ -167,3 +167,30 @@ func (e *TenantExpression) OrderItemList() *OrderItemListExpression {
 	if !e.value.IsLoaded("orderItemList") { return &OrderItemListExpression{err: runtime.NewNotLoadedError(path.MarkMissing(), "order_item_list"), root:e.root, path:path} }
 	return &OrderItemListExpression{value: e.value.OrderItemList(), root: e.root, path:path}
 }
+
+// Generated graph adapters expose loaded state only; no context or provider is available.
+func (e *Tenant) TeaqlExpressionRelationLoaded(name string) bool {
+	return e.isRelationLoaded(name)
+}
+func (e *Tenant) TeaqlExpressionListSize(name string) (int, bool) {
+	switch name {
+	case "purchaseOrderList":
+		if !e.IsLoaded(name) { return 0, false }
+		return len(e.PurchaseOrderList().Items()), true
+	case "orderItemList":
+		if !e.IsLoaded(name) { return 0, false }
+		return len(e.OrderItemList().Items()), true
+	default: return 0, false
+	}
+}
+func (e *Tenant) TeaqlExpressionListItem(name string, index int) core.Entity {
+	switch name {
+	case "purchaseOrderList":
+		if !e.IsLoaded(name) || index < 0 || index >= len(e.PurchaseOrderList().Items()) { return nil }
+		return e.PurchaseOrderList().Items()[index]
+	case "orderItemList":
+		if !e.IsLoaded(name) || index < 0 || index >= len(e.OrderItemList().Items()) { return nil }
+		return e.OrderItemList().Items()[index]
+	default: return nil
+	}
+}

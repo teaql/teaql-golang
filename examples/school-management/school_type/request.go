@@ -72,7 +72,7 @@ func (r *SchoolTypeRequest) GetQuerySelection() *core.QuerySelection {
 }
 
 func (r *SchoolTypeRequest) GetEntityDescriptor() *core.EntityDescriptor {
-	return NewSchoolType().EntityDescriptor()
+	return newLoadedSchoolType().EntityDescriptor()
 }
 
 func (r *SchoolTypeRequest) NewRelationEntity() core.Entity {
@@ -930,16 +930,10 @@ func (r *SchoolTypeRequest) WithoutSchoolListMatching(child *school.SchoolReques
 	return r
 }
 
-func (e *ExecutableSchoolTypeRequest) NewEntity(context *runtime.UserContext) *SchoolType {
+func (e *ExecutableSchoolTypeRequest) NewEntity(context *runtime.UserContext) (*SchoolType, error) {
 	r := e.request
 	if _, err := core.NewQueryIntent(&r.commentText, &r.purposeText); err != nil { panic(err) }
-	entity := NewSchoolType()
-	initialized := context.InitializeEntity("SchoolType", entity)
-	typed, ok := initialized.(*SchoolType)
-	if !ok {
-		panic("entity initializer changed SchoolType to an incompatible type")
-	}
-	return typed
+	return NewSchoolType(context)
 }
 
 func (e *ExecutableSchoolTypeRequest) ExecuteForOne(context *runtime.UserContext) (*SchoolType, error) {
@@ -1132,23 +1126,59 @@ func (r *SchoolTypeRequest) GroupByPlatform() *SchoolTypeRequest {
 	r.Query.WithGroupBy("platform_id")
 	return r
 }
+
+func (r *SchoolTypeRequest) GroupByPlatformAs(alias string) *SchoolTypeRequest {
+	r.Query.WithGroupBy("platform_id")
+	r.Query.ProjectExpr(alias, core.ExprColumnNode("platform_id"))
+	return r
+}
 func (r *SchoolTypeRequest) GroupById() *SchoolTypeRequest {
 	r.Query.WithGroupBy("id")
+	return r
+}
+
+func (r *SchoolTypeRequest) GroupByIdAs(alias string) *SchoolTypeRequest {
+	r.Query.WithGroupBy("id")
+	r.Query.ProjectExpr(alias, core.ExprColumnNode("id"))
 	return r
 }
 func (r *SchoolTypeRequest) GroupByName() *SchoolTypeRequest {
 	r.Query.WithGroupBy("name")
 	return r
 }
+
+func (r *SchoolTypeRequest) GroupByNameAs(alias string) *SchoolTypeRequest {
+	r.Query.WithGroupBy("name")
+	r.Query.ProjectExpr(alias, core.ExprColumnNode("name"))
+	return r
+}
 func (r *SchoolTypeRequest) GroupByCode() *SchoolTypeRequest {
 	r.Query.WithGroupBy("code")
+	return r
+}
+
+func (r *SchoolTypeRequest) GroupByCodeAs(alias string) *SchoolTypeRequest {
+	r.Query.WithGroupBy("code")
+	r.Query.ProjectExpr(alias, core.ExprColumnNode("code"))
 	return r
 }
 func (r *SchoolTypeRequest) GroupByDisplayOrder() *SchoolTypeRequest {
 	r.Query.WithGroupBy("display_order")
 	return r
 }
+
+func (r *SchoolTypeRequest) GroupByDisplayOrderAs(alias string) *SchoolTypeRequest {
+	r.Query.WithGroupBy("display_order")
+	r.Query.ProjectExpr(alias, core.ExprColumnNode("display_order"))
+	return r
+}
 func (r *SchoolTypeRequest) GroupByVersion() *SchoolTypeRequest {
 	r.Query.WithGroupBy("version")
+	return r
+}
+
+func (r *SchoolTypeRequest) GroupByVersionAs(alias string) *SchoolTypeRequest {
+	r.Query.WithGroupBy("version")
+	r.Query.ProjectExpr(alias, core.ExprColumnNode("version"))
 	return r
 }

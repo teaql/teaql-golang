@@ -72,7 +72,7 @@ func (r *ProductRequest) GetQuerySelection() *core.QuerySelection {
 }
 
 func (r *ProductRequest) GetEntityDescriptor() *core.EntityDescriptor {
-	return NewProduct().EntityDescriptor()
+	return newLoadedProduct().EntityDescriptor()
 }
 
 func (r *ProductRequest) NewRelationEntity() core.Entity {
@@ -1048,16 +1048,10 @@ func (r *ProductRequest) WithoutOrderLineListMatching(child *order_line.OrderLin
 	return r
 }
 
-func (e *ExecutableProductRequest) NewEntity(context *runtime.UserContext) *Product {
+func (e *ExecutableProductRequest) NewEntity(context *runtime.UserContext) (*Product, error) {
 	r := e.request
 	if _, err := core.NewQueryIntent(&r.commentText, &r.purposeText); err != nil { panic(err) }
-	entity := NewProduct()
-	initialized := context.InitializeEntity("Product", entity)
-	typed, ok := initialized.(*Product)
-	if !ok {
-		panic("entity initializer changed Product to an incompatible type")
-	}
-	return typed
+	return NewProduct(context)
 }
 
 func (e *ExecutableProductRequest) ExecuteForOne(context *runtime.UserContext) (*Product, error) {
@@ -1186,31 +1180,79 @@ func (r *ProductRequest) GroupById() *ProductRequest {
 	r.Query.WithGroupBy("id")
 	return r
 }
+
+func (r *ProductRequest) GroupByIdAs(alias string) *ProductRequest {
+	r.Query.WithGroupBy("id")
+	r.Query.ProjectExpr(alias, core.ExprColumnNode("id"))
+	return r
+}
 func (r *ProductRequest) GroupByName() *ProductRequest {
 	r.Query.WithGroupBy("name")
+	return r
+}
+
+func (r *ProductRequest) GroupByNameAs(alias string) *ProductRequest {
+	r.Query.WithGroupBy("name")
+	r.Query.ProjectExpr(alias, core.ExprColumnNode("name"))
 	return r
 }
 func (r *ProductRequest) GroupBySku() *ProductRequest {
 	r.Query.WithGroupBy("sku")
 	return r
 }
+
+func (r *ProductRequest) GroupBySkuAs(alias string) *ProductRequest {
+	r.Query.WithGroupBy("sku")
+	r.Query.ProjectExpr(alias, core.ExprColumnNode("sku"))
+	return r
+}
 func (r *ProductRequest) GroupByImageUrl() *ProductRequest {
 	r.Query.WithGroupBy("image_url")
+	return r
+}
+
+func (r *ProductRequest) GroupByImageUrlAs(alias string) *ProductRequest {
+	r.Query.WithGroupBy("image_url")
+	r.Query.ProjectExpr(alias, core.ExprColumnNode("image_url"))
 	return r
 }
 func (r *ProductRequest) GroupByCommercePlatform() *ProductRequest {
 	r.Query.WithGroupBy("commerce_platform_id")
 	return r
 }
+
+func (r *ProductRequest) GroupByCommercePlatformAs(alias string) *ProductRequest {
+	r.Query.WithGroupBy("commerce_platform_id")
+	r.Query.ProjectExpr(alias, core.ExprColumnNode("commerce_platform_id"))
+	return r
+}
 func (r *ProductRequest) GroupByCreateTime() *ProductRequest {
 	r.Query.WithGroupBy("create_time")
+	return r
+}
+
+func (r *ProductRequest) GroupByCreateTimeAs(alias string) *ProductRequest {
+	r.Query.WithGroupBy("create_time")
+	r.Query.ProjectExpr(alias, core.ExprColumnNode("create_time"))
 	return r
 }
 func (r *ProductRequest) GroupByUpdateTime() *ProductRequest {
 	r.Query.WithGroupBy("update_time")
 	return r
 }
+
+func (r *ProductRequest) GroupByUpdateTimeAs(alias string) *ProductRequest {
+	r.Query.WithGroupBy("update_time")
+	r.Query.ProjectExpr(alias, core.ExprColumnNode("update_time"))
+	return r
+}
 func (r *ProductRequest) GroupByVersion() *ProductRequest {
 	r.Query.WithGroupBy("version")
+	return r
+}
+
+func (r *ProductRequest) GroupByVersionAs(alias string) *ProductRequest {
+	r.Query.WithGroupBy("version")
+	r.Query.ProjectExpr(alias, core.ExprColumnNode("version"))
 	return r
 }

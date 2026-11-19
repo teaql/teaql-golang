@@ -71,7 +71,7 @@ func (r *OrderItemRequest) GetQuerySelection() *core.QuerySelection {
 }
 
 func (r *OrderItemRequest) GetEntityDescriptor() *core.EntityDescriptor {
-	return NewOrderItem().EntityDescriptor()
+	return newLoadedOrderItem().EntityDescriptor()
 }
 
 func (r *OrderItemRequest) NewRelationEntity() core.Entity {
@@ -673,16 +673,10 @@ func (r *OrderItemRequest) WithoutCustomerOrderMatching(child interface {
 
 
 
-func (e *ExecutableOrderItemRequest) NewEntity(context *runtime.UserContext) *OrderItem {
+func (e *ExecutableOrderItemRequest) NewEntity(context *runtime.UserContext) (*OrderItem, error) {
 	r := e.request
 	if _, err := core.NewQueryIntent(&r.commentText, &r.purposeText); err != nil { panic(err) }
-	entity := NewOrderItem()
-	initialized := context.InitializeEntity("OrderItem", entity)
-	typed, ok := initialized.(*OrderItem)
-	if !ok {
-		panic("entity initializer changed OrderItem to an incompatible type")
-	}
-	return typed
+	return NewOrderItem(context)
 }
 
 func (e *ExecutableOrderItemRequest) ExecuteForOne(context *runtime.UserContext) (*OrderItem, error) {
@@ -939,23 +933,59 @@ func (r *OrderItemRequest) GroupById() *OrderItemRequest {
 	r.Query.WithGroupBy("id")
 	return r
 }
+
+func (r *OrderItemRequest) GroupByIdAs(alias string) *OrderItemRequest {
+	r.Query.WithGroupBy("id")
+	r.Query.ProjectExpr(alias, core.ExprColumnNode("id"))
+	return r
+}
 func (r *OrderItemRequest) GroupByCustomerOrder() *OrderItemRequest {
 	r.Query.WithGroupBy("customer_order_id")
+	return r
+}
+
+func (r *OrderItemRequest) GroupByCustomerOrderAs(alias string) *OrderItemRequest {
+	r.Query.WithGroupBy("customer_order_id")
+	r.Query.ProjectExpr(alias, core.ExprColumnNode("customer_order_id"))
 	return r
 }
 func (r *OrderItemRequest) GroupByProductName() *OrderItemRequest {
 	r.Query.WithGroupBy("product_name")
 	return r
 }
+
+func (r *OrderItemRequest) GroupByProductNameAs(alias string) *OrderItemRequest {
+	r.Query.WithGroupBy("product_name")
+	r.Query.ProjectExpr(alias, core.ExprColumnNode("product_name"))
+	return r
+}
 func (r *OrderItemRequest) GroupByQuantity() *OrderItemRequest {
 	r.Query.WithGroupBy("quantity")
+	return r
+}
+
+func (r *OrderItemRequest) GroupByQuantityAs(alias string) *OrderItemRequest {
+	r.Query.WithGroupBy("quantity")
+	r.Query.ProjectExpr(alias, core.ExprColumnNode("quantity"))
 	return r
 }
 func (r *OrderItemRequest) GroupByUnitPrice() *OrderItemRequest {
 	r.Query.WithGroupBy("unit_price")
 	return r
 }
+
+func (r *OrderItemRequest) GroupByUnitPriceAs(alias string) *OrderItemRequest {
+	r.Query.WithGroupBy("unit_price")
+	r.Query.ProjectExpr(alias, core.ExprColumnNode("unit_price"))
+	return r
+}
 func (r *OrderItemRequest) GroupByVersion() *OrderItemRequest {
 	r.Query.WithGroupBy("version")
+	return r
+}
+
+func (r *OrderItemRequest) GroupByVersionAs(alias string) *OrderItemRequest {
+	r.Query.WithGroupBy("version")
+	r.Query.ProjectExpr(alias, core.ExprColumnNode("version"))
 	return r
 }

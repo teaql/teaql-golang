@@ -43,7 +43,9 @@ func ensureGeneratedBootstrapOnce(context *runtime.UserContext) error {
 	catalog1, err := Q.Catalogs().WithIdIs(uint64(1)).Comment("what: locate generated bootstrap entity").Purpose("why: idempotent runtime bootstrap").ExecuteForOne(context)
 	if err != nil { return fmt.Errorf("query bootstrap Catalog(1): %w", err) }
 	if catalog1 == nil {
-		catalog1 = catalog.NewCatalog().UpdateId(uint64(1))
+		catalog1, err = Q.Catalogs().Comment("Create generated bootstrap entity").Purpose("Initialize runtime bootstrap").NewEntity(context)
+		if err != nil { return err }
+		catalog1.UpdateId(uint64(1))
 		catalog1.UpdateName("Catalog")
 		if _, err = catalog1.AuditAs("create model root Catalog(1)").Save(context); err != nil {
 			createErr := err
@@ -222,7 +224,7 @@ func ServiceRuntimeFromEnv() (*runtime.UserContext, error) {
 		return nil, fmt.Errorf("missing environment variable NATURAL_MESSAGE_SERVICE_CORE_DATABASE_URL")
 	}
 
-	db, err := sql.Open("sqlite3", dbUrl)
+	db, err := provider.OpenDatabase(dbUrl)
 	if err != nil {
 		return nil, err
 	}

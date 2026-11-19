@@ -72,7 +72,7 @@ func (r *CatalogRequest) GetQuerySelection() *core.QuerySelection {
 }
 
 func (r *CatalogRequest) GetEntityDescriptor() *core.EntityDescriptor {
-	return NewCatalog().EntityDescriptor()
+	return newLoadedCatalog().EntityDescriptor()
 }
 
 func (r *CatalogRequest) NewRelationEntity() core.Entity {
@@ -521,16 +521,10 @@ func (r *CatalogRequest) WithoutEntryListMatching(child *entry.EntryRequest) *Ca
 	return r
 }
 
-func (e *ExecutableCatalogRequest) NewEntity(context *runtime.UserContext) *Catalog {
+func (e *ExecutableCatalogRequest) NewEntity(context *runtime.UserContext) (*Catalog, error) {
 	r := e.request
 	if _, err := core.NewQueryIntent(&r.commentText, &r.purposeText); err != nil { panic(err) }
-	entity := NewCatalog()
-	initialized := context.InitializeEntity("Catalog", entity)
-	typed, ok := initialized.(*Catalog)
-	if !ok {
-		panic("entity initializer changed Catalog to an incompatible type")
-	}
-	return typed
+	return NewCatalog(context)
 }
 
 func (e *ExecutableCatalogRequest) ExecuteForOne(context *runtime.UserContext) (*Catalog, error) {
@@ -659,11 +653,29 @@ func (r *CatalogRequest) GroupById() *CatalogRequest {
 	r.Query.WithGroupBy("id")
 	return r
 }
+
+func (r *CatalogRequest) GroupByIdAs(alias string) *CatalogRequest {
+	r.Query.WithGroupBy("id")
+	r.Query.ProjectExpr(alias, core.ExprColumnNode("id"))
+	return r
+}
 func (r *CatalogRequest) GroupByName() *CatalogRequest {
 	r.Query.WithGroupBy("name")
 	return r
 }
+
+func (r *CatalogRequest) GroupByNameAs(alias string) *CatalogRequest {
+	r.Query.WithGroupBy("name")
+	r.Query.ProjectExpr(alias, core.ExprColumnNode("name"))
+	return r
+}
 func (r *CatalogRequest) GroupByVersion() *CatalogRequest {
 	r.Query.WithGroupBy("version")
+	return r
+}
+
+func (r *CatalogRequest) GroupByVersionAs(alias string) *CatalogRequest {
+	r.Query.WithGroupBy("version")
+	r.Query.ProjectExpr(alias, core.ExprColumnNode("version"))
 	return r
 }

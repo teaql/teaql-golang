@@ -71,7 +71,7 @@ func (r *EntryRequest) GetQuerySelection() *core.QuerySelection {
 }
 
 func (r *EntryRequest) GetEntityDescriptor() *core.EntityDescriptor {
-	return NewEntry().EntityDescriptor()
+	return newLoadedEntry().EntityDescriptor()
 }
 
 func (r *EntryRequest) NewRelationEntity() core.Entity {
@@ -673,16 +673,10 @@ func (r *EntryRequest) WithoutCatalogMatching(child interface {
 
 
 
-func (e *ExecutableEntryRequest) NewEntity(context *runtime.UserContext) *Entry {
+func (e *ExecutableEntryRequest) NewEntity(context *runtime.UserContext) (*Entry, error) {
 	r := e.request
 	if _, err := core.NewQueryIntent(&r.commentText, &r.purposeText); err != nil { panic(err) }
-	entity := NewEntry()
-	initialized := context.InitializeEntity("Entry", entity)
-	typed, ok := initialized.(*Entry)
-	if !ok {
-		panic("entity initializer changed Entry to an incompatible type")
-	}
-	return typed
+	return NewEntry(context)
 }
 
 func (e *ExecutableEntryRequest) ExecuteForOne(context *runtime.UserContext) (*Entry, error) {
@@ -811,23 +805,59 @@ func (r *EntryRequest) GroupById() *EntryRequest {
 	r.Query.WithGroupBy("id")
 	return r
 }
+
+func (r *EntryRequest) GroupByIdAs(alias string) *EntryRequest {
+	r.Query.WithGroupBy("id")
+	r.Query.ProjectExpr(alias, core.ExprColumnNode("id"))
+	return r
+}
 func (r *EntryRequest) GroupByCatalog() *EntryRequest {
 	r.Query.WithGroupBy("catalog_id")
+	return r
+}
+
+func (r *EntryRequest) GroupByCatalogAs(alias string) *EntryRequest {
+	r.Query.WithGroupBy("catalog_id")
+	r.Query.ProjectExpr(alias, core.ExprColumnNode("catalog_id"))
 	return r
 }
 func (r *EntryRequest) GroupByName() *EntryRequest {
 	r.Query.WithGroupBy("name")
 	return r
 }
+
+func (r *EntryRequest) GroupByNameAs(alias string) *EntryRequest {
+	r.Query.WithGroupBy("name")
+	r.Query.ProjectExpr(alias, core.ExprColumnNode("name"))
+	return r
+}
 func (r *EntryRequest) GroupByBornAt() *EntryRequest {
 	r.Query.WithGroupBy("born_at")
+	return r
+}
+
+func (r *EntryRequest) GroupByBornAtAs(alias string) *EntryRequest {
+	r.Query.WithGroupBy("born_at")
+	r.Query.ProjectExpr(alias, core.ExprColumnNode("born_at"))
 	return r
 }
 func (r *EntryRequest) GroupByTouchedAt() *EntryRequest {
 	r.Query.WithGroupBy("touched_at")
 	return r
 }
+
+func (r *EntryRequest) GroupByTouchedAtAs(alias string) *EntryRequest {
+	r.Query.WithGroupBy("touched_at")
+	r.Query.ProjectExpr(alias, core.ExprColumnNode("touched_at"))
+	return r
+}
 func (r *EntryRequest) GroupByVersion() *EntryRequest {
 	r.Query.WithGroupBy("version")
+	return r
+}
+
+func (r *EntryRequest) GroupByVersionAs(alias string) *EntryRequest {
+	r.Query.WithGroupBy("version")
+	r.Query.ProjectExpr(alias, core.ExprColumnNode("version"))
 	return r
 }

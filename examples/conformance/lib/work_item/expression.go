@@ -5,6 +5,7 @@ import (
 	"github.com/shopspring/decimal"
 	"github.com/teaql/teaql-golang/runtime"
 	"github.com/teaql/teaql-golang/core"
+	"runtime-example-conformance-service-core-workspace/lib/internal/expressiongraph"
 )
 
 var _ = time.Time{}
@@ -102,6 +103,7 @@ func (e *WorkItemExpression) Version() *ValueExpression[int64] {
 }
 type PlatformRelationExpression struct {
 	value core.Record
+	entity core.Entity
 	root string
 	path runtime.ExpressionPath
 	err *runtime.NotLoadedError
@@ -144,6 +146,9 @@ func (e *PlatformRelationExpression) Version() *ValueExpression[int64] {
 	value, valid := raw.TryI64(); if !valid { return missingExpression[int64]() }
 		return valueExpression(value)
 }
+func (e *PlatformRelationExpression) WorkItemList() *expressiongraph.PlatformWorkItemListExpression {
+	return expressiongraph.NewPlatformExpression(e.entity, e.path, e.err).WorkItemList()
+}
 
 func (e *WorkItemExpression) PlatformId() *ValueExpression[uint64] {
 	path := e.path.Member("platform", "PlatformId")
@@ -167,5 +172,20 @@ func (e *WorkItemExpression) Platform() *PlatformRelationExpression {
 	if !e.value.isRelationLoaded("platformEntity") { return &PlatformRelationExpression{root:e.root,path:path,err:runtime.NewNotLoadedError(path.MarkMissing(), "platform")} }
 	related, ok := e.value.RelationEntity("platformEntity")
 	if !ok || related == nil { return &PlatformRelationExpression{root:e.root,path:path} }
-	return &PlatformRelationExpression{value:related.IntoRecord(),root:e.root,path:path}
+	return &PlatformRelationExpression{value:related.IntoRecord(),entity:related,root:e.root,path:path}
+}
+
+// Generated graph adapters expose loaded state only; no context or provider is available.
+func (e *WorkItem) TeaqlExpressionRelationLoaded(name string) bool {
+	return e.isRelationLoaded(name)
+}
+func (e *WorkItem) TeaqlExpressionListSize(name string) (int, bool) {
+	switch name {
+	default: return 0, false
+	}
+}
+func (e *WorkItem) TeaqlExpressionListItem(name string, index int) core.Entity {
+	switch name {
+	default: return nil
+	}
 }

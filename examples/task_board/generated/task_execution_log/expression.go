@@ -5,6 +5,7 @@ import (
 	"github.com/shopspring/decimal"
 	"github.com/teaql/teaql-golang/runtime"
 	"github.com/teaql/teaql-golang/core"
+	"robot-kanban-service-core-workspace/lib/internal/expressiongraph"
 )
 
 var _ = time.Time{}
@@ -102,6 +103,7 @@ func (e *TaskExecutionLogExpression) Version() *ValueExpression[int64] {
 }
 type TaskRelationExpression struct {
 	value core.Record
+	entity core.Entity
 	root string
 	path runtime.ExpressionPath
 	err *runtime.NotLoadedError
@@ -144,6 +146,22 @@ func (e *TaskRelationExpression) Version() *ValueExpression[int64] {
 	value, valid := raw.TryI64(); if !valid { return missingExpression[int64]() }
 		return valueExpression(value)
 }
+func (e *TaskRelationExpression) Status() *expressiongraph.TaskStatusExpression {
+	return expressiongraph.NewTaskExpression(e.entity, e.path, e.err).Status()
+}
+func (e *TaskRelationExpression) StatusId() *expressiongraph.ValueExpression[uint64] {
+	return expressiongraph.NewTaskExpression(e.entity, e.path, e.err).StatusId()
+}
+
+func (e *TaskRelationExpression) Platform() *expressiongraph.PlatformExpression {
+	return expressiongraph.NewTaskExpression(e.entity, e.path, e.err).Platform()
+}
+func (e *TaskRelationExpression) PlatformId() *expressiongraph.ValueExpression[uint64] {
+	return expressiongraph.NewTaskExpression(e.entity, e.path, e.err).PlatformId()
+}
+func (e *TaskRelationExpression) TaskExecutionLogList() *expressiongraph.TaskTaskExecutionLogListExpression {
+	return expressiongraph.NewTaskExpression(e.entity, e.path, e.err).TaskExecutionLogList()
+}
 
 func (e *TaskExecutionLogExpression) TaskId() *ValueExpression[uint64] {
 	path := e.path.Member("task", "TaskId")
@@ -167,5 +185,20 @@ func (e *TaskExecutionLogExpression) Task() *TaskRelationExpression {
 	if !e.value.isRelationLoaded("taskEntity") { return &TaskRelationExpression{root:e.root,path:path,err:runtime.NewNotLoadedError(path.MarkMissing(), "task")} }
 	related, ok := e.value.RelationEntity("taskEntity")
 	if !ok || related == nil { return &TaskRelationExpression{root:e.root,path:path} }
-	return &TaskRelationExpression{value:related.IntoRecord(),root:e.root,path:path}
+	return &TaskRelationExpression{value:related.IntoRecord(),entity:related,root:e.root,path:path}
+}
+
+// Generated graph adapters expose loaded state only; no context or provider is available.
+func (e *TaskExecutionLog) TeaqlExpressionRelationLoaded(name string) bool {
+	return e.isRelationLoaded(name)
+}
+func (e *TaskExecutionLog) TeaqlExpressionListSize(name string) (int, bool) {
+	switch name {
+	default: return 0, false
+	}
+}
+func (e *TaskExecutionLog) TeaqlExpressionListItem(name string, index int) core.Entity {
+	switch name {
+	default: return nil
+	}
 }

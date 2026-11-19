@@ -43,7 +43,9 @@ func ensureGeneratedBootstrapOnce(context *runtime.UserContext) error {
 	type_platform1, err := Q.TypePlatforms().WithIdIs(uint64(1)).Comment("what: locate generated bootstrap entity").Purpose("why: idempotent runtime bootstrap").ExecuteForOne(context)
 	if err != nil { return fmt.Errorf("query bootstrap TypePlatform(1): %w", err) }
 	if type_platform1 == nil {
-		type_platform1 = type_platform.NewTypePlatform().UpdateId(uint64(1))
+		type_platform1, err = Q.TypePlatforms().Comment("Create generated bootstrap entity").Purpose("Initialize runtime bootstrap").NewEntity(context)
+		if err != nil { return err }
+		type_platform1.UpdateId(uint64(1))
 		type_platform1.UpdateName("Scalar Type Conformance")
 		if _, err = type_platform1.AuditAs("create model root TypePlatform(1)").Save(context); err != nil {
 			createErr := err
@@ -312,7 +314,7 @@ func ServiceRuntimeFromEnv() (*runtime.UserContext, error) {
 		return nil, fmt.Errorf("missing environment variable SCALAR_TYPE_CONFORMANCE_SERVICE_CORE_DATABASE_URL")
 	}
 
-	db, err := sql.Open("sqlite3", dbUrl)
+	db, err := provider.OpenDatabase(dbUrl)
 	if err != nil {
 		return nil, err
 	}

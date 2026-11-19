@@ -5,6 +5,7 @@ import (
 	"github.com/shopspring/decimal"
 	"github.com/teaql/teaql-golang/runtime"
 	"github.com/teaql/teaql-golang/core"
+	"scalar-type-conformance-service-core-workspace/lib/internal/expressiongraph"
 )
 
 var _ = time.Time{}
@@ -314,6 +315,7 @@ func (e *ScalarTypeProbeExpression) Version() *ValueExpression[int64] {
 }
 type TypePlatformRelationExpression struct {
 	value core.Record
+	entity core.Entity
 	root string
 	path runtime.ExpressionPath
 	err *runtime.NotLoadedError
@@ -356,6 +358,9 @@ func (e *TypePlatformRelationExpression) Version() *ValueExpression[int64] {
 	value, valid := raw.TryI64(); if !valid { return missingExpression[int64]() }
 		return valueExpression(value)
 }
+func (e *TypePlatformRelationExpression) ScalarTypeProbeList() *expressiongraph.TypePlatformScalarTypeProbeListExpression {
+	return expressiongraph.NewTypePlatformExpression(e.entity, e.path, e.err).ScalarTypeProbeList()
+}
 
 func (e *ScalarTypeProbeExpression) TypePlatformId() *ValueExpression[uint64] {
 	path := e.path.Member("type_platform", "TypePlatformId")
@@ -379,5 +384,20 @@ func (e *ScalarTypeProbeExpression) TypePlatform() *TypePlatformRelationExpressi
 	if !e.value.isRelationLoaded("typePlatformEntity") { return &TypePlatformRelationExpression{root:e.root,path:path,err:runtime.NewNotLoadedError(path.MarkMissing(), "type_platform")} }
 	related, ok := e.value.RelationEntity("typePlatformEntity")
 	if !ok || related == nil { return &TypePlatformRelationExpression{root:e.root,path:path} }
-	return &TypePlatformRelationExpression{value:related.IntoRecord(),root:e.root,path:path}
+	return &TypePlatformRelationExpression{value:related.IntoRecord(),entity:related,root:e.root,path:path}
+}
+
+// Generated graph adapters expose loaded state only; no context or provider is available.
+func (e *ScalarTypeProbe) TeaqlExpressionRelationLoaded(name string) bool {
+	return e.isRelationLoaded(name)
+}
+func (e *ScalarTypeProbe) TeaqlExpressionListSize(name string) (int, bool) {
+	switch name {
+	default: return 0, false
+	}
+}
+func (e *ScalarTypeProbe) TeaqlExpressionListItem(name string, index int) core.Entity {
+	switch name {
+	default: return nil
+	}
 }

@@ -128,3 +128,24 @@ func (e *TypePlatformExpression) ScalarTypeProbeList() *ScalarTypeProbeListExpre
 	if !e.value.IsLoaded("scalarTypeProbeList") { return &ScalarTypeProbeListExpression{err: runtime.NewNotLoadedError(path.MarkMissing(), "scalar_type_probe_list"), root:e.root, path:path} }
 	return &ScalarTypeProbeListExpression{value: e.value.ScalarTypeProbeList(), root: e.root, path:path}
 }
+
+// Generated graph adapters expose loaded state only; no context or provider is available.
+func (e *TypePlatform) TeaqlExpressionRelationLoaded(name string) bool {
+	return e.isRelationLoaded(name)
+}
+func (e *TypePlatform) TeaqlExpressionListSize(name string) (int, bool) {
+	switch name {
+	case "scalarTypeProbeList":
+		if !e.IsLoaded(name) { return 0, false }
+		return len(e.ScalarTypeProbeList().Items()), true
+	default: return 0, false
+	}
+}
+func (e *TypePlatform) TeaqlExpressionListItem(name string, index int) core.Entity {
+	switch name {
+	case "scalarTypeProbeList":
+		if !e.IsLoaded(name) || index < 0 || index >= len(e.ScalarTypeProbeList().Items()) { return nil }
+		return e.ScalarTypeProbeList().Items()[index]
+	default: return nil
+	}
+}

@@ -44,7 +44,9 @@ func ensureGeneratedBootstrapOnce(context *runtime.UserContext) error {
 	tenant1, err := Q.Tenants().WithIdIs(uint64(1)).Comment("what: locate generated bootstrap entity").Purpose("why: idempotent runtime bootstrap").ExecuteForOne(context)
 	if err != nil { return fmt.Errorf("query bootstrap Tenant(1): %w", err) }
 	if tenant1 == nil {
-		tenant1 = tenant.NewTenant().UpdateId(uint64(1))
+		tenant1, err = Q.Tenants().Comment("Create generated bootstrap entity").Purpose("Initialize runtime bootstrap").NewEntity(context)
+		if err != nil { return err }
+		tenant1.UpdateId(uint64(1))
 		tenant1.UpdateName("Tenant Name")
 		if _, err = tenant1.AuditAs("create model root Tenant(1)").Save(context); err != nil {
 			createErr := err
@@ -170,7 +172,7 @@ func checkPurchaseOrder(context *runtime.UserContext, input *runtime.CheckAndFix
 	if input.Operation == core.MutationInsert {
 		root, err := context.RequireActiveRoot("Tenant")
 		if err != nil {
-			results = append(results, runtime.CheckResult{RuleID: "context_root", CanonicalLocation: runtime.Location().Property("tenant"), SystemValue: "Tenant"})
+			return []runtime.CheckResult{{RuleID: "context_root_missing", EntityType: "PurchaseOrder", CanonicalLocation: runtime.Location().Property("tenant")}}
 		} else if value, exists := input.Values["tenant"]; exists && value.V != nil {
 			if supplied, ok := value.TryU64(); !ok || supplied != root.ID { results = append(results, runtime.CheckResult{RuleID: "context_root_mismatch", CanonicalLocation: runtime.Location().Property("tenant"), InputValue: value.V, SystemValue: root.ID}) }
 		} else {
@@ -181,7 +183,7 @@ func checkPurchaseOrder(context *runtime.UserContext, input *runtime.CheckAndFix
 		if value, exists := input.Values["tenant"]; exists && value.V != nil {
 			root, err := context.RequireActiveRoot("Tenant")
 			if err != nil {
-				results = append(results, runtime.CheckResult{RuleID: "context_root", CanonicalLocation: runtime.Location().Property("tenant"), SystemValue: "Tenant"})
+				return []runtime.CheckResult{{RuleID: "context_root_missing", EntityType: "PurchaseOrder", CanonicalLocation: runtime.Location().Property("tenant")}}
 			} else if supplied, ok := value.TryU64(); !ok || supplied != root.ID {
 				results = append(results, runtime.CheckResult{RuleID: "context_root_mismatch", CanonicalLocation: runtime.Location().Property("tenant"), InputValue: value.V, SystemValue: root.ID})
 			}
@@ -240,7 +242,7 @@ func checkOrderItem(context *runtime.UserContext, input *runtime.CheckAndFixInpu
 	if input.Operation == core.MutationInsert {
 		root, err := context.RequireActiveRoot("Tenant")
 		if err != nil {
-			results = append(results, runtime.CheckResult{RuleID: "context_root", CanonicalLocation: runtime.Location().Property("tenant"), SystemValue: "Tenant"})
+			return []runtime.CheckResult{{RuleID: "context_root_missing", EntityType: "OrderItem", CanonicalLocation: runtime.Location().Property("tenant")}}
 		} else if value, exists := input.Values["tenant"]; exists && value.V != nil {
 			if supplied, ok := value.TryU64(); !ok || supplied != root.ID { results = append(results, runtime.CheckResult{RuleID: "context_root_mismatch", CanonicalLocation: runtime.Location().Property("tenant"), InputValue: value.V, SystemValue: root.ID}) }
 		} else {
@@ -251,7 +253,7 @@ func checkOrderItem(context *runtime.UserContext, input *runtime.CheckAndFixInpu
 		if value, exists := input.Values["tenant"]; exists && value.V != nil {
 			root, err := context.RequireActiveRoot("Tenant")
 			if err != nil {
-				results = append(results, runtime.CheckResult{RuleID: "context_root", CanonicalLocation: runtime.Location().Property("tenant"), SystemValue: "Tenant"})
+				return []runtime.CheckResult{{RuleID: "context_root_missing", EntityType: "OrderItem", CanonicalLocation: runtime.Location().Property("tenant")}}
 			} else if supplied, ok := value.TryU64(); !ok || supplied != root.ID {
 				results = append(results, runtime.CheckResult{RuleID: "context_root_mismatch", CanonicalLocation: runtime.Location().Property("tenant"), InputValue: value.V, SystemValue: root.ID})
 			}
@@ -388,7 +390,7 @@ func ServiceRuntimeFromEnv() (*runtime.UserContext, error) {
 		return nil, fmt.Errorf("missing environment variable CHECKER_FIX_ADVANCED_CORE_DATABASE_URL")
 	}
 
-	db, err := sql.Open("sqlite3", dbUrl)
+	db, err := provider.OpenDatabase(dbUrl)
 	if err != nil {
 		return nil, err
 	}

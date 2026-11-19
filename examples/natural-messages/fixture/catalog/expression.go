@@ -128,3 +128,24 @@ func (e *CatalogExpression) EntryList() *EntryListExpression {
 	if !e.value.IsLoaded("entryList") { return &EntryListExpression{err: runtime.NewNotLoadedError(path.MarkMissing(), "entry_list"), root:e.root, path:path} }
 	return &EntryListExpression{value: e.value.EntryList(), root: e.root, path:path}
 }
+
+// Generated graph adapters expose loaded state only; no context or provider is available.
+func (e *Catalog) TeaqlExpressionRelationLoaded(name string) bool {
+	return e.isRelationLoaded(name)
+}
+func (e *Catalog) TeaqlExpressionListSize(name string) (int, bool) {
+	switch name {
+	case "entryList":
+		if !e.IsLoaded(name) { return 0, false }
+		return len(e.EntryList().Items()), true
+	default: return 0, false
+	}
+}
+func (e *Catalog) TeaqlExpressionListItem(name string, index int) core.Entity {
+	switch name {
+	case "entryList":
+		if !e.IsLoaded(name) || index < 0 || index >= len(e.EntryList().Items()) { return nil }
+		return e.EntryList().Items()[index]
+	default: return nil
+	}
+}
