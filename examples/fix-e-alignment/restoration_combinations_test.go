@@ -40,8 +40,11 @@ func TestGeneratedRestorationCombinations(t *testing.T) {
 		t.Fatal(err)
 	}
 	create := func(phone string) *purchase_order.PurchaseOrder {
-		row := lib.Q.PurchaseOrders().Comment("Prepare a synthetic restoration combination").
+		row, rowCreationErr := lib.Q.PurchaseOrders().Comment("Prepare a synthetic restoration combination").
 			Purpose("Verify real mutation boundaries on loaded graphs").NewEntity(ctx)
+		if rowCreationErr != nil {
+			t.Fatal(rowCreationErr)
+		}
 		row.UpdateContactPhone(phone).UpdateInternalNote(nil)
 		saved, err := row.AuditAs("Create a restoration combination fixture").Save(ctx)
 		if err != nil {
@@ -50,7 +53,10 @@ func TestGeneratedRestorationCombinations(t *testing.T) {
 		return saved
 	}
 	owner, independent, deleting := create("5550810"), create("5550850"), create("5550840")
-	child := lib.Q.OrderItems().Comment("Prepare the owned child fixture").Purpose("Verify a restored parent still saves its changed child").NewEntity(ctx)
+	child, childCreationErr := lib.Q.OrderItems().Comment("Prepare the owned child fixture").Purpose("Verify a restored parent still saves its changed child").NewEntity(ctx)
+	if childCreationErr != nil {
+		t.Fatal(childCreationErr)
+	}
 	child.UpdatePurchaseOrderId(owner.Id()).UpdateProductName("Original widget").UpdateUnitPrice(decimal.NewFromInt(10))
 	if _, err := child.AuditAs("Create the synthetic owned child").Save(ctx); err != nil {
 		t.Fatal(err)

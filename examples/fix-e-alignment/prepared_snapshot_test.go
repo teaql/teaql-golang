@@ -58,7 +58,10 @@ func TestGeneratedPreparedSnapshotMatchesReviewAndRejectsLateChanges(t *testing.
 	if err := lib.EnsureSchema(ctx); err != nil {
 		t.Fatal(err)
 	}
-	row := lib.Q.PurchaseOrders().Comment("Prepare a synthetic reviewed-write fixture").Purpose("Compare custom Fix, policy review and persisted values").NewEntity(ctx)
+	row, rowCreationErr := lib.Q.PurchaseOrders().Comment("Prepare a synthetic reviewed-write fixture").Purpose("Compare custom Fix, policy review and persisted values").NewEntity(ctx)
+	if rowCreationErr != nil {
+		t.Fatal(rowCreationErr)
+	}
 	row.UpdateContactPhone("5550890").UpdateInternalNote(nil)
 	row, err = row.AuditAs("Create the reviewed-write fixture with the normal generated Checker").Save(ctx)
 	if err != nil {

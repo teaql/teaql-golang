@@ -65,10 +65,16 @@ func TestGeneratedExpressionBoundaries(t *testing.T) {
 	if err := lib.EnsureSchema(ctx); err != nil {
 		t.Fatal(err)
 	}
-	parent := lib.Q.PurchaseOrders().Comment("Prepare the bounded expression graph").Purpose("Verify E boundaries on actual generated entities").NewEntity(ctx)
+	parent, parentCreationErr := lib.Q.PurchaseOrders().Comment("Prepare the bounded expression graph").Purpose("Verify E boundaries on actual generated entities").NewEntity(ctx)
+	if parentCreationErr != nil {
+		t.Fatal(parentCreationErr)
+	}
 	parent.UpdateContactPhone("5550960").UpdateInternalNote(nil)
 	for i := 0; i < 3; i++ {
-		child := lib.Q.OrderItems().Comment("Prepare an expression item").Purpose("Exercise real list index segments").NewEntity(ctx)
+		child, childCreationErr := lib.Q.OrderItems().Comment("Prepare an expression item").Purpose("Exercise real list index segments").NewEntity(ctx)
+		if childCreationErr != nil {
+			t.Fatal(childCreationErr)
+		}
 		child.UpdateProductName(fmt.Sprintf("Expression item %d", i)).UpdateUnitPrice(decimal.RequireFromString("10"))
 		parent.OrderItemList().Add(child)
 	}
@@ -76,7 +82,10 @@ func TestGeneratedExpressionBoundaries(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	empty := lib.Q.PurchaseOrders().Comment("Prepare an empty expression graph").Purpose("Distinguish loaded empty lists from NotLoaded").NewEntity(ctx)
+	empty, emptyCreationErr := lib.Q.PurchaseOrders().Comment("Prepare an empty expression graph").Purpose("Distinguish loaded empty lists from NotLoaded").NewEntity(ctx)
+	if emptyCreationErr != nil {
+		t.Fatal(emptyCreationErr)
+	}
 	empty.UpdateContactPhone("5550962").UpdateInternalNote(nil)
 	empty, err = empty.AuditAs("Create the empty expression owner").Save(ctx)
 	if err != nil {

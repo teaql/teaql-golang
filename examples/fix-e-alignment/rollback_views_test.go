@@ -64,7 +64,10 @@ func TestGeneratedRollbackQueryViews(t *testing.T) {
 			}
 			t.Setenv("TEAQL_FIX_E_DB", base+".rollback-"+mode)
 			f := newProjectionFixture(t)
-			created := lib.Q.PurchaseOrders().Comment("Prepare a rollback query-view fixture").Purpose("Retain query output metadata after actual database rollback").NewEntity(f.ctx)
+			created, createdCreationErr := lib.Q.PurchaseOrders().Comment("Prepare a rollback query-view fixture").Purpose("Retain query output metadata after actual database rollback").NewEntity(f.ctx)
+			if createdCreationErr != nil {
+				t.Fatal(createdCreationErr)
+			}
 			created.UpdateContactPhone("5550800").UpdateInternalNote(nil)
 			if _, err := created.AuditAs("Create the rollback fixture through generated mutation").Save(f.ctx); err != nil {
 				t.Fatal(err)

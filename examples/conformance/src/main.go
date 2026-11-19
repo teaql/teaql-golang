@@ -19,14 +19,20 @@ func main() {
 		panic(err)
 	}
 
-	platform := lib.Q.Platforms().Comment("create the example root").Purpose("initialize retained example data").NewEntity(context)
+	platform, platformCreationErr := lib.Q.Platforms().Comment("create the example root").Purpose("initialize retained example data").NewEntity(context)
+	if platformCreationErr != nil {
+		panic(platformCreationErr)
+	}
 	platform.UpdateName("Runtime Example")
 	platform, err = platform.AuditAs("create the example root").Save(context)
 	if err != nil {
 		panic(err)
 	}
 
-	item := lib.Q.WorkItems().Comment("create a conformance work item").Purpose("verify generated mutation API").NewEntity(context)
+	item, itemCreationErr := lib.Q.WorkItems().Comment("create a conformance work item").Purpose("verify generated mutation API").NewEntity(context)
+	if itemCreationErr != nil {
+		panic(itemCreationErr)
+	}
 	item.UpdateTitle("verify Go runtime")
 	item.UpdatePlatformId(platform.Id())
 	item, err = item.AuditAs("create a conformance work item").Save(context)

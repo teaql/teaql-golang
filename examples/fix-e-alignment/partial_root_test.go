@@ -81,9 +81,15 @@ func TestGeneratedPartialAncestorsRejectWrongActiveRootAndRetry(t *testing.T) {
 		probe.begins, probe.queries, probe.mutations, probe.commits, probe.rollbacks, probe.rootLookups = 0, 0, 0, 0, 0, 0
 		ids.calls, lookups, reviews, audit.events = 0, 0, 0, 0
 	}
-	order := lib.Q.PurchaseOrders().Comment("Prepare the active-root sparse graph").Purpose("Only changed objects must be complete").NewEntity(ctx)
+	order, orderCreationErr := lib.Q.PurchaseOrders().Comment("Prepare the active-root sparse graph").Purpose("Only changed objects must be complete").NewEntity(ctx)
+	if orderCreationErr != nil {
+		t.Fatal(orderCreationErr)
+	}
 	order.UpdateContactPhone("5550977").UpdateInternalNote(nil)
-	child := lib.Q.OrderItems().Comment("Prepare the complete changed leaf").Purpose("Exercise real generated graph saves").NewEntity(ctx)
+	child, childCreationErr := lib.Q.OrderItems().Comment("Prepare the complete changed leaf").Purpose("Exercise real generated graph saves").NewEntity(ctx)
+	if childCreationErr != nil {
+		t.Fatal(childCreationErr)
+	}
 	child.UpdateProductName("Managed partial initial").UpdateUnitPrice(decimal.RequireFromString("10.00"))
 	order.OrderItemList().Add(child)
 	order, err = order.AuditAs("Create the active-root graph control").Save(ctx)
@@ -91,7 +97,10 @@ func TestGeneratedPartialAncestorsRejectWrongActiveRootAndRetry(t *testing.T) {
 		t.Fatal(err)
 	}
 	// Confirmed by current model-aware golang-assist-create/tenant, not source discovery.
-	other := lib.Q.Tenants().Comment("Prepare another real active root").Purpose("Reject a genuinely different ownership context").NewEntity(ctx)
+	other, otherCreationErr := lib.Q.Tenants().Comment("Prepare another real active root").Purpose("Reject a genuinely different ownership context").NewEntity(ctx)
+	if otherCreationErr != nil {
+		t.Fatal(otherCreationErr)
+	}
 	other.UpdateName("Independent partial root")
 	other, err = other.AuditAs("Create the independent root control").Save(ctx)
 	if err != nil || other.Id() == active.ID {

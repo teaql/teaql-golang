@@ -21,8 +21,11 @@ func verifyPageStreamOwnership(t *testing.T, context *runtime.UserContext, idA, 
 	if before.TotalCount == nil {
 		t.Fatal("exact baseline count was not returned")
 	}
-	sentinel := lib.Q.PurchaseOrders().Comment("Prepare the page-offset sentinel").
+	sentinel, sentinelCreationErr := lib.Q.PurchaseOrders().Comment("Prepare the page-offset sentinel").
 		Purpose("Exercise a genuine nonzero page offset").NewEntity(context)
+	if sentinelCreationErr != nil {
+		t.Fatal(sentinelCreationErr)
+	}
 	sentinel.UpdateContactPhone("5550500").UpdateInternalNote(nil)
 	if _, err := sentinel.AuditAs("Save the synthetic page sentinel").Save(context); err != nil {
 		t.Fatal(err)

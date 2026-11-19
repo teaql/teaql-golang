@@ -44,11 +44,17 @@ func TestGeneratedPartialAncestorsPreserveViewsAndModifiedOnlyCompleteness(t *te
 	if err := lib.EnsureSchema(ctx); err != nil {
 		t.Fatal(err)
 	}
-	order := lib.Q.PurchaseOrders().Comment("Prepare one order for partial-ancestor validation").
+	order, orderCreationErr := lib.Q.PurchaseOrders().Comment("Prepare one order for partial-ancestor validation").
 		Purpose("Verify the completeness of the modified object, not untouched ancestors").NewEntity(ctx)
+	if orderCreationErr != nil {
+		t.Fatal(orderCreationErr)
+	}
 	order.UpdateContactPhone("5550600").UpdateInternalNote(nil)
-	child := lib.Q.OrderItems().Comment("Prepare the complete leaf").
+	child, childCreationErr := lib.Q.OrderItems().Comment("Prepare the complete leaf").
 		Purpose("Use a real generated relation and audited save").NewEntity(ctx)
+	if childCreationErr != nil {
+		t.Fatal(childCreationErr)
+	}
 	child.UpdateProductName("Partial graph original").UpdateUnitPrice(decimal.RequireFromString("10.00"))
 	order.OrderItemList().Add(child)
 	order, err = order.AuditAs("Create the partial-ancestor fixture").Save(ctx)

@@ -69,8 +69,11 @@ func (f *projectionFixture) counts() map[string]int {
 
 func (f *projectionFixture) seed() *purchase_order.PurchaseOrder {
 	f.t.Helper()
-	row := lib.Q.PurchaseOrders().Comment("Prepare an independent query-view fixture").
+	row, rowCreationErr := lib.Q.PurchaseOrders().Comment("Prepare an independent query-view fixture").
 		Purpose("Verify projection boundaries and independent mutation ledgers").NewEntity(f.ctx)
+	if rowCreationErr != nil {
+		f.t.Fatal(rowCreationErr)
+	}
 	row.UpdateContactPhone("5550700").UpdateInternalNote(nil)
 	before := f.counts()
 	saved, err := row.AuditAs("Create the projection fixture through generated mutation").Save(f.ctx)

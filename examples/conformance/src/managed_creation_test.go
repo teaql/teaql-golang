@@ -102,17 +102,17 @@ func TestManagedPublicConstructor(t *testing.T) {
 func TestManagedQFactoryAlreadyReservesExactlyOnce(t *testing.T) {
 	ids, init := &managedIDs{}, &managedInitializer{}
 	ctx := managedContext(ids, init)
-	value := lib.Q.WorkItems().Comment("Prepare a managed work item").Purpose("Verify a single reservation").NewEntity(ctx)
-	if value == nil || value.Id() != 101 || ids.calls != 1 || len(init.seen) != 1 {
-		t.Fatal("Q allocation changed")
+	value, err := lib.Q.WorkItems().Comment("Prepare a managed work item").Purpose("Verify a single reservation").NewEntity(ctx)
+	if err != nil || value == nil || value.Id() != 101 || ids.calls != 1 || len(init.seen) != 1 {
+		t.Fatal("Q allocation changed", err)
 	}
 }
 func TestManagedQInitializationSeesReservedIdentity(t *testing.T) {
 	ids, init := &managedIDs{}, &managedInitializer{}
 	ctx := managedContext(ids, init)
-	lib.Q.WorkItems().Comment("Prepare a managed work item").Purpose("Verify identity exists before defaults").NewEntity(ctx)
-	if !reflect.DeepEqual(init.seen, []uint64{101}) {
-		t.Fatal("initializer observed an unallocated entity", init.seen)
+	_, err := lib.Q.WorkItems().Comment("Prepare a managed work item").Purpose("Verify identity exists before defaults").NewEntity(ctx)
+	if err != nil || !reflect.DeepEqual(init.seen, []uint64{101}) {
+		t.Fatal("initializer observed an unallocated entity", init.seen, err)
 	}
 }
 func managedRow() core.Record {
