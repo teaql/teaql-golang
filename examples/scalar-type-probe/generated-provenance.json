@@ -18,30 +18,30 @@
     "scalar_type_probe/expression.go": "d9595e543c30139ffbc0a32bd929c5e9850d6cf2ca2e66798269e5141b5a46a2",
     "scalar_type_probe/request.go": "742e39aa644f5c8856ac856fa2aac97902e5dbc96cc178a5c942b86a3c8e0c44",
     "teaql/checker-model.json": "ec97d233877caa4ae992a528e3b8e157fb73d92b43203890b9a31f57ce36f2e3",
-    "teaql/model-provenance.json": "ff4f727d2b8a99be23a57563bc19d6cd3c5bc85ebbfac6e913ca29f2120f84ad",
+    "teaql/model-provenance.json": "8d792f1114dddbf61b64f6afbae687abc9bd2410d751ea1ac1fcdef1895696dc",
     "type_platform/behavior.go": "3b3c8f0323c769d67db34b8421e21a02fc0a93ee87b27ea150d33a8495894899",
     "type_platform/checker.go": "d34524d9ccc3e9f7161924149af5e32c7ad204deca31e1d86f1561877c78135e",
     "type_platform/entity.go": "66292ae76531d6d8df8ebb989d31e57a0d62c96b9355757f05efdfda1f5c0359",
     "type_platform/expression.go": "1caa8e001509bafb82849e0e69d460e81c69aa892f5232481f050f2997db4a4a",
     "type_platform/request.go": "c622f73bc99ac1ff4a35617a2244b7cd0ad4ff519655eb3cc6c523022bb3c4d4"
   },
-  "generatedManifestSha256": "e02cd9bdf6910b1e166522f1b29c555c20dbf0f2112efd5606791f8ac9194e63",
-  "generationReceipt": "teaql-conformance/evidence/2026-11-19-runtime-examples-refresh/generation-go-relation-set/go/scalar-type-probe/model/receipt.json",
-  "generatorCommit": "01dffb9094705059a29019a67c05de680f8ff4e2",
-  "generatorJarSHA256": "00d9d07601bca63119954652ed4877241338cc7c4702426e5ce083c15f333d36",
-  "generatorRelease": "unreleased-source-01dffb90",
+  "generatedManifestSha256": "93ffcec44ff32907c49bdfcc855d09825bd5f2ba0524af5f5d444eca18c5982e",
+  "generationReceipt": "teaql-conformance/evidence/2026-11-19-runtime-examples-refresh/generation-unified-current-source/go/scalar-type-probe/model/receipt.json",
+  "generatorCommit": "19feda8a0608d7c7e0d64c7d9ec371c9021000fd",
+  "generatorJarSHA256": "dc6e26b561f618e1f9574c5c3b4c03b7a21da9ca630cc73a78ae8ccd0d89bd7e",
+  "generatorRelease": "unreleased-source-19feda8a",
   "modelSha256": "8d3017392ffd00abbc06be2555ced27ac6360e2d05fabc4299e27a5ef8f1c762",
-  "previousFixtureManifestSha256": "143e188e9d72d245fc2ad3e965215918ca6cf9abe69199ce4c7d74f6c7e91611",
+  "previousFixtureManifestSha256": "3d0d512a3d8f785dc12d138cb7a7c4cc7b84488fe7e7dbd0dc9f7924d6d23ee2",
   "previousManifestSha256": "1cfb3c7b1fb87fa6915d710546b5ebaa82c73553ff4236c840b2ef897e7c4815",
   "previousOrigin": {
-    "commit": "a8d65d31eaed01951d25f76af1b7b62621f04caa",
+    "commit": "7bf1cee61b9b200b1c14b28dfc7c58917a34c227",
     "path": "examples/scalar-type-probe/generated-provenance.json"
   },
   "producerReceiptSha256": "c7e2c4edfe315e673f3c01bac246eddf364738ef7be0b1c3862ad950b39686e9",
   "producerSource": {
-    "commit": "01dffb9094705059a29019a67c05de680f8ff4e2",
-    "jarSHA256": "00d9d07601bca63119954652ed4877241338cc7c4702426e5ce083c15f333d36",
-    "release": "unreleased-source-01dffb90"
+    "commit": "19feda8a0608d7c7e0d64c7d9ec371c9021000fd",
+    "jarSHA256": "dc6e26b561f618e1f9574c5c3b4c03b7a21da9ca630cc73a78ae8ccd0d89bd7e",
+    "release": "unreleased-source-19feda8a"
   },
   "schema": "teaql.generated-example-fixture/v1"
 }
