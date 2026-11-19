@@ -279,19 +279,13 @@ func (e *environment) reset() { e.observer.reset(); e.sink.reset(); e.sqlEvidenc
 
 func newOrder(t *testing.T, e *environment, description string) *customer_order.CustomerOrder {
 	t.Helper()
-	order, orderCreationErr := lib.Q.CustomerOrders().Comment("initialize order fixture").Purpose("verify generated graph trace").NewEntity(e.context)
-	if orderCreationErr != nil {
-		t.Fatal(orderCreationErr)
-	}
+	order := lib.Q.CustomerOrders().Comment("initialize order fixture").Purpose("verify generated graph trace").NewEntity(e.context)
 	order.UpdatePlatformId(1).UpdateOrderNumber(fmt.Sprintf("TC-%d", time.Now().UnixNano())).UpdateDescription(description)
 	return order
 }
 
 func newItem(e *environment, name string) *order_item.OrderItem {
-	item, itemCreationErr := lib.Q.OrderItems().Comment("initialize item fixture").Purpose("verify generated graph trace").NewEntity(e.context)
-	if itemCreationErr != nil {
-		panic(itemCreationErr)
-	}
+	item := lib.Q.OrderItems().Comment("initialize item fixture").Purpose("verify generated graph trace").NewEntity(e.context)
 	item.UpdateName(name)
 	return item
 }
@@ -372,20 +366,11 @@ func TestGeneratedGraphMutationLineage(t *testing.T) {
 	e := openEnvironment(t)
 	order := newOrder(t, e, "draft")
 	first, removed := newItem(e, "retained item"), newItem(e, "unavailable item")
-	pay, payCreationErr := lib.Q.Payments().Comment("initialize payment").Purpose("verify graph").NewEntity(e.context)
-	if payCreationErr != nil {
-		t.Fatal(payCreationErr)
-	}
+	pay := lib.Q.Payments().Comment("initialize payment").Purpose("verify graph").NewEntity(e.context)
 	pay.UpdateReferenceCode("payment reference")
-	attempt, attemptCreationErr := lib.Q.PaymentAttempts().Comment("initialize attempt").Purpose("verify graph").NewEntity(e.context)
-	if attemptCreationErr != nil {
-		t.Fatal(attemptCreationErr)
-	}
+	attempt := lib.Q.PaymentAttempts().Comment("initialize attempt").Purpose("verify graph").NewEntity(e.context)
 	attempt.UpdateReferenceCode("attempt reference")
-	ship, shipCreationErr := lib.Q.Shipments().Comment("initialize shipment").Purpose("verify graph").NewEntity(e.context)
-	if shipCreationErr != nil {
-		t.Fatal(shipCreationErr)
-	}
+	ship := lib.Q.Shipments().Comment("initialize shipment").Purpose("verify graph").NewEntity(e.context)
 	ship.UpdateReferenceCode("shipment reference")
 	pay.PaymentAttemptList().Add(attempt)
 	order.OrderItemList().Add(first)
@@ -619,10 +604,7 @@ func TestGeneratedGraphMutationLineage(t *testing.T) {
 func TestGeneratedCheckerStopsEntireGraphBeforeWrite(t *testing.T) {
 	e := openEnvironment(t)
 	order := newOrder(t, e, "invalid child")
-	invalid, invalidCreationErr := lib.Q.OrderItems().Comment("initialize invalid child").Purpose("verify generated Checker").NewEntity(e.context)
-	if invalidCreationErr != nil {
-		t.Fatal(invalidCreationErr)
-	}
+	invalid := lib.Q.OrderItems().Comment("initialize invalid child").Purpose("verify generated Checker").NewEntity(e.context)
 	order.OrderItemList().Add(invalid)
 	e.reset()
 	_, err := order.AuditAs("reject invalid graph").Save(e.context)
@@ -641,10 +623,7 @@ func TestGeneratedDriverFailureRollsBackWithoutAudit(t *testing.T) {
 		t.Fatal(err)
 	}
 	code := fmt.Sprintf("conflict-%d", time.Now().UnixNano())
-	first, firstCreationErr := lib.Q.Shipments().Comment("prepare collision").Purpose("verify rollback").NewEntity(e.context)
-	if firstCreationErr != nil {
-		t.Fatal(firstCreationErr)
-	}
+	first := lib.Q.Shipments().Comment("prepare collision").Purpose("verify rollback").NewEntity(e.context)
 	parent := newOrder(t, e, "prepare collision")
 	first.UpdateReferenceCode(code)
 	parent.ShipmentList().Add(first)
@@ -655,10 +634,7 @@ func TestGeneratedDriverFailureRollsBackWithoutAudit(t *testing.T) {
 	order := newOrder(t, e, "must rollback")
 	item := newItem(e, "must rollback too")
 	order.OrderItemList().Add(item)
-	conflict, conflictCreationErr := lib.Q.Shipments().Comment("prepare conflicting shipment").Purpose("verify rollback").NewEntity(e.context)
-	if conflictCreationErr != nil {
-		t.Fatal(conflictCreationErr)
-	}
+	conflict := lib.Q.Shipments().Comment("prepare conflicting shipment").Purpose("verify rollback").NewEntity(e.context)
 	conflict.UpdateReferenceCode(code).Comment("dispatch conflict")
 	order.ShipmentList().Add(conflict)
 	_, err := order.AuditAs("submit rollback graph").Save(e.context)
@@ -735,15 +711,9 @@ func TestGeneratedDriverFailureRollsBackWithoutAudit(t *testing.T) {
 func TestGeneratedThreeLevelQueryTrace(t *testing.T) {
 	e := openEnvironment(t)
 	order := newOrder(t, e, "three level query")
-	pay, payCreationErr := lib.Q.Payments().Comment("initialize payment").Purpose("verify query trace").NewEntity(e.context)
-	if payCreationErr != nil {
-		t.Fatal(payCreationErr)
-	}
+	pay := lib.Q.Payments().Comment("initialize payment").Purpose("verify query trace").NewEntity(e.context)
 	pay.UpdateReferenceCode("query payment")
-	attempt, attemptCreationErr := lib.Q.PaymentAttempts().Comment("initialize attempt").Purpose("verify query trace").NewEntity(e.context)
-	if attemptCreationErr != nil {
-		t.Fatal(attemptCreationErr)
-	}
+	attempt := lib.Q.PaymentAttempts().Comment("initialize attempt").Purpose("verify query trace").NewEntity(e.context)
 	attempt.UpdateReferenceCode("query attempt")
 	pay.PaymentAttemptList().Add(attempt)
 	order.PaymentList().Add(pay)
@@ -870,10 +840,7 @@ func TestGeneratedMissingRootIntentWithLoggingOff(t *testing.T) {
 func TestGeneratedCompleteLedgerOverrideReplacesInheritance(t *testing.T) {
 	e := openEnvironment(t)
 	order := newOrder(t, e, "ledger override")
-	pay, payCreationErr := lib.Q.Payments().Comment("initialize payment").Purpose("verify ledger override").NewEntity(e.context)
-	if payCreationErr != nil {
-		t.Fatal(payCreationErr)
-	}
+	pay := lib.Q.Payments().Comment("initialize payment").Purpose("verify ledger override").NewEntity(e.context)
 	pay.UpdateReferenceCode("override payment")
 	order.PaymentList().Add(pay)
 	sibling := newItem(e, "override sibling")
@@ -965,10 +932,7 @@ func TestGeneratedConcurrentGraphsOnOneContext(t *testing.T) {
 	e := openEnvironment(t)
 	left, right := newOrder(t, e, "left"), newOrder(t, e, "right")
 	for index, order := range []*customer_order.CustomerOrder{left, right} {
-		pay, payCreationErr := lib.Q.Payments().Comment("initialize concurrent payment").Purpose("verify operation isolation").NewEntity(e.context)
-		if payCreationErr != nil {
-			t.Fatal(payCreationErr)
-		}
+		pay := lib.Q.Payments().Comment("initialize concurrent payment").Purpose("verify operation isolation").NewEntity(e.context)
 		pay.UpdateReferenceCode(fmt.Sprintf("concurrent reference %d", index)).Comment(fmt.Sprintf("local payment branch %d", index))
 		order.PaymentList().Add(pay)
 	}

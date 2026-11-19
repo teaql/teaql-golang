@@ -64,11 +64,8 @@ func TestGeneratedCheckerDeclaringTypesAndNestedLocations(t *testing.T) {
 	checker := &metadataExampleChecker{delegate: lib.Module().CheckerRegistry}
 	ctx.WithCheckerRegistry(checker)
 	newOwner := func() *purchase_order.PurchaseOrder {
-		created, createdCreationErr := lib.Q.PurchaseOrders().Comment("Prepare a Checker metadata regression").
+		created := lib.Q.PurchaseOrders().Comment("Prepare a Checker metadata regression").
 			Purpose("Require declaring entity identity on actual generated-save errors").NewEntity(ctx)
-		if createdCreationErr != nil {
-			t.Fatal(createdCreationErr)
-		}
 		return created
 	}
 	good := newOwner().UpdateContactPhone("5550961").UpdateInternalNote(nil)
@@ -176,10 +173,7 @@ func TestGeneratedCheckerDeclaringTypesAndNestedLocations(t *testing.T) {
 	invalid("partial_owner", func() error { _, err := partial.AuditAs("Reject an incomplete modified owner").Save(ctx); return err }, "PurchaseOrder", "tenant", "invalid_type")
 	badChild := func(scenario, product, price, rule, field, wantType string) {
 		parent := newOwner().UpdateContactPhone("5550963").UpdateInternalNote(nil)
-		child, childCreationErr := lib.Q.OrderItems().Comment("Prepare an invalid indexed child").Purpose("Preserve the child declaring type when prefixing errors").NewEntity(ctx)
-		if childCreationErr != nil {
-			t.Fatal(childCreationErr)
-		}
+		child := lib.Q.OrderItems().Comment("Prepare an invalid indexed child").Purpose("Preserve the child declaring type when prefixing errors").NewEntity(ctx)
 		if product != "" {
 			child.UpdateProductName(product)
 		}

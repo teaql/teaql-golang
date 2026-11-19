@@ -30,11 +30,8 @@ func TestGeneratedCheckerOverlapKeepsAcceptedAndRejectedGraphsSeparate(t *testin
 			acceptedChild := newItem(e, "valid overlapping child").Comment("check accepted child")
 			accepted.OrderItemList().Add(acceptedChild)
 			rejected := newOrder(t, e, "rejected by the generated required-name Checker")
-			invalid, invalidCreationErr := lib.Q.OrderItems().Comment("initialize invalid overlap child").
+			invalid := lib.Q.OrderItems().Comment("initialize invalid overlap child").
 				Purpose("exercise the installed generated Checker").NewEntity(e.context)
-			if invalidCreationErr != nil {
-				t.Fatal(invalidCreationErr)
-			}
 			rejected.OrderItemList().Add(invalid)
 			e.reset()
 

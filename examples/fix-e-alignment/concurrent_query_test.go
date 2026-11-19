@@ -116,15 +116,9 @@ func TestGeneratedConcurrentQueryIntentStaysRequestOwned(t *testing.T) {
 	childIDs := make(map[string]uint64)
 	phones := map[string]string{"alpha": "5550701", "beta": "5550702"}
 	for _, label := range []string{"alpha", "beta"} {
-		order, orderCreationErr := lib.Q.PurchaseOrders().Comment("Prepare " + label + " query fixture").Purpose("Verify independent concurrent request ancestry").NewEntity(ctx)
-		if orderCreationErr != nil {
-			t.Fatal(orderCreationErr)
-		}
+		order := lib.Q.PurchaseOrders().Comment("Prepare " + label + " query fixture").Purpose("Verify independent concurrent request ancestry").NewEntity(ctx)
 		order.UpdateContactPhone(phones[label]).UpdateInternalNote(nil)
-		child, childCreationErr := lib.Q.OrderItems().Comment("Prepare " + label + " child").Purpose("Verify generated nested Q and loaded E").NewEntity(ctx)
-		if childCreationErr != nil {
-			t.Fatal(childCreationErr)
-		}
+		child := lib.Q.OrderItems().Comment("Prepare " + label + " child").Purpose("Verify generated nested Q and loaded E").NewEntity(ctx)
 		child.UpdateProductName(label + " child").UpdateUnitPrice(decimal.RequireFromString("1.00"))
 		order.OrderItemList().Add(child)
 		order, err = order.AuditAs("Seed " + label + " graph for request isolation").Save(ctx)

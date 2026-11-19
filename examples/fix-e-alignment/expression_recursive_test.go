@@ -34,10 +34,7 @@ func TestGeneratedRecursiveExpressionBoundaries(t *testing.T) {
 	if err := lib.EnsureSchema(ctx); err != nil {
 		t.Fatal(err)
 	}
-	parent, parentCreationErr := lib.Q.PurchaseOrders().Comment("Prepare recursive E traversal").Purpose("Verify the generated business graph").NewEntity(ctx)
-	if parentCreationErr != nil {
-		t.Fatal(parentCreationErr)
-	}
+	parent := lib.Q.PurchaseOrders().Comment("Prepare recursive E traversal").Purpose("Verify the generated business graph").NewEntity(ctx)
 	parent.UpdateContactPhone("5550970").UpdateInternalNote(nil)
 	parent, err = parent.AuditAs("Prepare the recursive expression owner").Save(ctx)
 	if err != nil {

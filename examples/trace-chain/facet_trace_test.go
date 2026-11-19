@@ -43,10 +43,7 @@ func TestGeneratedFutureFacetPrivacyAndSnapshot(t *testing.T) {
 			const secret = "PRIVATE-FUTURE-FACET-BINDING"
 			root := newOrder(t, e, "future facet fixture")
 			root.OrderItemList().Add(newItem(e, secret))
-			child, childCreationErr := lib.Q.Payments().Comment("create payment").Purpose("prepare future facet fixture").NewEntity(e.context)
-			if childCreationErr != nil {
-				t.Fatal(childCreationErr)
-			}
+			child := lib.Q.Payments().Comment("create payment").Purpose("prepare future facet fixture").NewEntity(e.context)
 			child.UpdateReferenceCode("FUTURE-FACET")
 			root.PaymentList().Add(child)
 			if _, err := root.AuditAs("seed future facet graph").Save(e.context); err != nil {
@@ -168,10 +165,7 @@ func TestGeneratedNestedFacetsRetainAncestorPath(t *testing.T) {
 				e.context.DisableSqlLog()
 			}
 			root := newOrder(t, e, "nested facet fixture")
-			child, childCreationErr := lib.Q.Payments().Comment("create facet payment").Purpose("prepare nested facet fixture").NewEntity(e.context)
-			if childCreationErr != nil {
-				t.Fatal(childCreationErr)
-			}
+			child := lib.Q.Payments().Comment("create facet payment").Purpose("prepare nested facet fixture").NewEntity(e.context)
 			child.UpdateReferenceCode("FACET-PAYMENT")
 			root.PaymentList().Add(child)
 			if _, err := root.AuditAs("seed nested facet graph").Save(e.context); err != nil {

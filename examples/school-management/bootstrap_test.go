@@ -90,10 +90,7 @@ func TestSchoolBootstrapWithLocalRuntime(t *testing.T) {
 		t.Fatalf("name=%q version=%d", changed.Name(), changed.Version())
 	}
 
-	fixture, fixtureCreationErr := Q.Schools().Comment("create School Query conformance fixture").Purpose("execute the shared School example").NewEntity(context)
-	if fixtureCreationErr != nil {
-		t.Fatal(fixtureCreationErr)
-	}
+	fixture := Q.Schools().Comment("create School Query conformance fixture").Purpose("execute the shared School example").NewEntity(context)
 	fixture.UpdatePlatformId(1).UpdateSchoolTypeToPrimary().UpdateName("Riverside Primary School")
 	fixture.UpdateAddress("12 River Road, Springfield").UpdateEstablishedDate(time.Date(1995, 9, 1, 0, 0, 0, 0, time.UTC))
 	fixture.UpdateStudentCapacity(800).UpdateActive(true)
@@ -244,10 +241,7 @@ func TestGeneratedSchoolSaveUsesMutationPolicyPlan(t *testing.T) {
 		return nil
 	}))
 
-	fixture, fixtureCreationErr := Q.Schools().Comment("construct denied School").Purpose("verify generated mutation policy").NewEntity(context)
-	if fixtureCreationErr != nil {
-		t.Fatal(fixtureCreationErr)
-	}
+	fixture := Q.Schools().Comment("construct denied School").Purpose("verify generated mutation policy").NewEntity(context)
 	fixture.UpdatePlatformId(1).UpdateSchoolTypeToPrimary().UpdateName("Denied School")
 	fixture.UpdateAddress("No persistence").UpdateEstablishedDate(time.Date(2000, 1, 1, 0, 0, 0, 0, time.UTC))
 	fixture.UpdateStudentCapacity(1).UpdateActive(true)

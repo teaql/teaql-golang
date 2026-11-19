@@ -35,10 +35,7 @@ func TestGeneratedCheckerExactDecimalRanges(t *testing.T) {
 	if err := lib.EnsureSchema(ctx); err != nil {
 		t.Fatal(err)
 	}
-	parent, parentCreationErr := lib.Q.PurchaseOrders().Comment("Prepare exact modeled-bound controls").Purpose("Keep Decimal boundaries precise through generated saves").NewEntity(ctx)
-	if parentCreationErr != nil {
-		t.Fatal(parentCreationErr)
-	}
+	parent := lib.Q.PurchaseOrders().Comment("Prepare exact modeled-bound controls").Purpose("Keep Decimal boundaries precise through generated saves").NewEntity(ctx)
 	parent.UpdateContactPhone("5550965").UpdateInternalNote(nil)
 	if _, err := parent.AuditAs("Create a valid parent for bounded numeric probes").Save(ctx); err != nil {
 		t.Fatal(err)
@@ -65,10 +62,7 @@ func TestGeneratedCheckerExactDecimalRanges(t *testing.T) {
 		{"inclusive-minimum", "0.01", "", true},
 		{"inclusive-maximum", "1000000", "", true},
 	} {
-		child, childCreationErr := lib.Q.OrderItems().Comment("Prepare an exact numeric boundary input").Purpose("Verify comparisons never round through float64").NewEntity(ctx)
-		if childCreationErr != nil {
-			t.Fatal(childCreationErr)
-		}
+		child := lib.Q.OrderItems().Comment("Prepare an exact numeric boundary input").Purpose("Verify comparisons never round through float64").NewEntity(ctx)
 		child.UpdatePurchaseOrderId(parent.Id()).UpdateProductName(test.name).UpdateUnitPrice(decimal.RequireFromString(test.value))
 		probe.begins, probe.queries, probe.mutations, probe.commits, probe.rollbacks, audit.events = 0, 0, 0, 0, 0, 0
 		saved, err := child.AuditAs("Apply the model-derived Decimal range checker before persistence").Save(ctx)

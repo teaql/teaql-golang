@@ -41,10 +41,7 @@ func TestGeneratedLedgerCompositionPreservesBothOwnersAndRejectsBeforeIO(t *test
 	if err := lib.EnsureSchema(context); err != nil {
 		t.Fatal(err)
 	}
-	row, rowCreationErr := lib.Q.PurchaseOrders().Comment("Create a synthetic ledger-composition fixture").Purpose("Verify typed graph-version boundaries").NewEntity(context)
-	if rowCreationErr != nil {
-		t.Fatal(rowCreationErr)
-	}
+	row := lib.Q.PurchaseOrders().Comment("Create a synthetic ledger-composition fixture").Purpose("Verify typed graph-version boundaries").NewEntity(context)
 	row.UpdateContactPhone("5550870").UpdateInternalNote(nil)
 	row, err = row.AuditAs("Create the versioned composition fixture").Save(context)
 	if err != nil {

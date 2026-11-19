@@ -93,10 +93,7 @@ func TestGeneratedProviderGuardRejectsLateSPIMutationAndRetriesSameObject(t *tes
 	if err := lib.EnsureSchema(ctx); err != nil {
 		t.Fatal(err)
 	}
-	row, rowCreationErr := lib.Q.PurchaseOrders().Comment("Prepare a synthetic late-SPI fixture").Purpose("Prove actual provider requests cannot escape review").NewEntity(ctx)
-	if rowCreationErr != nil {
-		t.Fatal(rowCreationErr)
-	}
+	row := lib.Q.PurchaseOrders().Comment("Prepare a synthetic late-SPI fixture").Purpose("Prove actual provider requests cannot escape review").NewEntity(ctx)
 	row.UpdateContactPhone("5550910").UpdateInternalNote(nil)
 	original := ctx.GetResource("dataService")
 	late := &beginCallbackProvider{TransactionExecutor: original.(data_service.TransactionExecutor), afterBegin: func() { row.UpdateContactPhone("5550911") }}

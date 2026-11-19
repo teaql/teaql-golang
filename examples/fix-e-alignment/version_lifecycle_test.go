@@ -53,28 +53,19 @@ func TestGeneratedVersionLifecycleBoundaries(t *testing.T) {
 	if err := lib.EnsureSchema(ctx); err != nil {
 		t.Fatal(err)
 	}
-	row, rowCreationErr := lib.Q.PurchaseOrders().Comment("Arrange a synthetic final-live-version fixture").Purpose("Exercise the real generated version lifecycle").NewEntity(ctx)
-	if rowCreationErr != nil {
-		t.Fatal(rowCreationErr)
-	}
+	row := lib.Q.PurchaseOrders().Comment("Arrange a synthetic final-live-version fixture").Purpose("Exercise the real generated version lifecycle").NewEntity(ctx)
 	row.UpdateContactPhone("5550940").UpdateInternalNote(nil)
 	row, err = row.AuditAs("Create a synthetic boundary order with the generated Checker").Save(ctx)
 	if err != nil {
 		t.Fatal(err)
 	}
-	parent, parentCreationErr := lib.Q.PurchaseOrders().Comment("Arrange a synthetic versioned graph").Purpose("Prove graph-wide version admission precedes all Fix callbacks").NewEntity(ctx)
-	if parentCreationErr != nil {
-		t.Fatal(parentCreationErr)
-	}
+	parent := lib.Q.PurchaseOrders().Comment("Arrange a synthetic versioned graph").Purpose("Prove graph-wide version admission precedes all Fix callbacks").NewEntity(ctx)
 	parent.UpdateContactPhone("5550942").UpdateInternalNote(nil)
 	parent, err = parent.AuditAs("Create the ordinary parent of an exhausted child").Save(ctx)
 	if err != nil {
 		t.Fatal(err)
 	}
-	child, childCreationErr := lib.Q.OrderItems().Comment("Arrange the boundary child").Purpose("Preserve restored assignments as real no-ops").NewEntity(ctx)
-	if childCreationErr != nil {
-		t.Fatal(childCreationErr)
-	}
+	child := lib.Q.OrderItems().Comment("Arrange the boundary child").Purpose("Preserve restored assignments as real no-ops").NewEntity(ctx)
 	child.UpdatePurchaseOrderId(parent.Id()).UpdateProductName("Unchanged boundary widget").UpdateUnitPrice(decimal.NewFromInt(10))
 	child, err = child.AuditAs("Create an owned child with the generated Checker").Save(ctx)
 	if err != nil {

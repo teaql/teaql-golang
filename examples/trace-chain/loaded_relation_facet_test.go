@@ -22,15 +22,9 @@ func TestGeneratedLoadedRelationFacet(t *testing.T) {
 			const secret = "PRIVATE-LOADED-RELATION-FACET"
 			root := newOrder(t, e, "loaded relation facet fixture")
 			root.OrderItemList().Add(newItem(e, secret))
-			pay, payCreationErr := lib.Q.Payments().Comment("initialize payment").Purpose("prepare relation facet fixture").NewEntity(e.context)
-			if payCreationErr != nil {
-				t.Fatal(payCreationErr)
-			}
+			pay := lib.Q.Payments().Comment("initialize payment").Purpose("prepare relation facet fixture").NewEntity(e.context)
 			pay.UpdateReferenceCode("relation facet payment")
-			attempt, attemptCreationErr := lib.Q.PaymentAttempts().Comment("initialize attempt").Purpose("prepare relation facet fixture").NewEntity(e.context)
-			if attemptCreationErr != nil {
-				t.Fatal(attemptCreationErr)
-			}
+			attempt := lib.Q.PaymentAttempts().Comment("initialize attempt").Purpose("prepare relation facet fixture").NewEntity(e.context)
 			attempt.UpdateReferenceCode("relation facet attempt")
 			pay.PaymentAttemptList().Add(attempt)
 			root.PaymentList().Add(pay)
@@ -120,10 +114,7 @@ func TestGeneratedRelationFacetsKeepParentsAndEmptyResultsSeparate(t *testing.T)
 	for count := 0; count < 3; count++ {
 		root := newOrder(t, e, "per-parent facet fixture")
 		for i := 0; i < count; i++ {
-			pay, payCreationErr := lib.Q.Payments().Comment("create parent-specific payment").Purpose("verify facet membership").NewEntity(e.context)
-			if payCreationErr != nil {
-				t.Fatal(payCreationErr)
-			}
+			pay := lib.Q.Payments().Comment("create parent-specific payment").Purpose("verify facet membership").NewEntity(e.context)
 			pay.UpdateReferenceCode("parent payment")
 			root.PaymentList().Add(pay)
 		}
