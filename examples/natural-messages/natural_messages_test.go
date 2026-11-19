@@ -98,7 +98,9 @@ func TestGeneratedNaturalMessagesSQLite(t *testing.T) {
 	audits := &audit{}
 	ctx.WithAppAuditEventSink(audits)
 	makeEntry := func(name string) *entry.Entry {
-		return lib.Q.Entries().Comment("Prepare an example child").Purpose("Verify natural messages with generated audited mutations").NewEntity(ctx).UpdateName(name).UpdateCatalogId(1)
+		value, allocationErr := lib.Q.Entries().Comment("Prepare an example child").Purpose("Verify natural messages with generated audited mutations").NewEntity(ctx)
+		if allocationErr != nil { t.Fatal(allocationErr) }
+		return value.UpdateName(name).UpdateCatalogId(1)
 	}
 	load := func(id uint64) *entry.Entry {
 		v, e := lib.Q.Entries().WithIdIs(id).Limit(1).Comment("Reload complete child").Purpose("Verify stored values through typed E").ExecuteForOne(ctx)
@@ -166,14 +168,18 @@ func TestGeneratedNaturalMessagesSQLite(t *testing.T) {
 	if err != nil || requiredParent == nil {
 		t.Fatal(err)
 	}
-	missing := lib.Q.Entries().Comment("Prepare a child with missing required input").Purpose("Exercise the native generated required constraint").NewEntity(ctx).UpdateCatalogId(1)
+	missing, err := lib.Q.Entries().Comment("Prepare a child with missing required input").Purpose("Exercise the native generated required constraint").NewEntity(ctx)
+	if err != nil { t.Fatal(err) }
+	missing.UpdateCatalogId(1)
+	reservedMissingID := missing.Id()
+	if reservedMissingID == 0 { t.Fatal("managed construction did not reserve an identity") }
 	requiredFirst := load(first.Id()).UpdateName("changed")
 	requiredParent.EntryList().Add(requiredFirst)
 	requiredParent.EntryList().Add(missing)
 	reject(requiredParent, nil, "en", "The name of the 2nd entry is required.")
 	reject(requiredParent, nil, "zh-CN", "请填写第2项明细的名称。")
-	if missing.Id() != 0 {
-		t.Fatal("required failure reserved an identity")
+	if missing.Id() != reservedMissingID {
+		t.Fatal("required failure changed the already reserved identity")
 	}
 	parent.EntryList().Add(first)
 	parent.EntryList().Add(second)
