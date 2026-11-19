@@ -28,6 +28,12 @@ var _ = strings.Join
 
 func generatedPtr[T any](value T) *T { return &value }
 
+var generatedCheckerPresentation = func() *runtime.CheckerPresentationModel {
+	model, err := runtime.ParseCheckerPresentationModel([]byte("{\"schema\":\"teaql.checker-model/v1\",\"revision\":\"sha256:4e3c9b2f827bfca0549f5b8ce8b687ca4ed2605c19f2b40e7038884920303df3\",\"entities\":{\"platform\":{\"labels\":{\"en\":\"Platform\"},\"fields\":[{\"name\":\"id\",\"labels\":{\"en\":\"id\"},\"aliases\":[\"Id\"]},{\"name\":\"name\",\"labels\":{\"en\":\"name\"},\"aliases\":[\"Name\"]},{\"name\":\"version\",\"labels\":{\"en\":\"version\"},\"aliases\":[\"Version\"]},{\"name\":\"work_item_list\",\"targetType\":\"work_item\",\"labels\":{\"en\":\"Work Item\"},\"aliases\":[\"WorkItemList\",\"workItemList\"]}]},\"work_item\":{\"labels\":{\"en\":\"Work Item\"},\"fields\":[{\"name\":\"description\",\"labels\":{\"en\":\"description\"},\"aliases\":[\"Description\"]},{\"name\":\"id\",\"labels\":{\"en\":\"id\"},\"aliases\":[\"Id\"]},{\"name\":\"platform\",\"targetType\":\"platform\",\"labels\":{\"en\":\"Platform\"},\"aliases\":[\"Platform\"]},{\"name\":\"title\",\"labels\":{\"en\":\"title\"},\"aliases\":[\"Title\"]},{\"name\":\"version\",\"labels\":{\"en\":\"version\"},\"aliases\":[\"Version\"]}]}}}"))
+	if err != nil { panic("Invalid generated Checker presentation metadata") }
+	return model
+}()
+
 func ensureGeneratedBootstrapOnce(context *runtime.UserContext) error {
 	previousActor := context.UserIdentifier()
 	previousCategory := context.GetResource("bootstrapCategory")
@@ -37,9 +43,7 @@ func ensureGeneratedBootstrapOnce(context *runtime.UserContext) error {
 	platform1, err := Q.Platforms().WithIdIs(uint64(1)).Comment("what: locate generated bootstrap entity").Purpose("why: idempotent runtime bootstrap").ExecuteForOne(context)
 	if err != nil { return fmt.Errorf("query bootstrap Platform(1): %w", err) }
 	if platform1 == nil {
-		platform1, err = Q.Platforms().Comment("Create generated bootstrap entity").Purpose("Initialize runtime bootstrap").NewEntity(context)
-		if err != nil { return err }
-		platform1.UpdateId(uint64(1))
+		platform1 = platform.NewPlatform().UpdateId(uint64(1))
 		platform1.UpdateName("Runtime Example")
 		if _, err = platform1.AuditAs("create model root Platform(1)").Save(context); err != nil {
 			createErr := err
@@ -67,7 +71,7 @@ func ensureGeneratedBootstrap(context *runtime.UserContext) error {
 
 
 func Module() *runtime.RuntimeModule {
-	module := runtime.NewRuntimeModule().Checkers(&generatedCheckerRegistry{})
+	module := runtime.NewRuntimeModule().Checkers(&generatedCheckerRegistry{}).CheckerPresentation(generatedCheckerPresentation)
 	{
 		descriptor := core.NewEntityDescriptor("Platform").
 			TableName("platform_data")
@@ -155,7 +159,7 @@ func checkWorkItem(context *runtime.UserContext, input *runtime.CheckAndFixInput
 }
 
 func ModuleWithBehaviors() *runtime.RuntimeModule {
-	module := runtime.NewRuntimeModule().Checkers(&generatedCheckerRegistry{})
+	module := runtime.NewRuntimeModule().Checkers(&generatedCheckerRegistry{}).CheckerPresentation(generatedCheckerPresentation)
 	{
 		descriptor := core.NewEntityDescriptor("Platform").
 			TableName("platform_data")
@@ -203,7 +207,7 @@ func ServiceRuntimeFromEnv() (*runtime.UserContext, error) {
 		return nil, fmt.Errorf("missing environment variable RUNTIME_EXAMPLE_CONFORMANCE_SERVICE_CORE_DATABASE_URL")
 	}
 
-	db, err := provider.OpenDatabase(dbUrl)
+	db, err := sql.Open("sqlite3", dbUrl)
 	if err != nil {
 		return nil, err
 	}

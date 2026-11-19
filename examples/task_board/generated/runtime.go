@@ -30,6 +30,12 @@ var _ = strings.Join
 
 func generatedPtr[T any](value T) *T { return &value }
 
+var generatedCheckerPresentation = func() *runtime.CheckerPresentationModel {
+	model, err := runtime.ParseCheckerPresentationModel([]byte("{\"schema\":\"teaql.checker-model/v1\",\"revision\":\"sha256:d60b12ba17e7fa9ba6cf1859c724a637b78691c764ce87687e4155f3a761a635\",\"entities\":{\"platform\":{\"labels\":{\"en\":\"Platform\"},\"fields\":[{\"name\":\"founded\",\"labels\":{\"en\":\"founded\"},\"aliases\":[\"Founded\"]},{\"name\":\"id\",\"labels\":{\"en\":\"id\"},\"aliases\":[\"Id\"]},{\"name\":\"name\",\"labels\":{\"en\":\"name\"},\"aliases\":[\"Name\"]},{\"name\":\"task_list\",\"targetType\":\"task\",\"labels\":{\"en\":\"Task\"},\"aliases\":[\"TaskList\",\"taskList\"]},{\"name\":\"task_status_list\",\"targetType\":\"task_status\",\"labels\":{\"en\":\"Task Status\"},\"aliases\":[\"TaskStatusList\",\"taskStatusList\"]},{\"name\":\"user_email\",\"labels\":{\"en\":\"user email\"},\"aliases\":[\"UserEmail\",\"userEmail\"]},{\"name\":\"version\",\"labels\":{\"en\":\"version\"},\"aliases\":[\"Version\"]}]},\"task\":{\"labels\":{\"en\":\"Task\"},\"fields\":[{\"name\":\"id\",\"labels\":{\"en\":\"id\"},\"aliases\":[\"Id\"]},{\"name\":\"name\",\"labels\":{\"en\":\"name\"},\"aliases\":[\"Name\"]},{\"name\":\"platform\",\"targetType\":\"platform\",\"labels\":{\"en\":\"Platform\"},\"aliases\":[\"Platform\"]},{\"name\":\"status\",\"targetType\":\"task_status\",\"labels\":{\"en\":\"Task Status\"},\"aliases\":[\"Status\"]},{\"name\":\"task_execution_log_list\",\"targetType\":\"task_execution_log\",\"labels\":{\"en\":\"Task Execution Log\"},\"aliases\":[\"TaskExecutionLogList\",\"taskExecutionLogList\"]},{\"name\":\"version\",\"labels\":{\"en\":\"version\"},\"aliases\":[\"Version\"]}]},\"task_execution_log\":{\"labels\":{\"en\":\"Task Execution Log\"},\"fields\":[{\"name\":\"action\",\"labels\":{\"en\":\"action\"},\"aliases\":[\"Action\"]},{\"name\":\"detail\",\"labels\":{\"en\":\"detail\"},\"aliases\":[\"Detail\"]},{\"name\":\"id\",\"labels\":{\"en\":\"id\"},\"aliases\":[\"Id\"]},{\"name\":\"task\",\"targetType\":\"task\",\"labels\":{\"en\":\"Task\"},\"aliases\":[\"Task\"]},{\"name\":\"version\",\"labels\":{\"en\":\"version\"},\"aliases\":[\"Version\"]}]},\"task_status\":{\"labels\":{\"en\":\"Task Status\"},\"fields\":[{\"name\":\"code\",\"labels\":{\"en\":\"code\"},\"aliases\":[\"Code\"]},{\"name\":\"color\",\"labels\":{\"en\":\"color\"},\"aliases\":[\"Color\"]},{\"name\":\"display_order\",\"labels\":{\"en\":\"display order\"},\"aliases\":[\"DisplayOrder\",\"displayOrder\"]},{\"name\":\"id\",\"labels\":{\"en\":\"id\"},\"aliases\":[\"Id\"]},{\"name\":\"name\",\"labels\":{\"en\":\"name\"},\"aliases\":[\"Name\"]},{\"name\":\"platform\",\"targetType\":\"platform\",\"labels\":{\"en\":\"Platform\"},\"aliases\":[\"Platform\"]},{\"name\":\"progress\",\"labels\":{\"en\":\"progress\"},\"aliases\":[\"Progress\"]},{\"name\":\"task_list\",\"targetType\":\"task\",\"labels\":{\"en\":\"Task\"},\"aliases\":[\"TaskList\",\"taskList\"]},{\"name\":\"version\",\"labels\":{\"en\":\"version\"},\"aliases\":[\"Version\"]}]}}}"))
+	if err != nil { panic("Invalid generated Checker presentation metadata") }
+	return model
+}()
+
 func ensureGeneratedBootstrapOnce(context *runtime.UserContext) error {
 	previousActor := context.UserIdentifier()
 	previousCategory := context.GetResource("bootstrapCategory")
@@ -39,9 +45,7 @@ func ensureGeneratedBootstrapOnce(context *runtime.UserContext) error {
 	platform1, err := Q.Platforms().WithIdIs(uint64(1)).Comment("what: locate generated bootstrap entity").Purpose("why: idempotent runtime bootstrap").ExecuteForOne(context)
 	if err != nil { return fmt.Errorf("query bootstrap Platform(1): %w", err) }
 	if platform1 == nil {
-		platform1, err = Q.Platforms().Comment("Create generated bootstrap entity").Purpose("Initialize runtime bootstrap").NewEntity(context)
-		if err != nil { return err }
-		platform1.UpdateId(uint64(1))
+		platform1 = platform.NewPlatform().UpdateId(uint64(1))
 		platform1.UpdateName("Robot System")
 		platform1.UpdateUserEmail("string()")
 		if _, err = platform1.AuditAs("create model root Platform(1)").Save(context); err != nil {
@@ -59,9 +63,7 @@ func ensureGeneratedBootstrapOnce(context *runtime.UserContext) error {
 	task_status1001, err := Q.TaskStatuses().WithIdIs(uint64(1001)).Comment("what: locate generated bootstrap entity").Purpose("why: idempotent runtime bootstrap").ExecuteForOne(context)
 	if err != nil { return fmt.Errorf("query bootstrap TaskStatus(1001): %w", err) }
 	if task_status1001 == nil {
-		task_status1001, err = Q.TaskStatuses().Comment("Create generated bootstrap entity").Purpose("Initialize runtime bootstrap").NewEntity(context)
-		if err != nil { return err }
-		task_status1001.UpdateId(uint64(1001))
+		task_status1001 = task_status.NewTaskStatus().UpdateId(uint64(1001))
 		task_status1001.UpdateName("Planned")
 		task_status1001.UpdateCode("PLANNED")
 		task_status1001.UpdateColor("#94A3B8")
@@ -104,9 +106,7 @@ func ensureGeneratedBootstrapOnce(context *runtime.UserContext) error {
 	task_status1002, err := Q.TaskStatuses().WithIdIs(uint64(1002)).Comment("what: locate generated bootstrap entity").Purpose("why: idempotent runtime bootstrap").ExecuteForOne(context)
 	if err != nil { return fmt.Errorf("query bootstrap TaskStatus(1002): %w", err) }
 	if task_status1002 == nil {
-		task_status1002, err = Q.TaskStatuses().Comment("Create generated bootstrap entity").Purpose("Initialize runtime bootstrap").NewEntity(context)
-		if err != nil { return err }
-		task_status1002.UpdateId(uint64(1002))
+		task_status1002 = task_status.NewTaskStatus().UpdateId(uint64(1002))
 		task_status1002.UpdateName("Ready")
 		task_status1002.UpdateCode("READY")
 		task_status1002.UpdateColor("#3B82F6")
@@ -149,9 +149,7 @@ func ensureGeneratedBootstrapOnce(context *runtime.UserContext) error {
 	task_status1003, err := Q.TaskStatuses().WithIdIs(uint64(1003)).Comment("what: locate generated bootstrap entity").Purpose("why: idempotent runtime bootstrap").ExecuteForOne(context)
 	if err != nil { return fmt.Errorf("query bootstrap TaskStatus(1003): %w", err) }
 	if task_status1003 == nil {
-		task_status1003, err = Q.TaskStatuses().Comment("Create generated bootstrap entity").Purpose("Initialize runtime bootstrap").NewEntity(context)
-		if err != nil { return err }
-		task_status1003.UpdateId(uint64(1003))
+		task_status1003 = task_status.NewTaskStatus().UpdateId(uint64(1003))
 		task_status1003.UpdateName("Executing")
 		task_status1003.UpdateCode("EXECUTING")
 		task_status1003.UpdateColor("#F59E0B")
@@ -194,9 +192,7 @@ func ensureGeneratedBootstrapOnce(context *runtime.UserContext) error {
 	task_status1004, err := Q.TaskStatuses().WithIdIs(uint64(1004)).Comment("what: locate generated bootstrap entity").Purpose("why: idempotent runtime bootstrap").ExecuteForOne(context)
 	if err != nil { return fmt.Errorf("query bootstrap TaskStatus(1004): %w", err) }
 	if task_status1004 == nil {
-		task_status1004, err = Q.TaskStatuses().Comment("Create generated bootstrap entity").Purpose("Initialize runtime bootstrap").NewEntity(context)
-		if err != nil { return err }
-		task_status1004.UpdateId(uint64(1004))
+		task_status1004 = task_status.NewTaskStatus().UpdateId(uint64(1004))
 		task_status1004.UpdateName("Verified")
 		task_status1004.UpdateCode("VERIFIED")
 		task_status1004.UpdateColor("#16A34A")
@@ -250,13 +246,13 @@ func ensureGeneratedBootstrap(context *runtime.UserContext) error {
 
 
 func Module() *runtime.RuntimeModule {
-	module := runtime.NewRuntimeModule().Checkers(&generatedCheckerRegistry{})
+	module := runtime.NewRuntimeModule().Checkers(&generatedCheckerRegistry{}).CheckerPresentation(generatedCheckerPresentation)
 	{
 		descriptor := core.NewEntityDescriptor("Platform").
 			TableName("platform_data")
 		descriptor.Property(core.NewPropertyDescriptor("id", core.TypeU64).ColumnName("id").NotNull().Id())
 		descriptor.Property(core.NewPropertyDescriptor("name", core.TypeText).ColumnName("name").NotNull())
-		descriptor.Property(core.NewPropertyDescriptor("founded", core.TypeTimestamp).ColumnName("founded").NotNull())
+		descriptor.Property(core.NewPropertyDescriptor("founded", core.TypeTimestamp).ColumnName("founded").OnCreateFromContext("now").NotNull())
 		descriptor.Property(core.NewPropertyDescriptor("user_email", core.TypeText).ColumnName("user_email").NotNull())
 		descriptor.Property(core.NewPropertyDescriptor("version", core.TypeI64).ColumnName("version").NotNull().Version())
 		descriptor.Relation(core.NewRelationDescriptor("taskStatusList", "Task Status").LocalKey("id").ForeignKey("platform_id").Many())
@@ -338,10 +334,7 @@ func (r *generatedCheckerRegistry) CheckAndFix(context *runtime.UserContext, inp
 func checkPlatform(context *runtime.UserContext, input *runtime.CheckAndFixInput) []runtime.CheckResult {
 	results := make([]runtime.CheckResult, 0)
 	if input.Operation == core.MutationInsert {
-		if value, exists := input.Values["founded"]; !exists || value.V == nil {
-			input.Values["founded"] = core.ValTimestamp(input.Now.UnixMilli())
-			if err := context.RecordFixEvidence(runtime.FixEvidence{EntityType: "Platform", ModelPath: "founded", Source: runtime.FixEvidenceClock, SourceLabel: "graphClock"}); err != nil { panic(err) }
-		}
+		if failure := context.ApplyContextFix(input, "founded", "now"); failure != nil { results = append(results, *failure) }
 	}
 
 
@@ -468,13 +461,13 @@ func checkTaskExecutionLog(context *runtime.UserContext, input *runtime.CheckAnd
 }
 
 func ModuleWithBehaviors() *runtime.RuntimeModule {
-	module := runtime.NewRuntimeModule().Checkers(&generatedCheckerRegistry{})
+	module := runtime.NewRuntimeModule().Checkers(&generatedCheckerRegistry{}).CheckerPresentation(generatedCheckerPresentation)
 	{
 		descriptor := core.NewEntityDescriptor("Platform").
 			TableName("platform_data")
 		descriptor.Property(core.NewPropertyDescriptor("id", core.TypeU64).ColumnName("id").NotNull().Id())
 		descriptor.Property(core.NewPropertyDescriptor("name", core.TypeText).ColumnName("name").NotNull())
-		descriptor.Property(core.NewPropertyDescriptor("founded", core.TypeTimestamp).ColumnName("founded").NotNull())
+		descriptor.Property(core.NewPropertyDescriptor("founded", core.TypeTimestamp).ColumnName("founded").OnCreateFromContext("now").NotNull())
 		descriptor.Property(core.NewPropertyDescriptor("user_email", core.TypeText).ColumnName("user_email").NotNull())
 		descriptor.Property(core.NewPropertyDescriptor("version", core.TypeI64).ColumnName("version").NotNull().Version())
 		descriptor.Relation(core.NewRelationDescriptor("taskStatusList", "Task Status").LocalKey("id").ForeignKey("platform_id").Many())
@@ -557,7 +550,7 @@ func ServiceRuntimeFromEnv() (*runtime.UserContext, error) {
 		return nil, fmt.Errorf("missing environment variable ROBOT_KANBAN_SERVICE_CORE_DATABASE_URL")
 	}
 
-	db, err := provider.OpenDatabase(dbUrl)
+	db, err := sql.Open("sqlite3", dbUrl)
 	if err != nil {
 		return nil, err
 	}

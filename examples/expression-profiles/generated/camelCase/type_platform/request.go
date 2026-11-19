@@ -72,7 +72,7 @@ func (r *TypePlatformRequest) GetQuerySelection() *core.QuerySelection {
 }
 
 func (r *TypePlatformRequest) GetEntityDescriptor() *core.EntityDescriptor {
-	return newLoadedTypePlatform().EntityDescriptor()
+	return NewTypePlatform().EntityDescriptor()
 }
 
 func (r *TypePlatformRequest) NewRelationEntity() core.Entity {
@@ -89,6 +89,7 @@ func (r *TypePlatformRequest) teaqlHydrateQueryRecord(rec core.Record) (*TypePla
 	entity := newLoadedTypePlatform()
 	if err := entity.FromRecord(rec); err != nil { return nil, err }
 	if relationValue, selected := rec["scalarTypeProbeList"]; selected {
+		entity.markRelationLoaded("scalarTypeProbeList")
 		factory := r.relationFactories["scalarTypeProbeList"]
 		if factory == nil { return nil, fmt.Errorf("missing generated query hydrator for relation scalarTypeProbeList") }
 		childRecords, ok := relationValue.V.([]core.Record)
@@ -1576,10 +1577,16 @@ func (r *TypePlatformRequest) WithoutScalarTypeProbeListMatching(child *scalar_t
 	return r
 }
 
-func (e *ExecutableTypePlatformRequest) NewEntity(context *runtime.UserContext) (*TypePlatform, error) {
+func (e *ExecutableTypePlatformRequest) NewEntity(context *runtime.UserContext) *TypePlatform {
 	r := e.request
 	if _, err := core.NewQueryIntent(&r.commentText, &r.purposeText); err != nil { panic(err) }
-	return NewTypePlatform(context)
+	entity := NewTypePlatform()
+	initialized := context.InitializeEntity("TypePlatform", entity)
+	typed, ok := initialized.(*TypePlatform)
+	if !ok {
+		panic("entity initializer changed TypePlatform to an incompatible type")
+	}
+	return typed
 }
 
 func (e *ExecutableTypePlatformRequest) ExecuteForOne(context *runtime.UserContext) (*TypePlatform, error) {
@@ -1708,29 +1715,11 @@ func (r *TypePlatformRequest) GroupById() *TypePlatformRequest {
 	r.Query.WithGroupBy("id")
 	return r
 }
-
-func (r *TypePlatformRequest) GroupByIdAs(alias string) *TypePlatformRequest {
-	r.Query.WithGroupBy("id")
-	r.Query.ProjectExpr(alias, core.ExprColumnNode("id"))
-	return r
-}
 func (r *TypePlatformRequest) GroupByName() *TypePlatformRequest {
 	r.Query.WithGroupBy("name")
 	return r
 }
-
-func (r *TypePlatformRequest) GroupByNameAs(alias string) *TypePlatformRequest {
-	r.Query.WithGroupBy("name")
-	r.Query.ProjectExpr(alias, core.ExprColumnNode("name"))
-	return r
-}
 func (r *TypePlatformRequest) GroupByVersion() *TypePlatformRequest {
 	r.Query.WithGroupBy("version")
-	return r
-}
-
-func (r *TypePlatformRequest) GroupByVersionAs(alias string) *TypePlatformRequest {
-	r.Query.WithGroupBy("version")
-	r.Query.ProjectExpr(alias, core.ExprColumnNode("version"))
 	return r
 }

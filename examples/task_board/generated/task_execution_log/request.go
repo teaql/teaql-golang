@@ -71,7 +71,7 @@ func (r *TaskExecutionLogRequest) GetQuerySelection() *core.QuerySelection {
 }
 
 func (r *TaskExecutionLogRequest) GetEntityDescriptor() *core.EntityDescriptor {
-	return newLoadedTaskExecutionLog().EntityDescriptor()
+	return NewTaskExecutionLog().EntityDescriptor()
 }
 
 func (r *TaskExecutionLogRequest) NewRelationEntity() core.Entity {
@@ -632,10 +632,16 @@ func (r *TaskExecutionLogRequest) WithoutTaskMatching(child interface {
 
 
 
-func (e *ExecutableTaskExecutionLogRequest) NewEntity(context *runtime.UserContext) (*TaskExecutionLog, error) {
+func (e *ExecutableTaskExecutionLogRequest) NewEntity(context *runtime.UserContext) *TaskExecutionLog {
 	r := e.request
 	if _, err := core.NewQueryIntent(&r.commentText, &r.purposeText); err != nil { panic(err) }
-	return NewTaskExecutionLog(context)
+	entity := NewTaskExecutionLog()
+	initialized := context.InitializeEntity("TaskExecutionLog", entity)
+	typed, ok := initialized.(*TaskExecutionLog)
+	if !ok {
+		panic("entity initializer changed TaskExecutionLog to an incompatible type")
+	}
+	return typed
 }
 
 func (e *ExecutableTaskExecutionLogRequest) ExecuteForOne(context *runtime.UserContext) (*TaskExecutionLog, error) {
@@ -764,49 +770,19 @@ func (r *TaskExecutionLogRequest) GroupById() *TaskExecutionLogRequest {
 	r.Query.WithGroupBy("id")
 	return r
 }
-
-func (r *TaskExecutionLogRequest) GroupByIdAs(alias string) *TaskExecutionLogRequest {
-	r.Query.WithGroupBy("id")
-	r.Query.ProjectExpr(alias, core.ExprColumnNode("id"))
-	return r
-}
 func (r *TaskExecutionLogRequest) GroupByTask() *TaskExecutionLogRequest {
 	r.Query.WithGroupBy("task_id")
-	return r
-}
-
-func (r *TaskExecutionLogRequest) GroupByTaskAs(alias string) *TaskExecutionLogRequest {
-	r.Query.WithGroupBy("task_id")
-	r.Query.ProjectExpr(alias, core.ExprColumnNode("task_id"))
 	return r
 }
 func (r *TaskExecutionLogRequest) GroupByAction() *TaskExecutionLogRequest {
 	r.Query.WithGroupBy("action")
 	return r
 }
-
-func (r *TaskExecutionLogRequest) GroupByActionAs(alias string) *TaskExecutionLogRequest {
-	r.Query.WithGroupBy("action")
-	r.Query.ProjectExpr(alias, core.ExprColumnNode("action"))
-	return r
-}
 func (r *TaskExecutionLogRequest) GroupByDetail() *TaskExecutionLogRequest {
 	r.Query.WithGroupBy("detail")
 	return r
 }
-
-func (r *TaskExecutionLogRequest) GroupByDetailAs(alias string) *TaskExecutionLogRequest {
-	r.Query.WithGroupBy("detail")
-	r.Query.ProjectExpr(alias, core.ExprColumnNode("detail"))
-	return r
-}
 func (r *TaskExecutionLogRequest) GroupByVersion() *TaskExecutionLogRequest {
 	r.Query.WithGroupBy("version")
-	return r
-}
-
-func (r *TaskExecutionLogRequest) GroupByVersionAs(alias string) *TaskExecutionLogRequest {
-	r.Query.WithGroupBy("version")
-	r.Query.ProjectExpr(alias, core.ExprColumnNode("version"))
 	return r
 }

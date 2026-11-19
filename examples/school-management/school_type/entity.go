@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"reflect"
 	"strings"
+	"sync/atomic"
 
 	"time"
 	"github.com/shopspring/decimal"
@@ -24,11 +25,12 @@ var (
 	_ = errors.As
 )
 
+var teaqlTemporaryEntityID int64
+
 
 type SchoolType struct {
 	base        *core.BaseEntityData
 	loadedSnapshot core.LoadedScalarSnapshot
-	creationState core.EntityCreationState
 	dirtyFields map[string]bool
 	isNew       bool
 	markedAsDelete bool
@@ -44,19 +46,31 @@ type SchoolType struct {
 }
 
 type SchoolList struct {
-	items []*school.School
+	items *core.SmartList[*school.School]
 }
 
 func newSchoolList() *SchoolList {
-	return &SchoolList{items: make([]*school.School, 0)}
+	return &SchoolList{items: core.NewSmartList([]*school.School{})}
+}
+
+func (l *SchoolList) teaqlRows() *core.SmartList[*school.School] {
+	if l.items == nil { l.items = core.NewSmartList([]*school.School{}) }
+	return l.items
 }
 
 func (l *SchoolList) Add(entity *school.School) {
-	l.items = append(l.items, entity)
+	l.teaqlRows().Push(entity)
 }
 
 func (l *SchoolList) Items() []*school.School {
-	return l.items
+	return l.teaqlRows().IntoVec()
+}
+
+func (l *SchoolList) IsLoaded() bool { return l.teaqlRows().IsLoaded }
+
+// SmartList returns a detached query snapshot; writing it cannot change the owner's load state.
+func (l *SchoolList) SmartList() *core.SmartList[*school.School] {
+	return core.MapSmartList(l.teaqlRows(), func(entity *school.School) *school.School { return entity })
 }
 // PlatformFacet reads metadata of the selected relation; it never queries the database.
 func (e *SchoolType) PlatformFacet(name string) (*core.SmartList[core.Record], bool) {
@@ -67,61 +81,34 @@ func (e *SchoolType) SchoolListFacet(name string) (*core.SmartList[core.Record],
 	return e.base.RelationFacet("schoolList", name)
 }
 
-// newUninitialized allocates only local carriers; it does not grant insert intent.
-func newUninitializedSchoolType() *SchoolType {
+func NewSchoolType() *SchoolType {
+	temporaryID := -atomic.AddInt64(&teaqlTemporaryEntityID, 1)
 	entity := &SchoolType{
 		base:        core.NewBaseEntityData(),
 		dirtyFields: make(map[string]bool),
+		isNew:       true,
 		loadState:   make(map[string]bool),
 		root:        core.NewEntityRoot(),
-		ledgerID:    core.ValU64(0),
+		ledgerID:    core.ValI64(temporaryID),
 		relations:   make(map[string]core.Entity),
 		loadedRelations: make(map[string]bool),
 		schoolList: newSchoolList(),
 	}
-	return entity
-}
-
-// New reserves through Context before constructing mutation state or defaults.
-func NewSchoolType(context *runtime.UserContext) (*SchoolType, error) {
-	if context == nil { return nil, &core.EntityCreationError{Entity: "School Type"} }
-	id, err := context.GenerateInternalId("School Type")
-	if err != nil { return nil, err }
-	entity := newUninitializedSchoolType()
-	entity.UpdateId(id)
-	if err := entity.creationState.Reserve(entity.EntityName(), id); err != nil { return nil, err }
-	entity.isNew = true
 	entity.root.MarkAsNew(entity.EntityKey())
-	initialized := context.InitializeEntity("SchoolType", entity)
-	typed, ok := initialized.(*SchoolType)
-	if !ok || typed == nil { return nil, fmt.Errorf("entity initializer changed SchoolType to an incompatible type") }
-	typed.teaqlEnsureState()
-	if err := typed.creationState.Reserve(typed.EntityName(), id); err != nil { return nil, err }
-	typed.UpdateId(id)
-	if err := typed.base.RecordAllocatedID(id); err != nil { return nil, err }
-	typed.isNew = true
-	typed.root.MarkAsNew(typed.EntityKey())
-	return typed, nil
-}
-
-// A hydrated read view is independent and never starts an insert ledger.
-func newLoadedSchoolType() *SchoolType {
-	entity := newUninitializedSchoolType()
-	entity.creationState.Hydrated()
 	return entity
 }
 
-func (e *SchoolType) teaqlEnsureState() {
-	if e.base == nil { e.base = core.NewBaseEntityData() }
-	if e.root == nil { e.root = core.NewEntityRoot() }
-	if e.dirtyFields == nil { e.dirtyFields = make(map[string]bool) }
-	if e.loadState == nil { e.loadState = make(map[string]bool) }
-	if e.relations == nil { e.relations = make(map[string]core.Entity) }
-	if e.loadedRelations == nil { e.loadedRelations = make(map[string]bool) }
+// Hydration is not a create request. Keep this constructor private so public
+// NewEntity still records new-object intent, while a loaded snapshot starts
+// with independent mutation ownership and no pending insert.
+func newLoadedSchoolType() *SchoolType {
+	entity := NewSchoolType()
+	entity.root.ClearEntity(entity.EntityKey())
+	entity.schoolList.teaqlRows().IsLoaded = false
+	return entity
 }
 
 func (e *SchoolType) EntityKey() core.EntityKey {
-	e.teaqlEnsureState()
 	if e.base.Id != 0 { return core.NewEntityKey(e.EntityName(), core.ValU64(e.base.Id)) }
 	return core.NewEntityKey(e.EntityName(), e.ledgerID)
 }
@@ -147,6 +134,7 @@ func (e *SchoolType) setRelationEntity(name string, value core.Entity) {
 
 func (e *SchoolType) markRelationLoaded(name string) {
 	e.loadedRelations[name] = true
+	if name == "schoolList" || name == "school_list" { e.schoolList.teaqlRows().IsLoaded = true }
 }
 
 func (e *SchoolType) isRelationLoaded(name string) bool {
@@ -183,25 +171,15 @@ func (e *SchoolType) IdValue() core.Value {
 
 
 
-// FromRecord replaces this entity's loaded snapshot and its obsolete pending
-// intent only after validation. Other entities in the ledger are unaffected.
 func (e *SchoolType) FromRecord(record core.Record) error {
 	return e.teaqlFromRecord(record, true)
 }
 
 func (e *SchoolType) teaqlFromRecord(record core.Record, captureLoaded bool) error {
-	e.teaqlEnsureState()
 	oldKey := e.EntityKey()
 	base, err := core.BaseEntityDataFromRecord(record)
 	if err != nil {
 		return err
-	}
-	if captureLoaded {
-		e.root.ClearEntity(oldKey)
-		e.markedAsDelete = false
-		e.creationState.Hydrated()
-	} else {
-		base.PreserveAllocatedIDFrom(e.base)
 	}
 	e.base = base
 	e.root.Rekey(oldKey, e.EntityKey())
@@ -226,7 +204,7 @@ func (e *SchoolType) teaqlLoadedScalarSnapshot(record core.Record) core.LoadedSc
 func (e *SchoolType) teaqlAcceptPersisted(context *runtime.UserContext, record core.Record) error {
 	if err := e.teaqlFromRecord(record, false); err != nil { return err }
 	committed := e.teaqlLoadedScalarSnapshot(record)
-	context.AfterGraphCommit(func() { e.loadedSnapshot = committed; e.creationState.Hydrated() })
+	context.AfterGraphCommit(func() { e.loadedSnapshot = committed })
 	return nil
 }
 
@@ -335,7 +313,9 @@ func (e *SchoolType) LoadedJSONFields() core.Record {
 	if e.IsLoaded("display_order") { if value, present := all["display_order"]; present { selected["display_order"] = value } }
 	if e.IsLoaded("version") { if value, present := all["version"]; present { selected["version"] = value } }
 	if e.isRelationLoaded("platformEntity") { if target, present := e.relations["platformEntity"]; present && target != nil { selected["platformEntity"] = core.Value{V: target} } }
-	if e.IsLoaded("schoolList") {
+	includeSchoolList := e.SchoolList().IsLoaded()
+	for _, child := range e.SchoolList().Items() { if child.IsNew() || child.IsMarkedAsDelete() || len(child.EntityRoot().Change(child.EntityKey())) > 0 { includeSchoolList = true } }
+	if includeSchoolList {
 		items := make([]core.Value, 0, len(e.SchoolList().Items()))
 		for _, child := range e.SchoolList().Items() { items = append(items, core.Value{V: child}) }
 		selected["schoolList"] = core.ValList(items)
@@ -370,7 +350,6 @@ func TeaqlSchoolTypeFromJSONRecord(record core.Record, factory func(string, core
 }
 
 func (e *SchoolType) Save(context *runtime.UserContext) (*SchoolType, error) {
-	if e == nil || e.base == nil || e.root == nil { return nil, &core.EntityCreationError{Entity: "School Type"} }
 	intent, intentErr := core.NewMutationIntent(e.comment)
 	if intentErr != nil { return nil, intentErr }
 	var saved *SchoolType
@@ -391,42 +370,10 @@ func (e *SchoolType) Save(context *runtime.UserContext) (*SchoolType, error) {
 // TeaqlPreflightGraph runs Checker/Fix for the complete aggregate before the
 // first provider mutation. It is generated infrastructure, not application API.
 func (e *SchoolType) TeaqlPreflightGraph(context *runtime.UserContext, intent core.MutationIntent) error {
-	if e == nil || e.base == nil || e.root == nil { return &core.EntityCreationError{Entity: "School Type"} }
 	if err := intent.Validate(); err != nil { return err }
-	if err := e.TeaqlPrepareMutationViews(context); err != nil { return err }
 	if err := e.TeaqlNormalizeMutationGraph(context); err != nil { return err }
 	if err := context.ValidateGraphMutationVersions(e.root); err != nil { return err }
-	if err := e.TeaqlAdmitMutationGraph(context); err != nil { return err }
 	return e.TeaqlPreflightWithinGraph(context, intent, nil)
-}
-
-// Preserve instance-local intent before automatic ledger attachment can merge
-// aliases. Known-baseline equal assignments are not writable intent.
-func (e *SchoolType) TeaqlPrepareMutationViews(context *runtime.UserContext) error {
-	if e == nil || e.base == nil || e.root == nil { return &core.EntityCreationError{Entity: "School Type"} }
-	if e.isNew { if err := e.creationState.RequireNew(e.EntityName(), e.base.Id); err != nil { return err } }
-	if e.isNew && e.markedAsDelete { return nil }
-	restoredFields, err := context.DiscardRestoredScalarChanges(e.root, e.EntityKey(), e.loadedSnapshot)
-	if err != nil { return err }
-	for _, field := range restoredFields { delete(e.dirtyFields, field) }
-	if e.isNew || e.markedAsDelete || len(e.root.Change(e.EntityKey())) > 0 {
-		if err := context.AdmitPreparedGraphEntityView(e.EntityKey(), e); err != nil { return err }
-	}
-	for index, child := range e.schoolList.Items() {
-		if child.IsNew() && child.IsMarkedAsDelete() { continue }
-		if err := child.TeaqlPrepareMutationViews(context); err != nil {
-			var checkError *runtime.RuntimeError
-			if errors.As(err, &checkError) && checkError.Type == "Check" {
-				prefix := runtime.Location().Property("school_list").At(index)
-				prefixed := make([]runtime.CheckResult, len(checkError.CheckResults))
-				for resultIndex, result := range checkError.CheckResults { prefixed[resultIndex] = result.PrefixedBy(prefix) }
-				context.TranslateCheckResults(prefixed)
-				return &runtime.RuntimeError{Type: "Check", CheckResults: prefixed}
-			}
-			return fmt.Errorf("prepare views from schoolList: %w", err)
-		}
-	}
-	return nil
 }
 
 // Cancel known-baseline equal assignments and attach the complete pending graph
@@ -452,34 +399,6 @@ func (e *SchoolType) TeaqlNormalizeMutationGraph(context *runtime.UserContext) e
 				return &runtime.RuntimeError{Type: "Check", CheckResults: prefixed}
 			}
 			return fmt.Errorf("normalize child from schoolList: %w", err)
-		}
-	}
-	return nil
-}
-
-// Admit all writable object instances before any Checker/Fix can rewrite a
-// carrier. Explicit compatible ledger composition into one view stays legal.
-func (e *SchoolType) TeaqlAdmitMutationGraph(context *runtime.UserContext) error {
-	if e.isNew && e.markedAsDelete { return nil }
-	if e.isNew || e.markedAsDelete || len(e.root.Change(e.EntityKey())) > 0 {
-		if err := context.AdmitPreparedGraphEntityView(e.EntityKey(), e); err != nil { return err }
-	}
-	if err := runtime.RememberPreparedGraphRelation(context, e.EntityKey(), "school_list", func() []*school.School {
-		if e.schoolList == nil { return nil }
-		return e.schoolList.Items()
-	}); err != nil { return err }
-	for index, child := range e.schoolList.Items() {
-		if child.IsNew() && child.IsMarkedAsDelete() { continue }
-		if err := child.TeaqlAdmitMutationGraph(context); err != nil {
-			var checkError *runtime.RuntimeError
-			if errors.As(err, &checkError) && checkError.Type == "Check" {
-				prefix := runtime.Location().Property("school_list").At(index)
-				prefixed := make([]runtime.CheckResult, len(checkError.CheckResults))
-				for resultIndex, result := range checkError.CheckResults { prefixed[resultIndex] = result.PrefixedBy(prefix) }
-				context.TranslateCheckResults(prefixed)
-				return &runtime.RuntimeError{Type: "Check", CheckResults: prefixed}
-			}
-			return fmt.Errorf("admit child from schoolList: %w", err)
 		}
 	}
 	return nil
@@ -528,7 +447,8 @@ func (e *SchoolType) TeaqlPreflightWithinGraph(context *runtime.UserContext, int
 		}
 		checkedValues := e.IntoRecord()
 		valuesBeforeCheck := e.IntoRecord()
-		checkErr := runtime.CheckAndFixGraphEntity(context, &runtime.CheckAndFixInput{Entity: "School Type", Operation: operation, Values: checkedValues}, e.root, e.EntityKey())
+		context.CaptureContextFixUndo(e.EntityName(), func() *core.BaseEntityData { return e.base }, e.root, e.EntityKey())
+		checkErr := runtime.CheckAndFixGraphEntity(context, &runtime.CheckAndFixInput{Entity: "School Type", Operation: operation, Values: checkedValues, OldValues: e.loadedSnapshot.ValuesFor(e.EntityKey(), e.base.Version)}, e.root, e.EntityKey())
 		for field, value := range checkedValues {
 			if before, exists := valuesBeforeCheck[field]; !exists || !reflect.DeepEqual(before, value) {
 				e.base.PutDynamic(field, value)
@@ -558,12 +478,11 @@ func (e *SchoolType) TeaqlPreflightWithinGraph(context *runtime.UserContext, int
 			return fmt.Errorf("preflight child from schoolList: %w", err)
 		}
 	}
-	return nil
+	return e.TeaqlNormalizeMutationGraph(context)
 }
 
 type teaqlSchoolTypeSaveSnapshot struct {
 	loadedSnapshot core.LoadedScalarSnapshot
-	creationState core.EntityCreationState
 	record core.Record
 	queryProperties core.Record
 	dirtyFields map[string]bool
@@ -581,7 +500,6 @@ func (e *SchoolType) teaqlSaveSnapshot() teaqlSchoolTypeSaveSnapshot {
 	for field, value := range e.loadState { loaded[field] = value }
 	return teaqlSchoolTypeSaveSnapshot{
 		loadedSnapshot: e.loadedSnapshot,
-		creationState: e.creationState,
 		queryProperties: e.base.QueryProperties(),
 		record: e.IntoRecord(), dirtyFields: dirty, isNew: e.isNew,
 		markedAsDelete: e.markedAsDelete, loadState: loaded,
@@ -591,12 +509,9 @@ func (e *SchoolType) teaqlSaveSnapshot() teaqlSchoolTypeSaveSnapshot {
 
 func (e *SchoolType) teaqlRegisterGraphOutcome(context *runtime.UserContext, snapshot teaqlSchoolTypeSaveSnapshot) {
 	context.AfterGraphRollback(func() {
-		// Rollback restores the native view, not a newly loaded snapshot. Keep
-		// pending insert/update/delete intent available for the same graph retry.
-		if err := e.teaqlFromRecord(snapshot.record, false); err != nil { panic(err) }
+		if err := e.FromRecord(snapshot.record); err != nil { panic(err) }
 		e.base.CaptureQueryProperties(snapshot.queryProperties)
 		e.loadedSnapshot = snapshot.loadedSnapshot
-		e.creationState = snapshot.creationState
 		e.dirtyFields = snapshot.dirtyFields
 		e.isNew = snapshot.isNew
 		e.markedAsDelete = snapshot.markedAsDelete
@@ -609,17 +524,8 @@ func (e *SchoolType) teaqlRegisterGraphOutcome(context *runtime.UserContext, sna
 
 // TeaqlSaveWithinGraph is generated infrastructure used by related entity
 // packages after the public root Save has opened the graph transaction.
-func (e *SchoolType) TeaqlSaveWithinGraph(context *runtime.UserContext, intent core.MutationIntent, parentScope *core.MutationTraceScope, privacy *data_service.MutationPrivacy, visited ...map[any]struct{}) (*SchoolType, error) {
-	if e == nil || e.base == nil || e.root == nil { return nil, &core.EntityCreationError{Entity: "School Type"} }
-	if e.isNew { if err := e.creationState.RequireNew(e.EntityName(), e.base.Id); err != nil { return nil, err } }
+func (e *SchoolType) TeaqlSaveWithinGraph(context *runtime.UserContext, intent core.MutationIntent, parentScope *core.MutationTraceScope, privacy *data_service.MutationPrivacy) (*SchoolType, error) {
 	if err := intent.Validate(); err != nil { return nil, err }
-	// This traversal owns its pointer-identity set. Never deduplicate distinct
-	// views by entity ID, or keep a guard on Context/entities across saves.
-	var seen map[any]struct{}
-	if len(visited) > 0 { seen = visited[0] }
-	if seen == nil { seen = make(map[any]struct{}) }
-	if _, exists := seen[e]; exists { return e, nil }
-	seen[e] = struct{}{}
 	if e.isNew && e.markedAsDelete {
 		if parentScope == nil { return nil, fmt.Errorf("cancelled new root %s: create-then-delete has no persisted entity to return", e.EntityName()) }
 		return e, nil
@@ -629,7 +535,7 @@ func (e *SchoolType) TeaqlSaveWithinGraph(context *runtime.UserContext, intent c
 	if !e.isNew && !e.markedAsDelete && len(e.root.Change(e.EntityKey())) == 0 {
 		scope, err := core.MutationScopeForEntity(parentScope, e.EntityKey(), intent, e.comment)
 		if err != nil { return nil, err }
-		if err := e.saveCascade(context, intent, scope, privacy, seen); err != nil { return nil, err }
+		if err := e.saveCascade(context, intent, scope, privacy); err != nil { return nil, err }
 		return e, nil
 	}
 	snapshot := e.teaqlSaveSnapshot()
@@ -662,8 +568,13 @@ func (e *SchoolType) TeaqlSaveWithinGraph(context *runtime.UserContext, intent c
 		if checkErr != nil { return nil, checkErr }
 		if err := e.teaqlFromRecord(checkedValues, false); err != nil { return nil, err }
 		if e.base.Id == 0 {
-			return nil, &core.EntityCreationError{Entity: e.EntityName()}
-		} else if !e.base.HasAllocatedID() {
+			id, err := context.GenerateInternalId(e.EntityName())
+			if err != nil {
+				return nil, fmt.Errorf("generate id for %s: %w", e.EntityName(), err)
+			}
+			e.base.Id = id
+			if err := context.RekeyPreparedGraphEntity(e.root, core.NewEntityKey(e.EntityName(), e.ledgerID), e.EntityKey()); err != nil { return nil, err }
+		} else {
 			if err := context.EnsureInternalIdFloor(context.Context, e.EntityName(), e.base.Id); err != nil {
 				return nil, fmt.Errorf("synchronize id floor for %s: %w", e.EntityName(), err)
 			}
@@ -703,7 +614,7 @@ func (e *SchoolType) TeaqlSaveWithinGraph(context *runtime.UserContext, intent c
 		if err := e.teaqlAcceptPersisted(context, res.PersistedRecord); err != nil {
 			return nil, err
 		}
-		if err := e.saveCascade(context, intent, scope, privacy, seen); err != nil { return nil, err }
+		if err := e.saveCascade(context, intent, scope, privacy); err != nil { return nil, err }
 		return e, nil
 	} else if e.markedAsDelete {
 		scope, err := core.MutationScopeForEntity(parentScope, e.EntityKey(), intent, e.comment)
@@ -732,7 +643,7 @@ func (e *SchoolType) TeaqlSaveWithinGraph(context *runtime.UserContext, intent c
 	} else {
 		checkedValues := e.IntoRecord()
 		valuesBeforeCheck := e.IntoRecord()
-		checkErr := runtime.CheckAndFixGraphEntity(context, &runtime.CheckAndFixInput{Entity: "School Type", Operation: core.MutationUpdate, Values: checkedValues}, e.root, e.EntityKey())
+		checkErr := runtime.CheckAndFixGraphEntity(context, &runtime.CheckAndFixInput{Entity: "School Type", Operation: core.MutationUpdate, Values: checkedValues, OldValues: e.loadedSnapshot.ValuesFor(e.EntityKey(), e.base.Version)}, e.root, e.EntityKey())
 		for field, value := range checkedValues {
 			if before, exists := valuesBeforeCheck[field]; !exists || !reflect.DeepEqual(before, value) {
 				canonical, mappingErr := context.CanonicalLedgerField(e.EntityName(), field)
@@ -750,7 +661,7 @@ func (e *SchoolType) TeaqlSaveWithinGraph(context *runtime.UserContext, intent c
 		// A clean parent still carries the scope for changed descendants, but
 		// must not emit an empty UPDATE or bump its optimistic version.
 		if len(cmd.Values) == 0 {
-			if err := e.saveCascade(context, intent, scope, privacy, seen); err != nil { return nil, err }
+			if err := e.saveCascade(context, intent, scope, privacy); err != nil { return nil, err }
 			return e, nil
 		}
 		expectedVersion := e.base.Version
@@ -775,17 +686,17 @@ func (e *SchoolType) TeaqlSaveWithinGraph(context *runtime.UserContext, intent c
 			return nil, fmt.Errorf("mutation did not return the authoritative persisted record")
 		}
 		if err := e.teaqlAcceptPersisted(context, res.PersistedRecord); err != nil { return nil, err }
-		if err := e.saveCascade(context, intent, scope, privacy, seen); err != nil { return nil, err }
+		if err := e.saveCascade(context, intent, scope, privacy); err != nil { return nil, err }
 		return e, nil
 	}
 }
 
-func (e *SchoolType) saveCascade(context *runtime.UserContext, intent core.MutationIntent, scope *core.MutationTraceScope, privacy *data_service.MutationPrivacy, seen map[any]struct{}) error {
+func (e *SchoolType) saveCascade(context *runtime.UserContext, intent core.MutationIntent, scope *core.MutationTraceScope, privacy *data_service.MutationPrivacy) error {
 	for index, child := range e.schoolList.Items() {
 		if child.IsNew() && child.IsMarkedAsDelete() { continue }
 		child.AttachEntityRoot(e.root)
 		child.Base().PutDynamic("school_type_id", core.ValU64(e.base.Id))
-		if _, err := child.TeaqlSaveWithinGraph(context, intent, scope, privacy, seen); err != nil {
+		if _, err := child.TeaqlSaveWithinGraph(context, intent, scope, privacy); err != nil {
 			var checkError *runtime.RuntimeError
 			if errors.As(err, &checkError) && checkError.Type == "Check" {
 				prefix := runtime.Location().Property("school_list").At(index)
@@ -805,7 +716,6 @@ func (e *SchoolType) Id() uint64 {
 }
 
 func (e *SchoolType) UpdateId(value uint64) *SchoolType {
-	e.teaqlEnsureState()
 	oldKey := e.EntityKey()
 	e.base.Id = value
 	e.root.Rekey(oldKey, e.EntityKey())
@@ -819,7 +729,6 @@ func (e *SchoolType) Name() string {
 	return res}
 
 func (e *SchoolType) UpdateName(value string) *SchoolType {
-	e.teaqlEnsureState()
 	e.base.PutDynamic("name", core.ValText(value))
 	e.dirtyFields["name"] = true
 	e.root.Set(e.EntityKey(), "name", core.ValText(value))
@@ -833,7 +742,6 @@ func (e *SchoolType) Code() string {
 	return res}
 
 func (e *SchoolType) UpdateCode(value string) *SchoolType {
-	e.teaqlEnsureState()
 	e.base.PutDynamic("code", core.ValText(value))
 	e.dirtyFields["code"] = true
 	e.root.Set(e.EntityKey(), "code", core.ValText(value))
@@ -847,7 +755,6 @@ func (e *SchoolType) DisplayOrder() decimal.Decimal {
 	return res}
 
 func (e *SchoolType) UpdateDisplayOrder(value decimal.Decimal) *SchoolType {
-	e.teaqlEnsureState()
 	e.base.PutDynamic("display_order", core.ValDecimal(value))
 	e.dirtyFields["display_order"] = true
 	e.root.Set(e.EntityKey(), "display_order", core.ValDecimal(value))
@@ -860,7 +767,6 @@ func (e *SchoolType) Version() int64 {
 }
 
 func (e *SchoolType) UpdateVersion(value int64) *SchoolType {
-	e.teaqlEnsureState()
 	e.base.Version = value
 	e.loadState["version"] = true
 	return e

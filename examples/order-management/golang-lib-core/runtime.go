@@ -33,6 +33,12 @@ var _ = strings.Join
 
 func generatedPtr[T any](value T) *T { return &value }
 
+var generatedCheckerPresentation = func() *runtime.CheckerPresentationModel {
+	model, err := runtime.ParseCheckerPresentationModel([]byte("{\"schema\":\"teaql.checker-model/v1\",\"revision\":\"sha256:67c1fc4f35b938cb13610102782de7801a250bfd707b22dcfb6c31b98720929b\",\"entities\":{\"commerce_platform\":{\"labels\":{\"en\":\"commerce platform\"},\"fields\":[{\"name\":\"create_time\",\"labels\":{\"en\":\"create time\"},\"aliases\":[\"CreateTime\",\"createTime\"]},{\"name\":\"customer_list\",\"targetType\":\"customer\",\"labels\":{\"en\":\"customer\"},\"aliases\":[\"CustomerList\",\"customerList\"]},{\"name\":\"customer_order_list\",\"targetType\":\"customer_order\",\"labels\":{\"en\":\"customer order\"},\"aliases\":[\"CustomerOrderList\",\"customerOrderList\"]},{\"name\":\"id\",\"labels\":{\"en\":\"id\"},\"aliases\":[\"Id\"]},{\"name\":\"name\",\"labels\":{\"en\":\"name\"},\"aliases\":[\"Name\"]},{\"name\":\"order_line_list\",\"targetType\":\"order_line\",\"labels\":{\"en\":\"order line\"},\"aliases\":[\"OrderLineList\",\"orderLineList\"]},{\"name\":\"order_search_preset_list\",\"targetType\":\"order_search_preset\",\"labels\":{\"en\":\"order search preset\"},\"aliases\":[\"OrderSearchPresetList\",\"orderSearchPresetList\"]},{\"name\":\"order_status_list\",\"targetType\":\"order_status\",\"labels\":{\"en\":\"order status\"},\"aliases\":[\"OrderStatusList\",\"orderStatusList\"]},{\"name\":\"product_list\",\"targetType\":\"product\",\"labels\":{\"en\":\"product\"},\"aliases\":[\"ProductList\",\"productList\"]},{\"name\":\"update_time\",\"labels\":{\"en\":\"update time\"},\"aliases\":[\"UpdateTime\",\"updateTime\"]},{\"name\":\"version\",\"labels\":{\"en\":\"version\"},\"aliases\":[\"Version\"]}]},\"customer\":{\"labels\":{\"en\":\"customer\"},\"fields\":[{\"name\":\"commerce_platform\",\"targetType\":\"commerce_platform\",\"labels\":{\"en\":\"commerce platform\"},\"aliases\":[\"CommercePlatform\",\"commercePlatform\"]},{\"name\":\"create_time\",\"labels\":{\"en\":\"create time\"},\"aliases\":[\"CreateTime\",\"createTime\"]},{\"name\":\"customer_order_list\",\"targetType\":\"customer_order\",\"labels\":{\"en\":\"customer order\"},\"aliases\":[\"CustomerOrderList\",\"customerOrderList\"]},{\"name\":\"email\",\"labels\":{\"en\":\"email\"},\"aliases\":[\"Email\"]},{\"name\":\"id\",\"labels\":{\"en\":\"id\"},\"aliases\":[\"Id\"]},{\"name\":\"name\",\"labels\":{\"en\":\"name\"},\"aliases\":[\"Name\"]},{\"name\":\"update_time\",\"labels\":{\"en\":\"update time\"},\"aliases\":[\"UpdateTime\",\"updateTime\"]},{\"name\":\"version\",\"labels\":{\"en\":\"version\"},\"aliases\":[\"Version\"]}]},\"customer_order\":{\"labels\":{\"en\":\"customer order\"},\"fields\":[{\"name\":\"commerce_platform\",\"targetType\":\"commerce_platform\",\"labels\":{\"en\":\"commerce platform\"},\"aliases\":[\"CommercePlatform\",\"commercePlatform\"]},{\"name\":\"create_time\",\"labels\":{\"en\":\"create time\"},\"aliases\":[\"CreateTime\",\"createTime\"]},{\"name\":\"customer\",\"targetType\":\"customer\",\"labels\":{\"en\":\"customer\"},\"aliases\":[\"Customer\"]},{\"name\":\"id\",\"labels\":{\"en\":\"id\"},\"aliases\":[\"Id\"]},{\"name\":\"order_date\",\"labels\":{\"en\":\"order date\"},\"aliases\":[\"OrderDate\",\"orderDate\"]},{\"name\":\"order_line_list\",\"targetType\":\"order_line\",\"labels\":{\"en\":\"order line\"},\"aliases\":[\"OrderLineList\",\"orderLineList\"]},{\"name\":\"order_number\",\"labels\":{\"en\":\"order number\"},\"aliases\":[\"OrderNumber\",\"orderNumber\"]},{\"name\":\"status\",\"targetType\":\"order_status\",\"labels\":{\"en\":\"status\"},\"aliases\":[\"Status\"]},{\"name\":\"total_amount\",\"labels\":{\"en\":\"total amount\"},\"aliases\":[\"TotalAmount\",\"totalAmount\"]},{\"name\":\"update_time\",\"labels\":{\"en\":\"update time\"},\"aliases\":[\"UpdateTime\",\"updateTime\"]},{\"name\":\"version\",\"labels\":{\"en\":\"version\"},\"aliases\":[\"Version\"]}]},\"order_line\":{\"labels\":{\"en\":\"order line\"},\"fields\":[{\"name\":\"commerce_platform\",\"targetType\":\"commerce_platform\",\"labels\":{\"en\":\"commerce platform\"},\"aliases\":[\"CommercePlatform\",\"commercePlatform\"]},{\"name\":\"create_time\",\"labels\":{\"en\":\"create time\"},\"aliases\":[\"CreateTime\",\"createTime\"]},{\"name\":\"customer_order\",\"targetType\":\"customer_order\",\"labels\":{\"en\":\"customer order\"},\"aliases\":[\"CustomerOrder\",\"customerOrder\"]},{\"name\":\"id\",\"labels\":{\"en\":\"id\"},\"aliases\":[\"Id\"]},{\"name\":\"product\",\"targetType\":\"product\",\"labels\":{\"en\":\"product\"},\"aliases\":[\"Product\"]},{\"name\":\"product_name\",\"labels\":{\"en\":\"product name\"},\"aliases\":[\"ProductName\",\"productName\"]},{\"name\":\"quantity\",\"labels\":{\"en\":\"quantity\"},\"aliases\":[\"Quantity\"]},{\"name\":\"sku\",\"labels\":{\"en\":\"sku\"},\"aliases\":[\"Sku\"]},{\"name\":\"version\",\"labels\":{\"en\":\"version\"},\"aliases\":[\"Version\"]}]},\"order_search_preset\":{\"labels\":{\"en\":\"order search preset\"},\"fields\":[{\"name\":\"commerce_platform\",\"targetType\":\"commerce_platform\",\"labels\":{\"en\":\"commerce platform\"},\"aliases\":[\"CommercePlatform\",\"commercePlatform\"]},{\"name\":\"create_time\",\"labels\":{\"en\":\"create time\"},\"aliases\":[\"CreateTime\",\"createTime\"]},{\"name\":\"filter_json\",\"labels\":{\"en\":\"filter json\"},\"aliases\":[\"FilterJson\",\"filterJson\"]},{\"name\":\"id\",\"labels\":{\"en\":\"id\"},\"aliases\":[\"Id\"]},{\"name\":\"name\",\"labels\":{\"en\":\"name\"},\"aliases\":[\"Name\"]},{\"name\":\"owner_user_id\",\"labels\":{\"en\":\"owner user id\"},\"aliases\":[\"OwnerUserId\",\"ownerUserId\"]},{\"name\":\"request_id\",\"labels\":{\"en\":\"request id\"},\"aliases\":[\"RequestId\",\"requestId\"]},{\"name\":\"update_time\",\"labels\":{\"en\":\"update time\"},\"aliases\":[\"UpdateTime\",\"updateTime\"]},{\"name\":\"version\",\"labels\":{\"en\":\"version\"},\"aliases\":[\"Version\"]}]},\"order_status\":{\"labels\":{\"en\":\"order status\"},\"fields\":[{\"name\":\"code\",\"labels\":{\"en\":\"code\"},\"aliases\":[\"Code\"]},{\"name\":\"color\",\"labels\":{\"en\":\"color\"},\"aliases\":[\"Color\"]},{\"name\":\"commerce_platform\",\"targetType\":\"commerce_platform\",\"labels\":{\"en\":\"commerce platform\"},\"aliases\":[\"CommercePlatform\",\"commercePlatform\"]},{\"name\":\"customer_order_list\",\"targetType\":\"customer_order\",\"labels\":{\"en\":\"customer order\"},\"aliases\":[\"CustomerOrderList\",\"customerOrderList\"]},{\"name\":\"display_order\",\"labels\":{\"en\":\"display order\"},\"aliases\":[\"DisplayOrder\",\"displayOrder\"]},{\"name\":\"id\",\"labels\":{\"en\":\"id\"},\"aliases\":[\"Id\"]},{\"name\":\"name\",\"labels\":{\"en\":\"name\"},\"aliases\":[\"Name\"]},{\"name\":\"version\",\"labels\":{\"en\":\"version\"},\"aliases\":[\"Version\"]}]},\"product\":{\"labels\":{\"en\":\"product\"},\"fields\":[{\"name\":\"commerce_platform\",\"targetType\":\"commerce_platform\",\"labels\":{\"en\":\"commerce platform\"},\"aliases\":[\"CommercePlatform\",\"commercePlatform\"]},{\"name\":\"create_time\",\"labels\":{\"en\":\"create time\"},\"aliases\":[\"CreateTime\",\"createTime\"]},{\"name\":\"id\",\"labels\":{\"en\":\"id\"},\"aliases\":[\"Id\"]},{\"name\":\"image_url\",\"labels\":{\"en\":\"image url\"},\"aliases\":[\"ImageUrl\",\"imageUrl\"]},{\"name\":\"name\",\"labels\":{\"en\":\"name\"},\"aliases\":[\"Name\"]},{\"name\":\"order_line_list\",\"targetType\":\"order_line\",\"labels\":{\"en\":\"order line\"},\"aliases\":[\"OrderLineList\",\"orderLineList\"]},{\"name\":\"sku\",\"labels\":{\"en\":\"sku\"},\"aliases\":[\"Sku\"]},{\"name\":\"update_time\",\"labels\":{\"en\":\"update time\"},\"aliases\":[\"UpdateTime\",\"updateTime\"]},{\"name\":\"version\",\"labels\":{\"en\":\"version\"},\"aliases\":[\"Version\"]}]}}}"))
+	if err != nil { panic("Invalid generated Checker presentation metadata") }
+	return model
+}()
+
 func ensureGeneratedBootstrapOnce(context *runtime.UserContext) error {
 	previousActor := context.UserIdentifier()
 	previousCategory := context.GetResource("bootstrapCategory")
@@ -42,9 +48,7 @@ func ensureGeneratedBootstrapOnce(context *runtime.UserContext) error {
 	commerce_platform1, err := Q.CommercePlatforms().WithIdIs(uint64(1)).Comment("what: locate generated bootstrap entity").Purpose("why: idempotent runtime bootstrap").ExecuteForOne(context)
 	if err != nil { return fmt.Errorf("query bootstrap CommercePlatform(1): %w", err) }
 	if commerce_platform1 == nil {
-		commerce_platform1, err = Q.CommercePlatforms().Comment("Create generated bootstrap entity").Purpose("Initialize runtime bootstrap").NewEntity(context)
-		if err != nil { return err }
-		commerce_platform1.UpdateId(uint64(1))
+		commerce_platform1 = commerce_platform.NewCommercePlatform().UpdateId(uint64(1))
 		commerce_platform1.UpdateName("Northwind Demo")
 		if _, err = commerce_platform1.AuditAs("create model root CommercePlatform(1)").Save(context); err != nil {
 			createErr := err
@@ -61,9 +65,7 @@ func ensureGeneratedBootstrapOnce(context *runtime.UserContext) error {
 	order_status1001, err := Q.OrderStatuses().WithIdIs(uint64(1001)).Comment("what: locate generated bootstrap entity").Purpose("why: idempotent runtime bootstrap").ExecuteForOne(context)
 	if err != nil { return fmt.Errorf("query bootstrap OrderStatus(1001): %w", err) }
 	if order_status1001 == nil {
-		order_status1001, err = Q.OrderStatuses().Comment("Create generated bootstrap entity").Purpose("Initialize runtime bootstrap").NewEntity(context)
-		if err != nil { return err }
-		order_status1001.UpdateId(uint64(1001))
+		order_status1001 = order_status.NewOrderStatus().UpdateId(uint64(1001))
 		order_status1001.UpdateName("Pending")
 		order_status1001.UpdateCode("PENDING")
 		order_status1001.UpdateColor(generatedPtr("#F59E0B"))
@@ -102,9 +104,7 @@ func ensureGeneratedBootstrapOnce(context *runtime.UserContext) error {
 	order_status1002, err := Q.OrderStatuses().WithIdIs(uint64(1002)).Comment("what: locate generated bootstrap entity").Purpose("why: idempotent runtime bootstrap").ExecuteForOne(context)
 	if err != nil { return fmt.Errorf("query bootstrap OrderStatus(1002): %w", err) }
 	if order_status1002 == nil {
-		order_status1002, err = Q.OrderStatuses().Comment("Create generated bootstrap entity").Purpose("Initialize runtime bootstrap").NewEntity(context)
-		if err != nil { return err }
-		order_status1002.UpdateId(uint64(1002))
+		order_status1002 = order_status.NewOrderStatus().UpdateId(uint64(1002))
 		order_status1002.UpdateName("Confirmed")
 		order_status1002.UpdateCode("CONFIRMED")
 		order_status1002.UpdateColor(generatedPtr("#10B981"))
@@ -154,14 +154,14 @@ func ensureGeneratedBootstrap(context *runtime.UserContext) error {
 
 
 func Module() *runtime.RuntimeModule {
-	module := runtime.NewRuntimeModule().Checkers(&generatedCheckerRegistry{})
+	module := runtime.NewRuntimeModule().Checkers(&generatedCheckerRegistry{}).CheckerPresentation(generatedCheckerPresentation)
 	{
 		descriptor := core.NewEntityDescriptor("commerce_platform").
 			TableName("commerce_platform_data")
 		descriptor.Property(core.NewPropertyDescriptor("id", core.TypeU64).ColumnName("id").NotNull().Id())
 		descriptor.Property(core.NewPropertyDescriptor("name", core.TypeText).ColumnName("name").NotNull())
-		descriptor.Property(core.NewPropertyDescriptor("create_time", core.TypeTimestamp).ColumnName("create_time").NotNull())
-		descriptor.Property(core.NewPropertyDescriptor("update_time", core.TypeTimestamp).ColumnName("update_time").NotNull())
+		descriptor.Property(core.NewPropertyDescriptor("create_time", core.TypeTimestamp).ColumnName("create_time").OnCreateFromContext("now").NotNull())
+		descriptor.Property(core.NewPropertyDescriptor("update_time", core.TypeTimestamp).ColumnName("update_time").OnCreateFromContext("now").OnUpdateFromContext("now").NotNull())
 		descriptor.Property(core.NewPropertyDescriptor("version", core.TypeI64).ColumnName("version").NotNull().Version())
 		descriptor.Relation(core.NewRelationDescriptor("customerList", "customer").LocalKey("id").ForeignKey("commerce_platform_id").Many())
 		descriptor.Relation(core.NewRelationDescriptor("orderStatusList", "order_status").LocalKey("id").ForeignKey("commerce_platform_id").Many())
@@ -179,8 +179,8 @@ func Module() *runtime.RuntimeModule {
 		descriptor.Property(core.NewPropertyDescriptor("id", core.TypeU64).ColumnName("id").NotNull().Id())
 		descriptor.Property(core.NewPropertyDescriptor("name", core.TypeText).ColumnName("name").NotNull())
 		descriptor.Property(core.NewPropertyDescriptor("email", core.TypeText).ColumnName("email").NotNull())
-		descriptor.Property(core.NewPropertyDescriptor("create_time", core.TypeTimestamp).ColumnName("create_time").NotNull())
-		descriptor.Property(core.NewPropertyDescriptor("update_time", core.TypeTimestamp).ColumnName("update_time").NotNull())
+		descriptor.Property(core.NewPropertyDescriptor("create_time", core.TypeTimestamp).ColumnName("create_time").OnCreateFromContext("now").NotNull())
+		descriptor.Property(core.NewPropertyDescriptor("update_time", core.TypeTimestamp).ColumnName("update_time").OnCreateFromContext("now").OnUpdateFromContext("now").NotNull())
 		descriptor.Property(core.NewPropertyDescriptor("version", core.TypeI64).ColumnName("version").NotNull().Version())
 		descriptor.Property(core.NewPropertyDescriptor("commerce_platform_id", core.TypeU64).ColumnName("commerce_platform").NotNull())
 		descriptor.Relation(core.NewRelationDescriptor("commercePlatformEntity", "commerce_platform").CanonicalKey("commerce_platform").LocalKey("commerce_platform_id").ForeignKey("id"))
@@ -212,8 +212,8 @@ func Module() *runtime.RuntimeModule {
 		descriptor.Property(core.NewPropertyDescriptor("order_number", core.TypeText).ColumnName("order_number").NotNull())
 		descriptor.Property(core.NewPropertyDescriptor("order_date", core.TypeDate).ColumnName("order_date").NotNull())
 		descriptor.Property(core.NewPropertyDescriptor("total_amount", core.TypeDecimal).ColumnName("total_amount").NotNull())
-		descriptor.Property(core.NewPropertyDescriptor("create_time", core.TypeTimestamp).ColumnName("create_time").NotNull())
-		descriptor.Property(core.NewPropertyDescriptor("update_time", core.TypeTimestamp).ColumnName("update_time").NotNull())
+		descriptor.Property(core.NewPropertyDescriptor("create_time", core.TypeTimestamp).ColumnName("create_time").OnCreateFromContext("now").NotNull())
+		descriptor.Property(core.NewPropertyDescriptor("update_time", core.TypeTimestamp).ColumnName("update_time").OnCreateFromContext("now").OnUpdateFromContext("now").NotNull())
 		descriptor.Property(core.NewPropertyDescriptor("version", core.TypeI64).ColumnName("version").NotNull().Version())
 		descriptor.Property(core.NewPropertyDescriptor("status_id", core.TypeU64).ColumnName("status").NotNull())
 		descriptor.Property(core.NewPropertyDescriptor("customer_id", core.TypeU64).ColumnName("customer").NotNull())
@@ -233,8 +233,8 @@ func Module() *runtime.RuntimeModule {
 		descriptor.Property(core.NewPropertyDescriptor("name", core.TypeText).ColumnName("name").NotNull())
 		descriptor.Property(core.NewPropertyDescriptor("sku", core.TypeText).ColumnName("sku").NotNull())
 		descriptor.Property(core.NewPropertyDescriptor("image_url", core.TypeText).ColumnName("image_url"))
-		descriptor.Property(core.NewPropertyDescriptor("create_time", core.TypeTimestamp).ColumnName("create_time").NotNull())
-		descriptor.Property(core.NewPropertyDescriptor("update_time", core.TypeTimestamp).ColumnName("update_time").NotNull())
+		descriptor.Property(core.NewPropertyDescriptor("create_time", core.TypeTimestamp).ColumnName("create_time").OnCreateFromContext("now").NotNull())
+		descriptor.Property(core.NewPropertyDescriptor("update_time", core.TypeTimestamp).ColumnName("update_time").OnCreateFromContext("now").OnUpdateFromContext("now").NotNull())
 		descriptor.Property(core.NewPropertyDescriptor("version", core.TypeI64).ColumnName("version").NotNull().Version())
 		descriptor.Property(core.NewPropertyDescriptor("commerce_platform_id", core.TypeU64).ColumnName("commerce_platform").NotNull())
 		descriptor.Relation(core.NewRelationDescriptor("commercePlatformEntity", "commerce_platform").CanonicalKey("commerce_platform").LocalKey("commerce_platform_id").ForeignKey("id"))
@@ -250,7 +250,7 @@ func Module() *runtime.RuntimeModule {
 		descriptor.Property(core.NewPropertyDescriptor("product_name", core.TypeText).ColumnName("product_name").NotNull())
 		descriptor.Property(core.NewPropertyDescriptor("sku", core.TypeText).ColumnName("sku").NotNull())
 		descriptor.Property(core.NewPropertyDescriptor("quantity", core.TypeI64).ColumnName("quantity").Int32().NotNull())
-		descriptor.Property(core.NewPropertyDescriptor("create_time", core.TypeTimestamp).ColumnName("create_time").NotNull())
+		descriptor.Property(core.NewPropertyDescriptor("create_time", core.TypeTimestamp).ColumnName("create_time").OnCreateFromContext("now").NotNull())
 		descriptor.Property(core.NewPropertyDescriptor("version", core.TypeI64).ColumnName("version").NotNull().Version())
 		descriptor.Property(core.NewPropertyDescriptor("customer_order_id", core.TypeU64).ColumnName("customer_order").NotNull())
 		descriptor.Property(core.NewPropertyDescriptor("product_id", core.TypeU64).ColumnName("product").NotNull())
@@ -270,8 +270,8 @@ func Module() *runtime.RuntimeModule {
 		descriptor.Property(core.NewPropertyDescriptor("filter_json", core.TypeText).ColumnName("filter_json").NotNull())
 		descriptor.Property(core.NewPropertyDescriptor("request_id", core.TypeText).ColumnName("request_id").NotNull())
 		descriptor.Property(core.NewPropertyDescriptor("owner_user_id", core.TypeText).ColumnName("owner_user_id").NotNull())
-		descriptor.Property(core.NewPropertyDescriptor("create_time", core.TypeTimestamp).ColumnName("create_time").NotNull())
-		descriptor.Property(core.NewPropertyDescriptor("update_time", core.TypeTimestamp).ColumnName("update_time").NotNull())
+		descriptor.Property(core.NewPropertyDescriptor("create_time", core.TypeTimestamp).ColumnName("create_time").OnCreateFromContext("now").NotNull())
+		descriptor.Property(core.NewPropertyDescriptor("update_time", core.TypeTimestamp).ColumnName("update_time").OnCreateFromContext("now").OnUpdateFromContext("now").NotNull())
 		descriptor.Property(core.NewPropertyDescriptor("version", core.TypeI64).ColumnName("version").NotNull().Version())
 		descriptor.Property(core.NewPropertyDescriptor("commerce_platform_id", core.TypeU64).ColumnName("commerce_platform").NotNull())
 		descriptor.Relation(core.NewRelationDescriptor("commercePlatformEntity", "commerce_platform").CanonicalKey("commerce_platform").LocalKey("commerce_platform_id").ForeignKey("id"))
@@ -316,21 +316,14 @@ func (r *generatedCheckerRegistry) CheckAndFix(context *runtime.UserContext, inp
 func checkCommercePlatform(context *runtime.UserContext, input *runtime.CheckAndFixInput) []runtime.CheckResult {
 	results := make([]runtime.CheckResult, 0)
 	if input.Operation == core.MutationInsert {
-		if value, exists := input.Values["create_time"]; !exists || value.V == nil {
-			input.Values["create_time"] = core.ValTimestamp(input.Now.UnixMilli())
-			if err := context.RecordFixEvidence(runtime.FixEvidence{EntityType: "CommercePlatform", ModelPath: "create_time", Source: runtime.FixEvidenceClock, SourceLabel: "graphClock"}); err != nil { panic(err) }
-		}
+		if failure := context.ApplyContextFix(input, "create_time", "now"); failure != nil { results = append(results, *failure) }
 	}
 
 	if input.Operation == core.MutationInsert {
-		if value, exists := input.Values["update_time"]; !exists || value.V == nil {
-			input.Values["update_time"] = core.ValTimestamp(input.Now.UnixMilli())
-			if err := context.RecordFixEvidence(runtime.FixEvidence{EntityType: "CommercePlatform", ModelPath: "update_time", Source: runtime.FixEvidenceClock, SourceLabel: "graphClock"}); err != nil { panic(err) }
-		}
+		if failure := context.ApplyContextFix(input, "update_time", "now"); failure != nil { results = append(results, *failure) }
 	}
 	if input.Operation == core.MutationUpdate {
-		input.Values["update_time"] = core.ValTimestamp(input.Now.UnixMilli())
-		if err := context.RecordFixEvidence(runtime.FixEvidence{EntityType: "CommercePlatform", ModelPath: "update_time", Source: runtime.FixEvidenceClock, SourceLabel: "graphClock"}); err != nil { panic(err) }
+		if failure := context.ApplyContextFix(input, "update_time", "now"); failure != nil { results = append(results, *failure) }
 	}
 
 
@@ -359,21 +352,14 @@ func checkCommercePlatform(context *runtime.UserContext, input *runtime.CheckAnd
 func checkCustomer(context *runtime.UserContext, input *runtime.CheckAndFixInput) []runtime.CheckResult {
 	results := make([]runtime.CheckResult, 0)
 	if input.Operation == core.MutationInsert {
-		if value, exists := input.Values["create_time"]; !exists || value.V == nil {
-			input.Values["create_time"] = core.ValTimestamp(input.Now.UnixMilli())
-			if err := context.RecordFixEvidence(runtime.FixEvidence{EntityType: "Customer", ModelPath: "create_time", Source: runtime.FixEvidenceClock, SourceLabel: "graphClock"}); err != nil { panic(err) }
-		}
+		if failure := context.ApplyContextFix(input, "create_time", "now"); failure != nil { results = append(results, *failure) }
 	}
 
 	if input.Operation == core.MutationInsert {
-		if value, exists := input.Values["update_time"]; !exists || value.V == nil {
-			input.Values["update_time"] = core.ValTimestamp(input.Now.UnixMilli())
-			if err := context.RecordFixEvidence(runtime.FixEvidence{EntityType: "Customer", ModelPath: "update_time", Source: runtime.FixEvidenceClock, SourceLabel: "graphClock"}); err != nil { panic(err) }
-		}
+		if failure := context.ApplyContextFix(input, "update_time", "now"); failure != nil { results = append(results, *failure) }
 	}
 	if input.Operation == core.MutationUpdate {
-		input.Values["update_time"] = core.ValTimestamp(input.Now.UnixMilli())
-		if err := context.RecordFixEvidence(runtime.FixEvidence{EntityType: "Customer", ModelPath: "update_time", Source: runtime.FixEvidenceClock, SourceLabel: "graphClock"}); err != nil { panic(err) }
+		if failure := context.ApplyContextFix(input, "update_time", "now"); failure != nil { results = append(results, *failure) }
 	}
 
 
@@ -445,21 +431,14 @@ func checkOrderStatus(context *runtime.UserContext, input *runtime.CheckAndFixIn
 func checkCustomerOrder(context *runtime.UserContext, input *runtime.CheckAndFixInput) []runtime.CheckResult {
 	results := make([]runtime.CheckResult, 0)
 	if input.Operation == core.MutationInsert {
-		if value, exists := input.Values["create_time"]; !exists || value.V == nil {
-			input.Values["create_time"] = core.ValTimestamp(input.Now.UnixMilli())
-			if err := context.RecordFixEvidence(runtime.FixEvidence{EntityType: "CustomerOrder", ModelPath: "create_time", Source: runtime.FixEvidenceClock, SourceLabel: "graphClock"}); err != nil { panic(err) }
-		}
+		if failure := context.ApplyContextFix(input, "create_time", "now"); failure != nil { results = append(results, *failure) }
 	}
 
 	if input.Operation == core.MutationInsert {
-		if value, exists := input.Values["update_time"]; !exists || value.V == nil {
-			input.Values["update_time"] = core.ValTimestamp(input.Now.UnixMilli())
-			if err := context.RecordFixEvidence(runtime.FixEvidence{EntityType: "CustomerOrder", ModelPath: "update_time", Source: runtime.FixEvidenceClock, SourceLabel: "graphClock"}); err != nil { panic(err) }
-		}
+		if failure := context.ApplyContextFix(input, "update_time", "now"); failure != nil { results = append(results, *failure) }
 	}
 	if input.Operation == core.MutationUpdate {
-		input.Values["update_time"] = core.ValTimestamp(input.Now.UnixMilli())
-		if err := context.RecordFixEvidence(runtime.FixEvidence{EntityType: "CustomerOrder", ModelPath: "update_time", Source: runtime.FixEvidenceClock, SourceLabel: "graphClock"}); err != nil { panic(err) }
+		if failure := context.ApplyContextFix(input, "update_time", "now"); failure != nil { results = append(results, *failure) }
 	}
 
 
@@ -508,21 +487,14 @@ func checkCustomerOrder(context *runtime.UserContext, input *runtime.CheckAndFix
 func checkProduct(context *runtime.UserContext, input *runtime.CheckAndFixInput) []runtime.CheckResult {
 	results := make([]runtime.CheckResult, 0)
 	if input.Operation == core.MutationInsert {
-		if value, exists := input.Values["create_time"]; !exists || value.V == nil {
-			input.Values["create_time"] = core.ValTimestamp(input.Now.UnixMilli())
-			if err := context.RecordFixEvidence(runtime.FixEvidence{EntityType: "Product", ModelPath: "create_time", Source: runtime.FixEvidenceClock, SourceLabel: "graphClock"}); err != nil { panic(err) }
-		}
+		if failure := context.ApplyContextFix(input, "create_time", "now"); failure != nil { results = append(results, *failure) }
 	}
 
 	if input.Operation == core.MutationInsert {
-		if value, exists := input.Values["update_time"]; !exists || value.V == nil {
-			input.Values["update_time"] = core.ValTimestamp(input.Now.UnixMilli())
-			if err := context.RecordFixEvidence(runtime.FixEvidence{EntityType: "Product", ModelPath: "update_time", Source: runtime.FixEvidenceClock, SourceLabel: "graphClock"}); err != nil { panic(err) }
-		}
+		if failure := context.ApplyContextFix(input, "update_time", "now"); failure != nil { results = append(results, *failure) }
 	}
 	if input.Operation == core.MutationUpdate {
-		input.Values["update_time"] = core.ValTimestamp(input.Now.UnixMilli())
-		if err := context.RecordFixEvidence(runtime.FixEvidence{EntityType: "Product", ModelPath: "update_time", Source: runtime.FixEvidenceClock, SourceLabel: "graphClock"}); err != nil { panic(err) }
+		if failure := context.ApplyContextFix(input, "update_time", "now"); failure != nil { results = append(results, *failure) }
 	}
 
 
@@ -566,10 +538,7 @@ func checkProduct(context *runtime.UserContext, input *runtime.CheckAndFixInput)
 func checkOrderLine(context *runtime.UserContext, input *runtime.CheckAndFixInput) []runtime.CheckResult {
 	results := make([]runtime.CheckResult, 0)
 	if input.Operation == core.MutationInsert {
-		if value, exists := input.Values["create_time"]; !exists || value.V == nil {
-			input.Values["create_time"] = core.ValTimestamp(input.Now.UnixMilli())
-			if err := context.RecordFixEvidence(runtime.FixEvidence{EntityType: "OrderLine", ModelPath: "create_time", Source: runtime.FixEvidenceClock, SourceLabel: "graphClock"}); err != nil { panic(err) }
-		}
+		if failure := context.ApplyContextFix(input, "create_time", "now"); failure != nil { results = append(results, *failure) }
 	}
 
 
@@ -617,21 +586,14 @@ func checkOrderLine(context *runtime.UserContext, input *runtime.CheckAndFixInpu
 func checkOrderSearchPreset(context *runtime.UserContext, input *runtime.CheckAndFixInput) []runtime.CheckResult {
 	results := make([]runtime.CheckResult, 0)
 	if input.Operation == core.MutationInsert {
-		if value, exists := input.Values["create_time"]; !exists || value.V == nil {
-			input.Values["create_time"] = core.ValTimestamp(input.Now.UnixMilli())
-			if err := context.RecordFixEvidence(runtime.FixEvidence{EntityType: "OrderSearchPreset", ModelPath: "create_time", Source: runtime.FixEvidenceClock, SourceLabel: "graphClock"}); err != nil { panic(err) }
-		}
+		if failure := context.ApplyContextFix(input, "create_time", "now"); failure != nil { results = append(results, *failure) }
 	}
 
 	if input.Operation == core.MutationInsert {
-		if value, exists := input.Values["update_time"]; !exists || value.V == nil {
-			input.Values["update_time"] = core.ValTimestamp(input.Now.UnixMilli())
-			if err := context.RecordFixEvidence(runtime.FixEvidence{EntityType: "OrderSearchPreset", ModelPath: "update_time", Source: runtime.FixEvidenceClock, SourceLabel: "graphClock"}); err != nil { panic(err) }
-		}
+		if failure := context.ApplyContextFix(input, "update_time", "now"); failure != nil { results = append(results, *failure) }
 	}
 	if input.Operation == core.MutationUpdate {
-		input.Values["update_time"] = core.ValTimestamp(input.Now.UnixMilli())
-		if err := context.RecordFixEvidence(runtime.FixEvidence{EntityType: "OrderSearchPreset", ModelPath: "update_time", Source: runtime.FixEvidenceClock, SourceLabel: "graphClock"}); err != nil { panic(err) }
+		if failure := context.ApplyContextFix(input, "update_time", "now"); failure != nil { results = append(results, *failure) }
 	}
 
 
@@ -683,14 +645,14 @@ func checkOrderSearchPreset(context *runtime.UserContext, input *runtime.CheckAn
 }
 
 func ModuleWithBehaviors() *runtime.RuntimeModule {
-	module := runtime.NewRuntimeModule().Checkers(&generatedCheckerRegistry{})
+	module := runtime.NewRuntimeModule().Checkers(&generatedCheckerRegistry{}).CheckerPresentation(generatedCheckerPresentation)
 	{
 		descriptor := core.NewEntityDescriptor("commerce_platform").
 			TableName("commerce_platform_data")
 		descriptor.Property(core.NewPropertyDescriptor("id", core.TypeU64).ColumnName("id").NotNull().Id())
 		descriptor.Property(core.NewPropertyDescriptor("name", core.TypeText).ColumnName("name").NotNull())
-		descriptor.Property(core.NewPropertyDescriptor("create_time", core.TypeTimestamp).ColumnName("create_time").NotNull())
-		descriptor.Property(core.NewPropertyDescriptor("update_time", core.TypeTimestamp).ColumnName("update_time").NotNull())
+		descriptor.Property(core.NewPropertyDescriptor("create_time", core.TypeTimestamp).ColumnName("create_time").OnCreateFromContext("now").NotNull())
+		descriptor.Property(core.NewPropertyDescriptor("update_time", core.TypeTimestamp).ColumnName("update_time").OnCreateFromContext("now").OnUpdateFromContext("now").NotNull())
 		descriptor.Property(core.NewPropertyDescriptor("version", core.TypeI64).ColumnName("version").NotNull().Version())
 		descriptor.Relation(core.NewRelationDescriptor("customerList", "customer").LocalKey("id").ForeignKey("commerce_platform_id").Many())
 		descriptor.Relation(core.NewRelationDescriptor("orderStatusList", "order_status").LocalKey("id").ForeignKey("commerce_platform_id").Many())
@@ -711,8 +673,8 @@ func ModuleWithBehaviors() *runtime.RuntimeModule {
 		descriptor.Property(core.NewPropertyDescriptor("id", core.TypeU64).ColumnName("id").NotNull().Id())
 		descriptor.Property(core.NewPropertyDescriptor("name", core.TypeText).ColumnName("name").NotNull())
 		descriptor.Property(core.NewPropertyDescriptor("email", core.TypeText).ColumnName("email").NotNull())
-		descriptor.Property(core.NewPropertyDescriptor("create_time", core.TypeTimestamp).ColumnName("create_time").NotNull())
-		descriptor.Property(core.NewPropertyDescriptor("update_time", core.TypeTimestamp).ColumnName("update_time").NotNull())
+		descriptor.Property(core.NewPropertyDescriptor("create_time", core.TypeTimestamp).ColumnName("create_time").OnCreateFromContext("now").NotNull())
+		descriptor.Property(core.NewPropertyDescriptor("update_time", core.TypeTimestamp).ColumnName("update_time").OnCreateFromContext("now").OnUpdateFromContext("now").NotNull())
 		descriptor.Property(core.NewPropertyDescriptor("version", core.TypeI64).ColumnName("version").NotNull().Version())
 		descriptor.Property(core.NewPropertyDescriptor("commerce_platform_id", core.TypeU64).ColumnName("commerce_platform").NotNull())
 		descriptor.Relation(core.NewRelationDescriptor("commercePlatformEntity", "commerce_platform").CanonicalKey("commerce_platform").LocalKey("commerce_platform_id").ForeignKey("id"))
@@ -750,8 +712,8 @@ func ModuleWithBehaviors() *runtime.RuntimeModule {
 		descriptor.Property(core.NewPropertyDescriptor("order_number", core.TypeText).ColumnName("order_number").NotNull())
 		descriptor.Property(core.NewPropertyDescriptor("order_date", core.TypeDate).ColumnName("order_date").NotNull())
 		descriptor.Property(core.NewPropertyDescriptor("total_amount", core.TypeDecimal).ColumnName("total_amount").NotNull())
-		descriptor.Property(core.NewPropertyDescriptor("create_time", core.TypeTimestamp).ColumnName("create_time").NotNull())
-		descriptor.Property(core.NewPropertyDescriptor("update_time", core.TypeTimestamp).ColumnName("update_time").NotNull())
+		descriptor.Property(core.NewPropertyDescriptor("create_time", core.TypeTimestamp).ColumnName("create_time").OnCreateFromContext("now").NotNull())
+		descriptor.Property(core.NewPropertyDescriptor("update_time", core.TypeTimestamp).ColumnName("update_time").OnCreateFromContext("now").OnUpdateFromContext("now").NotNull())
 		descriptor.Property(core.NewPropertyDescriptor("version", core.TypeI64).ColumnName("version").NotNull().Version())
 		descriptor.Property(core.NewPropertyDescriptor("status_id", core.TypeU64).ColumnName("status").NotNull())
 		descriptor.Property(core.NewPropertyDescriptor("customer_id", core.TypeU64).ColumnName("customer").NotNull())
@@ -774,8 +736,8 @@ func ModuleWithBehaviors() *runtime.RuntimeModule {
 		descriptor.Property(core.NewPropertyDescriptor("name", core.TypeText).ColumnName("name").NotNull())
 		descriptor.Property(core.NewPropertyDescriptor("sku", core.TypeText).ColumnName("sku").NotNull())
 		descriptor.Property(core.NewPropertyDescriptor("image_url", core.TypeText).ColumnName("image_url"))
-		descriptor.Property(core.NewPropertyDescriptor("create_time", core.TypeTimestamp).ColumnName("create_time").NotNull())
-		descriptor.Property(core.NewPropertyDescriptor("update_time", core.TypeTimestamp).ColumnName("update_time").NotNull())
+		descriptor.Property(core.NewPropertyDescriptor("create_time", core.TypeTimestamp).ColumnName("create_time").OnCreateFromContext("now").NotNull())
+		descriptor.Property(core.NewPropertyDescriptor("update_time", core.TypeTimestamp).ColumnName("update_time").OnCreateFromContext("now").OnUpdateFromContext("now").NotNull())
 		descriptor.Property(core.NewPropertyDescriptor("version", core.TypeI64).ColumnName("version").NotNull().Version())
 		descriptor.Property(core.NewPropertyDescriptor("commerce_platform_id", core.TypeU64).ColumnName("commerce_platform").NotNull())
 		descriptor.Relation(core.NewRelationDescriptor("commercePlatformEntity", "commerce_platform").CanonicalKey("commerce_platform").LocalKey("commerce_platform_id").ForeignKey("id"))
@@ -794,7 +756,7 @@ func ModuleWithBehaviors() *runtime.RuntimeModule {
 		descriptor.Property(core.NewPropertyDescriptor("product_name", core.TypeText).ColumnName("product_name").NotNull())
 		descriptor.Property(core.NewPropertyDescriptor("sku", core.TypeText).ColumnName("sku").NotNull())
 		descriptor.Property(core.NewPropertyDescriptor("quantity", core.TypeI64).ColumnName("quantity").Int32().NotNull())
-		descriptor.Property(core.NewPropertyDescriptor("create_time", core.TypeTimestamp).ColumnName("create_time").NotNull())
+		descriptor.Property(core.NewPropertyDescriptor("create_time", core.TypeTimestamp).ColumnName("create_time").OnCreateFromContext("now").NotNull())
 		descriptor.Property(core.NewPropertyDescriptor("version", core.TypeI64).ColumnName("version").NotNull().Version())
 		descriptor.Property(core.NewPropertyDescriptor("customer_order_id", core.TypeU64).ColumnName("customer_order").NotNull())
 		descriptor.Property(core.NewPropertyDescriptor("product_id", core.TypeU64).ColumnName("product").NotNull())
@@ -817,8 +779,8 @@ func ModuleWithBehaviors() *runtime.RuntimeModule {
 		descriptor.Property(core.NewPropertyDescriptor("filter_json", core.TypeText).ColumnName("filter_json").NotNull())
 		descriptor.Property(core.NewPropertyDescriptor("request_id", core.TypeText).ColumnName("request_id").NotNull())
 		descriptor.Property(core.NewPropertyDescriptor("owner_user_id", core.TypeText).ColumnName("owner_user_id").NotNull())
-		descriptor.Property(core.NewPropertyDescriptor("create_time", core.TypeTimestamp).ColumnName("create_time").NotNull())
-		descriptor.Property(core.NewPropertyDescriptor("update_time", core.TypeTimestamp).ColumnName("update_time").NotNull())
+		descriptor.Property(core.NewPropertyDescriptor("create_time", core.TypeTimestamp).ColumnName("create_time").OnCreateFromContext("now").NotNull())
+		descriptor.Property(core.NewPropertyDescriptor("update_time", core.TypeTimestamp).ColumnName("update_time").OnCreateFromContext("now").OnUpdateFromContext("now").NotNull())
 		descriptor.Property(core.NewPropertyDescriptor("version", core.TypeI64).ColumnName("version").NotNull().Version())
 		descriptor.Property(core.NewPropertyDescriptor("commerce_platform_id", core.TypeU64).ColumnName("commerce_platform").NotNull())
 		descriptor.Relation(core.NewRelationDescriptor("commercePlatformEntity", "commerce_platform").CanonicalKey("commerce_platform").LocalKey("commerce_platform_id").ForeignKey("id"))
@@ -846,7 +808,7 @@ func ServiceRuntimeFromEnv() (*runtime.UserContext, error) {
 		return nil, fmt.Errorf("missing environment variable ORDER_MANAGEMENT_SERVICE_CORE_DATABASE_URL")
 	}
 
-	db, err := provider.OpenDatabase(dbUrl)
+	db, err := sql.Open("sqlite3", dbUrl)
 	if err != nil {
 		return nil, err
 	}

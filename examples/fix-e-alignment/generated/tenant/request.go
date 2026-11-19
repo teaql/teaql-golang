@@ -73,7 +73,7 @@ func (r *TenantRequest) GetQuerySelection() *core.QuerySelection {
 }
 
 func (r *TenantRequest) GetEntityDescriptor() *core.EntityDescriptor {
-	return newLoadedTenant().EntityDescriptor()
+	return NewTenant().EntityDescriptor()
 }
 
 func (r *TenantRequest) NewRelationEntity() core.Entity {
@@ -90,6 +90,7 @@ func (r *TenantRequest) teaqlHydrateQueryRecord(rec core.Record) (*Tenant, error
 	entity := newLoadedTenant()
 	if err := entity.FromRecord(rec); err != nil { return nil, err }
 	if relationValue, selected := rec["purchaseOrderList"]; selected {
+		entity.markRelationLoaded("purchaseOrderList")
 		factory := r.relationFactories["purchaseOrderList"]
 		if factory == nil { return nil, fmt.Errorf("missing generated query hydrator for relation purchaseOrderList") }
 		childRecords, ok := relationValue.V.([]core.Record)
@@ -103,6 +104,7 @@ func (r *TenantRequest) teaqlHydrateQueryRecord(rec core.Record) (*Tenant, error
 				entity.PurchaseOrderList().Add(childEntity)
 			}}
 	if relationValue, selected := rec["orderItemList"]; selected {
+		entity.markRelationLoaded("orderItemList")
 		factory := r.relationFactories["orderItemList"]
 		if factory == nil { return nil, fmt.Errorf("missing generated query hydrator for relation orderItemList") }
 		childRecords, ok := relationValue.V.([]core.Record)
@@ -724,10 +726,16 @@ func (r *TenantRequest) WithoutOrderItemListMatching(child *order_item.OrderItem
 	return r
 }
 
-func (e *ExecutableTenantRequest) NewEntity(context *runtime.UserContext) (*Tenant, error) {
+func (e *ExecutableTenantRequest) NewEntity(context *runtime.UserContext) *Tenant {
 	r := e.request
 	if _, err := core.NewQueryIntent(&r.commentText, &r.purposeText); err != nil { panic(err) }
-	return NewTenant(context)
+	entity := NewTenant()
+	initialized := context.InitializeEntity("Tenant", entity)
+	typed, ok := initialized.(*Tenant)
+	if !ok {
+		panic("entity initializer changed Tenant to an incompatible type")
+	}
+	return typed
 }
 
 func (e *ExecutableTenantRequest) ExecuteForOne(context *runtime.UserContext) (*Tenant, error) {
@@ -856,29 +864,11 @@ func (r *TenantRequest) GroupById() *TenantRequest {
 	r.Query.WithGroupBy("id")
 	return r
 }
-
-func (r *TenantRequest) GroupByIdAs(alias string) *TenantRequest {
-	r.Query.WithGroupBy("id")
-	r.Query.ProjectExpr(alias, core.ExprColumnNode("id"))
-	return r
-}
 func (r *TenantRequest) GroupByName() *TenantRequest {
 	r.Query.WithGroupBy("name")
 	return r
 }
-
-func (r *TenantRequest) GroupByNameAs(alias string) *TenantRequest {
-	r.Query.WithGroupBy("name")
-	r.Query.ProjectExpr(alias, core.ExprColumnNode("name"))
-	return r
-}
 func (r *TenantRequest) GroupByVersion() *TenantRequest {
 	r.Query.WithGroupBy("version")
-	return r
-}
-
-func (r *TenantRequest) GroupByVersionAs(alias string) *TenantRequest {
-	r.Query.WithGroupBy("version")
-	r.Query.ProjectExpr(alias, core.ExprColumnNode("version"))
 	return r
 }

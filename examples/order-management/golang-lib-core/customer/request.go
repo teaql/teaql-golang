@@ -72,7 +72,7 @@ func (r *CustomerRequest) GetQuerySelection() *core.QuerySelection {
 }
 
 func (r *CustomerRequest) GetEntityDescriptor() *core.EntityDescriptor {
-	return newLoadedCustomer().EntityDescriptor()
+	return NewCustomer().EntityDescriptor()
 }
 
 func (r *CustomerRequest) NewRelationEntity() core.Entity {
@@ -99,6 +99,7 @@ func (r *CustomerRequest) teaqlHydrateQueryRecord(rec core.Record) (*Customer, e
 		}
 	}
 	if relationValue, selected := rec["customerOrderList"]; selected {
+		entity.markRelationLoaded("customerOrderList")
 		factory := r.relationFactories["customerOrderList"]
 		if factory == nil { return nil, fmt.Errorf("missing generated query hydrator for relation customerOrderList") }
 		childRecords, ok := relationValue.V.([]core.Record)
@@ -998,10 +999,16 @@ func (r *CustomerRequest) WithoutCustomerOrderListMatching(child *customer_order
 	return r
 }
 
-func (e *ExecutableCustomerRequest) NewEntity(context *runtime.UserContext) (*Customer, error) {
+func (e *ExecutableCustomerRequest) NewEntity(context *runtime.UserContext) *Customer {
 	r := e.request
 	if _, err := core.NewQueryIntent(&r.commentText, &r.purposeText); err != nil { panic(err) }
-	return NewCustomer(context)
+	entity := NewCustomer()
+	initialized := context.InitializeEntity("Customer", entity)
+	typed, ok := initialized.(*Customer)
+	if !ok {
+		panic("entity initializer changed Customer to an incompatible type")
+	}
+	return typed
 }
 
 func (e *ExecutableCustomerRequest) ExecuteForOne(context *runtime.UserContext) (*Customer, error) {
@@ -1130,69 +1137,27 @@ func (r *CustomerRequest) GroupById() *CustomerRequest {
 	r.Query.WithGroupBy("id")
 	return r
 }
-
-func (r *CustomerRequest) GroupByIdAs(alias string) *CustomerRequest {
-	r.Query.WithGroupBy("id")
-	r.Query.ProjectExpr(alias, core.ExprColumnNode("id"))
-	return r
-}
 func (r *CustomerRequest) GroupByName() *CustomerRequest {
 	r.Query.WithGroupBy("name")
-	return r
-}
-
-func (r *CustomerRequest) GroupByNameAs(alias string) *CustomerRequest {
-	r.Query.WithGroupBy("name")
-	r.Query.ProjectExpr(alias, core.ExprColumnNode("name"))
 	return r
 }
 func (r *CustomerRequest) GroupByEmail() *CustomerRequest {
 	r.Query.WithGroupBy("email")
 	return r
 }
-
-func (r *CustomerRequest) GroupByEmailAs(alias string) *CustomerRequest {
-	r.Query.WithGroupBy("email")
-	r.Query.ProjectExpr(alias, core.ExprColumnNode("email"))
-	return r
-}
 func (r *CustomerRequest) GroupByCommercePlatform() *CustomerRequest {
 	r.Query.WithGroupBy("commerce_platform_id")
-	return r
-}
-
-func (r *CustomerRequest) GroupByCommercePlatformAs(alias string) *CustomerRequest {
-	r.Query.WithGroupBy("commerce_platform_id")
-	r.Query.ProjectExpr(alias, core.ExprColumnNode("commerce_platform_id"))
 	return r
 }
 func (r *CustomerRequest) GroupByCreateTime() *CustomerRequest {
 	r.Query.WithGroupBy("create_time")
 	return r
 }
-
-func (r *CustomerRequest) GroupByCreateTimeAs(alias string) *CustomerRequest {
-	r.Query.WithGroupBy("create_time")
-	r.Query.ProjectExpr(alias, core.ExprColumnNode("create_time"))
-	return r
-}
 func (r *CustomerRequest) GroupByUpdateTime() *CustomerRequest {
 	r.Query.WithGroupBy("update_time")
 	return r
 }
-
-func (r *CustomerRequest) GroupByUpdateTimeAs(alias string) *CustomerRequest {
-	r.Query.WithGroupBy("update_time")
-	r.Query.ProjectExpr(alias, core.ExprColumnNode("update_time"))
-	return r
-}
 func (r *CustomerRequest) GroupByVersion() *CustomerRequest {
 	r.Query.WithGroupBy("version")
-	return r
-}
-
-func (r *CustomerRequest) GroupByVersionAs(alias string) *CustomerRequest {
-	r.Query.WithGroupBy("version")
-	r.Query.ProjectExpr(alias, core.ExprColumnNode("version"))
 	return r
 }

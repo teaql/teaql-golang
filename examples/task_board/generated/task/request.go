@@ -72,7 +72,7 @@ func (r *TaskRequest) GetQuerySelection() *core.QuerySelection {
 }
 
 func (r *TaskRequest) GetEntityDescriptor() *core.EntityDescriptor {
-	return newLoadedTask().EntityDescriptor()
+	return NewTask().EntityDescriptor()
 }
 
 func (r *TaskRequest) NewRelationEntity() core.Entity {
@@ -109,6 +109,7 @@ func (r *TaskRequest) teaqlHydrateQueryRecord(rec core.Record) (*Task, error) {
 		}
 	}
 	if relationValue, selected := rec["taskExecutionLogList"]; selected {
+		entity.markRelationLoaded("taskExecutionLogList")
 		factory := r.relationFactories["taskExecutionLogList"]
 		if factory == nil { return nil, fmt.Errorf("missing generated query hydrator for relation taskExecutionLogList") }
 		childRecords, ok := relationValue.V.([]core.Record)
@@ -735,10 +736,16 @@ func (r *TaskRequest) WithoutTaskExecutionLogListMatching(child *task_execution_
 	return r
 }
 
-func (e *ExecutableTaskRequest) NewEntity(context *runtime.UserContext) (*Task, error) {
+func (e *ExecutableTaskRequest) NewEntity(context *runtime.UserContext) *Task {
 	r := e.request
 	if _, err := core.NewQueryIntent(&r.commentText, &r.purposeText); err != nil { panic(err) }
-	return NewTask(context)
+	entity := NewTask()
+	initialized := context.InitializeEntity("Task", entity)
+	typed, ok := initialized.(*Task)
+	if !ok {
+		panic("entity initializer changed Task to an incompatible type")
+	}
+	return typed
 }
 
 func (e *ExecutableTaskRequest) ExecuteForOne(context *runtime.UserContext) (*Task, error) {
@@ -867,49 +874,19 @@ func (r *TaskRequest) GroupById() *TaskRequest {
 	r.Query.WithGroupBy("id")
 	return r
 }
-
-func (r *TaskRequest) GroupByIdAs(alias string) *TaskRequest {
-	r.Query.WithGroupBy("id")
-	r.Query.ProjectExpr(alias, core.ExprColumnNode("id"))
-	return r
-}
 func (r *TaskRequest) GroupByName() *TaskRequest {
 	r.Query.WithGroupBy("name")
-	return r
-}
-
-func (r *TaskRequest) GroupByNameAs(alias string) *TaskRequest {
-	r.Query.WithGroupBy("name")
-	r.Query.ProjectExpr(alias, core.ExprColumnNode("name"))
 	return r
 }
 func (r *TaskRequest) GroupByStatus() *TaskRequest {
 	r.Query.WithGroupBy("status_id")
 	return r
 }
-
-func (r *TaskRequest) GroupByStatusAs(alias string) *TaskRequest {
-	r.Query.WithGroupBy("status_id")
-	r.Query.ProjectExpr(alias, core.ExprColumnNode("status_id"))
-	return r
-}
 func (r *TaskRequest) GroupByPlatform() *TaskRequest {
 	r.Query.WithGroupBy("platform_id")
 	return r
 }
-
-func (r *TaskRequest) GroupByPlatformAs(alias string) *TaskRequest {
-	r.Query.WithGroupBy("platform_id")
-	r.Query.ProjectExpr(alias, core.ExprColumnNode("platform_id"))
-	return r
-}
 func (r *TaskRequest) GroupByVersion() *TaskRequest {
 	r.Query.WithGroupBy("version")
-	return r
-}
-
-func (r *TaskRequest) GroupByVersionAs(alias string) *TaskRequest {
-	r.Query.WithGroupBy("version")
-	r.Query.ProjectExpr(alias, core.ExprColumnNode("version"))
 	return r
 }

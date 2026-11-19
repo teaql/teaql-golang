@@ -31,6 +31,12 @@ var _ = strings.Join
 
 func generatedPtr[T any](value T) *T { return &value }
 
+var generatedCheckerPresentation = func() *runtime.CheckerPresentationModel {
+	model, err := runtime.ParseCheckerPresentationModel([]byte("{\"schema\":\"teaql.checker-model/v1\",\"revision\":\"sha256:2172a0424f09e1f68b154751840247823c35e97ed6d93ca93b381daed5d5d2f0\",\"entities\":{\"customer\":{\"labels\":{\"en\":\"Customer\"},\"fields\":[{\"name\":\"customer_order_list\",\"targetType\":\"customer_order\",\"labels\":{\"en\":\"Customer Order\"},\"aliases\":[\"CustomerOrderList\",\"customerOrderList\"]},{\"name\":\"id\",\"labels\":{\"en\":\"id\"},\"aliases\":[\"Id\"]},{\"name\":\"name\",\"labels\":{\"en\":\"name\"},\"aliases\":[\"Name\"]},{\"name\":\"platform\",\"targetType\":\"platform\",\"labels\":{\"en\":\"Commerce Platform\"},\"aliases\":[\"Platform\"]},{\"name\":\"version\",\"labels\":{\"en\":\"version\"},\"aliases\":[\"Version\"]}]},\"customer_order\":{\"labels\":{\"en\":\"Customer Order\"},\"fields\":[{\"name\":\"customer\",\"targetType\":\"customer\",\"labels\":{\"en\":\"Customer\"},\"aliases\":[\"Customer\"]},{\"name\":\"id\",\"labels\":{\"en\":\"id\"},\"aliases\":[\"Id\"]},{\"name\":\"order_date\",\"labels\":{\"en\":\"order date\"},\"aliases\":[\"OrderDate\",\"orderDate\"]},{\"name\":\"order_item_list\",\"targetType\":\"order_item\",\"labels\":{\"en\":\"Order Item\"},\"aliases\":[\"OrderItemList\",\"orderItemList\"]},{\"name\":\"order_number\",\"labels\":{\"en\":\"order number\"},\"aliases\":[\"OrderNumber\",\"orderNumber\"]},{\"name\":\"status\",\"targetType\":\"order_status\",\"labels\":{\"en\":\"Order Status\"},\"aliases\":[\"Status\"]},{\"name\":\"total_amount\",\"labels\":{\"en\":\"total amount\"},\"aliases\":[\"TotalAmount\",\"totalAmount\"]},{\"name\":\"version\",\"labels\":{\"en\":\"version\"},\"aliases\":[\"Version\"]}]},\"order_item\":{\"labels\":{\"en\":\"Order Item\"},\"fields\":[{\"name\":\"customer_order\",\"targetType\":\"customer_order\",\"labels\":{\"en\":\"Customer Order\"},\"aliases\":[\"CustomerOrder\",\"customerOrder\"]},{\"name\":\"id\",\"labels\":{\"en\":\"id\"},\"aliases\":[\"Id\"]},{\"name\":\"product_name\",\"labels\":{\"en\":\"product name\"},\"aliases\":[\"ProductName\",\"productName\"]},{\"name\":\"quantity\",\"labels\":{\"en\":\"quantity\"},\"aliases\":[\"Quantity\"]},{\"name\":\"unit_price\",\"labels\":{\"en\":\"unit price\"},\"aliases\":[\"UnitPrice\",\"unitPrice\"]},{\"name\":\"version\",\"labels\":{\"en\":\"version\"},\"aliases\":[\"Version\"]}]},\"order_status\":{\"labels\":{\"en\":\"Order Status\"},\"fields\":[{\"name\":\"code\",\"labels\":{\"en\":\"code\"},\"aliases\":[\"Code\"]},{\"name\":\"color\",\"labels\":{\"en\":\"color\"},\"aliases\":[\"Color\"]},{\"name\":\"customer_order_list\",\"targetType\":\"customer_order\",\"labels\":{\"en\":\"Customer Order\"},\"aliases\":[\"CustomerOrderList\",\"customerOrderList\"]},{\"name\":\"display_order\",\"labels\":{\"en\":\"display order\"},\"aliases\":[\"DisplayOrder\",\"displayOrder\"]},{\"name\":\"id\",\"labels\":{\"en\":\"id\"},\"aliases\":[\"Id\"]},{\"name\":\"name\",\"labels\":{\"en\":\"name\"},\"aliases\":[\"Name\"]},{\"name\":\"platform\",\"targetType\":\"platform\",\"labels\":{\"en\":\"Commerce Platform\"},\"aliases\":[\"Platform\"]},{\"name\":\"version\",\"labels\":{\"en\":\"version\"},\"aliases\":[\"Version\"]}]},\"platform\":{\"labels\":{\"en\":\"Commerce Platform\"},\"fields\":[{\"name\":\"customer_list\",\"targetType\":\"customer\",\"labels\":{\"en\":\"Customer\"},\"aliases\":[\"CustomerList\",\"customerList\"]},{\"name\":\"id\",\"labels\":{\"en\":\"id\"},\"aliases\":[\"Id\"]},{\"name\":\"name\",\"labels\":{\"en\":\"name\"},\"aliases\":[\"Name\"]},{\"name\":\"order_status_list\",\"targetType\":\"order_status\",\"labels\":{\"en\":\"Order Status\"},\"aliases\":[\"OrderStatusList\",\"orderStatusList\"]},{\"name\":\"version\",\"labels\":{\"en\":\"version\"},\"aliases\":[\"Version\"]}]}}}"))
+	if err != nil { panic("Invalid generated Checker presentation metadata") }
+	return model
+}()
+
 func ensureGeneratedBootstrapOnce(context *runtime.UserContext) error {
 	previousActor := context.UserIdentifier()
 	previousCategory := context.GetResource("bootstrapCategory")
@@ -40,9 +46,7 @@ func ensureGeneratedBootstrapOnce(context *runtime.UserContext) error {
 	platform1, err := Q.Platforms().WithIdIs(uint64(1)).Comment("what: locate generated bootstrap entity").Purpose("why: idempotent runtime bootstrap").ExecuteForOne(context)
 	if err != nil { return fmt.Errorf("query bootstrap Platform(1): %w", err) }
 	if platform1 == nil {
-		platform1, err = Q.Platforms().Comment("Create generated bootstrap entity").Purpose("Initialize runtime bootstrap").NewEntity(context)
-		if err != nil { return err }
-		platform1.UpdateId(uint64(1))
+		platform1 = platform.NewPlatform().UpdateId(uint64(1))
 		platform1.UpdateName("Commerce Test Platform")
 		if _, err = platform1.AuditAs("create model root Platform(1)").Save(context); err != nil {
 			createErr := err
@@ -59,9 +63,7 @@ func ensureGeneratedBootstrapOnce(context *runtime.UserContext) error {
 	order_status1001, err := Q.OrderStatuses().WithIdIs(uint64(1001)).Comment("what: locate generated bootstrap entity").Purpose("why: idempotent runtime bootstrap").ExecuteForOne(context)
 	if err != nil { return fmt.Errorf("query bootstrap OrderStatus(1001): %w", err) }
 	if order_status1001 == nil {
-		order_status1001, err = Q.OrderStatuses().Comment("Create generated bootstrap entity").Purpose("Initialize runtime bootstrap").NewEntity(context)
-		if err != nil { return err }
-		order_status1001.UpdateId(uint64(1001))
+		order_status1001 = order_status.NewOrderStatus().UpdateId(uint64(1001))
 		order_status1001.UpdatePlatformId(uint64(1))
 		order_status1001.UpdateName("New")
 		order_status1001.UpdateCode("NEW")
@@ -100,9 +102,7 @@ func ensureGeneratedBootstrapOnce(context *runtime.UserContext) error {
 	order_status1002, err := Q.OrderStatuses().WithIdIs(uint64(1002)).Comment("what: locate generated bootstrap entity").Purpose("why: idempotent runtime bootstrap").ExecuteForOne(context)
 	if err != nil { return fmt.Errorf("query bootstrap OrderStatus(1002): %w", err) }
 	if order_status1002 == nil {
-		order_status1002, err = Q.OrderStatuses().Comment("Create generated bootstrap entity").Purpose("Initialize runtime bootstrap").NewEntity(context)
-		if err != nil { return err }
-		order_status1002.UpdateId(uint64(1002))
+		order_status1002 = order_status.NewOrderStatus().UpdateId(uint64(1002))
 		order_status1002.UpdatePlatformId(uint64(1))
 		order_status1002.UpdateName("Paid")
 		order_status1002.UpdateCode("PAID")
@@ -141,9 +141,7 @@ func ensureGeneratedBootstrapOnce(context *runtime.UserContext) error {
 	order_status1003, err := Q.OrderStatuses().WithIdIs(uint64(1003)).Comment("what: locate generated bootstrap entity").Purpose("why: idempotent runtime bootstrap").ExecuteForOne(context)
 	if err != nil { return fmt.Errorf("query bootstrap OrderStatus(1003): %w", err) }
 	if order_status1003 == nil {
-		order_status1003, err = Q.OrderStatuses().Comment("Create generated bootstrap entity").Purpose("Initialize runtime bootstrap").NewEntity(context)
-		if err != nil { return err }
-		order_status1003.UpdateId(uint64(1003))
+		order_status1003 = order_status.NewOrderStatus().UpdateId(uint64(1003))
 		order_status1003.UpdatePlatformId(uint64(1))
 		order_status1003.UpdateName("Cancelled")
 		order_status1003.UpdateCode("CANCELLED")
@@ -193,7 +191,7 @@ func ensureGeneratedBootstrap(context *runtime.UserContext) error {
 
 
 func Module() *runtime.RuntimeModule {
-	module := runtime.NewRuntimeModule().Checkers(&generatedCheckerRegistry{})
+	module := runtime.NewRuntimeModule().Checkers(&generatedCheckerRegistry{}).CheckerPresentation(generatedCheckerPresentation)
 	{
 		descriptor := core.NewEntityDescriptor("Commerce Platform").
 			TableName("platform_data")
@@ -430,7 +428,7 @@ func checkOrderItem(context *runtime.UserContext, input *runtime.CheckAndFixInpu
 }
 
 func ModuleWithBehaviors() *runtime.RuntimeModule {
-	module := runtime.NewRuntimeModule().Checkers(&generatedCheckerRegistry{})
+	module := runtime.NewRuntimeModule().Checkers(&generatedCheckerRegistry{}).CheckerPresentation(generatedCheckerPresentation)
 	{
 		descriptor := core.NewEntityDescriptor("Commerce Platform").
 			TableName("platform_data")
@@ -535,7 +533,7 @@ func ServiceRuntimeFromEnv() (*runtime.UserContext, error) {
 		return nil, fmt.Errorf("missing environment variable REQUEST_TREE_ORDER_SERVICE_CORE_DATABASE_URL")
 	}
 
-	db, err := provider.OpenDatabase(dbUrl)
+	db, err := sql.Open("sqlite3", dbUrl)
 	if err != nil {
 		return nil, err
 	}

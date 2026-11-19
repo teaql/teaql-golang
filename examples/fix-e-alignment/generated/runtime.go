@@ -29,6 +29,12 @@ var _ = strings.Join
 
 func generatedPtr[T any](value T) *T { return &value }
 
+var generatedCheckerPresentation = func() *runtime.CheckerPresentationModel {
+	model, err := runtime.ParseCheckerPresentationModel([]byte("{\"schema\":\"teaql.checker-model/v1\",\"revision\":\"sha256:420d8fa3accc2d0ce1ab8a8e2c795b58527f3db5a89eef6ce84b31a161db9068\",\"entities\":{\"order_item\":{\"labels\":{\"en\":\"order item\"},\"fields\":[{\"name\":\"create_time\",\"labels\":{\"en\":\"create time\"},\"aliases\":[\"CreateTime\",\"createTime\"]},{\"name\":\"id\",\"labels\":{\"en\":\"id\"},\"aliases\":[\"Id\"]},{\"name\":\"product_name\",\"labels\":{\"en\":\"product name\"},\"aliases\":[\"ProductName\",\"productName\"]},{\"name\":\"purchase_order\",\"targetType\":\"purchase_order\",\"labels\":{\"en\":\"purchase order\"},\"aliases\":[\"PurchaseOrder\",\"purchaseOrder\"]},{\"name\":\"tenant\",\"targetType\":\"tenant\",\"labels\":{\"en\":\"tenant\"},\"aliases\":[\"Tenant\"]},{\"name\":\"unit_price\",\"labels\":{\"en\":\"unit price\"},\"aliases\":[\"UnitPrice\",\"unitPrice\"]},{\"name\":\"update_time\",\"labels\":{\"en\":\"update time\"},\"aliases\":[\"UpdateTime\",\"updateTime\"]},{\"name\":\"version\",\"labels\":{\"en\":\"version\"},\"aliases\":[\"Version\"]}]},\"purchase_order\":{\"labels\":{\"en\":\"purchase order\"},\"fields\":[{\"name\":\"contact_phone\",\"labels\":{\"en\":\"contact phone\"},\"aliases\":[\"ContactPhone\",\"contactPhone\"]},{\"name\":\"create_time\",\"labels\":{\"en\":\"create time\"},\"aliases\":[\"CreateTime\",\"createTime\"]},{\"name\":\"id\",\"labels\":{\"en\":\"id\"},\"aliases\":[\"Id\"]},{\"name\":\"internal_note\",\"labels\":{\"en\":\"internal note\"},\"aliases\":[\"InternalNote\",\"internalNote\"]},{\"name\":\"order_item_list\",\"targetType\":\"order_item\",\"labels\":{\"en\":\"order item\"},\"aliases\":[\"OrderItemList\",\"orderItemList\"]},{\"name\":\"tenant\",\"targetType\":\"tenant\",\"labels\":{\"en\":\"tenant\"},\"aliases\":[\"Tenant\"]},{\"name\":\"update_time\",\"labels\":{\"en\":\"update time\"},\"aliases\":[\"UpdateTime\",\"updateTime\"]},{\"name\":\"version\",\"labels\":{\"en\":\"version\"},\"aliases\":[\"Version\"]}]},\"tenant\":{\"labels\":{\"en\":\"tenant\"},\"fields\":[{\"name\":\"id\",\"labels\":{\"en\":\"id\"},\"aliases\":[\"Id\"]},{\"name\":\"name\",\"labels\":{\"en\":\"name\"},\"aliases\":[\"Name\"]},{\"name\":\"order_item_list\",\"targetType\":\"order_item\",\"labels\":{\"en\":\"order item\"},\"aliases\":[\"OrderItemList\",\"orderItemList\"]},{\"name\":\"purchase_order_list\",\"targetType\":\"purchase_order\",\"labels\":{\"en\":\"purchase order\"},\"aliases\":[\"PurchaseOrderList\",\"purchaseOrderList\"]},{\"name\":\"version\",\"labels\":{\"en\":\"version\"},\"aliases\":[\"Version\"]}]}}}"))
+	if err != nil { panic("Invalid generated Checker presentation metadata") }
+	return model
+}()
+
 func ensureGeneratedBootstrapOnce(context *runtime.UserContext) error {
 	previousActor := context.UserIdentifier()
 	previousCategory := context.GetResource("bootstrapCategory")
@@ -38,9 +44,7 @@ func ensureGeneratedBootstrapOnce(context *runtime.UserContext) error {
 	tenant1, err := Q.Tenants().WithIdIs(uint64(1)).Comment("what: locate generated bootstrap entity").Purpose("why: idempotent runtime bootstrap").ExecuteForOne(context)
 	if err != nil { return fmt.Errorf("query bootstrap Tenant(1): %w", err) }
 	if tenant1 == nil {
-		tenant1, err = Q.Tenants().Comment("Create generated bootstrap entity").Purpose("Initialize runtime bootstrap").NewEntity(context)
-		if err != nil { return err }
-		tenant1.UpdateId(uint64(1))
+		tenant1 = tenant.NewTenant().UpdateId(uint64(1))
 		tenant1.UpdateName("Tenant Name")
 		if _, err = tenant1.AuditAs("create model root Tenant(1)").Save(context); err != nil {
 			createErr := err
@@ -68,7 +72,7 @@ func ensureGeneratedBootstrap(context *runtime.UserContext) error {
 
 
 func Module() *runtime.RuntimeModule {
-	module := runtime.NewRuntimeModule().Checkers(&generatedCheckerRegistry{})
+	module := runtime.NewRuntimeModule().Checkers(&generatedCheckerRegistry{}).CheckerPresentation(generatedCheckerPresentation)
 	{
 		descriptor := core.NewEntityDescriptor("tenant").
 			TableName("tenant_data")
@@ -87,8 +91,8 @@ func Module() *runtime.RuntimeModule {
 		descriptor.Property(core.NewPropertyDescriptor("id", core.TypeU64).ColumnName("id").NotNull().Id())
 		descriptor.Property(core.NewPropertyDescriptor("contact_phone", core.TypeText).ColumnName("contact_phone").NotNull())
 		descriptor.Property(core.NewPropertyDescriptor("internal_note", core.TypeText).ColumnName("internal_note"))
-		descriptor.Property(core.NewPropertyDescriptor("create_time", core.TypeTimestamp).ColumnName("create_time").NotNull())
-		descriptor.Property(core.NewPropertyDescriptor("update_time", core.TypeTimestamp).ColumnName("update_time").NotNull())
+		descriptor.Property(core.NewPropertyDescriptor("create_time", core.TypeTimestamp).ColumnName("create_time").OnCreateFromContext("now").NotNull())
+		descriptor.Property(core.NewPropertyDescriptor("update_time", core.TypeTimestamp).ColumnName("update_time").OnCreateFromContext("now").OnUpdateFromContext("now").NotNull())
 		descriptor.Property(core.NewPropertyDescriptor("version", core.TypeI64).ColumnName("version").NotNull().Version())
 		descriptor.Property(core.NewPropertyDescriptor("tenant_id", core.TypeU64).ColumnName("tenant").NotNull())
 		descriptor.Relation(core.NewRelationDescriptor("tenantEntity", "tenant").CanonicalKey("tenant").LocalKey("tenant_id").ForeignKey("id"))
@@ -103,8 +107,8 @@ func Module() *runtime.RuntimeModule {
 		descriptor.Property(core.NewPropertyDescriptor("id", core.TypeU64).ColumnName("id").NotNull().Id())
 		descriptor.Property(core.NewPropertyDescriptor("product_name", core.TypeText).ColumnName("product_name").NotNull())
 		descriptor.Property(core.NewPropertyDescriptor("unit_price", core.TypeDecimal).ColumnName("unit_price").NotNull())
-		descriptor.Property(core.NewPropertyDescriptor("create_time", core.TypeTimestamp).ColumnName("create_time").NotNull())
-		descriptor.Property(core.NewPropertyDescriptor("update_time", core.TypeTimestamp).ColumnName("update_time").NotNull())
+		descriptor.Property(core.NewPropertyDescriptor("create_time", core.TypeTimestamp).ColumnName("create_time").OnCreateFromContext("now").NotNull())
+		descriptor.Property(core.NewPropertyDescriptor("update_time", core.TypeTimestamp).ColumnName("update_time").OnCreateFromContext("now").OnUpdateFromContext("now").NotNull())
 		descriptor.Property(core.NewPropertyDescriptor("version", core.TypeI64).ColumnName("version").NotNull().Version())
 		descriptor.Property(core.NewPropertyDescriptor("purchase_order_id", core.TypeU64).ColumnName("purchase_order").NotNull())
 		descriptor.Property(core.NewPropertyDescriptor("tenant_id", core.TypeU64).ColumnName("tenant").NotNull())
@@ -166,7 +170,7 @@ func checkPurchaseOrder(context *runtime.UserContext, input *runtime.CheckAndFix
 	if input.Operation == core.MutationInsert {
 		root, err := context.RequireActiveRoot("Tenant")
 		if err != nil {
-			return []runtime.CheckResult{{RuleID: "context_root_missing", EntityType: "PurchaseOrder", CanonicalLocation: runtime.Location().Property("tenant")}}
+			results = append(results, runtime.CheckResult{RuleID: "context_root", CanonicalLocation: runtime.Location().Property("tenant"), SystemValue: "Tenant"})
 		} else if value, exists := input.Values["tenant"]; exists && value.V != nil {
 			if supplied, ok := value.TryU64(); !ok || supplied != root.ID { results = append(results, runtime.CheckResult{RuleID: "context_root_mismatch", CanonicalLocation: runtime.Location().Property("tenant"), InputValue: value.V, SystemValue: root.ID}) }
 		} else {
@@ -177,7 +181,7 @@ func checkPurchaseOrder(context *runtime.UserContext, input *runtime.CheckAndFix
 		if value, exists := input.Values["tenant"]; exists && value.V != nil {
 			root, err := context.RequireActiveRoot("Tenant")
 			if err != nil {
-				return []runtime.CheckResult{{RuleID: "context_root_missing", EntityType: "PurchaseOrder", CanonicalLocation: runtime.Location().Property("tenant")}}
+				results = append(results, runtime.CheckResult{RuleID: "context_root", CanonicalLocation: runtime.Location().Property("tenant"), SystemValue: "Tenant"})
 			} else if supplied, ok := value.TryU64(); !ok || supplied != root.ID {
 				results = append(results, runtime.CheckResult{RuleID: "context_root_mismatch", CanonicalLocation: runtime.Location().Property("tenant"), InputValue: value.V, SystemValue: root.ID})
 			}
@@ -187,21 +191,14 @@ func checkPurchaseOrder(context *runtime.UserContext, input *runtime.CheckAndFix
 
 
 	if input.Operation == core.MutationInsert {
-		if value, exists := input.Values["create_time"]; !exists || value.V == nil {
-			input.Values["create_time"] = core.ValTimestamp(input.Now.UnixMilli())
-			if err := context.RecordFixEvidence(runtime.FixEvidence{EntityType: "PurchaseOrder", ModelPath: "create_time", Source: runtime.FixEvidenceClock, SourceLabel: "graphClock"}); err != nil { panic(err) }
-		}
+		if failure := context.ApplyContextFix(input, "create_time", "now"); failure != nil { results = append(results, *failure) }
 	}
 
 	if input.Operation == core.MutationInsert {
-		if value, exists := input.Values["update_time"]; !exists || value.V == nil {
-			input.Values["update_time"] = core.ValTimestamp(input.Now.UnixMilli())
-			if err := context.RecordFixEvidence(runtime.FixEvidence{EntityType: "PurchaseOrder", ModelPath: "update_time", Source: runtime.FixEvidenceClock, SourceLabel: "graphClock"}); err != nil { panic(err) }
-		}
+		if failure := context.ApplyContextFix(input, "update_time", "now"); failure != nil { results = append(results, *failure) }
 	}
 	if input.Operation == core.MutationUpdate {
-		input.Values["update_time"] = core.ValTimestamp(input.Now.UnixMilli())
-		if err := context.RecordFixEvidence(runtime.FixEvidence{EntityType: "PurchaseOrder", ModelPath: "update_time", Source: runtime.FixEvidenceClock, SourceLabel: "graphClock"}); err != nil { panic(err) }
+		if failure := context.ApplyContextFix(input, "update_time", "now"); failure != nil { results = append(results, *failure) }
 	}
 
 
@@ -243,7 +240,7 @@ func checkOrderItem(context *runtime.UserContext, input *runtime.CheckAndFixInpu
 	if input.Operation == core.MutationInsert {
 		root, err := context.RequireActiveRoot("Tenant")
 		if err != nil {
-			return []runtime.CheckResult{{RuleID: "context_root_missing", EntityType: "OrderItem", CanonicalLocation: runtime.Location().Property("tenant")}}
+			results = append(results, runtime.CheckResult{RuleID: "context_root", CanonicalLocation: runtime.Location().Property("tenant"), SystemValue: "Tenant"})
 		} else if value, exists := input.Values["tenant"]; exists && value.V != nil {
 			if supplied, ok := value.TryU64(); !ok || supplied != root.ID { results = append(results, runtime.CheckResult{RuleID: "context_root_mismatch", CanonicalLocation: runtime.Location().Property("tenant"), InputValue: value.V, SystemValue: root.ID}) }
 		} else {
@@ -254,7 +251,7 @@ func checkOrderItem(context *runtime.UserContext, input *runtime.CheckAndFixInpu
 		if value, exists := input.Values["tenant"]; exists && value.V != nil {
 			root, err := context.RequireActiveRoot("Tenant")
 			if err != nil {
-				return []runtime.CheckResult{{RuleID: "context_root_missing", EntityType: "OrderItem", CanonicalLocation: runtime.Location().Property("tenant")}}
+				results = append(results, runtime.CheckResult{RuleID: "context_root", CanonicalLocation: runtime.Location().Property("tenant"), SystemValue: "Tenant"})
 			} else if supplied, ok := value.TryU64(); !ok || supplied != root.ID {
 				results = append(results, runtime.CheckResult{RuleID: "context_root_mismatch", CanonicalLocation: runtime.Location().Property("tenant"), InputValue: value.V, SystemValue: root.ID})
 			}
@@ -264,21 +261,14 @@ func checkOrderItem(context *runtime.UserContext, input *runtime.CheckAndFixInpu
 
 
 	if input.Operation == core.MutationInsert {
-		if value, exists := input.Values["create_time"]; !exists || value.V == nil {
-			input.Values["create_time"] = core.ValTimestamp(input.Now.UnixMilli())
-			if err := context.RecordFixEvidence(runtime.FixEvidence{EntityType: "OrderItem", ModelPath: "create_time", Source: runtime.FixEvidenceClock, SourceLabel: "graphClock"}); err != nil { panic(err) }
-		}
+		if failure := context.ApplyContextFix(input, "create_time", "now"); failure != nil { results = append(results, *failure) }
 	}
 
 	if input.Operation == core.MutationInsert {
-		if value, exists := input.Values["update_time"]; !exists || value.V == nil {
-			input.Values["update_time"] = core.ValTimestamp(input.Now.UnixMilli())
-			if err := context.RecordFixEvidence(runtime.FixEvidence{EntityType: "OrderItem", ModelPath: "update_time", Source: runtime.FixEvidenceClock, SourceLabel: "graphClock"}); err != nil { panic(err) }
-		}
+		if failure := context.ApplyContextFix(input, "update_time", "now"); failure != nil { results = append(results, *failure) }
 	}
 	if input.Operation == core.MutationUpdate {
-		input.Values["update_time"] = core.ValTimestamp(input.Now.UnixMilli())
-		if err := context.RecordFixEvidence(runtime.FixEvidence{EntityType: "OrderItem", ModelPath: "update_time", Source: runtime.FixEvidenceClock, SourceLabel: "graphClock"}); err != nil { panic(err) }
+		if failure := context.ApplyContextFix(input, "update_time", "now"); failure != nil { results = append(results, *failure) }
 	}
 
 
@@ -326,7 +316,7 @@ func checkOrderItem(context *runtime.UserContext, input *runtime.CheckAndFixInpu
 }
 
 func ModuleWithBehaviors() *runtime.RuntimeModule {
-	module := runtime.NewRuntimeModule().Checkers(&generatedCheckerRegistry{})
+	module := runtime.NewRuntimeModule().Checkers(&generatedCheckerRegistry{}).CheckerPresentation(generatedCheckerPresentation)
 	{
 		descriptor := core.NewEntityDescriptor("tenant").
 			TableName("tenant_data")
@@ -348,8 +338,8 @@ func ModuleWithBehaviors() *runtime.RuntimeModule {
 		descriptor.Property(core.NewPropertyDescriptor("id", core.TypeU64).ColumnName("id").NotNull().Id())
 		descriptor.Property(core.NewPropertyDescriptor("contact_phone", core.TypeText).ColumnName("contact_phone").NotNull())
 		descriptor.Property(core.NewPropertyDescriptor("internal_note", core.TypeText).ColumnName("internal_note"))
-		descriptor.Property(core.NewPropertyDescriptor("create_time", core.TypeTimestamp).ColumnName("create_time").NotNull())
-		descriptor.Property(core.NewPropertyDescriptor("update_time", core.TypeTimestamp).ColumnName("update_time").NotNull())
+		descriptor.Property(core.NewPropertyDescriptor("create_time", core.TypeTimestamp).ColumnName("create_time").OnCreateFromContext("now").NotNull())
+		descriptor.Property(core.NewPropertyDescriptor("update_time", core.TypeTimestamp).ColumnName("update_time").OnCreateFromContext("now").OnUpdateFromContext("now").NotNull())
 		descriptor.Property(core.NewPropertyDescriptor("version", core.TypeI64).ColumnName("version").NotNull().Version())
 		descriptor.Property(core.NewPropertyDescriptor("tenant_id", core.TypeU64).ColumnName("tenant").NotNull())
 		descriptor.Relation(core.NewRelationDescriptor("tenantEntity", "tenant").CanonicalKey("tenant").LocalKey("tenant_id").ForeignKey("id"))
@@ -367,8 +357,8 @@ func ModuleWithBehaviors() *runtime.RuntimeModule {
 		descriptor.Property(core.NewPropertyDescriptor("id", core.TypeU64).ColumnName("id").NotNull().Id())
 		descriptor.Property(core.NewPropertyDescriptor("product_name", core.TypeText).ColumnName("product_name").NotNull())
 		descriptor.Property(core.NewPropertyDescriptor("unit_price", core.TypeDecimal).ColumnName("unit_price").NotNull())
-		descriptor.Property(core.NewPropertyDescriptor("create_time", core.TypeTimestamp).ColumnName("create_time").NotNull())
-		descriptor.Property(core.NewPropertyDescriptor("update_time", core.TypeTimestamp).ColumnName("update_time").NotNull())
+		descriptor.Property(core.NewPropertyDescriptor("create_time", core.TypeTimestamp).ColumnName("create_time").OnCreateFromContext("now").NotNull())
+		descriptor.Property(core.NewPropertyDescriptor("update_time", core.TypeTimestamp).ColumnName("update_time").OnCreateFromContext("now").OnUpdateFromContext("now").NotNull())
 		descriptor.Property(core.NewPropertyDescriptor("version", core.TypeI64).ColumnName("version").NotNull().Version())
 		descriptor.Property(core.NewPropertyDescriptor("purchase_order_id", core.TypeU64).ColumnName("purchase_order").NotNull())
 		descriptor.Property(core.NewPropertyDescriptor("tenant_id", core.TypeU64).ColumnName("tenant").NotNull())
@@ -398,7 +388,7 @@ func ServiceRuntimeFromEnv() (*runtime.UserContext, error) {
 		return nil, fmt.Errorf("missing environment variable CHECKER_FIX_ADVANCED_CORE_DATABASE_URL")
 	}
 
-	db, err := provider.OpenDatabase(dbUrl)
+	db, err := sql.Open("sqlite3", dbUrl)
 	if err != nil {
 		return nil, err
 	}

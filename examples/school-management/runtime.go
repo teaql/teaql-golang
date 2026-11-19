@@ -29,6 +29,12 @@ var _ = strings.Join
 
 func generatedPtr[T any](value T) *T { return &value }
 
+var generatedCheckerPresentation = func() *runtime.CheckerPresentationModel {
+	model, err := runtime.ParseCheckerPresentationModel([]byte("{\"schema\":\"teaql.checker-model/v1\",\"revision\":\"sha256:47e8b75ce5ca882955954939e8b9e068343e94858f593d285801bb5c19899d61\",\"entities\":{\"platform\":{\"labels\":{\"en\":\"Platform\"},\"fields\":[{\"name\":\"base_url\",\"labels\":{\"en\":\"base url\"},\"aliases\":[\"BaseUrl\",\"baseUrl\"]},{\"name\":\"create_time\",\"labels\":{\"en\":\"create time\"},\"aliases\":[\"CreateTime\",\"createTime\"]},{\"name\":\"id\",\"labels\":{\"en\":\"id\"},\"aliases\":[\"Id\"]},{\"name\":\"name\",\"labels\":{\"en\":\"name\"},\"aliases\":[\"Name\"]},{\"name\":\"school_list\",\"targetType\":\"school\",\"labels\":{\"en\":\"School\"},\"aliases\":[\"SchoolList\",\"schoolList\"]},{\"name\":\"school_type_list\",\"targetType\":\"school_type\",\"labels\":{\"en\":\"School Type\"},\"aliases\":[\"SchoolTypeList\",\"schoolTypeList\"]},{\"name\":\"update_time\",\"labels\":{\"en\":\"update time\"},\"aliases\":[\"UpdateTime\",\"updateTime\"]},{\"name\":\"version\",\"labels\":{\"en\":\"version\"},\"aliases\":[\"Version\"]}]},\"school\":{\"labels\":{\"en\":\"School\"},\"fields\":[{\"name\":\"active\",\"labels\":{\"en\":\"active\"},\"aliases\":[\"Active\"]},{\"name\":\"address\",\"labels\":{\"en\":\"address\"},\"aliases\":[\"Address\"]},{\"name\":\"create_time\",\"labels\":{\"en\":\"create time\"},\"aliases\":[\"CreateTime\",\"createTime\"]},{\"name\":\"established_date\",\"labels\":{\"en\":\"established date\"},\"aliases\":[\"EstablishedDate\",\"establishedDate\"]},{\"name\":\"id\",\"labels\":{\"en\":\"id\"},\"aliases\":[\"Id\"]},{\"name\":\"name\",\"labels\":{\"en\":\"name\"},\"aliases\":[\"Name\"]},{\"name\":\"platform\",\"targetType\":\"platform\",\"labels\":{\"en\":\"Platform\"},\"aliases\":[\"Platform\"]},{\"name\":\"school_type\",\"targetType\":\"school_type\",\"labels\":{\"en\":\"School Type\"},\"aliases\":[\"SchoolType\",\"schoolType\"]},{\"name\":\"student_capacity\",\"labels\":{\"en\":\"student capacity\"},\"aliases\":[\"StudentCapacity\",\"studentCapacity\"]},{\"name\":\"update_time\",\"labels\":{\"en\":\"update time\"},\"aliases\":[\"UpdateTime\",\"updateTime\"]},{\"name\":\"version\",\"labels\":{\"en\":\"version\"},\"aliases\":[\"Version\"]}]},\"school_type\":{\"labels\":{\"en\":\"School Type\"},\"fields\":[{\"name\":\"code\",\"labels\":{\"en\":\"code\"},\"aliases\":[\"Code\"]},{\"name\":\"display_order\",\"labels\":{\"en\":\"display order\"},\"aliases\":[\"DisplayOrder\",\"displayOrder\"]},{\"name\":\"id\",\"labels\":{\"en\":\"id\"},\"aliases\":[\"Id\"]},{\"name\":\"name\",\"labels\":{\"en\":\"name\"},\"aliases\":[\"Name\"]},{\"name\":\"platform\",\"targetType\":\"platform\",\"labels\":{\"en\":\"Platform\"},\"aliases\":[\"Platform\"]},{\"name\":\"school_list\",\"targetType\":\"school\",\"labels\":{\"en\":\"School\"},\"aliases\":[\"SchoolList\",\"schoolList\"]},{\"name\":\"version\",\"labels\":{\"en\":\"version\"},\"aliases\":[\"Version\"]}]}}}"))
+	if err != nil { panic("Invalid generated Checker presentation metadata") }
+	return model
+}()
+
 func ensureGeneratedBootstrapOnce(context *runtime.UserContext) error {
 	previousActor := context.UserIdentifier()
 	previousCategory := context.GetResource("bootstrapCategory")
@@ -38,9 +44,7 @@ func ensureGeneratedBootstrapOnce(context *runtime.UserContext) error {
 	platform1, err := Q.Platforms().WithIdIs(uint64(1)).Comment("what: locate generated bootstrap entity").Purpose("why: idempotent runtime bootstrap").ExecuteForOne(context)
 	if err != nil { return fmt.Errorf("query bootstrap Platform(1): %w", err) }
 	if platform1 == nil {
-		platform1, err = Q.Platforms().Comment("Create generated bootstrap entity").Purpose("Initialize runtime bootstrap").NewEntity(context)
-		if err != nil { return err }
-		platform1.UpdateId(uint64(1))
+		platform1 = platform.NewPlatform().UpdateId(uint64(1))
 		platform1.UpdateName("Campus Learning Platform")
 		platform1.UpdateBaseUrl("https://campus.example.com")
 		if _, err = platform1.AuditAs("create model root Platform(1)").Save(context); err != nil {
@@ -58,9 +62,7 @@ func ensureGeneratedBootstrapOnce(context *runtime.UserContext) error {
 	school_type1001, err := Q.SchoolTypes().WithIdIs(uint64(1001)).Comment("what: locate generated bootstrap entity").Purpose("why: idempotent runtime bootstrap").ExecuteForOne(context)
 	if err != nil { return fmt.Errorf("query bootstrap SchoolType(1001): %w", err) }
 	if school_type1001 == nil {
-		school_type1001, err = Q.SchoolTypes().Comment("Create generated bootstrap entity").Purpose("Initialize runtime bootstrap").NewEntity(context)
-		if err != nil { return err }
-		school_type1001.UpdateId(uint64(1001))
+		school_type1001 = school_type.NewSchoolType().UpdateId(uint64(1001))
 		school_type1001.UpdatePlatformId(uint64(1))
 		school_type1001.UpdateName("Primary")
 		school_type1001.UpdateCode("PRIMARY")
@@ -95,9 +97,7 @@ func ensureGeneratedBootstrapOnce(context *runtime.UserContext) error {
 	school_type1002, err := Q.SchoolTypes().WithIdIs(uint64(1002)).Comment("what: locate generated bootstrap entity").Purpose("why: idempotent runtime bootstrap").ExecuteForOne(context)
 	if err != nil { return fmt.Errorf("query bootstrap SchoolType(1002): %w", err) }
 	if school_type1002 == nil {
-		school_type1002, err = Q.SchoolTypes().Comment("Create generated bootstrap entity").Purpose("Initialize runtime bootstrap").NewEntity(context)
-		if err != nil { return err }
-		school_type1002.UpdateId(uint64(1002))
+		school_type1002 = school_type.NewSchoolType().UpdateId(uint64(1002))
 		school_type1002.UpdatePlatformId(uint64(1))
 		school_type1002.UpdateName("Secondary")
 		school_type1002.UpdateCode("SECONDARY")
@@ -143,15 +143,15 @@ func ensureGeneratedBootstrap(context *runtime.UserContext) error {
 
 
 func Module() *runtime.RuntimeModule {
-	module := runtime.NewRuntimeModule().Checkers(&generatedCheckerRegistry{})
+	module := runtime.NewRuntimeModule().Checkers(&generatedCheckerRegistry{}).CheckerPresentation(generatedCheckerPresentation)
 	{
 		descriptor := core.NewEntityDescriptor("Platform").
 			TableName("platform_data")
 		descriptor.Property(core.NewPropertyDescriptor("id", core.TypeU64).ColumnName("id").NotNull().Id())
 		descriptor.Property(core.NewPropertyDescriptor("name", core.TypeText).ColumnName("name").NotNull())
 		descriptor.Property(core.NewPropertyDescriptor("base_url", core.TypeText).ColumnName("base_url").NotNull())
-		descriptor.Property(core.NewPropertyDescriptor("create_time", core.TypeTimestamp).ColumnName("create_time").NotNull())
-		descriptor.Property(core.NewPropertyDescriptor("update_time", core.TypeTimestamp).ColumnName("update_time").NotNull())
+		descriptor.Property(core.NewPropertyDescriptor("create_time", core.TypeTimestamp).ColumnName("create_time").OnCreateFromContext("now").NotNull())
+		descriptor.Property(core.NewPropertyDescriptor("update_time", core.TypeTimestamp).ColumnName("update_time").OnCreateFromContext("now").OnUpdateFromContext("now").NotNull())
 		descriptor.Property(core.NewPropertyDescriptor("version", core.TypeI64).ColumnName("version").NotNull().Version())
 		descriptor.Relation(core.NewRelationDescriptor("schoolTypeList", "School Type").LocalKey("id").ForeignKey("platform_id").Many())
 		descriptor.Relation(core.NewRelationDescriptor("schoolList", "School").LocalKey("id").ForeignKey("platform_id").Many())
@@ -183,8 +183,8 @@ func Module() *runtime.RuntimeModule {
 		descriptor.Property(core.NewPropertyDescriptor("established_date", core.TypeDate).ColumnName("established_date").NotNull())
 		descriptor.Property(core.NewPropertyDescriptor("student_capacity", core.TypeI64).ColumnName("student_capacity").Int32().NotNull())
 		descriptor.Property(core.NewPropertyDescriptor("active", core.TypeBool).ColumnName("active").NotNull())
-		descriptor.Property(core.NewPropertyDescriptor("create_time", core.TypeTimestamp).ColumnName("create_time").NotNull())
-		descriptor.Property(core.NewPropertyDescriptor("update_time", core.TypeTimestamp).ColumnName("update_time").NotNull())
+		descriptor.Property(core.NewPropertyDescriptor("create_time", core.TypeTimestamp).ColumnName("create_time").OnCreateFromContext("now").NotNull())
+		descriptor.Property(core.NewPropertyDescriptor("update_time", core.TypeTimestamp).ColumnName("update_time").OnCreateFromContext("now").OnUpdateFromContext("now").NotNull())
 		descriptor.Property(core.NewPropertyDescriptor("version", core.TypeI64).ColumnName("version").NotNull().Version())
 		descriptor.Property(core.NewPropertyDescriptor("platform_id", core.TypeU64).ColumnName("platform").NotNull())
 		descriptor.Property(core.NewPropertyDescriptor("school_type_id", core.TypeU64).ColumnName("school_type").NotNull())
@@ -219,21 +219,14 @@ func (r *generatedCheckerRegistry) CheckAndFix(context *runtime.UserContext, inp
 func checkPlatform(context *runtime.UserContext, input *runtime.CheckAndFixInput) []runtime.CheckResult {
 	results := make([]runtime.CheckResult, 0)
 	if input.Operation == core.MutationInsert {
-		if value, exists := input.Values["create_time"]; !exists || value.V == nil {
-			input.Values["create_time"] = core.ValTimestamp(input.Now.UnixMilli())
-			if err := context.RecordFixEvidence(runtime.FixEvidence{EntityType: "Platform", ModelPath: "create_time", Source: runtime.FixEvidenceClock, SourceLabel: "graphClock"}); err != nil { panic(err) }
-		}
+		if failure := context.ApplyContextFix(input, "create_time", "now"); failure != nil { results = append(results, *failure) }
 	}
 
 	if input.Operation == core.MutationInsert {
-		if value, exists := input.Values["update_time"]; !exists || value.V == nil {
-			input.Values["update_time"] = core.ValTimestamp(input.Now.UnixMilli())
-			if err := context.RecordFixEvidence(runtime.FixEvidence{EntityType: "Platform", ModelPath: "update_time", Source: runtime.FixEvidenceClock, SourceLabel: "graphClock"}); err != nil { panic(err) }
-		}
+		if failure := context.ApplyContextFix(input, "update_time", "now"); failure != nil { results = append(results, *failure) }
 	}
 	if input.Operation == core.MutationUpdate {
-		input.Values["update_time"] = core.ValTimestamp(input.Now.UnixMilli())
-		if err := context.RecordFixEvidence(runtime.FixEvidence{EntityType: "Platform", ModelPath: "update_time", Source: runtime.FixEvidenceClock, SourceLabel: "graphClock"}); err != nil { panic(err) }
+		if failure := context.ApplyContextFix(input, "update_time", "now"); failure != nil { results = append(results, *failure) }
 	}
 
 
@@ -301,21 +294,14 @@ func checkSchoolType(context *runtime.UserContext, input *runtime.CheckAndFixInp
 func checkSchool(context *runtime.UserContext, input *runtime.CheckAndFixInput) []runtime.CheckResult {
 	results := make([]runtime.CheckResult, 0)
 	if input.Operation == core.MutationInsert {
-		if value, exists := input.Values["create_time"]; !exists || value.V == nil {
-			input.Values["create_time"] = core.ValTimestamp(input.Now.UnixMilli())
-			if err := context.RecordFixEvidence(runtime.FixEvidence{EntityType: "School", ModelPath: "create_time", Source: runtime.FixEvidenceClock, SourceLabel: "graphClock"}); err != nil { panic(err) }
-		}
+		if failure := context.ApplyContextFix(input, "create_time", "now"); failure != nil { results = append(results, *failure) }
 	}
 
 	if input.Operation == core.MutationInsert {
-		if value, exists := input.Values["update_time"]; !exists || value.V == nil {
-			input.Values["update_time"] = core.ValTimestamp(input.Now.UnixMilli())
-			if err := context.RecordFixEvidence(runtime.FixEvidence{EntityType: "School", ModelPath: "update_time", Source: runtime.FixEvidenceClock, SourceLabel: "graphClock"}); err != nil { panic(err) }
-		}
+		if failure := context.ApplyContextFix(input, "update_time", "now"); failure != nil { results = append(results, *failure) }
 	}
 	if input.Operation == core.MutationUpdate {
-		input.Values["update_time"] = core.ValTimestamp(input.Now.UnixMilli())
-		if err := context.RecordFixEvidence(runtime.FixEvidence{EntityType: "School", ModelPath: "update_time", Source: runtime.FixEvidenceClock, SourceLabel: "graphClock"}); err != nil { panic(err) }
+		if failure := context.ApplyContextFix(input, "update_time", "now"); failure != nil { results = append(results, *failure) }
 	}
 
 
@@ -369,15 +355,15 @@ func checkSchool(context *runtime.UserContext, input *runtime.CheckAndFixInput) 
 }
 
 func ModuleWithBehaviors() *runtime.RuntimeModule {
-	module := runtime.NewRuntimeModule().Checkers(&generatedCheckerRegistry{})
+	module := runtime.NewRuntimeModule().Checkers(&generatedCheckerRegistry{}).CheckerPresentation(generatedCheckerPresentation)
 	{
 		descriptor := core.NewEntityDescriptor("Platform").
 			TableName("platform_data")
 		descriptor.Property(core.NewPropertyDescriptor("id", core.TypeU64).ColumnName("id").NotNull().Id())
 		descriptor.Property(core.NewPropertyDescriptor("name", core.TypeText).ColumnName("name").NotNull())
 		descriptor.Property(core.NewPropertyDescriptor("base_url", core.TypeText).ColumnName("base_url").NotNull())
-		descriptor.Property(core.NewPropertyDescriptor("create_time", core.TypeTimestamp).ColumnName("create_time").NotNull())
-		descriptor.Property(core.NewPropertyDescriptor("update_time", core.TypeTimestamp).ColumnName("update_time").NotNull())
+		descriptor.Property(core.NewPropertyDescriptor("create_time", core.TypeTimestamp).ColumnName("create_time").OnCreateFromContext("now").NotNull())
+		descriptor.Property(core.NewPropertyDescriptor("update_time", core.TypeTimestamp).ColumnName("update_time").OnCreateFromContext("now").OnUpdateFromContext("now").NotNull())
 		descriptor.Property(core.NewPropertyDescriptor("version", core.TypeI64).ColumnName("version").NotNull().Version())
 		descriptor.Relation(core.NewRelationDescriptor("schoolTypeList", "School Type").LocalKey("id").ForeignKey("platform_id").Many())
 		descriptor.Relation(core.NewRelationDescriptor("schoolList", "School").LocalKey("id").ForeignKey("platform_id").Many())
@@ -415,8 +401,8 @@ func ModuleWithBehaviors() *runtime.RuntimeModule {
 		descriptor.Property(core.NewPropertyDescriptor("established_date", core.TypeDate).ColumnName("established_date").NotNull())
 		descriptor.Property(core.NewPropertyDescriptor("student_capacity", core.TypeI64).ColumnName("student_capacity").Int32().NotNull())
 		descriptor.Property(core.NewPropertyDescriptor("active", core.TypeBool).ColumnName("active").NotNull())
-		descriptor.Property(core.NewPropertyDescriptor("create_time", core.TypeTimestamp).ColumnName("create_time").NotNull())
-		descriptor.Property(core.NewPropertyDescriptor("update_time", core.TypeTimestamp).ColumnName("update_time").NotNull())
+		descriptor.Property(core.NewPropertyDescriptor("create_time", core.TypeTimestamp).ColumnName("create_time").OnCreateFromContext("now").NotNull())
+		descriptor.Property(core.NewPropertyDescriptor("update_time", core.TypeTimestamp).ColumnName("update_time").OnCreateFromContext("now").OnUpdateFromContext("now").NotNull())
 		descriptor.Property(core.NewPropertyDescriptor("version", core.TypeI64).ColumnName("version").NotNull().Version())
 		descriptor.Property(core.NewPropertyDescriptor("platform_id", core.TypeU64).ColumnName("platform").NotNull())
 		descriptor.Property(core.NewPropertyDescriptor("school_type_id", core.TypeU64).ColumnName("school_type").NotNull())
@@ -446,7 +432,7 @@ func ServiceRuntimeFromEnv() (*runtime.UserContext, error) {
 		return nil, fmt.Errorf("missing environment variable SCHOOL_MANAGEMENT_SERVICE_CORE_DATABASE_URL")
 	}
 
-	db, err := provider.OpenDatabase(dbUrl)
+	db, err := sql.Open("sqlite3", dbUrl)
 	if err != nil {
 		return nil, err
 	}

@@ -1,0 +1,1618 @@
+{
+  "generator": {
+    "jarSHA256": "a22cfb9d9442958404cfb0d8e085af2c223c618018bbeb5e42a78765c23c4dd6",
+    "releaseURL": "https://github.com/teaql/teaql-code-gen/releases/tag/v4.2.0",
+    "sourceCommit": "97830096360553381a3221ad5bdbe9837c68a9b4",
+    "tag": "v4.2.0"
+  },
+  "installationReceiptSHA256": "ddf103df0daa060962986e92d230cc201fcc78293198a4c5b107cdbe09346680",
+  "libraries": [
+    {
+      "archiveSHA256": "e84064f6c35d1084e183ffc0c160ea1fc509f04839cdafb3d30bd5893afe81d6",
+      "destination": "examples/conformance/lib",
+      "generatedFiles": {
+        "examples/conformance/lib/e.go": {
+          "emittedPath": "e.go",
+          "sha256": "6bf3b5f5d17f85e8e6fcfcd3cad089759b68585dea255c3a4b0d68469fd6841c"
+        },
+        "examples/conformance/lib/entity_json.go": {
+          "emittedPath": "entity_json.go",
+          "sha256": "7c053a2f6345eee97e413df6877d44713620d97ce0a95cc60dce1f59adce5db0"
+        },
+        "examples/conformance/lib/internal/generatedjson/model.go": {
+          "emittedPath": "internal/generatedjson/model.go",
+          "sha256": "f157e2497aa56407362997e438989654e436ec8fa5fe34d2949142990690edd1"
+        },
+        "examples/conformance/lib/internal/generatedsearch/search_models.go": {
+          "emittedPath": "internal/generatedsearch/search_models.go",
+          "sha256": "a11f9779be214c16dbeb974df7c16354fc130a93f308715b6047cfc18a920e86"
+        },
+        "examples/conformance/lib/lib.go": {
+          "emittedPath": "lib.go",
+          "sha256": "04a51a907ef878cc2d7f366167cfed4c52a142d35b4cf5d1c3ec166c5cd89214"
+        },
+        "examples/conformance/lib/platform/behavior.go": {
+          "emittedPath": "platform/behavior.go",
+          "sha256": "a2bf9efebdfc883eb0e6457f2f79646f578212889cf9a1fd20f91f0a1a1be5a8"
+        },
+        "examples/conformance/lib/platform/checker.go": {
+          "emittedPath": "platform/checker.go",
+          "sha256": "ae95114ab80d2d5e2793f9392cf55f54a5c9fd68401a6a24946d7a8f4368a1bd"
+        },
+        "examples/conformance/lib/platform/entity.go": {
+          "emittedPath": "platform/entity.go",
+          "sha256": "8bc6399f9b624d1eee094c46f04450d0ed07f620dd146babf0b7de14b9d4e4b0"
+        },
+        "examples/conformance/lib/platform/expression.go": {
+          "emittedPath": "platform/expression.go",
+          "sha256": "e3237d12ce3657c48b3e99c0f5be6436f97e270ae9ac7a8394bcf94cc416f704"
+        },
+        "examples/conformance/lib/platform/request.go": {
+          "emittedPath": "platform/request.go",
+          "sha256": "a9e61069e929a6606757076e47fed424c03762c6bdbbb7f4f757270c9f736bd8"
+        },
+        "examples/conformance/lib/q.go": {
+          "emittedPath": "q.go",
+          "sha256": "ae64bd9f0aa97df858ac72614523117e063d9b8bcb537eece6006471347b8e3e"
+        },
+        "examples/conformance/lib/runtime.go": {
+          "emittedPath": "runtime.go",
+          "sha256": "be3826db329f33e45354ceeaaaa5db5634ca9e52a6c29bf3d292a5960c6ac962"
+        },
+        "examples/conformance/lib/teaql/checker-model.json": {
+          "emittedPath": "teaql/checker-model.json",
+          "sha256": "c9f54577d9f0b3b467449c507c4ee9402afb6089858624aa8e5cfddacaecfe73"
+        },
+        "examples/conformance/lib/teaql/model-provenance.json": {
+          "emittedPath": "teaql/model-provenance.json",
+          "sha256": "6710ca9864c596bf2413ab1eee0ba59b94cc73b57e7fec6ad4a13f482a3cdfea"
+        },
+        "examples/conformance/lib/work_item/behavior.go": {
+          "emittedPath": "work_item/behavior.go",
+          "sha256": "2c30ddc5e0fc3ab24930180b779747ac958248b11fdb6cee310166c7471f0ada"
+        },
+        "examples/conformance/lib/work_item/checker.go": {
+          "emittedPath": "work_item/checker.go",
+          "sha256": "a9696ef2aa83b222153db63631e74eefaeb4e16d0e4cbb66959b59e44204cc3c"
+        },
+        "examples/conformance/lib/work_item/entity.go": {
+          "emittedPath": "work_item/entity.go",
+          "sha256": "8d305603b5076f74930df8ef5aee5e23b82989e05e04e36abf711047c318b8ee"
+        },
+        "examples/conformance/lib/work_item/expression.go": {
+          "emittedPath": "work_item/expression.go",
+          "sha256": "ce4e2c24aabd82c49f96ed4cb9cc067ed601ff322035a966950cea2cbcf4142b"
+        },
+        "examples/conformance/lib/work_item/request.go": {
+          "emittedPath": "work_item/request.go",
+          "sha256": "80a7acda2ed9c591500a9f4f6f88e3f4ad740712a7050bf52984053ce0fa81d2"
+        }
+      },
+      "model": "examples/conformance/model.xml",
+      "origin": {
+        "evaluatedScope": "golang-lib-core",
+        "evaluationErrors": 0,
+        "evaluationWarnings": 0,
+        "generatedManifestSha256": "1a77ed6a0476f9ef74965e42dbadc0876461272b9db87f31d83b802b00ae4e2b",
+        "generationReceipt": "teaql-conformance/evidence/2026-11-19-runtime-examples-refresh/generation-catalog/go/conformance/model/receipt.json",
+        "generatorCommit": "97830096360553381a3221ad5bdbe9837c68a9b4",
+        "generatorJarSHA256": "a22cfb9d9442958404cfb0d8e085af2c223c618018bbeb5e42a78765c23c4dd6",
+        "generatorRelease": "v4.2.0",
+        "modelSha256": "0a59f66db2487fdd0430087dd5985ae780225c088ad800679cb57c593c6bcee7",
+        "producerReceiptSha256": "9fab6e7673da40119f3b21a771d764656a4530cbb2e5ddfd94d0aa816495910b",
+        "producerSource": {
+          "commit": "97830096360553381a3221ad5bdbe9837c68a9b4",
+          "jarSHA256": "a22cfb9d9442958404cfb0d8e085af2c223c618018bbeb5e42a78765c23c4dd6",
+          "release": "v4.2.0"
+        }
+      },
+      "preservedApplicationFiles": {
+        "examples/conformance/lib/go.mod": {
+          "emittedSHA256": "71527de5733137ba6980c7ea328d3f78334ade18cdf050e3fab8f2044e7f45c0",
+          "reason": "Application manifest, local dependency wiring or application-specific instructions preserved",
+          "sha256": "3f0c37bd51bfad31c8ef7d6642396476407f464b6b95480b3d8cc9a87d6909a3"
+        }
+      }
+    },
+    {
+      "archiveSHA256": "30fa8be0cd72a76491323edfd01f591bbd1b400a65cd4f83d056601e633e86d6",
+      "destination": "examples/expression-profiles/generated/PascalCase",
+      "generatedFiles": {
+        "examples/expression-profiles/generated/PascalCase/e.go": {
+          "emittedPath": "e.go",
+          "sha256": "1de7aa459178b21fe4111088a83803597d26f2741ae0d19086098b29d3d483a9"
+        },
+        "examples/expression-profiles/generated/PascalCase/entity_json.go": {
+          "emittedPath": "entity_json.go",
+          "sha256": "b15cc4e064a92cc650f277248c5c80af334fe9b05c9909a5c00da7b5dc298942"
+        },
+        "examples/expression-profiles/generated/PascalCase/internal/generatedjson/model.go": {
+          "emittedPath": "internal/generatedjson/model.go",
+          "sha256": "953dcd000018b68fdbf6bd8d83842a90cb0b3a133acc2b9a2f1e3bc2e0995815"
+        },
+        "examples/expression-profiles/generated/PascalCase/internal/generatedsearch/search_models.go": {
+          "emittedPath": "internal/generatedsearch/search_models.go",
+          "sha256": "cf7e0957c49db9f2df70beca4902a9ae299dd2ef5d0276085627b2e55523db6c"
+        },
+        "examples/expression-profiles/generated/PascalCase/lib.go": {
+          "emittedPath": "lib.go",
+          "sha256": "d7039265d1181b84bb56e0309647d1f330f8940625ad90f3a0d211b0bf80ccf8"
+        },
+        "examples/expression-profiles/generated/PascalCase/q.go": {
+          "emittedPath": "q.go",
+          "sha256": "eac483ed0f763a27a99172533b08b93b6fdf022d12cf2d7e8b4a9d5106f29fb3"
+        },
+        "examples/expression-profiles/generated/PascalCase/runtime.go": {
+          "emittedPath": "runtime.go",
+          "sha256": "d695db0f25c502845d18feed4a8325d8bacde62f087777800611cd89cd17c3a4"
+        },
+        "examples/expression-profiles/generated/PascalCase/scalar_type_probe/behavior.go": {
+          "emittedPath": "scalar_type_probe/behavior.go",
+          "sha256": "3e0dbce0c8cb32e56783928a3c6e304ede947e332bc946a19e6f42534947da94"
+        },
+        "examples/expression-profiles/generated/PascalCase/scalar_type_probe/checker.go": {
+          "emittedPath": "scalar_type_probe/checker.go",
+          "sha256": "355e35a675df34683b3c7cfb85abe12a77f2dde6ab027c11c6a1574b2e8c51be"
+        },
+        "examples/expression-profiles/generated/PascalCase/scalar_type_probe/entity.go": {
+          "emittedPath": "scalar_type_probe/entity.go",
+          "sha256": "42556abc3094b79e8fb2b36d5928d3b14c274ca75c5b70cd3e475bb0df1af714"
+        },
+        "examples/expression-profiles/generated/PascalCase/scalar_type_probe/expression.go": {
+          "emittedPath": "scalar_type_probe/expression.go",
+          "sha256": "e19a3ed25b4470d2a46c1ad83a64365bfb81cd2abc12f0fa1a1c38bbdcf963f5"
+        },
+        "examples/expression-profiles/generated/PascalCase/scalar_type_probe/request.go": {
+          "emittedPath": "scalar_type_probe/request.go",
+          "sha256": "b793b89e3339910184a764f4bcf451115112c89665793252d58930dc2942cef7"
+        },
+        "examples/expression-profiles/generated/PascalCase/teaql/checker-model.json": {
+          "emittedPath": "teaql/checker-model.json",
+          "sha256": "ec97d233877caa4ae992a528e3b8e157fb73d92b43203890b9a31f57ce36f2e3"
+        },
+        "examples/expression-profiles/generated/PascalCase/teaql/model-provenance.json": {
+          "emittedPath": "teaql/model-provenance.json",
+          "sha256": "ae427ef988d132abf6690f6dd0988e045249b7897a9ab1e3adee5c6ff789157b"
+        },
+        "examples/expression-profiles/generated/PascalCase/type_platform/behavior.go": {
+          "emittedPath": "type_platform/behavior.go",
+          "sha256": "3b3c8f0323c769d67db34b8421e21a02fc0a93ee87b27ea150d33a8495894899"
+        },
+        "examples/expression-profiles/generated/PascalCase/type_platform/checker.go": {
+          "emittedPath": "type_platform/checker.go",
+          "sha256": "d34524d9ccc3e9f7161924149af5e32c7ad204deca31e1d86f1561877c78135e"
+        },
+        "examples/expression-profiles/generated/PascalCase/type_platform/entity.go": {
+          "emittedPath": "type_platform/entity.go",
+          "sha256": "2282cff2957a8b28c27ba3f56457ecaed349ec62fadec83af92d421df7494cd2"
+        },
+        "examples/expression-profiles/generated/PascalCase/type_platform/expression.go": {
+          "emittedPath": "type_platform/expression.go",
+          "sha256": "7e16df8436e75667e9bff5ea40fc24bb39bd755f78986f08437122c52e278947"
+        },
+        "examples/expression-profiles/generated/PascalCase/type_platform/request.go": {
+          "emittedPath": "type_platform/request.go",
+          "sha256": "8b9dc4e290cb79f3a2cf7ea004c73ba15132641e5f104eab0306f37806176347"
+        }
+      },
+      "model": "examples/expression-profiles/generated/PascalCase/model.xml",
+      "origin": {
+        "evaluatedScope": "golang-lib-core",
+        "evaluationErrors": 0,
+        "evaluationWarnings": 0,
+        "generatedManifestSha256": "299cd6b3709692fd844c04369be44193c622350e0f0101ddd8deffb070c512f6",
+        "generationReceipt": "teaql-conformance/evidence/2026-11-19-runtime-examples-refresh/generation-catalog/go/expression-profiles/generated/PascalCase/model/receipt.json",
+        "generatorCommit": "97830096360553381a3221ad5bdbe9837c68a9b4",
+        "generatorJarSHA256": "a22cfb9d9442958404cfb0d8e085af2c223c618018bbeb5e42a78765c23c4dd6",
+        "generatorRelease": "v4.2.0",
+        "modelSha256": "f836540a765f8c372bd7103a25a83ca316797253079ac63f8a1ef5ee4ded027d",
+        "producerReceiptSha256": "a50956b8e3d7e4efd71850bf46640bf3df29fe30084b75f187bcf781125b0153",
+        "producerSource": {
+          "commit": "97830096360553381a3221ad5bdbe9837c68a9b4",
+          "jarSHA256": "a22cfb9d9442958404cfb0d8e085af2c223c618018bbeb5e42a78765c23c4dd6",
+          "release": "v4.2.0"
+        }
+      },
+      "preservedApplicationFiles": {
+        "examples/expression-profiles/generated/PascalCase/go.mod": {
+          "emittedSHA256": "81997ba4d9a407337cdb3b58bb37a3c5a6908aa3b2f3b34f8f864c52504c2dbd",
+          "reason": "Application manifest, local dependency wiring or application-specific instructions preserved",
+          "sha256": "af54910f916f60617f8863067cad5b0f4103e077ffa00c9cb2afca19af5fce1e"
+        }
+      }
+    },
+    {
+      "archiveSHA256": "50d0ba8e3fd48905a0f88da488700ed0f9908a92e9311044a1a2d176f072fade",
+      "destination": "examples/expression-profiles/generated/camelCase",
+      "generatedFiles": {
+        "examples/expression-profiles/generated/camelCase/e.go": {
+          "emittedPath": "e.go",
+          "sha256": "1de7aa459178b21fe4111088a83803597d26f2741ae0d19086098b29d3d483a9"
+        },
+        "examples/expression-profiles/generated/camelCase/entity_json.go": {
+          "emittedPath": "entity_json.go",
+          "sha256": "b15cc4e064a92cc650f277248c5c80af334fe9b05c9909a5c00da7b5dc298942"
+        },
+        "examples/expression-profiles/generated/camelCase/internal/generatedjson/model.go": {
+          "emittedPath": "internal/generatedjson/model.go",
+          "sha256": "a9ba59e455e05c82fd186b55b1a6e3052fab339370d66f77975302045b829a68"
+        },
+        "examples/expression-profiles/generated/camelCase/internal/generatedsearch/search_models.go": {
+          "emittedPath": "internal/generatedsearch/search_models.go",
+          "sha256": "642072512c33620ab83d5a5d33094236ba20a8b5bad6fff9dc5223efe1296dac"
+        },
+        "examples/expression-profiles/generated/camelCase/lib.go": {
+          "emittedPath": "lib.go",
+          "sha256": "d7039265d1181b84bb56e0309647d1f330f8940625ad90f3a0d211b0bf80ccf8"
+        },
+        "examples/expression-profiles/generated/camelCase/q.go": {
+          "emittedPath": "q.go",
+          "sha256": "eac483ed0f763a27a99172533b08b93b6fdf022d12cf2d7e8b4a9d5106f29fb3"
+        },
+        "examples/expression-profiles/generated/camelCase/runtime.go": {
+          "emittedPath": "runtime.go",
+          "sha256": "d695db0f25c502845d18feed4a8325d8bacde62f087777800611cd89cd17c3a4"
+        },
+        "examples/expression-profiles/generated/camelCase/scalar_type_probe/behavior.go": {
+          "emittedPath": "scalar_type_probe/behavior.go",
+          "sha256": "3e0dbce0c8cb32e56783928a3c6e304ede947e332bc946a19e6f42534947da94"
+        },
+        "examples/expression-profiles/generated/camelCase/scalar_type_probe/checker.go": {
+          "emittedPath": "scalar_type_probe/checker.go",
+          "sha256": "355e35a675df34683b3c7cfb85abe12a77f2dde6ab027c11c6a1574b2e8c51be"
+        },
+        "examples/expression-profiles/generated/camelCase/scalar_type_probe/entity.go": {
+          "emittedPath": "scalar_type_probe/entity.go",
+          "sha256": "42556abc3094b79e8fb2b36d5928d3b14c274ca75c5b70cd3e475bb0df1af714"
+        },
+        "examples/expression-profiles/generated/camelCase/scalar_type_probe/expression.go": {
+          "emittedPath": "scalar_type_probe/expression.go",
+          "sha256": "308ab7e89e86f47e69cc6c315f21fa424bcdded63eb442ee93748d5b6865ca9c"
+        },
+        "examples/expression-profiles/generated/camelCase/scalar_type_probe/request.go": {
+          "emittedPath": "scalar_type_probe/request.go",
+          "sha256": "b793b89e3339910184a764f4bcf451115112c89665793252d58930dc2942cef7"
+        },
+        "examples/expression-profiles/generated/camelCase/teaql/checker-model.json": {
+          "emittedPath": "teaql/checker-model.json",
+          "sha256": "ec97d233877caa4ae992a528e3b8e157fb73d92b43203890b9a31f57ce36f2e3"
+        },
+        "examples/expression-profiles/generated/camelCase/teaql/model-provenance.json": {
+          "emittedPath": "teaql/model-provenance.json",
+          "sha256": "84e6e6a9d56404f3923357514c795575e617b670ac6ea413306a4203b80ff14e"
+        },
+        "examples/expression-profiles/generated/camelCase/type_platform/behavior.go": {
+          "emittedPath": "type_platform/behavior.go",
+          "sha256": "3b3c8f0323c769d67db34b8421e21a02fc0a93ee87b27ea150d33a8495894899"
+        },
+        "examples/expression-profiles/generated/camelCase/type_platform/checker.go": {
+          "emittedPath": "type_platform/checker.go",
+          "sha256": "d34524d9ccc3e9f7161924149af5e32c7ad204deca31e1d86f1561877c78135e"
+        },
+        "examples/expression-profiles/generated/camelCase/type_platform/entity.go": {
+          "emittedPath": "type_platform/entity.go",
+          "sha256": "2282cff2957a8b28c27ba3f56457ecaed349ec62fadec83af92d421df7494cd2"
+        },
+        "examples/expression-profiles/generated/camelCase/type_platform/expression.go": {
+          "emittedPath": "type_platform/expression.go",
+          "sha256": "6a72d38cd62b1c3505730515e8c0da4d22a5c3e6d5535e384bee4c971acb3468"
+        },
+        "examples/expression-profiles/generated/camelCase/type_platform/request.go": {
+          "emittedPath": "type_platform/request.go",
+          "sha256": "8b9dc4e290cb79f3a2cf7ea004c73ba15132641e5f104eab0306f37806176347"
+        }
+      },
+      "model": "examples/expression-profiles/generated/camelCase/model.xml",
+      "origin": {
+        "evaluatedScope": "golang-lib-core",
+        "evaluationErrors": 0,
+        "evaluationWarnings": 0,
+        "generatedManifestSha256": "ce49f3457ed732ba63b175df08c9a72ec9782ef9f4f3dcdde114c5ef16f52e6e",
+        "generationReceipt": "teaql-conformance/evidence/2026-11-19-runtime-examples-refresh/generation-catalog/go/expression-profiles/generated/camelCase/model/receipt.json",
+        "generatorCommit": "97830096360553381a3221ad5bdbe9837c68a9b4",
+        "generatorJarSHA256": "a22cfb9d9442958404cfb0d8e085af2c223c618018bbeb5e42a78765c23c4dd6",
+        "generatorRelease": "v4.2.0",
+        "modelSha256": "8d3017392ffd00abbc06be2555ced27ac6360e2d05fabc4299e27a5ef8f1c762",
+        "producerReceiptSha256": "ee9d2bcaf2ff6de5bd1a502cd0e1cdc4e792d710efb1682efbe8ec004e2c150a",
+        "producerSource": {
+          "commit": "97830096360553381a3221ad5bdbe9837c68a9b4",
+          "jarSHA256": "a22cfb9d9442958404cfb0d8e085af2c223c618018bbeb5e42a78765c23c4dd6",
+          "release": "v4.2.0"
+        }
+      },
+      "preservedApplicationFiles": {
+        "examples/expression-profiles/generated/camelCase/go.mod": {
+          "emittedSHA256": "81997ba4d9a407337cdb3b58bb37a3c5a6908aa3b2f3b34f8f864c52504c2dbd",
+          "reason": "Application manifest, local dependency wiring or application-specific instructions preserved",
+          "sha256": "af54910f916f60617f8863067cad5b0f4103e077ffa00c9cb2afca19af5fce1e"
+        }
+      }
+    },
+    {
+      "archiveSHA256": "c332ca40b4c62bc69ec0baa77ba6d608e15b09650d016095e021e958870126d5",
+      "destination": "examples/expression-profiles/generated/snake_case",
+      "generatedFiles": {
+        "examples/expression-profiles/generated/snake_case/e.go": {
+          "emittedPath": "e.go",
+          "sha256": "1de7aa459178b21fe4111088a83803597d26f2741ae0d19086098b29d3d483a9"
+        },
+        "examples/expression-profiles/generated/snake_case/entity_json.go": {
+          "emittedPath": "entity_json.go",
+          "sha256": "b15cc4e064a92cc650f277248c5c80af334fe9b05c9909a5c00da7b5dc298942"
+        },
+        "examples/expression-profiles/generated/snake_case/internal/generatedjson/model.go": {
+          "emittedPath": "internal/generatedjson/model.go",
+          "sha256": "5f7a2d6524020d3443e948901420e8a362cd985ecf5d692721a6011899d58c2b"
+        },
+        "examples/expression-profiles/generated/snake_case/internal/generatedsearch/search_models.go": {
+          "emittedPath": "internal/generatedsearch/search_models.go",
+          "sha256": "642072512c33620ab83d5a5d33094236ba20a8b5bad6fff9dc5223efe1296dac"
+        },
+        "examples/expression-profiles/generated/snake_case/lib.go": {
+          "emittedPath": "lib.go",
+          "sha256": "d7039265d1181b84bb56e0309647d1f330f8940625ad90f3a0d211b0bf80ccf8"
+        },
+        "examples/expression-profiles/generated/snake_case/q.go": {
+          "emittedPath": "q.go",
+          "sha256": "eac483ed0f763a27a99172533b08b93b6fdf022d12cf2d7e8b4a9d5106f29fb3"
+        },
+        "examples/expression-profiles/generated/snake_case/runtime.go": {
+          "emittedPath": "runtime.go",
+          "sha256": "d695db0f25c502845d18feed4a8325d8bacde62f087777800611cd89cd17c3a4"
+        },
+        "examples/expression-profiles/generated/snake_case/scalar_type_probe/behavior.go": {
+          "emittedPath": "scalar_type_probe/behavior.go",
+          "sha256": "3e0dbce0c8cb32e56783928a3c6e304ede947e332bc946a19e6f42534947da94"
+        },
+        "examples/expression-profiles/generated/snake_case/scalar_type_probe/checker.go": {
+          "emittedPath": "scalar_type_probe/checker.go",
+          "sha256": "355e35a675df34683b3c7cfb85abe12a77f2dde6ab027c11c6a1574b2e8c51be"
+        },
+        "examples/expression-profiles/generated/snake_case/scalar_type_probe/entity.go": {
+          "emittedPath": "scalar_type_probe/entity.go",
+          "sha256": "42556abc3094b79e8fb2b36d5928d3b14c274ca75c5b70cd3e475bb0df1af714"
+        },
+        "examples/expression-profiles/generated/snake_case/scalar_type_probe/expression.go": {
+          "emittedPath": "scalar_type_probe/expression.go",
+          "sha256": "2f095b8fe8395e2b9edad0523fabb705ed1b479b12246769f290cfca3e934a9a"
+        },
+        "examples/expression-profiles/generated/snake_case/scalar_type_probe/request.go": {
+          "emittedPath": "scalar_type_probe/request.go",
+          "sha256": "b793b89e3339910184a764f4bcf451115112c89665793252d58930dc2942cef7"
+        },
+        "examples/expression-profiles/generated/snake_case/teaql/checker-model.json": {
+          "emittedPath": "teaql/checker-model.json",
+          "sha256": "ec97d233877caa4ae992a528e3b8e157fb73d92b43203890b9a31f57ce36f2e3"
+        },
+        "examples/expression-profiles/generated/snake_case/teaql/model-provenance.json": {
+          "emittedPath": "teaql/model-provenance.json",
+          "sha256": "aae97b2ed5d87ede29d03b620225b0cd242b8e088d6ec9fc8cdf7629ff200a98"
+        },
+        "examples/expression-profiles/generated/snake_case/type_platform/behavior.go": {
+          "emittedPath": "type_platform/behavior.go",
+          "sha256": "3b3c8f0323c769d67db34b8421e21a02fc0a93ee87b27ea150d33a8495894899"
+        },
+        "examples/expression-profiles/generated/snake_case/type_platform/checker.go": {
+          "emittedPath": "type_platform/checker.go",
+          "sha256": "d34524d9ccc3e9f7161924149af5e32c7ad204deca31e1d86f1561877c78135e"
+        },
+        "examples/expression-profiles/generated/snake_case/type_platform/entity.go": {
+          "emittedPath": "type_platform/entity.go",
+          "sha256": "2282cff2957a8b28c27ba3f56457ecaed349ec62fadec83af92d421df7494cd2"
+        },
+        "examples/expression-profiles/generated/snake_case/type_platform/expression.go": {
+          "emittedPath": "type_platform/expression.go",
+          "sha256": "f37b22a82ad9cae72413ef07eab59eeca8193caaf680f0e3a1e62e3f9d402d64"
+        },
+        "examples/expression-profiles/generated/snake_case/type_platform/request.go": {
+          "emittedPath": "type_platform/request.go",
+          "sha256": "8b9dc4e290cb79f3a2cf7ea004c73ba15132641e5f104eab0306f37806176347"
+        }
+      },
+      "model": "examples/expression-profiles/generated/snake_case/model.xml",
+      "origin": {
+        "evaluatedScope": "golang-lib-core",
+        "evaluationErrors": 0,
+        "evaluationWarnings": 0,
+        "generatedManifestSha256": "a1a62d2741de92d7c54d8b88582bec72f1a83a05e01b22b203124e0033bdb57b",
+        "generationReceipt": "teaql-conformance/evidence/2026-11-19-runtime-examples-refresh/generation-catalog/go/expression-profiles/generated/snake_case/model/receipt.json",
+        "generatorCommit": "97830096360553381a3221ad5bdbe9837c68a9b4",
+        "generatorJarSHA256": "a22cfb9d9442958404cfb0d8e085af2c223c618018bbeb5e42a78765c23c4dd6",
+        "generatorRelease": "v4.2.0",
+        "modelSha256": "2dbbcfea6057a5dc7c7c356ea4d0dacec5d5165538f6a9c5903d4d3b64ee13c6",
+        "producerReceiptSha256": "d5e0c5ef52d3bb68ce538b4a8174f4be254c278dcc78de3284772b1308c62aff",
+        "producerSource": {
+          "commit": "97830096360553381a3221ad5bdbe9837c68a9b4",
+          "jarSHA256": "a22cfb9d9442958404cfb0d8e085af2c223c618018bbeb5e42a78765c23c4dd6",
+          "release": "v4.2.0"
+        }
+      },
+      "preservedApplicationFiles": {
+        "examples/expression-profiles/generated/snake_case/go.mod": {
+          "emittedSHA256": "81997ba4d9a407337cdb3b58bb37a3c5a6908aa3b2f3b34f8f864c52504c2dbd",
+          "reason": "Application manifest, local dependency wiring or application-specific instructions preserved",
+          "sha256": "af54910f916f60617f8863067cad5b0f4103e077ffa00c9cb2afca19af5fce1e"
+        }
+      }
+    },
+    {
+      "archiveSHA256": "8daf69867d7e4e9498ec9cd4a8e12de55dc9e3c95965b92f0e09e72bb7729bea",
+      "destination": "examples/fix-e-alignment/generated",
+      "generatedFiles": {
+        "examples/fix-e-alignment/generated/e.go": {
+          "emittedPath": "e.go",
+          "sha256": "7910bee58509d2c72ff7aafccddd372fe5b617d1bfefe19ffbefe415d59546f4"
+        },
+        "examples/fix-e-alignment/generated/entity_json.go": {
+          "emittedPath": "entity_json.go",
+          "sha256": "a2ce8174310c5de1b036c4895d880a89114d4698e0669f92fa690eacad9f3442"
+        },
+        "examples/fix-e-alignment/generated/internal/generatedjson/model.go": {
+          "emittedPath": "internal/generatedjson/model.go",
+          "sha256": "d373fea48af6f7448fdfd631f434424510e7b1f8a0c4546e443e04c683563aed"
+        },
+        "examples/fix-e-alignment/generated/internal/generatedsearch/search_models.go": {
+          "emittedPath": "internal/generatedsearch/search_models.go",
+          "sha256": "684ab28a36b174cf143210391ca062178ad7997454d7f0fc49656f58cd45f730"
+        },
+        "examples/fix-e-alignment/generated/lib.go": {
+          "emittedPath": "lib.go",
+          "sha256": "72bf51dda2b3dc6e6aa5563a70ec68d27cf5ab641ff47790c465427026e5fc83"
+        },
+        "examples/fix-e-alignment/generated/order_item/behavior.go": {
+          "emittedPath": "order_item/behavior.go",
+          "sha256": "0d1c08bf44cc8f2268b5b5c998fae61e24b6a6c07589bb0b49337e5882d9dc6a"
+        },
+        "examples/fix-e-alignment/generated/order_item/checker.go": {
+          "emittedPath": "order_item/checker.go",
+          "sha256": "02e151227137a4eb1df8824d4ba83bcd08057bc88c57beb33f63096a0b0434af"
+        },
+        "examples/fix-e-alignment/generated/order_item/entity.go": {
+          "emittedPath": "order_item/entity.go",
+          "sha256": "ce46cc913c1364e6180e648dc5afc6ecd5dae528ef498855bd6d8ed4a5cf44b4"
+        },
+        "examples/fix-e-alignment/generated/order_item/expression.go": {
+          "emittedPath": "order_item/expression.go",
+          "sha256": "656bdd717846f446b20d9fc2516eaed3ab91dcfc4ed17cf2dca858c9fdcd567b"
+        },
+        "examples/fix-e-alignment/generated/order_item/request.go": {
+          "emittedPath": "order_item/request.go",
+          "sha256": "eb713d63f714e8706f01053b7693378bf5eed806d5775209caf41093d6fcf6e3"
+        },
+        "examples/fix-e-alignment/generated/purchase_order/behavior.go": {
+          "emittedPath": "purchase_order/behavior.go",
+          "sha256": "7f70d05c8f7879720a1a76ccd405684fedefae895aba6e9fbf1371137968a8f7"
+        },
+        "examples/fix-e-alignment/generated/purchase_order/checker.go": {
+          "emittedPath": "purchase_order/checker.go",
+          "sha256": "1c2bb40949d6a04e92ac1dba63c681727447a2b7027c7b7c50b83609eef39b90"
+        },
+        "examples/fix-e-alignment/generated/purchase_order/entity.go": {
+          "emittedPath": "purchase_order/entity.go",
+          "sha256": "75b2389fa6666b73a6ce2b7026547cc292eb46709ca329061f7a5cab5788a55a"
+        },
+        "examples/fix-e-alignment/generated/purchase_order/expression.go": {
+          "emittedPath": "purchase_order/expression.go",
+          "sha256": "241a64aac2bcd91d00a765fea3fa8b511eefac33a934da8f58f089f54b359f30"
+        },
+        "examples/fix-e-alignment/generated/purchase_order/request.go": {
+          "emittedPath": "purchase_order/request.go",
+          "sha256": "d9dd2572d9d16f9231ba16d9e44e2ce37f827a4a993524bc11f346e074e1debc"
+        },
+        "examples/fix-e-alignment/generated/q.go": {
+          "emittedPath": "q.go",
+          "sha256": "ac0053a2dfbd9a1f823df07e928220ceaa5ffda25d4c44037f4524c53e51b384"
+        },
+        "examples/fix-e-alignment/generated/runtime.go": {
+          "emittedPath": "runtime.go",
+          "sha256": "20637f275edd604e608b8e087a73b568c0817fd34f2d0695abf893ed8b8915f4"
+        },
+        "examples/fix-e-alignment/generated/teaql/checker-model.json": {
+          "emittedPath": "teaql/checker-model.json",
+          "sha256": "716f390faabcff0d4694242efc3fb44a0245c3d611b240e346ffdfef54256cea"
+        },
+        "examples/fix-e-alignment/generated/teaql/model-provenance.json": {
+          "emittedPath": "teaql/model-provenance.json",
+          "sha256": "79aa8ed9ea90394fb39f6a20a880522c85bbe02559877679c8637653bff3547a"
+        },
+        "examples/fix-e-alignment/generated/tenant/behavior.go": {
+          "emittedPath": "tenant/behavior.go",
+          "sha256": "a5320eac18f5b810aab79a1acff3ee45117e7e0a5abb5896592cd00a8ebd095c"
+        },
+        "examples/fix-e-alignment/generated/tenant/checker.go": {
+          "emittedPath": "tenant/checker.go",
+          "sha256": "78409224822eecf82ae5617141b0116f808a6d1bab0b483789b6496a49c013e8"
+        },
+        "examples/fix-e-alignment/generated/tenant/entity.go": {
+          "emittedPath": "tenant/entity.go",
+          "sha256": "33287889f45343aaa1bfe6adfb45fdda2064bfae03ab3e66b34f3656def95ece"
+        },
+        "examples/fix-e-alignment/generated/tenant/expression.go": {
+          "emittedPath": "tenant/expression.go",
+          "sha256": "407d09e0af722aca7e7f27015d12e50867499ff1ae890dfbe4a363923ef26f2c"
+        },
+        "examples/fix-e-alignment/generated/tenant/request.go": {
+          "emittedPath": "tenant/request.go",
+          "sha256": "64782763e0ad29865fcbedd1962c2b130d423af598ffffc6e3c1a8838694a480"
+        }
+      },
+      "model": "examples/fix-e-alignment/model.xml",
+      "origin": {
+        "evaluatedScope": "golang-lib-core",
+        "evaluationErrors": 0,
+        "evaluationWarnings": 4,
+        "generatedManifestSha256": "c4b7fcb8a3922641f65a6cf6d1cede03dac9dec53ed0f0a205513e2a0b24cbb8",
+        "generationReceipt": "teaql-conformance/evidence/2026-11-19-runtime-examples-refresh/generation-catalog/go/fix-e-alignment/model/receipt.json",
+        "generatorCommit": "97830096360553381a3221ad5bdbe9837c68a9b4",
+        "generatorJarSHA256": "a22cfb9d9442958404cfb0d8e085af2c223c618018bbeb5e42a78765c23c4dd6",
+        "generatorRelease": "v4.2.0",
+        "modelSha256": "a2cf4c907cb084cb0946e993eeba586c8c0701a89fdc4a849808aa743be033b7",
+        "producerReceiptSha256": "08ae57c020e85a4c2dfa39eff58d9a35bc17be4958eba89007218a6686eed347",
+        "producerSource": {
+          "commit": "97830096360553381a3221ad5bdbe9837c68a9b4",
+          "jarSHA256": "a22cfb9d9442958404cfb0d8e085af2c223c618018bbeb5e42a78765c23c4dd6",
+          "release": "v4.2.0"
+        }
+      },
+      "preservedApplicationFiles": {
+        "examples/fix-e-alignment/generated/go.mod": {
+          "emittedSHA256": "e87c10668410ea22d7fd2ffef880bfb603ed48ccc138b2218b234cb44c099864",
+          "reason": "Application manifest, local dependency wiring or application-specific instructions preserved",
+          "sha256": "d5f72fdb4142475205e0d2a03582b43127bdb4abe291bbd9f984f8d2cb07848d"
+        }
+      }
+    },
+    {
+      "archiveSHA256": "0c2c5d0044342d3bc67523e9559805af502c1139800f21f0bf23b9b0016b8c97",
+      "destination": "examples/natural-messages/fixture",
+      "generatedFiles": {
+        "examples/natural-messages/fixture/catalog/behavior.go": {
+          "emittedPath": "catalog/behavior.go",
+          "sha256": "3d06e6c6d083269757d4de750dec8f5c814dce12c1531bfc1224a71b81e06d38"
+        },
+        "examples/natural-messages/fixture/catalog/checker.go": {
+          "emittedPath": "catalog/checker.go",
+          "sha256": "0972a48852e4f71474fc4bcee77b3cf9816c6f31e2cedb8545eb70780e8f837a"
+        },
+        "examples/natural-messages/fixture/catalog/entity.go": {
+          "emittedPath": "catalog/entity.go",
+          "sha256": "72c87151d38e3a4b6aa37af7cffe97b1121bd3f1b8c731f41328d958b1ca2e63"
+        },
+        "examples/natural-messages/fixture/catalog/expression.go": {
+          "emittedPath": "catalog/expression.go",
+          "sha256": "f93d82cab12c6b7935ad8a9cc1f70fe38538fc3b852031e0f239838bd279ddd2"
+        },
+        "examples/natural-messages/fixture/catalog/request.go": {
+          "emittedPath": "catalog/request.go",
+          "sha256": "50108834a2cbc73ddd7d0de59ae408c951ffab6afd45ad81ba178d4b0c646444"
+        },
+        "examples/natural-messages/fixture/e.go": {
+          "emittedPath": "e.go",
+          "sha256": "1b0768716b10e84f59d6a44a3636957b8bae5e15421c7f73b6c6329bb3681a48"
+        },
+        "examples/natural-messages/fixture/entity_json.go": {
+          "emittedPath": "entity_json.go",
+          "sha256": "a1165a7505ebac9ae8bc8844182ef013eddb56efd9d8a6c9860b186e80e89784"
+        },
+        "examples/natural-messages/fixture/entry/behavior.go": {
+          "emittedPath": "entry/behavior.go",
+          "sha256": "cc244af921cd66d01063bb232fe520fb89a3ccf25b121ddc4e174d2d3677e30d"
+        },
+        "examples/natural-messages/fixture/entry/checker.go": {
+          "emittedPath": "entry/checker.go",
+          "sha256": "2999fac12938dd86397a9a79861ecb4a32a4baaea9325081068e7411c0dfdbe0"
+        },
+        "examples/natural-messages/fixture/entry/entity.go": {
+          "emittedPath": "entry/entity.go",
+          "sha256": "08c93dd81645c592f3e010d120da0867e14094461c895ce235be41a4f5ad11e6"
+        },
+        "examples/natural-messages/fixture/entry/expression.go": {
+          "emittedPath": "entry/expression.go",
+          "sha256": "df9fb4e7ac8d7a828bf3671029b231583c0f8aedc4e2a112c00da16199ba6827"
+        },
+        "examples/natural-messages/fixture/entry/request.go": {
+          "emittedPath": "entry/request.go",
+          "sha256": "c4763f666806e6d8820a5750f6f29bca1ab9658b057318db77775b5dea03206d"
+        },
+        "examples/natural-messages/fixture/internal/generatedjson/model.go": {
+          "emittedPath": "internal/generatedjson/model.go",
+          "sha256": "b795a8e7b11b844663eed3f55553985e737ea85c3764ecd5efa0d66df99290a3"
+        },
+        "examples/natural-messages/fixture/internal/generatedsearch/search_models.go": {
+          "emittedPath": "internal/generatedsearch/search_models.go",
+          "sha256": "70cd335533a769184786062c187efc50c1aea5b8aa3d8093cbd658044e2198c8"
+        },
+        "examples/natural-messages/fixture/lib.go": {
+          "emittedPath": "lib.go",
+          "sha256": "d51b90c651225d0ec6862b6fddaa47668316a7a6ba41b48c55b9812de31f44bd"
+        },
+        "examples/natural-messages/fixture/q.go": {
+          "emittedPath": "q.go",
+          "sha256": "f67da9bc73dd3c286e2f93043974d715141358ae77480336f9207410108566c4"
+        },
+        "examples/natural-messages/fixture/runtime.go": {
+          "emittedPath": "runtime.go",
+          "sha256": "7bdadd2ad2a8f58ff56bb645a9f595785f4196128ef5a663b14a0268ec9c9ade"
+        },
+        "examples/natural-messages/fixture/teaql/checker-model.json": {
+          "emittedPath": "teaql/checker-model.json",
+          "sha256": "56eb9697682034f18e2fa37aae72b3a7543e3e93f1c03df0c6d65e704f18bae8"
+        },
+        "examples/natural-messages/fixture/teaql/model-provenance.json": {
+          "emittedPath": "teaql/model-provenance.json",
+          "sha256": "579c3813729fce3c3d2a3a642cbbffde195333d8bb35d390fe7d6003b3b226ce"
+        }
+      },
+      "model": "examples/natural-messages/fixture/model.xml",
+      "origin": {
+        "evaluatedScope": "golang-lib-core",
+        "evaluationErrors": 0,
+        "evaluationWarnings": 2,
+        "generatedManifestSha256": "30d49a833aa2005dd7127c2b4ae5fe5f655ce24320eb22a9954e8ce77a9ff55a",
+        "generationReceipt": "teaql-conformance/evidence/2026-11-19-runtime-examples-refresh/generation-catalog/go/natural-messages/fixture/model/receipt.json",
+        "generatorCommit": "97830096360553381a3221ad5bdbe9837c68a9b4",
+        "generatorJarSHA256": "a22cfb9d9442958404cfb0d8e085af2c223c618018bbeb5e42a78765c23c4dd6",
+        "generatorRelease": "v4.2.0",
+        "modelSha256": "871c28ee976d0fc0e35c21305870cf21f83bd0aed0b758bbf217b51ae65299b1",
+        "producerReceiptSha256": "3e8a0f8865bfb1818140ec6ad7fb793509c95219e87486dd5d03facce62ab739",
+        "producerSource": {
+          "commit": "97830096360553381a3221ad5bdbe9837c68a9b4",
+          "jarSHA256": "a22cfb9d9442958404cfb0d8e085af2c223c618018bbeb5e42a78765c23c4dd6",
+          "release": "v4.2.0"
+        }
+      },
+      "preservedApplicationFiles": {
+        "examples/natural-messages/fixture/go.mod": {
+          "emittedSHA256": "a82e28fe16d965f83c587162bba7a4da0e281a04bb6b16e8a63a78fcdd7ef5b1",
+          "reason": "Application manifest, local dependency wiring or application-specific instructions preserved",
+          "sha256": "431151b02140d75e8776c0d1dbb5b11157afb45be76d37bd16ea4b4fb3e6649e"
+        }
+      }
+    },
+    {
+      "archiveSHA256": "fedae20e7fd98333e89edcfd581e087421c93f98623c026c4896d04eb724319b",
+      "destination": "examples/order-management/golang-lib-core",
+      "generatedFiles": {
+        "examples/order-management/golang-lib-core/commerce_platform/behavior.go": {
+          "emittedPath": "commerce_platform/behavior.go",
+          "sha256": "3b900c94d801b10720936cf327a6d6df64e0dc7cab7316d1bf55b92ad80be78b"
+        },
+        "examples/order-management/golang-lib-core/commerce_platform/checker.go": {
+          "emittedPath": "commerce_platform/checker.go",
+          "sha256": "ad2db2adb1fa49dc3363f64f67c58cdd084fbb6b8acfc5ad21ba21c6c98bfdf5"
+        },
+        "examples/order-management/golang-lib-core/commerce_platform/entity.go": {
+          "emittedPath": "commerce_platform/entity.go",
+          "sha256": "48ff27d34de74ed1dc3f990952ec68e28186dd22c3b54131ded68864a13be189"
+        },
+        "examples/order-management/golang-lib-core/commerce_platform/expression.go": {
+          "emittedPath": "commerce_platform/expression.go",
+          "sha256": "b885d889277c801102d09a2b414c6a7da31537d54d266a1ce3242a65c5e2fd68"
+        },
+        "examples/order-management/golang-lib-core/commerce_platform/request.go": {
+          "emittedPath": "commerce_platform/request.go",
+          "sha256": "5fb746b07b91ad4bf963de70dc0491641fef2d316513ef30bf9cb709b6a2c458"
+        },
+        "examples/order-management/golang-lib-core/customer/behavior.go": {
+          "emittedPath": "customer/behavior.go",
+          "sha256": "feb6fcbd025ab8d3f85293f3ec75fd63b30c87a3abd4143f2327d36b592f6a44"
+        },
+        "examples/order-management/golang-lib-core/customer/checker.go": {
+          "emittedPath": "customer/checker.go",
+          "sha256": "003db818e57763e609fb670b182a2de387efb351d42a405d2a19d1ef442b186b"
+        },
+        "examples/order-management/golang-lib-core/customer/entity.go": {
+          "emittedPath": "customer/entity.go",
+          "sha256": "eb339f3ce312c11a742e773ab1c37b68a520e551ce1639f7c9fe517f6fbc1193"
+        },
+        "examples/order-management/golang-lib-core/customer/expression.go": {
+          "emittedPath": "customer/expression.go",
+          "sha256": "e3cadc0f30634f2dfff10602e9ef8e616eb63a5efd21f5077546e729cbe61ea9"
+        },
+        "examples/order-management/golang-lib-core/customer/request.go": {
+          "emittedPath": "customer/request.go",
+          "sha256": "446f67344c35da455de4918ec7ace893b897d99378d296646c7bf5abfd2ab740"
+        },
+        "examples/order-management/golang-lib-core/customer_order/behavior.go": {
+          "emittedPath": "customer_order/behavior.go",
+          "sha256": "fc0f1cee247d602428a1dab95836106976e137375b5ba1fa4d295dfbd562612c"
+        },
+        "examples/order-management/golang-lib-core/customer_order/checker.go": {
+          "emittedPath": "customer_order/checker.go",
+          "sha256": "6c93030644a04f0f89a2f01b12207189110623051812a081270efe5c9f583dd6"
+        },
+        "examples/order-management/golang-lib-core/customer_order/entity.go": {
+          "emittedPath": "customer_order/entity.go",
+          "sha256": "1e56cf4a45f339e901e622a472126137a2a1ae5d55719691ab0ce82a041af724"
+        },
+        "examples/order-management/golang-lib-core/customer_order/expression.go": {
+          "emittedPath": "customer_order/expression.go",
+          "sha256": "5ee70fdde3c7b2c8f766834f151b64d4f325e5c267796a68e274eed2534d806e"
+        },
+        "examples/order-management/golang-lib-core/customer_order/request.go": {
+          "emittedPath": "customer_order/request.go",
+          "sha256": "b8a00cc674507082211089344b2aec6178fb9c60f3d5c60f16a718aa62e693e7"
+        },
+        "examples/order-management/golang-lib-core/e.go": {
+          "emittedPath": "e.go",
+          "sha256": "df548b884d62c1e0f62cb31542486937e79ac43c000911cbe6f32b409b2d2a06"
+        },
+        "examples/order-management/golang-lib-core/entity_json.go": {
+          "emittedPath": "entity_json.go",
+          "sha256": "7abfd436177671e1c2396465a77e3668d477c157d36b9c079761f05ddab1a170"
+        },
+        "examples/order-management/golang-lib-core/internal/generatedjson/model.go": {
+          "emittedPath": "internal/generatedjson/model.go",
+          "sha256": "c563eddc2b05b1a69d0e350b44fcf94110e738a4877f968475f19b17014bc5df"
+        },
+        "examples/order-management/golang-lib-core/internal/generatedsearch/search_models.go": {
+          "emittedPath": "internal/generatedsearch/search_models.go",
+          "sha256": "025adb5b86a5fcf5ae82bd20691c995d632a06daae7bedfbf19d2c902fc44ca7"
+        },
+        "examples/order-management/golang-lib-core/lib.go": {
+          "emittedPath": "lib.go",
+          "sha256": "6bc2d5587ada1b6f224b3de9840954883c96deaea8ffe5c7ddb0db8457d54740"
+        },
+        "examples/order-management/golang-lib-core/order_line/behavior.go": {
+          "emittedPath": "order_line/behavior.go",
+          "sha256": "003f3f02385fec50983b1496c670117ce27098c8789db017f0a2c15dea83a537"
+        },
+        "examples/order-management/golang-lib-core/order_line/checker.go": {
+          "emittedPath": "order_line/checker.go",
+          "sha256": "da0b7c2ad55deb170e313b1c1564b76e0800e632ad0c9eae145078f7df524f98"
+        },
+        "examples/order-management/golang-lib-core/order_line/entity.go": {
+          "emittedPath": "order_line/entity.go",
+          "sha256": "49544058571d3887c999fea550c8adf147dc5911fee25861204e73ce3e821ffe"
+        },
+        "examples/order-management/golang-lib-core/order_line/expression.go": {
+          "emittedPath": "order_line/expression.go",
+          "sha256": "649da7c5b0567eda556dacfa9ebff95ca59ef183618c0b6afe13a888f35009ff"
+        },
+        "examples/order-management/golang-lib-core/order_line/request.go": {
+          "emittedPath": "order_line/request.go",
+          "sha256": "2877fd800f2c1ec07370fe809f97f684e24e0903a3591de6f1a3203a7a4eed19"
+        },
+        "examples/order-management/golang-lib-core/order_search_preset/behavior.go": {
+          "emittedPath": "order_search_preset/behavior.go",
+          "sha256": "4a6649a8233fad7e34fd24af4339cb0076b7e58dda12b09dc7914014af315095"
+        },
+        "examples/order-management/golang-lib-core/order_search_preset/checker.go": {
+          "emittedPath": "order_search_preset/checker.go",
+          "sha256": "9b93139c7f5267f70a68a2d5c3a0ba215d5b3ef649a5587330593a6a77be5e06"
+        },
+        "examples/order-management/golang-lib-core/order_search_preset/entity.go": {
+          "emittedPath": "order_search_preset/entity.go",
+          "sha256": "7b40f48e3742427d6d54f31dd567373132189614bf880e271107b4bd9c73c8f6"
+        },
+        "examples/order-management/golang-lib-core/order_search_preset/expression.go": {
+          "emittedPath": "order_search_preset/expression.go",
+          "sha256": "d027c7364a94c7ef5acafae16b76607ea85566701e2b0b090c9728f3d087baa2"
+        },
+        "examples/order-management/golang-lib-core/order_search_preset/request.go": {
+          "emittedPath": "order_search_preset/request.go",
+          "sha256": "bf1fa122809bc84f51f49542b16704a66f392e8feb8dc721c1a1c17f04b0ddff"
+        },
+        "examples/order-management/golang-lib-core/order_status/behavior.go": {
+          "emittedPath": "order_status/behavior.go",
+          "sha256": "5b06d271ff1d4717142d9dcb3b7c798943c87884f4e2dd7c19c5fa5cd5506ad3"
+        },
+        "examples/order-management/golang-lib-core/order_status/checker.go": {
+          "emittedPath": "order_status/checker.go",
+          "sha256": "079c517ae72dc93bad8875c8596086f3f7cc56bdc6e3d047ec21810b4210f6f7"
+        },
+        "examples/order-management/golang-lib-core/order_status/entity.go": {
+          "emittedPath": "order_status/entity.go",
+          "sha256": "88213fa7630d340657eeb05dc78144e102eee87cd7b872aa150660653dba3160"
+        },
+        "examples/order-management/golang-lib-core/order_status/expression.go": {
+          "emittedPath": "order_status/expression.go",
+          "sha256": "f51f161d254202de81c68503ea252e003596f1182cc18c23b4f12334a5df8d44"
+        },
+        "examples/order-management/golang-lib-core/order_status/request.go": {
+          "emittedPath": "order_status/request.go",
+          "sha256": "55c5e370fc38345a1f0709a34737eee36e12d1275416c45f1385395f873f7cf5"
+        },
+        "examples/order-management/golang-lib-core/product/behavior.go": {
+          "emittedPath": "product/behavior.go",
+          "sha256": "bd44b82f519fc6ef45c8d6ade67362d37dfdaea44ada8497d79c7e8ad78e26a2"
+        },
+        "examples/order-management/golang-lib-core/product/checker.go": {
+          "emittedPath": "product/checker.go",
+          "sha256": "3de44dfe697971ffd64b2156992408e9a174f95b719c202a6a26aaf17fa7365d"
+        },
+        "examples/order-management/golang-lib-core/product/entity.go": {
+          "emittedPath": "product/entity.go",
+          "sha256": "9ce95fff2861df443d7b3bb2a448917273fae26a44dbdd34e3ce9fadbf792a93"
+        },
+        "examples/order-management/golang-lib-core/product/expression.go": {
+          "emittedPath": "product/expression.go",
+          "sha256": "df1a212cb7ca66fab31d156e36024e2b929b7cce94287f5024249f6ae7db2e0f"
+        },
+        "examples/order-management/golang-lib-core/product/request.go": {
+          "emittedPath": "product/request.go",
+          "sha256": "2beec50c0ae388d7bdf9a017621e05c9f560786200cc93ad05b9e54d5fbf9eb1"
+        },
+        "examples/order-management/golang-lib-core/q.go": {
+          "emittedPath": "q.go",
+          "sha256": "f94fbd0e817d1ab79d96a804f5a99ca9abcdcb955f1d9a5058f3da1771458961"
+        },
+        "examples/order-management/golang-lib-core/runtime.go": {
+          "emittedPath": "runtime.go",
+          "sha256": "30fd32ad2a97e0fb352aeaf26556152b7c9b607038aeaceb552b5610e0008baa"
+        },
+        "examples/order-management/golang-lib-core/teaql/checker-model.json": {
+          "emittedPath": "teaql/checker-model.json",
+          "sha256": "e81098aae940ef473aed1baee20c4f194fec0eac7d284443e743984bb1edc492"
+        },
+        "examples/order-management/golang-lib-core/teaql/model-provenance.json": {
+          "emittedPath": "teaql/model-provenance.json",
+          "sha256": "1504732c62686028f264f485a9459b8903cddcd4c58a9d6a844f0104f9648401"
+        }
+      },
+      "model": "examples/order-management/model.xml",
+      "origin": {
+        "evaluatedScope": "golang-lib-core",
+        "evaluationErrors": 0,
+        "evaluationWarnings": 7,
+        "generatedManifestSha256": "415048b24457c24eff3900f1434258a7f6d3b72835d56033dc4ed7591b4250e2",
+        "generationReceipt": "teaql-conformance/evidence/2026-11-19-runtime-examples-refresh/generation-catalog/go/order-management/model/receipt.json",
+        "generatorCommit": "97830096360553381a3221ad5bdbe9837c68a9b4",
+        "generatorJarSHA256": "a22cfb9d9442958404cfb0d8e085af2c223c618018bbeb5e42a78765c23c4dd6",
+        "generatorRelease": "v4.2.0",
+        "modelSha256": "a50951aa0df35cac1f4ed64ef0646860941916aed1ec0919b5b299ef4ad6a303",
+        "producerReceiptSha256": "ec4d4e81c0c92ecbdd3fa1c689a9d04571784f5144e60c9ba09d8379f4fdb78d",
+        "producerSource": {
+          "commit": "97830096360553381a3221ad5bdbe9837c68a9b4",
+          "jarSHA256": "a22cfb9d9442958404cfb0d8e085af2c223c618018bbeb5e42a78765c23c4dd6",
+          "release": "v4.2.0"
+        }
+      },
+      "preservedApplicationFiles": {
+        "examples/order-management/golang-lib-core/go.mod": {
+          "emittedSHA256": "72e40fbe0aba472916a13c8d7521ccf36d316d17b4245b7e9907ee2bf86dd8e2",
+          "reason": "Application manifest, local dependency wiring or application-specific instructions preserved",
+          "sha256": "07451c36742d0aef7c50caa2c80c623af6fa815933e6517a44c99bbe2a43d096"
+        }
+      }
+    },
+    {
+      "archiveSHA256": "50d0ba8e3fd48905a0f88da488700ed0f9908a92e9311044a1a2d176f072fade",
+      "destination": "examples/scalar-type-probe/generated",
+      "generatedFiles": {
+        "examples/scalar-type-probe/generated/e.go": {
+          "emittedPath": "e.go",
+          "sha256": "1de7aa459178b21fe4111088a83803597d26f2741ae0d19086098b29d3d483a9"
+        },
+        "examples/scalar-type-probe/generated/entity_json.go": {
+          "emittedPath": "entity_json.go",
+          "sha256": "b15cc4e064a92cc650f277248c5c80af334fe9b05c9909a5c00da7b5dc298942"
+        },
+        "examples/scalar-type-probe/generated/internal/generatedjson/model.go": {
+          "emittedPath": "internal/generatedjson/model.go",
+          "sha256": "a9ba59e455e05c82fd186b55b1a6e3052fab339370d66f77975302045b829a68"
+        },
+        "examples/scalar-type-probe/generated/internal/generatedsearch/search_models.go": {
+          "emittedPath": "internal/generatedsearch/search_models.go",
+          "sha256": "642072512c33620ab83d5a5d33094236ba20a8b5bad6fff9dc5223efe1296dac"
+        },
+        "examples/scalar-type-probe/generated/lib.go": {
+          "emittedPath": "lib.go",
+          "sha256": "d7039265d1181b84bb56e0309647d1f330f8940625ad90f3a0d211b0bf80ccf8"
+        },
+        "examples/scalar-type-probe/generated/q.go": {
+          "emittedPath": "q.go",
+          "sha256": "eac483ed0f763a27a99172533b08b93b6fdf022d12cf2d7e8b4a9d5106f29fb3"
+        },
+        "examples/scalar-type-probe/generated/runtime.go": {
+          "emittedPath": "runtime.go",
+          "sha256": "d695db0f25c502845d18feed4a8325d8bacde62f087777800611cd89cd17c3a4"
+        },
+        "examples/scalar-type-probe/generated/scalar_type_probe/behavior.go": {
+          "emittedPath": "scalar_type_probe/behavior.go",
+          "sha256": "3e0dbce0c8cb32e56783928a3c6e304ede947e332bc946a19e6f42534947da94"
+        },
+        "examples/scalar-type-probe/generated/scalar_type_probe/checker.go": {
+          "emittedPath": "scalar_type_probe/checker.go",
+          "sha256": "355e35a675df34683b3c7cfb85abe12a77f2dde6ab027c11c6a1574b2e8c51be"
+        },
+        "examples/scalar-type-probe/generated/scalar_type_probe/entity.go": {
+          "emittedPath": "scalar_type_probe/entity.go",
+          "sha256": "42556abc3094b79e8fb2b36d5928d3b14c274ca75c5b70cd3e475bb0df1af714"
+        },
+        "examples/scalar-type-probe/generated/scalar_type_probe/expression.go": {
+          "emittedPath": "scalar_type_probe/expression.go",
+          "sha256": "308ab7e89e86f47e69cc6c315f21fa424bcdded63eb442ee93748d5b6865ca9c"
+        },
+        "examples/scalar-type-probe/generated/scalar_type_probe/request.go": {
+          "emittedPath": "scalar_type_probe/request.go",
+          "sha256": "b793b89e3339910184a764f4bcf451115112c89665793252d58930dc2942cef7"
+        },
+        "examples/scalar-type-probe/generated/teaql/checker-model.json": {
+          "emittedPath": "teaql/checker-model.json",
+          "sha256": "ec97d233877caa4ae992a528e3b8e157fb73d92b43203890b9a31f57ce36f2e3"
+        },
+        "examples/scalar-type-probe/generated/teaql/model-provenance.json": {
+          "emittedPath": "teaql/model-provenance.json",
+          "sha256": "84e6e6a9d56404f3923357514c795575e617b670ac6ea413306a4203b80ff14e"
+        },
+        "examples/scalar-type-probe/generated/type_platform/behavior.go": {
+          "emittedPath": "type_platform/behavior.go",
+          "sha256": "3b3c8f0323c769d67db34b8421e21a02fc0a93ee87b27ea150d33a8495894899"
+        },
+        "examples/scalar-type-probe/generated/type_platform/checker.go": {
+          "emittedPath": "type_platform/checker.go",
+          "sha256": "d34524d9ccc3e9f7161924149af5e32c7ad204deca31e1d86f1561877c78135e"
+        },
+        "examples/scalar-type-probe/generated/type_platform/entity.go": {
+          "emittedPath": "type_platform/entity.go",
+          "sha256": "2282cff2957a8b28c27ba3f56457ecaed349ec62fadec83af92d421df7494cd2"
+        },
+        "examples/scalar-type-probe/generated/type_platform/expression.go": {
+          "emittedPath": "type_platform/expression.go",
+          "sha256": "6a72d38cd62b1c3505730515e8c0da4d22a5c3e6d5535e384bee4c971acb3468"
+        },
+        "examples/scalar-type-probe/generated/type_platform/request.go": {
+          "emittedPath": "type_platform/request.go",
+          "sha256": "8b9dc4e290cb79f3a2cf7ea004c73ba15132641e5f104eab0306f37806176347"
+        }
+      },
+      "model": "examples/scalar-type-probe/model.xml",
+      "origin": {
+        "evaluatedScope": "golang-lib-core",
+        "evaluationErrors": 0,
+        "evaluationWarnings": 0,
+        "generatedManifestSha256": "ce49f3457ed732ba63b175df08c9a72ec9782ef9f4f3dcdde114c5ef16f52e6e",
+        "generationReceipt": "teaql-conformance/evidence/2026-11-19-runtime-examples-refresh/generation-catalog/go/scalar-type-probe/model/receipt.json",
+        "generatorCommit": "97830096360553381a3221ad5bdbe9837c68a9b4",
+        "generatorJarSHA256": "a22cfb9d9442958404cfb0d8e085af2c223c618018bbeb5e42a78765c23c4dd6",
+        "generatorRelease": "v4.2.0",
+        "modelSha256": "8d3017392ffd00abbc06be2555ced27ac6360e2d05fabc4299e27a5ef8f1c762",
+        "producerReceiptSha256": "c7e2c4edfe315e673f3c01bac246eddf364738ef7be0b1c3862ad950b39686e9",
+        "producerSource": {
+          "commit": "97830096360553381a3221ad5bdbe9837c68a9b4",
+          "jarSHA256": "a22cfb9d9442958404cfb0d8e085af2c223c618018bbeb5e42a78765c23c4dd6",
+          "release": "v4.2.0"
+        }
+      },
+      "preservedApplicationFiles": {
+        "examples/scalar-type-probe/generated/go.mod": {
+          "emittedSHA256": "81997ba4d9a407337cdb3b58bb37a3c5a6908aa3b2f3b34f8f864c52504c2dbd",
+          "reason": "Application manifest, local dependency wiring or application-specific instructions preserved",
+          "sha256": "af54910f916f60617f8863067cad5b0f4103e077ffa00c9cb2afca19af5fce1e"
+        }
+      }
+    },
+    {
+      "archiveSHA256": "564296fa6f705ea68d103618c2f5468106272e99635cb6c57d7dd1c773d468df",
+      "destination": "examples/school-management",
+      "generatedFiles": {
+        "examples/school-management/e.go": {
+          "emittedPath": "e.go",
+          "sha256": "4dbf656a5c4fdebe4e877166353cab849a94d21de06967086915cd26b155a435"
+        },
+        "examples/school-management/entity_json.go": {
+          "emittedPath": "entity_json.go",
+          "sha256": "7b39c65a147e4d1de344d209261e130f34cfd848a13e300df7ce83cd666865a6"
+        },
+        "examples/school-management/internal/generatedjson/model.go": {
+          "emittedPath": "internal/generatedjson/model.go",
+          "sha256": "b33aa1f3a994d0d6fef96f217d726f17de47ca488c3445981e3e365a45c5c9aa"
+        },
+        "examples/school-management/internal/generatedsearch/search_models.go": {
+          "emittedPath": "internal/generatedsearch/search_models.go",
+          "sha256": "a31452e7f781ecbae548883b080afaca0bae9e099486ee87a1c5989228384164"
+        },
+        "examples/school-management/lib.go": {
+          "emittedPath": "lib.go",
+          "sha256": "8d4d2db09bce758d256d63814b47a05922467445e11a2d91fee0daef9cbff5e0"
+        },
+        "examples/school-management/platform/behavior.go": {
+          "emittedPath": "platform/behavior.go",
+          "sha256": "a2bf9efebdfc883eb0e6457f2f79646f578212889cf9a1fd20f91f0a1a1be5a8"
+        },
+        "examples/school-management/platform/checker.go": {
+          "emittedPath": "platform/checker.go",
+          "sha256": "ae95114ab80d2d5e2793f9392cf55f54a5c9fd68401a6a24946d7a8f4368a1bd"
+        },
+        "examples/school-management/platform/entity.go": {
+          "emittedPath": "platform/entity.go",
+          "sha256": "6ce1a3aab3178b924396c48ab7148ee4cb59c9e7531f6ff4ae625b72655dd56b"
+        },
+        "examples/school-management/platform/expression.go": {
+          "emittedPath": "platform/expression.go",
+          "sha256": "ad7c8e3bd878c4a98b25d18f0f802352f8dd1a22ecdd97639ed658e0c5cc262b"
+        },
+        "examples/school-management/platform/request.go": {
+          "emittedPath": "platform/request.go",
+          "sha256": "7d67fdc30ab94539409fe79b9dc144180311c8f7033d80d9f19435e7e5927d15"
+        },
+        "examples/school-management/q.go": {
+          "emittedPath": "q.go",
+          "sha256": "53e0fd84b305502c98cd533ffe6280568083b0bfb73d37615756758885f0c975"
+        },
+        "examples/school-management/runtime.go": {
+          "emittedPath": "runtime.go",
+          "sha256": "695b53b8f2dbf007d4683c72e7c7fbbbbb12dec3bdd9a4c4dbd6e5a2a1a91da1"
+        },
+        "examples/school-management/school/behavior.go": {
+          "emittedPath": "school/behavior.go",
+          "sha256": "67f8698be5914f10037b8369505c8b792df48e74dbd2cf26fc281ea44254c0e6"
+        },
+        "examples/school-management/school/checker.go": {
+          "emittedPath": "school/checker.go",
+          "sha256": "7eeb520f1f690e5abb2a56446ad5f919a96839d7709297d0d7887493a906d6df"
+        },
+        "examples/school-management/school/entity.go": {
+          "emittedPath": "school/entity.go",
+          "sha256": "a351ac77a620881c14b00e5f95cf8664672f0f560b85558d8c35d1bc6ed56b58"
+        },
+        "examples/school-management/school/expression.go": {
+          "emittedPath": "school/expression.go",
+          "sha256": "ae298deaf99e0be22a4bb60663e91849553c7b73932a8c27d4137102c9bc2a4e"
+        },
+        "examples/school-management/school/request.go": {
+          "emittedPath": "school/request.go",
+          "sha256": "8507766cc0675286d7051ecf0601ed487806c49bfb4d07dac9d3aa93d2fddb00"
+        },
+        "examples/school-management/school_type/behavior.go": {
+          "emittedPath": "school_type/behavior.go",
+          "sha256": "a05e868f84fe6ef03c85c6ea73938887bb3758ff7dea74942ec5ef9d50e2ce28"
+        },
+        "examples/school-management/school_type/checker.go": {
+          "emittedPath": "school_type/checker.go",
+          "sha256": "fede55c385b25274234d30c25971ff0f0bb123b83e44784843f0a23d260fe4b6"
+        },
+        "examples/school-management/school_type/entity.go": {
+          "emittedPath": "school_type/entity.go",
+          "sha256": "eb766fa701f526d1f24432c7be134f5ee62bceb936c0d7379fce3287be448070"
+        },
+        "examples/school-management/school_type/expression.go": {
+          "emittedPath": "school_type/expression.go",
+          "sha256": "183f17c70f0f3a6eef2f8d96ab4f8ffabb72e5a391a2c475e133c5ac59acd251"
+        },
+        "examples/school-management/school_type/request.go": {
+          "emittedPath": "school_type/request.go",
+          "sha256": "e0527ffe893cfb6edf98bc852cafecbcf405c02606027f1304640c4560b5152d"
+        },
+        "examples/school-management/teaql/checker-model.json": {
+          "emittedPath": "teaql/checker-model.json",
+          "sha256": "d20402b2a81d6497d189de0395c924d04c3d06a2c4eb8e432df61a84ced90b51"
+        },
+        "examples/school-management/teaql/model-provenance.json": {
+          "emittedPath": "teaql/model-provenance.json",
+          "sha256": "e71643a0e395daf060883f2fb6752d0c6645884dffabd2934e2cabb6c90f0f92"
+        }
+      },
+      "model": "examples/school-management/models/school-model.xml",
+      "origin": {
+        "evaluatedScope": "golang-lib-core",
+        "evaluationErrors": 0,
+        "evaluationWarnings": 0,
+        "generatedManifestSha256": "0ac2465056f3fa662bf7b66fd8d05f28413c9d4c88f0b57df46ca09060691500",
+        "generationReceipt": "teaql-conformance/evidence/2026-11-19-runtime-examples-refresh/generation-catalog/go/school-management/models/school-model/receipt.json",
+        "generatorCommit": "97830096360553381a3221ad5bdbe9837c68a9b4",
+        "generatorJarSHA256": "a22cfb9d9442958404cfb0d8e085af2c223c618018bbeb5e42a78765c23c4dd6",
+        "generatorRelease": "v4.2.0",
+        "modelSha256": "b5cd06ae44464fc29ed24de82654b47c80f546110496756aa15923cee1c511b4",
+        "producerReceiptSha256": "4527bed33a4b5fb5e04a209ae6856134c258638bed5909f0cddd15a113eaace7",
+        "producerSource": {
+          "commit": "97830096360553381a3221ad5bdbe9837c68a9b4",
+          "jarSHA256": "a22cfb9d9442958404cfb0d8e085af2c223c618018bbeb5e42a78765c23c4dd6",
+          "release": "v4.2.0"
+        }
+      },
+      "preservedApplicationFiles": {
+        "examples/school-management/go.mod": {
+          "emittedSHA256": "ba54cb5868b4b30910e908e9a9d756563f0a284d6d470147583fab7e36100c38",
+          "reason": "Application manifest, local dependency wiring or application-specific instructions preserved",
+          "sha256": "2fba8e677a101e2f74d2d819cdbd2e3f21e9ba82de72a5b1b7887e64bd6a9145"
+        }
+      }
+    },
+    {
+      "archiveSHA256": "a7d820d3936dc7d8f33af06d84bc9cce6d017126534f7eacaa8f48fea113a467",
+      "destination": "examples/task_board/generated",
+      "generatedFiles": {
+        "examples/task_board/generated/e.go": {
+          "emittedPath": "e.go",
+          "sha256": "e43f15dc8e65eb52424cca81e83d715c847e34a2faf2dfc4c7b9f40c4f63ca1d"
+        },
+        "examples/task_board/generated/entity_json.go": {
+          "emittedPath": "entity_json.go",
+          "sha256": "28869e99661ad7ac9819b7976f68de670d13d8731f849aae380149ea162bf28f"
+        },
+        "examples/task_board/generated/internal/generatedjson/model.go": {
+          "emittedPath": "internal/generatedjson/model.go",
+          "sha256": "0d05d81eee44526dc10b3133da9f56ac1c6c2433ac32396201234ab67ab56b98"
+        },
+        "examples/task_board/generated/internal/generatedsearch/search_models.go": {
+          "emittedPath": "internal/generatedsearch/search_models.go",
+          "sha256": "f07b3cf28a4534031819c769dead4194a6af386aa4ccad47b27970c328f5c558"
+        },
+        "examples/task_board/generated/lib.go": {
+          "emittedPath": "lib.go",
+          "sha256": "862d0a9f1d73f92b0d7a87df7f212123e65289246cdbc130d2ba8c382775247b"
+        },
+        "examples/task_board/generated/platform/behavior.go": {
+          "emittedPath": "platform/behavior.go",
+          "sha256": "a2bf9efebdfc883eb0e6457f2f79646f578212889cf9a1fd20f91f0a1a1be5a8"
+        },
+        "examples/task_board/generated/platform/checker.go": {
+          "emittedPath": "platform/checker.go",
+          "sha256": "ae95114ab80d2d5e2793f9392cf55f54a5c9fd68401a6a24946d7a8f4368a1bd"
+        },
+        "examples/task_board/generated/platform/entity.go": {
+          "emittedPath": "platform/entity.go",
+          "sha256": "a1fbd0eff6ae0cdcd3856af2f917b8116cad6b7c374eb42752420d1ec5fe5aa7"
+        },
+        "examples/task_board/generated/platform/expression.go": {
+          "emittedPath": "platform/expression.go",
+          "sha256": "b230186815eadc98da4bcc60c7d2a809f05cd0510e3d9b0a5685eb6d851b1f4b"
+        },
+        "examples/task_board/generated/platform/request.go": {
+          "emittedPath": "platform/request.go",
+          "sha256": "724f49cdb008a5adadd79e3d3a735ac1a5e414ab2f133d83f89016b0283263b5"
+        },
+        "examples/task_board/generated/q.go": {
+          "emittedPath": "q.go",
+          "sha256": "5d2dcd512dd0877de4402212b3a5419aaeb8ad571472b62c0302a9d436c212b3"
+        },
+        "examples/task_board/generated/runtime.go": {
+          "emittedPath": "runtime.go",
+          "sha256": "cfabbeea285a6c5b1e131a3a8a24fb0e4d8e6c8c49b87903cdffa3d399417c9a"
+        },
+        "examples/task_board/generated/task/behavior.go": {
+          "emittedPath": "task/behavior.go",
+          "sha256": "9284d8db9ad06091c1cc171a8f883ed90d5442e92740428bff8d0115cf033c04"
+        },
+        "examples/task_board/generated/task/checker.go": {
+          "emittedPath": "task/checker.go",
+          "sha256": "b5a5be8f9469ca457b5cdabb87f25126c69a09e56757bdbecfdb5b6c7b166edc"
+        },
+        "examples/task_board/generated/task/entity.go": {
+          "emittedPath": "task/entity.go",
+          "sha256": "7e557ddaeed60b60c7a4ac74a1c42e9ea98595f3d87a36a9f5d622970e8a1850"
+        },
+        "examples/task_board/generated/task/expression.go": {
+          "emittedPath": "task/expression.go",
+          "sha256": "eae45db57b07c491565c3798556279cf77a060f4a1177e0e653d2d245027c061"
+        },
+        "examples/task_board/generated/task/request.go": {
+          "emittedPath": "task/request.go",
+          "sha256": "75b3cf88a628e83369098930300bde83e415a410edc07ee58d2a399caddca3f8"
+        },
+        "examples/task_board/generated/task_execution_log/behavior.go": {
+          "emittedPath": "task_execution_log/behavior.go",
+          "sha256": "839e31e4e7767f59db36dacae233bc1768a145cff821eca07bef1bd9420d91dd"
+        },
+        "examples/task_board/generated/task_execution_log/checker.go": {
+          "emittedPath": "task_execution_log/checker.go",
+          "sha256": "3745b729abc5b6355febc9b78ee56770ec21659439ea65ad75406a886a11da74"
+        },
+        "examples/task_board/generated/task_execution_log/entity.go": {
+          "emittedPath": "task_execution_log/entity.go",
+          "sha256": "e0bc9c3ba4dcfd5c8c9d7eceffe312d7f1ae86c60d8086c73777a18853b7796f"
+        },
+        "examples/task_board/generated/task_execution_log/expression.go": {
+          "emittedPath": "task_execution_log/expression.go",
+          "sha256": "2cc7dd067286ad36337a1957affaa76c26e3f9d7f043f5d3053a860aaaa8661c"
+        },
+        "examples/task_board/generated/task_execution_log/request.go": {
+          "emittedPath": "task_execution_log/request.go",
+          "sha256": "1e3964ee8c70d80b839e21ef3d62be6084837e94cccfb293c4424d42c068c3ce"
+        },
+        "examples/task_board/generated/task_status/behavior.go": {
+          "emittedPath": "task_status/behavior.go",
+          "sha256": "7a03aeeba2feea4a010470a1b71566886adf1bfd5872bfdb684adcc67c3888b4"
+        },
+        "examples/task_board/generated/task_status/checker.go": {
+          "emittedPath": "task_status/checker.go",
+          "sha256": "895440c0ea4faa4eeac0bc92bdbcb020c8d52ffe274711140a6756cd06c6f58b"
+        },
+        "examples/task_board/generated/task_status/entity.go": {
+          "emittedPath": "task_status/entity.go",
+          "sha256": "1c0125ea57bcf9ba7493ceac309d32aec8c64de3c74980a0f74f18c7f297b5a1"
+        },
+        "examples/task_board/generated/task_status/expression.go": {
+          "emittedPath": "task_status/expression.go",
+          "sha256": "7430b8448162f5458f097d162d8903f16f7eaf61edc75a6758822ff77e2ec490"
+        },
+        "examples/task_board/generated/task_status/request.go": {
+          "emittedPath": "task_status/request.go",
+          "sha256": "198fb2d92510fd0185de37272315582bb82a5441f9f5c96a01e5a0e2d1bec992"
+        },
+        "examples/task_board/generated/teaql/checker-model.json": {
+          "emittedPath": "teaql/checker-model.json",
+          "sha256": "af409d8bedab40a4ef621b71492884bd03ff1850eecd6016a809d01da3da77d0"
+        },
+        "examples/task_board/generated/teaql/model-provenance.json": {
+          "emittedPath": "teaql/model-provenance.json",
+          "sha256": "dd639c5debcc26a6017a8a6e3072ea657cc7eddb1d7931684a324515ef4b4235"
+        }
+      },
+      "model": "examples/task_board/generated/model.xml",
+      "origin": {
+        "evaluatedScope": "golang-lib-core",
+        "evaluationErrors": 0,
+        "evaluationWarnings": 3,
+        "generatedManifestSha256": "6e6d76a4949cac922dd7272df286da3f8084a956baaaf8362a61105dcb5a69e2",
+        "generationReceipt": "teaql-conformance/evidence/2026-11-19-runtime-examples-refresh/generation-catalog/go/task_board/generated/model/receipt.json",
+        "generatorCommit": "97830096360553381a3221ad5bdbe9837c68a9b4",
+        "generatorJarSHA256": "a22cfb9d9442958404cfb0d8e085af2c223c618018bbeb5e42a78765c23c4dd6",
+        "generatorRelease": "v4.2.0",
+        "modelSha256": "f2fdd5037dbdee7f71e008f3ca04db75d8dd0e3138743de7a4744c197b0b567e",
+        "producerReceiptSha256": "4437f1b52ba2fe6aa43303f49a039461b98e57eb5ee4f8b97ca90c19972bf13b",
+        "producerSource": {
+          "commit": "97830096360553381a3221ad5bdbe9837c68a9b4",
+          "jarSHA256": "a22cfb9d9442958404cfb0d8e085af2c223c618018bbeb5e42a78765c23c4dd6",
+          "release": "v4.2.0"
+        }
+      },
+      "preservedApplicationFiles": {
+        "examples/task_board/generated/go.mod": {
+          "emittedSHA256": "e43967fc9f7c065a6bc31b9e12217108279b32d0ddadecc10ab8bcf1f1b8ca5a",
+          "reason": "Application manifest, local dependency wiring or application-specific instructions preserved",
+          "sha256": "4ac33e7176930ea895604d3157383fcf6c1e36974f5c339cb726b58aa9dea49c"
+        }
+      }
+    },
+    {
+      "archiveSHA256": "4d5b6fcc2a85ae37e42936a7f4ae2f1067827299df3642e00d1e5ed2b940aad9",
+      "destination": "examples/trace-chain/lib",
+      "generatedFiles": {
+        "examples/trace-chain/lib/customer_order/behavior.go": {
+          "emittedPath": "customer_order/behavior.go",
+          "sha256": "fc0f1cee247d602428a1dab95836106976e137375b5ba1fa4d295dfbd562612c"
+        },
+        "examples/trace-chain/lib/customer_order/checker.go": {
+          "emittedPath": "customer_order/checker.go",
+          "sha256": "6c93030644a04f0f89a2f01b12207189110623051812a081270efe5c9f583dd6"
+        },
+        "examples/trace-chain/lib/customer_order/entity.go": {
+          "emittedPath": "customer_order/entity.go",
+          "sha256": "e338303b715cec511c8e22dcc6f235e7aa115476935ad98d579244718adee703"
+        },
+        "examples/trace-chain/lib/customer_order/expression.go": {
+          "emittedPath": "customer_order/expression.go",
+          "sha256": "21ba1c153bac0b450c03cec48e2435da902cbf02f14f76f613174cc64d64de4d"
+        },
+        "examples/trace-chain/lib/customer_order/request.go": {
+          "emittedPath": "customer_order/request.go",
+          "sha256": "6025524ca4e877f134793d820635a0c7092bd756f7e9bf99b52ce01c5a737da1"
+        },
+        "examples/trace-chain/lib/e.go": {
+          "emittedPath": "e.go",
+          "sha256": "a91e6ed8b1854bcaa2fdd2da066ae36444c8aa10d927672932870717bd3522bb"
+        },
+        "examples/trace-chain/lib/entity_json.go": {
+          "emittedPath": "entity_json.go",
+          "sha256": "e73f9b9a71452cff2b358bd9f0b60866bed313018a6e2a659282efb038e4abe8"
+        },
+        "examples/trace-chain/lib/internal/generatedjson/model.go": {
+          "emittedPath": "internal/generatedjson/model.go",
+          "sha256": "b658594580226360f03853a9227418d4ff4119abc8741f21c81decd74946f15a"
+        },
+        "examples/trace-chain/lib/internal/generatedsearch/search_models.go": {
+          "emittedPath": "internal/generatedsearch/search_models.go",
+          "sha256": "63fcc425872c49d6f6444af38b76672e8ee38b36913c7f9b3499082fc3049482"
+        },
+        "examples/trace-chain/lib/lib.go": {
+          "emittedPath": "lib.go",
+          "sha256": "956441c46ff165a232271f9777b8350d29673fbdbbdb260b7863c16a76effeca"
+        },
+        "examples/trace-chain/lib/order_item/behavior.go": {
+          "emittedPath": "order_item/behavior.go",
+          "sha256": "0d1c08bf44cc8f2268b5b5c998fae61e24b6a6c07589bb0b49337e5882d9dc6a"
+        },
+        "examples/trace-chain/lib/order_item/checker.go": {
+          "emittedPath": "order_item/checker.go",
+          "sha256": "02e151227137a4eb1df8824d4ba83bcd08057bc88c57beb33f63096a0b0434af"
+        },
+        "examples/trace-chain/lib/order_item/entity.go": {
+          "emittedPath": "order_item/entity.go",
+          "sha256": "525c28df7a9cee09a96da333e261d0101d24abe24cfe3757d8d08f2651b16306"
+        },
+        "examples/trace-chain/lib/order_item/expression.go": {
+          "emittedPath": "order_item/expression.go",
+          "sha256": "5a9e2770da2be5fcd81ce3d1f923dfff6d00f2ef258eca7890ab5d1d63940a76"
+        },
+        "examples/trace-chain/lib/order_item/request.go": {
+          "emittedPath": "order_item/request.go",
+          "sha256": "0389cff4259be464bbb01af9b9ac8e856ac3f51b4e6cd4d68f6fcee439b6830e"
+        },
+        "examples/trace-chain/lib/payment/behavior.go": {
+          "emittedPath": "payment/behavior.go",
+          "sha256": "6f15a2d0d568b58c61f16574bc158c9393fdeafc6d13ae8a04c0c6ae551d508f"
+        },
+        "examples/trace-chain/lib/payment/checker.go": {
+          "emittedPath": "payment/checker.go",
+          "sha256": "b9fb61d66210588163a6ac98803c176f238ec633154ca504bca06c653c70a3ff"
+        },
+        "examples/trace-chain/lib/payment/entity.go": {
+          "emittedPath": "payment/entity.go",
+          "sha256": "a3ec04d5404826269d0d95175bcb8709ba89b8fe3ee8d504fb581f59442df4ad"
+        },
+        "examples/trace-chain/lib/payment/expression.go": {
+          "emittedPath": "payment/expression.go",
+          "sha256": "b871481783186e02b60c3bb96d0d64318e4c56bb9a828669d2cc8a99fd8ea5a4"
+        },
+        "examples/trace-chain/lib/payment/request.go": {
+          "emittedPath": "payment/request.go",
+          "sha256": "f6336a93e6453ba664219ac49acb961b0e96292d6648846f49bad8df980d941d"
+        },
+        "examples/trace-chain/lib/payment_attempt/behavior.go": {
+          "emittedPath": "payment_attempt/behavior.go",
+          "sha256": "187c639e6633c0b3f5644fc29d73608cce4ce3c0ecc7dd6e9bba752cf42a731f"
+        },
+        "examples/trace-chain/lib/payment_attempt/checker.go": {
+          "emittedPath": "payment_attempt/checker.go",
+          "sha256": "c33b17c3b5ea147b900ee739df8d34941fb0fd865af8b069172adab91a63902b"
+        },
+        "examples/trace-chain/lib/payment_attempt/entity.go": {
+          "emittedPath": "payment_attempt/entity.go",
+          "sha256": "416c4282d962e14c88e2c88801b0c54d6bb61783bf003c6af630e14b0514efed"
+        },
+        "examples/trace-chain/lib/payment_attempt/expression.go": {
+          "emittedPath": "payment_attempt/expression.go",
+          "sha256": "62f3a9ce75b44bed8d8105cfd5b22431ac980e3a924db922dbe67341d61158da"
+        },
+        "examples/trace-chain/lib/payment_attempt/request.go": {
+          "emittedPath": "payment_attempt/request.go",
+          "sha256": "065f295d398db662e4b2c3ffe30946625e4956fc9f3536cf01f2ff6daf4a208a"
+        },
+        "examples/trace-chain/lib/platform/behavior.go": {
+          "emittedPath": "platform/behavior.go",
+          "sha256": "a2bf9efebdfc883eb0e6457f2f79646f578212889cf9a1fd20f91f0a1a1be5a8"
+        },
+        "examples/trace-chain/lib/platform/checker.go": {
+          "emittedPath": "platform/checker.go",
+          "sha256": "ae95114ab80d2d5e2793f9392cf55f54a5c9fd68401a6a24946d7a8f4368a1bd"
+        },
+        "examples/trace-chain/lib/platform/entity.go": {
+          "emittedPath": "platform/entity.go",
+          "sha256": "c0f3051a6d73c5d4f33fc3d249f6f41d5889e24a6812124aa07872bc07b6caef"
+        },
+        "examples/trace-chain/lib/platform/expression.go": {
+          "emittedPath": "platform/expression.go",
+          "sha256": "7eb3688691383ba227af33d4ab98dac364e2c8556b35732e28bdbbb717c929f5"
+        },
+        "examples/trace-chain/lib/platform/request.go": {
+          "emittedPath": "platform/request.go",
+          "sha256": "ae2fff23bb598371f00a4e5a96678474892a69d6dd73bfbf3e5de123717b5652"
+        },
+        "examples/trace-chain/lib/q.go": {
+          "emittedPath": "q.go",
+          "sha256": "59c6f367b1ccc496fc1af0f4c0812ddaf6fff78b723c5b01a5e6b8ee820be9ad"
+        },
+        "examples/trace-chain/lib/runtime.go": {
+          "emittedPath": "runtime.go",
+          "sha256": "b32ef1703cdd61313b4408eed51208ec8f7766f5bfe38458a0d66e31f76b1f7b"
+        },
+        "examples/trace-chain/lib/shipment/behavior.go": {
+          "emittedPath": "shipment/behavior.go",
+          "sha256": "ede4d886b3c552efa5d3cacdd0de0885d0819d24e9d31216402818ef2979cb48"
+        },
+        "examples/trace-chain/lib/shipment/checker.go": {
+          "emittedPath": "shipment/checker.go",
+          "sha256": "edb9435ea445033e998fcfc8ed8f8baf10ae70a90c644100857fcbb6fbe2291e"
+        },
+        "examples/trace-chain/lib/shipment/entity.go": {
+          "emittedPath": "shipment/entity.go",
+          "sha256": "8664508be4a88b08e51d769ff54ffba25918050d273ad805b3d40343a806bb7f"
+        },
+        "examples/trace-chain/lib/shipment/expression.go": {
+          "emittedPath": "shipment/expression.go",
+          "sha256": "43970772a36100a2c67a3349ba724ecfd2c4f12323e800e0778348fd62b28756"
+        },
+        "examples/trace-chain/lib/shipment/request.go": {
+          "emittedPath": "shipment/request.go",
+          "sha256": "43e80480ccba4d3a017aaca347f36dd115659c274975777de2ce5e2edb7daca3"
+        },
+        "examples/trace-chain/lib/teaql/checker-model.json": {
+          "emittedPath": "teaql/checker-model.json",
+          "sha256": "4f8b16a4464e10ac50788047b5eb81389f3bf329b5db255234b74254802bef9a"
+        },
+        "examples/trace-chain/lib/teaql/model-provenance.json": {
+          "emittedPath": "teaql/model-provenance.json",
+          "sha256": "5267c6d37e108c1392e71d2bd7b15264e00ae97a989d98c4391d87c80c3843d4"
+        }
+      },
+      "model": "examples/trace-chain/model.xml",
+      "origin": {
+        "evaluatedScope": "golang-lib-core",
+        "evaluationErrors": 0,
+        "evaluationWarnings": 0,
+        "generatedManifestSha256": "794e6d78ecee2a968c51e287e34b1e7e506f101fce9512deefe90ddb8b319542",
+        "generationReceipt": "teaql-conformance/evidence/2026-11-19-runtime-examples-refresh/generation-catalog/go/trace-chain/model/receipt.json",
+        "generatorCommit": "97830096360553381a3221ad5bdbe9837c68a9b4",
+        "generatorJarSHA256": "a22cfb9d9442958404cfb0d8e085af2c223c618018bbeb5e42a78765c23c4dd6",
+        "generatorRelease": "v4.2.0",
+        "modelSha256": "c9743d776718c7b27c97792f75f492fdc99bf427e4bd0c24bf3492de6520c9a2",
+        "producerReceiptSha256": "9051d4722bc3a281434aa6eaa45c9a781c7be1f834a27a50bb6cb54e1c53ad7e",
+        "producerSource": {
+          "commit": "97830096360553381a3221ad5bdbe9837c68a9b4",
+          "jarSHA256": "a22cfb9d9442958404cfb0d8e085af2c223c618018bbeb5e42a78765c23c4dd6",
+          "release": "v4.2.0"
+        }
+      },
+      "preservedApplicationFiles": {
+        "examples/trace-chain/lib/go.mod": {
+          "emittedSHA256": "d6861c84d810ba19248e41dc5472f6a87d028c6a3f548f14d0485b98576b1737",
+          "reason": "Application manifest, local dependency wiring or application-specific instructions preserved",
+          "sha256": "f3d3c9baefe0e565faeeb782f9ea642f383f51f32c885a6b05e65b05193320de"
+        }
+      }
+    },
+    {
+      "archiveSHA256": "0fc6907d713bba5434cef910a2e3283684cca3ed48bda7f426c805f8c813986f",
+      "destination": "examples/trace-chain/standard-order/lib",
+      "generatedFiles": {
+        "examples/trace-chain/standard-order/lib/customer/behavior.go": {
+          "emittedPath": "customer/behavior.go",
+          "sha256": "feb6fcbd025ab8d3f85293f3ec75fd63b30c87a3abd4143f2327d36b592f6a44"
+        },
+        "examples/trace-chain/standard-order/lib/customer/checker.go": {
+          "emittedPath": "customer/checker.go",
+          "sha256": "003db818e57763e609fb670b182a2de387efb351d42a405d2a19d1ef442b186b"
+        },
+        "examples/trace-chain/standard-order/lib/customer/entity.go": {
+          "emittedPath": "customer/entity.go",
+          "sha256": "2741d068247c36d494482403316c62d8f14445ed8ef053f7126b9d23dd5267f3"
+        },
+        "examples/trace-chain/standard-order/lib/customer/expression.go": {
+          "emittedPath": "customer/expression.go",
+          "sha256": "76f3c272237b8674a7fcf65b7cde6e83a227ba101f6e69c6272437a077315b98"
+        },
+        "examples/trace-chain/standard-order/lib/customer/request.go": {
+          "emittedPath": "customer/request.go",
+          "sha256": "c6907f825abd0f5d636f398791a88ab11721e06e6fd3583e2eda79ae02ac1043"
+        },
+        "examples/trace-chain/standard-order/lib/customer_order/behavior.go": {
+          "emittedPath": "customer_order/behavior.go",
+          "sha256": "fc0f1cee247d602428a1dab95836106976e137375b5ba1fa4d295dfbd562612c"
+        },
+        "examples/trace-chain/standard-order/lib/customer_order/checker.go": {
+          "emittedPath": "customer_order/checker.go",
+          "sha256": "6c93030644a04f0f89a2f01b12207189110623051812a081270efe5c9f583dd6"
+        },
+        "examples/trace-chain/standard-order/lib/customer_order/entity.go": {
+          "emittedPath": "customer_order/entity.go",
+          "sha256": "db7285e00e9f9a7556d31659565c91a48cd857d708911292c0189e3bfb686ee8"
+        },
+        "examples/trace-chain/standard-order/lib/customer_order/expression.go": {
+          "emittedPath": "customer_order/expression.go",
+          "sha256": "694808ec39f67e7c251813591efe31c0ced5de22f186dac3c11097d0fdf18124"
+        },
+        "examples/trace-chain/standard-order/lib/customer_order/request.go": {
+          "emittedPath": "customer_order/request.go",
+          "sha256": "9998fbfdf4df632923c15f19aca6a79bf990edf28ef48e3701e3f8326c7d4349"
+        },
+        "examples/trace-chain/standard-order/lib/e.go": {
+          "emittedPath": "e.go",
+          "sha256": "73fb5242f88b76a047297d4903dff64f91a39cbc2163166485e62b21716b97a6"
+        },
+        "examples/trace-chain/standard-order/lib/entity_json.go": {
+          "emittedPath": "entity_json.go",
+          "sha256": "ba981d96b8c37f6179a400c7b5134d602cfdf021ac3b34fd7b984c59d66070a6"
+        },
+        "examples/trace-chain/standard-order/lib/internal/generatedjson/model.go": {
+          "emittedPath": "internal/generatedjson/model.go",
+          "sha256": "79f9b3a6b3d5f106768e6efcbb4bd10c1db32e93107e4b5603fd7cf6656de8b8"
+        },
+        "examples/trace-chain/standard-order/lib/internal/generatedsearch/search_models.go": {
+          "emittedPath": "internal/generatedsearch/search_models.go",
+          "sha256": "de30f04a524e0ee853df04f2ddaf068a3b75ecf6f7a97343914da297ca1ecec1"
+        },
+        "examples/trace-chain/standard-order/lib/lib.go": {
+          "emittedPath": "lib.go",
+          "sha256": "a9789b5715dcb7ea54fa722dfd3f8d39eb0c23979839ec9ba124a7155acfee36"
+        },
+        "examples/trace-chain/standard-order/lib/order_item/behavior.go": {
+          "emittedPath": "order_item/behavior.go",
+          "sha256": "0d1c08bf44cc8f2268b5b5c998fae61e24b6a6c07589bb0b49337e5882d9dc6a"
+        },
+        "examples/trace-chain/standard-order/lib/order_item/checker.go": {
+          "emittedPath": "order_item/checker.go",
+          "sha256": "02e151227137a4eb1df8824d4ba83bcd08057bc88c57beb33f63096a0b0434af"
+        },
+        "examples/trace-chain/standard-order/lib/order_item/entity.go": {
+          "emittedPath": "order_item/entity.go",
+          "sha256": "af5c321f63257e4df941607e7b4949c8e3042cc65978d81f94d635acab6e7d7d"
+        },
+        "examples/trace-chain/standard-order/lib/order_item/expression.go": {
+          "emittedPath": "order_item/expression.go",
+          "sha256": "22209b9e2948e882bc75d91addc519edc4d52b6469b1f04fced68a4d490a310a"
+        },
+        "examples/trace-chain/standard-order/lib/order_item/request.go": {
+          "emittedPath": "order_item/request.go",
+          "sha256": "624ae4081d45802ca43e735b7f6c1699ac9e116005d7b09e3bc163609d4f3e71"
+        },
+        "examples/trace-chain/standard-order/lib/order_status/behavior.go": {
+          "emittedPath": "order_status/behavior.go",
+          "sha256": "5b06d271ff1d4717142d9dcb3b7c798943c87884f4e2dd7c19c5fa5cd5506ad3"
+        },
+        "examples/trace-chain/standard-order/lib/order_status/checker.go": {
+          "emittedPath": "order_status/checker.go",
+          "sha256": "079c517ae72dc93bad8875c8596086f3f7cc56bdc6e3d047ec21810b4210f6f7"
+        },
+        "examples/trace-chain/standard-order/lib/order_status/entity.go": {
+          "emittedPath": "order_status/entity.go",
+          "sha256": "97df7918508194f50dd1ff12eb716971a31a1bda3045c205ad143c0b0514fad3"
+        },
+        "examples/trace-chain/standard-order/lib/order_status/expression.go": {
+          "emittedPath": "order_status/expression.go",
+          "sha256": "15b477235b19e92ecb97fe4bc75e6cad4ca9ba843bef39043bffbc4c41c24afc"
+        },
+        "examples/trace-chain/standard-order/lib/order_status/request.go": {
+          "emittedPath": "order_status/request.go",
+          "sha256": "2e430978e8ed9c37956dd80a64a22ee2469ccf829cb4dfabe185b03cce2a0d9a"
+        },
+        "examples/trace-chain/standard-order/lib/platform/behavior.go": {
+          "emittedPath": "platform/behavior.go",
+          "sha256": "a2bf9efebdfc883eb0e6457f2f79646f578212889cf9a1fd20f91f0a1a1be5a8"
+        },
+        "examples/trace-chain/standard-order/lib/platform/checker.go": {
+          "emittedPath": "platform/checker.go",
+          "sha256": "ae95114ab80d2d5e2793f9392cf55f54a5c9fd68401a6a24946d7a8f4368a1bd"
+        },
+        "examples/trace-chain/standard-order/lib/platform/entity.go": {
+          "emittedPath": "platform/entity.go",
+          "sha256": "9f0f99df395fc6c4aa788207f1fdb2c0df56e9dccc254a28f7ea47890fe483fc"
+        },
+        "examples/trace-chain/standard-order/lib/platform/expression.go": {
+          "emittedPath": "platform/expression.go",
+          "sha256": "d2f8cfad712d7e540ca628460aaea321a018c6c33bdd367fe7ec787b624520ec"
+        },
+        "examples/trace-chain/standard-order/lib/platform/request.go": {
+          "emittedPath": "platform/request.go",
+          "sha256": "65ec6a0d973416d55855138ce03e27c5f9d4378fb144d67969b7fca6e71d5188"
+        },
+        "examples/trace-chain/standard-order/lib/q.go": {
+          "emittedPath": "q.go",
+          "sha256": "9b2f9855e45e01c6c7b8dc1e41c52ef93de60d27eeb9e7ba7988461e7cb499f5"
+        },
+        "examples/trace-chain/standard-order/lib/runtime.go": {
+          "emittedPath": "runtime.go",
+          "sha256": "47a88cc03547909f06bbda7debdaa342adc418a505e8869722ac3845d070d895"
+        },
+        "examples/trace-chain/standard-order/lib/teaql/checker-model.json": {
+          "emittedPath": "teaql/checker-model.json",
+          "sha256": "19d4a34e5e38e91bbcc7a24f9050b38e3069551ab8533feaf474dd88344eeb06"
+        },
+        "examples/trace-chain/standard-order/lib/teaql/model-provenance.json": {
+          "emittedPath": "teaql/model-provenance.json",
+          "sha256": "72a2c1fc2a5d5c6a4469f6ca98b4499bd68ec497737b5d19f65f68bc8a7d25d9"
+        }
+      },
+      "model": "examples/trace-chain/standard-order/model.xml",
+      "origin": {
+        "evaluatedScope": "golang-lib-core",
+        "evaluationErrors": 0,
+        "evaluationWarnings": 0,
+        "generatedManifestSha256": "2d929e86bb9dd7e45746b5f0ddedb90a8bdeffa55cb4d03d649c1e6b974b2ca0",
+        "generationReceipt": "teaql-conformance/evidence/2026-11-19-runtime-examples-refresh/generation-catalog/go/trace-chain/standard-order/model/receipt.json",
+        "generatorCommit": "97830096360553381a3221ad5bdbe9837c68a9b4",
+        "generatorJarSHA256": "a22cfb9d9442958404cfb0d8e085af2c223c618018bbeb5e42a78765c23c4dd6",
+        "generatorRelease": "v4.2.0",
+        "modelSha256": "9e60ff448b17cbbc38035565643f44e6618841632cf4f08fdc089dc961c3a62c",
+        "producerReceiptSha256": "a391fc3f8e88ce30121a5e3fed2f1f1c39cca1f959a4712ad00f459fb3566d84",
+        "producerSource": {
+          "commit": "97830096360553381a3221ad5bdbe9837c68a9b4",
+          "jarSHA256": "a22cfb9d9442958404cfb0d8e085af2c223c618018bbeb5e42a78765c23c4dd6",
+          "release": "v4.2.0"
+        }
+      },
+      "preservedApplicationFiles": {
+        "examples/trace-chain/standard-order/lib/go.mod": {
+          "emittedSHA256": "c9863099c69a9e96130d76f5fdcf298d3935c58adc2c2c8370d90060ce99fb4c",
+          "reason": "Application manifest, local dependency wiring or application-specific instructions preserved",
+          "sha256": "38ee6a9020c31d0582bdb5176b589e3a3a6d93a3a125d0616f67bff84562e099"
+        }
+      }
+    }
+  ],
+  "runtimeBaseCommit": "776f3ff9323f42d914c764d6cba0b18de2ece4db",
+  "schema": "teaql.runtime-current-generated-examples/v1",
+  "sourceCodeHandEdited": false
+}

@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"reflect"
 	"strings"
+	"sync/atomic"
 
 	"time"
 	"github.com/shopspring/decimal"
@@ -24,11 +25,12 @@ var (
 	_ = errors.As
 )
 
+var teaqlTemporaryEntityID int64
+
 
 type Payment struct {
 	base        *core.BaseEntityData
 	loadedSnapshot core.LoadedScalarSnapshot
-	creationState core.EntityCreationState
 	dirtyFields map[string]bool
 	isNew       bool
 	markedAsDelete bool
@@ -44,19 +46,31 @@ type Payment struct {
 }
 
 type PaymentAttemptList struct {
-	items []*payment_attempt.PaymentAttempt
+	items *core.SmartList[*payment_attempt.PaymentAttempt]
 }
 
 func newPaymentAttemptList() *PaymentAttemptList {
-	return &PaymentAttemptList{items: make([]*payment_attempt.PaymentAttempt, 0)}
+	return &PaymentAttemptList{items: core.NewSmartList([]*payment_attempt.PaymentAttempt{})}
+}
+
+func (l *PaymentAttemptList) teaqlRows() *core.SmartList[*payment_attempt.PaymentAttempt] {
+	if l.items == nil { l.items = core.NewSmartList([]*payment_attempt.PaymentAttempt{}) }
+	return l.items
 }
 
 func (l *PaymentAttemptList) Add(entity *payment_attempt.PaymentAttempt) {
-	l.items = append(l.items, entity)
+	l.teaqlRows().Push(entity)
 }
 
 func (l *PaymentAttemptList) Items() []*payment_attempt.PaymentAttempt {
-	return l.items
+	return l.teaqlRows().IntoVec()
+}
+
+func (l *PaymentAttemptList) IsLoaded() bool { return l.teaqlRows().IsLoaded }
+
+// SmartList returns a detached query snapshot; writing it cannot change the owner's load state.
+func (l *PaymentAttemptList) SmartList() *core.SmartList[*payment_attempt.PaymentAttempt] {
+	return core.MapSmartList(l.teaqlRows(), func(entity *payment_attempt.PaymentAttempt) *payment_attempt.PaymentAttempt { return entity })
 }
 // CustomerOrderFacet reads metadata of the selected relation; it never queries the database.
 func (e *Payment) CustomerOrderFacet(name string) (*core.SmartList[core.Record], bool) {
@@ -67,61 +81,34 @@ func (e *Payment) PaymentAttemptListFacet(name string) (*core.SmartList[core.Rec
 	return e.base.RelationFacet("paymentAttemptList", name)
 }
 
-// newUninitialized allocates only local carriers; it does not grant insert intent.
-func newUninitializedPayment() *Payment {
+func NewPayment() *Payment {
+	temporaryID := -atomic.AddInt64(&teaqlTemporaryEntityID, 1)
 	entity := &Payment{
 		base:        core.NewBaseEntityData(),
 		dirtyFields: make(map[string]bool),
+		isNew:       true,
 		loadState:   make(map[string]bool),
 		root:        core.NewEntityRoot(),
-		ledgerID:    core.ValU64(0),
+		ledgerID:    core.ValI64(temporaryID),
 		relations:   make(map[string]core.Entity),
 		loadedRelations: make(map[string]bool),
 		paymentAttemptList: newPaymentAttemptList(),
 	}
-	return entity
-}
-
-// New reserves through Context before constructing mutation state or defaults.
-func NewPayment(context *runtime.UserContext) (*Payment, error) {
-	if context == nil { return nil, &core.EntityCreationError{Entity: "Payment"} }
-	id, err := context.GenerateInternalId("Payment")
-	if err != nil { return nil, err }
-	entity := newUninitializedPayment()
-	entity.UpdateId(id)
-	if err := entity.creationState.Reserve(entity.EntityName(), id); err != nil { return nil, err }
-	entity.isNew = true
 	entity.root.MarkAsNew(entity.EntityKey())
-	initialized := context.InitializeEntity("Payment", entity)
-	typed, ok := initialized.(*Payment)
-	if !ok || typed == nil { return nil, fmt.Errorf("entity initializer changed Payment to an incompatible type") }
-	typed.teaqlEnsureState()
-	if err := typed.creationState.Reserve(typed.EntityName(), id); err != nil { return nil, err }
-	typed.UpdateId(id)
-	if err := typed.base.RecordAllocatedID(id); err != nil { return nil, err }
-	typed.isNew = true
-	typed.root.MarkAsNew(typed.EntityKey())
-	return typed, nil
-}
-
-// A hydrated read view is independent and never starts an insert ledger.
-func newLoadedPayment() *Payment {
-	entity := newUninitializedPayment()
-	entity.creationState.Hydrated()
 	return entity
 }
 
-func (e *Payment) teaqlEnsureState() {
-	if e.base == nil { e.base = core.NewBaseEntityData() }
-	if e.root == nil { e.root = core.NewEntityRoot() }
-	if e.dirtyFields == nil { e.dirtyFields = make(map[string]bool) }
-	if e.loadState == nil { e.loadState = make(map[string]bool) }
-	if e.relations == nil { e.relations = make(map[string]core.Entity) }
-	if e.loadedRelations == nil { e.loadedRelations = make(map[string]bool) }
+// Hydration is not a create request. Keep this constructor private so public
+// NewEntity still records new-object intent, while a loaded snapshot starts
+// with independent mutation ownership and no pending insert.
+func newLoadedPayment() *Payment {
+	entity := NewPayment()
+	entity.root.ClearEntity(entity.EntityKey())
+	entity.paymentAttemptList.teaqlRows().IsLoaded = false
+	return entity
 }
 
 func (e *Payment) EntityKey() core.EntityKey {
-	e.teaqlEnsureState()
 	if e.base.Id != 0 { return core.NewEntityKey(e.EntityName(), core.ValU64(e.base.Id)) }
 	return core.NewEntityKey(e.EntityName(), e.ledgerID)
 }
@@ -147,6 +134,7 @@ func (e *Payment) setRelationEntity(name string, value core.Entity) {
 
 func (e *Payment) markRelationLoaded(name string) {
 	e.loadedRelations[name] = true
+	if name == "paymentAttemptList" || name == "payment_attempt_list" { e.paymentAttemptList.teaqlRows().IsLoaded = true }
 }
 
 func (e *Payment) isRelationLoaded(name string) bool {
@@ -183,25 +171,15 @@ func (e *Payment) IdValue() core.Value {
 
 
 
-// FromRecord replaces this entity's loaded snapshot and its obsolete pending
-// intent only after validation. Other entities in the ledger are unaffected.
 func (e *Payment) FromRecord(record core.Record) error {
 	return e.teaqlFromRecord(record, true)
 }
 
 func (e *Payment) teaqlFromRecord(record core.Record, captureLoaded bool) error {
-	e.teaqlEnsureState()
 	oldKey := e.EntityKey()
 	base, err := core.BaseEntityDataFromRecord(record)
 	if err != nil {
 		return err
-	}
-	if captureLoaded {
-		e.root.ClearEntity(oldKey)
-		e.markedAsDelete = false
-		e.creationState.Hydrated()
-	} else {
-		base.PreserveAllocatedIDFrom(e.base)
 	}
 	e.base = base
 	e.root.Rekey(oldKey, e.EntityKey())
@@ -226,7 +204,7 @@ func (e *Payment) teaqlLoadedScalarSnapshot(record core.Record) core.LoadedScala
 func (e *Payment) teaqlAcceptPersisted(context *runtime.UserContext, record core.Record) error {
 	if err := e.teaqlFromRecord(record, false); err != nil { return err }
 	committed := e.teaqlLoadedScalarSnapshot(record)
-	context.AfterGraphCommit(func() { e.loadedSnapshot = committed; e.creationState.Hydrated() })
+	context.AfterGraphCommit(func() { e.loadedSnapshot = committed })
 	return nil
 }
 
@@ -333,7 +311,9 @@ func (e *Payment) LoadedJSONFields() core.Record {
 	if e.IsLoaded("reference_code") { if value, present := all["reference_code"]; present { selected["reference_code"] = value } }
 	if e.IsLoaded("version") { if value, present := all["version"]; present { selected["version"] = value } }
 	if e.isRelationLoaded("customerOrderEntity") { if target, present := e.relations["customerOrderEntity"]; present && target != nil { selected["customerOrderEntity"] = core.Value{V: target} } }
-	if e.IsLoaded("paymentAttemptList") {
+	includePaymentAttemptList := e.PaymentAttemptList().IsLoaded()
+	for _, child := range e.PaymentAttemptList().Items() { if child.IsNew() || child.IsMarkedAsDelete() || len(child.EntityRoot().Change(child.EntityKey())) > 0 { includePaymentAttemptList = true } }
+	if includePaymentAttemptList {
 		items := make([]core.Value, 0, len(e.PaymentAttemptList().Items()))
 		for _, child := range e.PaymentAttemptList().Items() { items = append(items, core.Value{V: child}) }
 		selected["paymentAttemptList"] = core.ValList(items)
@@ -368,7 +348,6 @@ func TeaqlPaymentFromJSONRecord(record core.Record, factory func(string, core.Re
 }
 
 func (e *Payment) Save(context *runtime.UserContext) (*Payment, error) {
-	if e == nil || e.base == nil || e.root == nil { return nil, &core.EntityCreationError{Entity: "Payment"} }
 	intent, intentErr := core.NewMutationIntent(e.comment)
 	if intentErr != nil { return nil, intentErr }
 	var saved *Payment
@@ -389,42 +368,10 @@ func (e *Payment) Save(context *runtime.UserContext) (*Payment, error) {
 // TeaqlPreflightGraph runs Checker/Fix for the complete aggregate before the
 // first provider mutation. It is generated infrastructure, not application API.
 func (e *Payment) TeaqlPreflightGraph(context *runtime.UserContext, intent core.MutationIntent) error {
-	if e == nil || e.base == nil || e.root == nil { return &core.EntityCreationError{Entity: "Payment"} }
 	if err := intent.Validate(); err != nil { return err }
-	if err := e.TeaqlPrepareMutationViews(context); err != nil { return err }
 	if err := e.TeaqlNormalizeMutationGraph(context); err != nil { return err }
 	if err := context.ValidateGraphMutationVersions(e.root); err != nil { return err }
-	if err := e.TeaqlAdmitMutationGraph(context); err != nil { return err }
 	return e.TeaqlPreflightWithinGraph(context, intent, nil)
-}
-
-// Preserve instance-local intent before automatic ledger attachment can merge
-// aliases. Known-baseline equal assignments are not writable intent.
-func (e *Payment) TeaqlPrepareMutationViews(context *runtime.UserContext) error {
-	if e == nil || e.base == nil || e.root == nil { return &core.EntityCreationError{Entity: "Payment"} }
-	if e.isNew { if err := e.creationState.RequireNew(e.EntityName(), e.base.Id); err != nil { return err } }
-	if e.isNew && e.markedAsDelete { return nil }
-	restoredFields, err := context.DiscardRestoredScalarChanges(e.root, e.EntityKey(), e.loadedSnapshot)
-	if err != nil { return err }
-	for _, field := range restoredFields { delete(e.dirtyFields, field) }
-	if e.isNew || e.markedAsDelete || len(e.root.Change(e.EntityKey())) > 0 {
-		if err := context.AdmitPreparedGraphEntityView(e.EntityKey(), e); err != nil { return err }
-	}
-	for index, child := range e.paymentAttemptList.Items() {
-		if child.IsNew() && child.IsMarkedAsDelete() { continue }
-		if err := child.TeaqlPrepareMutationViews(context); err != nil {
-			var checkError *runtime.RuntimeError
-			if errors.As(err, &checkError) && checkError.Type == "Check" {
-				prefix := runtime.Location().Property("payment_attempt_list").At(index)
-				prefixed := make([]runtime.CheckResult, len(checkError.CheckResults))
-				for resultIndex, result := range checkError.CheckResults { prefixed[resultIndex] = result.PrefixedBy(prefix) }
-				context.TranslateCheckResults(prefixed)
-				return &runtime.RuntimeError{Type: "Check", CheckResults: prefixed}
-			}
-			return fmt.Errorf("prepare views from paymentAttemptList: %w", err)
-		}
-	}
-	return nil
 }
 
 // Cancel known-baseline equal assignments and attach the complete pending graph
@@ -450,34 +397,6 @@ func (e *Payment) TeaqlNormalizeMutationGraph(context *runtime.UserContext) erro
 				return &runtime.RuntimeError{Type: "Check", CheckResults: prefixed}
 			}
 			return fmt.Errorf("normalize child from paymentAttemptList: %w", err)
-		}
-	}
-	return nil
-}
-
-// Admit all writable object instances before any Checker/Fix can rewrite a
-// carrier. Explicit compatible ledger composition into one view stays legal.
-func (e *Payment) TeaqlAdmitMutationGraph(context *runtime.UserContext) error {
-	if e.isNew && e.markedAsDelete { return nil }
-	if e.isNew || e.markedAsDelete || len(e.root.Change(e.EntityKey())) > 0 {
-		if err := context.AdmitPreparedGraphEntityView(e.EntityKey(), e); err != nil { return err }
-	}
-	if err := runtime.RememberPreparedGraphRelation(context, e.EntityKey(), "payment_attempt_list", func() []*payment_attempt.PaymentAttempt {
-		if e.paymentAttemptList == nil { return nil }
-		return e.paymentAttemptList.Items()
-	}); err != nil { return err }
-	for index, child := range e.paymentAttemptList.Items() {
-		if child.IsNew() && child.IsMarkedAsDelete() { continue }
-		if err := child.TeaqlAdmitMutationGraph(context); err != nil {
-			var checkError *runtime.RuntimeError
-			if errors.As(err, &checkError) && checkError.Type == "Check" {
-				prefix := runtime.Location().Property("payment_attempt_list").At(index)
-				prefixed := make([]runtime.CheckResult, len(checkError.CheckResults))
-				for resultIndex, result := range checkError.CheckResults { prefixed[resultIndex] = result.PrefixedBy(prefix) }
-				context.TranslateCheckResults(prefixed)
-				return &runtime.RuntimeError{Type: "Check", CheckResults: prefixed}
-			}
-			return fmt.Errorf("admit child from paymentAttemptList: %w", err)
 		}
 	}
 	return nil
@@ -518,7 +437,8 @@ func (e *Payment) TeaqlPreflightWithinGraph(context *runtime.UserContext, intent
 		}
 		checkedValues := e.IntoRecord()
 		valuesBeforeCheck := e.IntoRecord()
-		checkErr := runtime.CheckAndFixGraphEntity(context, &runtime.CheckAndFixInput{Entity: "Payment", Operation: operation, Values: checkedValues}, e.root, e.EntityKey())
+		context.CaptureContextFixUndo(e.EntityName(), func() *core.BaseEntityData { return e.base }, e.root, e.EntityKey())
+		checkErr := runtime.CheckAndFixGraphEntity(context, &runtime.CheckAndFixInput{Entity: "Payment", Operation: operation, Values: checkedValues, OldValues: e.loadedSnapshot.ValuesFor(e.EntityKey(), e.base.Version)}, e.root, e.EntityKey())
 		for field, value := range checkedValues {
 			if before, exists := valuesBeforeCheck[field]; !exists || !reflect.DeepEqual(before, value) {
 				e.base.PutDynamic(field, value)
@@ -548,12 +468,11 @@ func (e *Payment) TeaqlPreflightWithinGraph(context *runtime.UserContext, intent
 			return fmt.Errorf("preflight child from paymentAttemptList: %w", err)
 		}
 	}
-	return nil
+	return e.TeaqlNormalizeMutationGraph(context)
 }
 
 type teaqlPaymentSaveSnapshot struct {
 	loadedSnapshot core.LoadedScalarSnapshot
-	creationState core.EntityCreationState
 	record core.Record
 	queryProperties core.Record
 	dirtyFields map[string]bool
@@ -571,7 +490,6 @@ func (e *Payment) teaqlSaveSnapshot() teaqlPaymentSaveSnapshot {
 	for field, value := range e.loadState { loaded[field] = value }
 	return teaqlPaymentSaveSnapshot{
 		loadedSnapshot: e.loadedSnapshot,
-		creationState: e.creationState,
 		queryProperties: e.base.QueryProperties(),
 		record: e.IntoRecord(), dirtyFields: dirty, isNew: e.isNew,
 		markedAsDelete: e.markedAsDelete, loadState: loaded,
@@ -581,12 +499,9 @@ func (e *Payment) teaqlSaveSnapshot() teaqlPaymentSaveSnapshot {
 
 func (e *Payment) teaqlRegisterGraphOutcome(context *runtime.UserContext, snapshot teaqlPaymentSaveSnapshot) {
 	context.AfterGraphRollback(func() {
-		// Rollback restores the native view, not a newly loaded snapshot. Keep
-		// pending insert/update/delete intent available for the same graph retry.
-		if err := e.teaqlFromRecord(snapshot.record, false); err != nil { panic(err) }
+		if err := e.FromRecord(snapshot.record); err != nil { panic(err) }
 		e.base.CaptureQueryProperties(snapshot.queryProperties)
 		e.loadedSnapshot = snapshot.loadedSnapshot
-		e.creationState = snapshot.creationState
 		e.dirtyFields = snapshot.dirtyFields
 		e.isNew = snapshot.isNew
 		e.markedAsDelete = snapshot.markedAsDelete
@@ -599,17 +514,8 @@ func (e *Payment) teaqlRegisterGraphOutcome(context *runtime.UserContext, snapsh
 
 // TeaqlSaveWithinGraph is generated infrastructure used by related entity
 // packages after the public root Save has opened the graph transaction.
-func (e *Payment) TeaqlSaveWithinGraph(context *runtime.UserContext, intent core.MutationIntent, parentScope *core.MutationTraceScope, privacy *data_service.MutationPrivacy, visited ...map[any]struct{}) (*Payment, error) {
-	if e == nil || e.base == nil || e.root == nil { return nil, &core.EntityCreationError{Entity: "Payment"} }
-	if e.isNew { if err := e.creationState.RequireNew(e.EntityName(), e.base.Id); err != nil { return nil, err } }
+func (e *Payment) TeaqlSaveWithinGraph(context *runtime.UserContext, intent core.MutationIntent, parentScope *core.MutationTraceScope, privacy *data_service.MutationPrivacy) (*Payment, error) {
 	if err := intent.Validate(); err != nil { return nil, err }
-	// This traversal owns its pointer-identity set. Never deduplicate distinct
-	// views by entity ID, or keep a guard on Context/entities across saves.
-	var seen map[any]struct{}
-	if len(visited) > 0 { seen = visited[0] }
-	if seen == nil { seen = make(map[any]struct{}) }
-	if _, exists := seen[e]; exists { return e, nil }
-	seen[e] = struct{}{}
 	if e.isNew && e.markedAsDelete {
 		if parentScope == nil { return nil, fmt.Errorf("cancelled new root %s: create-then-delete has no persisted entity to return", e.EntityName()) }
 		return e, nil
@@ -619,7 +525,7 @@ func (e *Payment) TeaqlSaveWithinGraph(context *runtime.UserContext, intent core
 	if !e.isNew && !e.markedAsDelete && len(e.root.Change(e.EntityKey())) == 0 {
 		scope, err := core.MutationScopeForEntity(parentScope, e.EntityKey(), intent, e.comment)
 		if err != nil { return nil, err }
-		if err := e.saveCascade(context, intent, scope, privacy, seen); err != nil { return nil, err }
+		if err := e.saveCascade(context, intent, scope, privacy); err != nil { return nil, err }
 		return e, nil
 	}
 	snapshot := e.teaqlSaveSnapshot()
@@ -652,8 +558,13 @@ func (e *Payment) TeaqlSaveWithinGraph(context *runtime.UserContext, intent core
 		if checkErr != nil { return nil, checkErr }
 		if err := e.teaqlFromRecord(checkedValues, false); err != nil { return nil, err }
 		if e.base.Id == 0 {
-			return nil, &core.EntityCreationError{Entity: e.EntityName()}
-		} else if !e.base.HasAllocatedID() {
+			id, err := context.GenerateInternalId(e.EntityName())
+			if err != nil {
+				return nil, fmt.Errorf("generate id for %s: %w", e.EntityName(), err)
+			}
+			e.base.Id = id
+			if err := context.RekeyPreparedGraphEntity(e.root, core.NewEntityKey(e.EntityName(), e.ledgerID), e.EntityKey()); err != nil { return nil, err }
+		} else {
 			if err := context.EnsureInternalIdFloor(context.Context, e.EntityName(), e.base.Id); err != nil {
 				return nil, fmt.Errorf("synchronize id floor for %s: %w", e.EntityName(), err)
 			}
@@ -693,7 +604,7 @@ func (e *Payment) TeaqlSaveWithinGraph(context *runtime.UserContext, intent core
 		if err := e.teaqlAcceptPersisted(context, res.PersistedRecord); err != nil {
 			return nil, err
 		}
-		if err := e.saveCascade(context, intent, scope, privacy, seen); err != nil { return nil, err }
+		if err := e.saveCascade(context, intent, scope, privacy); err != nil { return nil, err }
 		return e, nil
 	} else if e.markedAsDelete {
 		scope, err := core.MutationScopeForEntity(parentScope, e.EntityKey(), intent, e.comment)
@@ -722,7 +633,7 @@ func (e *Payment) TeaqlSaveWithinGraph(context *runtime.UserContext, intent core
 	} else {
 		checkedValues := e.IntoRecord()
 		valuesBeforeCheck := e.IntoRecord()
-		checkErr := runtime.CheckAndFixGraphEntity(context, &runtime.CheckAndFixInput{Entity: "Payment", Operation: core.MutationUpdate, Values: checkedValues}, e.root, e.EntityKey())
+		checkErr := runtime.CheckAndFixGraphEntity(context, &runtime.CheckAndFixInput{Entity: "Payment", Operation: core.MutationUpdate, Values: checkedValues, OldValues: e.loadedSnapshot.ValuesFor(e.EntityKey(), e.base.Version)}, e.root, e.EntityKey())
 		for field, value := range checkedValues {
 			if before, exists := valuesBeforeCheck[field]; !exists || !reflect.DeepEqual(before, value) {
 				canonical, mappingErr := context.CanonicalLedgerField(e.EntityName(), field)
@@ -740,7 +651,7 @@ func (e *Payment) TeaqlSaveWithinGraph(context *runtime.UserContext, intent core
 		// A clean parent still carries the scope for changed descendants, but
 		// must not emit an empty UPDATE or bump its optimistic version.
 		if len(cmd.Values) == 0 {
-			if err := e.saveCascade(context, intent, scope, privacy, seen); err != nil { return nil, err }
+			if err := e.saveCascade(context, intent, scope, privacy); err != nil { return nil, err }
 			return e, nil
 		}
 		expectedVersion := e.base.Version
@@ -765,17 +676,17 @@ func (e *Payment) TeaqlSaveWithinGraph(context *runtime.UserContext, intent core
 			return nil, fmt.Errorf("mutation did not return the authoritative persisted record")
 		}
 		if err := e.teaqlAcceptPersisted(context, res.PersistedRecord); err != nil { return nil, err }
-		if err := e.saveCascade(context, intent, scope, privacy, seen); err != nil { return nil, err }
+		if err := e.saveCascade(context, intent, scope, privacy); err != nil { return nil, err }
 		return e, nil
 	}
 }
 
-func (e *Payment) saveCascade(context *runtime.UserContext, intent core.MutationIntent, scope *core.MutationTraceScope, privacy *data_service.MutationPrivacy, seen map[any]struct{}) error {
+func (e *Payment) saveCascade(context *runtime.UserContext, intent core.MutationIntent, scope *core.MutationTraceScope, privacy *data_service.MutationPrivacy) error {
 	for index, child := range e.paymentAttemptList.Items() {
 		if child.IsNew() && child.IsMarkedAsDelete() { continue }
 		child.AttachEntityRoot(e.root)
 		child.Base().PutDynamic("payment_id", core.ValU64(e.base.Id))
-		if _, err := child.TeaqlSaveWithinGraph(context, intent, scope, privacy, seen); err != nil {
+		if _, err := child.TeaqlSaveWithinGraph(context, intent, scope, privacy); err != nil {
 			var checkError *runtime.RuntimeError
 			if errors.As(err, &checkError) && checkError.Type == "Check" {
 				prefix := runtime.Location().Property("payment_attempt_list").At(index)
@@ -795,7 +706,6 @@ func (e *Payment) Id() uint64 {
 }
 
 func (e *Payment) UpdateId(value uint64) *Payment {
-	e.teaqlEnsureState()
 	oldKey := e.EntityKey()
 	e.base.Id = value
 	e.root.Rekey(oldKey, e.EntityKey())
@@ -809,7 +719,6 @@ func (e *Payment) ReferenceCode() string {
 	return res}
 
 func (e *Payment) UpdateReferenceCode(value string) *Payment {
-	e.teaqlEnsureState()
 	e.base.PutDynamic("reference_code", core.ValText(value))
 	e.dirtyFields["reference_code"] = true
 	e.root.Set(e.EntityKey(), "reference_code", core.ValText(value))
@@ -822,7 +731,6 @@ func (e *Payment) Version() int64 {
 }
 
 func (e *Payment) UpdateVersion(value int64) *Payment {
-	e.teaqlEnsureState()
 	e.base.Version = value
 	e.loadState["version"] = true
 	return e

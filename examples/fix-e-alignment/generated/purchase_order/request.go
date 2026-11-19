@@ -72,7 +72,7 @@ func (r *PurchaseOrderRequest) GetQuerySelection() *core.QuerySelection {
 }
 
 func (r *PurchaseOrderRequest) GetEntityDescriptor() *core.EntityDescriptor {
-	return newLoadedPurchaseOrder().EntityDescriptor()
+	return NewPurchaseOrder().EntityDescriptor()
 }
 
 func (r *PurchaseOrderRequest) NewRelationEntity() core.Entity {
@@ -99,6 +99,7 @@ func (r *PurchaseOrderRequest) teaqlHydrateQueryRecord(rec core.Record) (*Purcha
 		}
 	}
 	if relationValue, selected := rec["orderItemList"]; selected {
+		entity.markRelationLoaded("orderItemList")
 		factory := r.relationFactories["orderItemList"]
 		if factory == nil { return nil, fmt.Errorf("missing generated query hydrator for relation orderItemList") }
 		childRecords, ok := relationValue.V.([]core.Record)
@@ -974,10 +975,16 @@ func (r *PurchaseOrderRequest) WithoutOrderItemListMatching(child *order_item.Or
 	return r
 }
 
-func (e *ExecutablePurchaseOrderRequest) NewEntity(context *runtime.UserContext) (*PurchaseOrder, error) {
+func (e *ExecutablePurchaseOrderRequest) NewEntity(context *runtime.UserContext) *PurchaseOrder {
 	r := e.request
 	if _, err := core.NewQueryIntent(&r.commentText, &r.purposeText); err != nil { panic(err) }
-	return NewPurchaseOrder(context)
+	entity := NewPurchaseOrder()
+	initialized := context.InitializeEntity("PurchaseOrder", entity)
+	typed, ok := initialized.(*PurchaseOrder)
+	if !ok {
+		panic("entity initializer changed PurchaseOrder to an incompatible type")
+	}
+	return typed
 }
 
 func (e *ExecutablePurchaseOrderRequest) ExecuteForOne(context *runtime.UserContext) (*PurchaseOrder, error) {
@@ -1106,69 +1113,27 @@ func (r *PurchaseOrderRequest) GroupById() *PurchaseOrderRequest {
 	r.Query.WithGroupBy("id")
 	return r
 }
-
-func (r *PurchaseOrderRequest) GroupByIdAs(alias string) *PurchaseOrderRequest {
-	r.Query.WithGroupBy("id")
-	r.Query.ProjectExpr(alias, core.ExprColumnNode("id"))
-	return r
-}
 func (r *PurchaseOrderRequest) GroupByTenant() *PurchaseOrderRequest {
 	r.Query.WithGroupBy("tenant_id")
-	return r
-}
-
-func (r *PurchaseOrderRequest) GroupByTenantAs(alias string) *PurchaseOrderRequest {
-	r.Query.WithGroupBy("tenant_id")
-	r.Query.ProjectExpr(alias, core.ExprColumnNode("tenant_id"))
 	return r
 }
 func (r *PurchaseOrderRequest) GroupByContactPhone() *PurchaseOrderRequest {
 	r.Query.WithGroupBy("contact_phone")
 	return r
 }
-
-func (r *PurchaseOrderRequest) GroupByContactPhoneAs(alias string) *PurchaseOrderRequest {
-	r.Query.WithGroupBy("contact_phone")
-	r.Query.ProjectExpr(alias, core.ExprColumnNode("contact_phone"))
-	return r
-}
 func (r *PurchaseOrderRequest) GroupByInternalNote() *PurchaseOrderRequest {
 	r.Query.WithGroupBy("internal_note")
-	return r
-}
-
-func (r *PurchaseOrderRequest) GroupByInternalNoteAs(alias string) *PurchaseOrderRequest {
-	r.Query.WithGroupBy("internal_note")
-	r.Query.ProjectExpr(alias, core.ExprColumnNode("internal_note"))
 	return r
 }
 func (r *PurchaseOrderRequest) GroupByCreateTime() *PurchaseOrderRequest {
 	r.Query.WithGroupBy("create_time")
 	return r
 }
-
-func (r *PurchaseOrderRequest) GroupByCreateTimeAs(alias string) *PurchaseOrderRequest {
-	r.Query.WithGroupBy("create_time")
-	r.Query.ProjectExpr(alias, core.ExprColumnNode("create_time"))
-	return r
-}
 func (r *PurchaseOrderRequest) GroupByUpdateTime() *PurchaseOrderRequest {
 	r.Query.WithGroupBy("update_time")
 	return r
 }
-
-func (r *PurchaseOrderRequest) GroupByUpdateTimeAs(alias string) *PurchaseOrderRequest {
-	r.Query.WithGroupBy("update_time")
-	r.Query.ProjectExpr(alias, core.ExprColumnNode("update_time"))
-	return r
-}
 func (r *PurchaseOrderRequest) GroupByVersion() *PurchaseOrderRequest {
 	r.Query.WithGroupBy("version")
-	return r
-}
-
-func (r *PurchaseOrderRequest) GroupByVersionAs(alias string) *PurchaseOrderRequest {
-	r.Query.WithGroupBy("version")
-	r.Query.ProjectExpr(alias, core.ExprColumnNode("version"))
 	return r
 }
