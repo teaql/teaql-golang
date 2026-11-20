@@ -21,9 +21,17 @@
     "receipt": "teaql-conformance/evidence/2026-11-20-example-showcase-remediation/purchase-order-numbering-go-expression-generation/receipt.json",
     "receiptSHA256": "199f67c7d49bd2c27d610686f93f073194b6dacfba29f0744f26e845da9ac8c9"
   },
+  "qualification": {
+    "businessReceipt": "teaql-conformance/evidence/2026-11-20-example-showcase-remediation/go-purchase-order-numbering-audit-admission/runtime/business-id/receipt.json",
+    "businessReceiptSHA256": "bbc282b1a6cad85472dda0cd03960c7abe3a825a1e3f2d97c9f71271a797447a",
+    "nativeReceipt": "teaql-conformance/evidence/2026-11-20-example-showcase-remediation/go-purchase-order-numbering-audit-admission/receipt.json",
+    "nativeReceiptSHA256": "1e379bdd1987314f5af4d8fa67af49263fda3bef7aa7fb1f606ff7c89e6251c5",
+    "remainingFullRuntimeInventory": true,
+    "sourceCommit": "fd391b892ed14f326d2fad889918ff048b07f621"
+  },
   "scene": "Number and re-read two purchase orders with a trusted business date",
   "schema": "teaql.model-workspace-showcase/v1",
-  "status": "implemented-pending-native-qualification",
+  "status": "focused-verified",
   "verification": [
     "golang-app-console/src/main.go"
   ],
