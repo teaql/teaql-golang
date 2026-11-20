@@ -158,7 +158,10 @@ func TestGeneratedContextFixSQLite(t *testing.T) {
 	audits := &auditProbe{}
 	ctx.WithAppAuditEventSink(audits)
 	makeEntry := func(name string) *entry.Entry {
-		value := lib.Q.Entries().Comment("Prepare a Context fixture entity").Purpose("Verify generated mutation and validation").NewEntity(ctx)
+		value, createErr := lib.Q.Entries().Comment("Prepare a Context fixture entity").Purpose("Verify generated mutation and validation").NewEntity(ctx)
+		if createErr != nil {
+			t.Fatal(createErr)
+		}
 		return value.UpdateName(name).UpdateCatalogId(1)
 	}
 	load := func(id uint64) *entry.Entry {
