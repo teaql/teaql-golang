@@ -21,9 +21,17 @@
     "receipt": "teaql-conformance/evidence/2026-11-20-example-showcase-remediation/customer-approval-first-order-school-schema-generation/receipt.json",
     "receiptSHA256": "0dfc2d5e5752541338c6f29613e7fa50fc28465c9ad059f9aacffce3c3d60424"
   },
+  "qualification": {
+    "businessReceipt": "teaql-conformance/evidence/2026-11-20-example-showcase-remediation/go-mutation-policy-generated-entity-key/runtime/mutation-policy/receipt.json",
+    "businessReceiptSHA256": "46535b227d22b8cc2c058a129645e95220c5c87c6c4ec833a4150b2db711931c",
+    "nativeReceipt": "teaql-conformance/evidence/2026-11-20-example-showcase-remediation/go-mutation-policy-generated-entity-key/receipt.json",
+    "nativeReceiptSHA256": "729722445395233bcb9362bdb7259a27c15c9e030c4d64ffd796d481f8a66eeb",
+    "remainingFullRuntimeInventory": true,
+    "sourceCommit": "60224b0036813f77a9a5bb5d0263b91094800f1a"
+  },
   "scene": "Approve a customer profile and contact preference",
   "schema": "teaql.model-workspace-showcase/v1",
-  "status": "implemented-pending-native-qualification",
+  "status": "focused-verified",
   "verification": [
     "golang-app-console/src/main.go"
   ],
