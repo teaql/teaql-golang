@@ -11,6 +11,9 @@ import (
 var _ = time.Time{}
 var _ = decimal.Decimal{}
 
+type PurchaseOrder_OrderNumber string
+func (value PurchaseOrder_OrderNumber) String() string { return string(value) }
+
 // Implemented by generated entities; reads only their already-loaded graph.
 type entityView interface {
 	core.Entity
@@ -176,12 +179,12 @@ func (e *PurchaseOrderExpression) Supplier() *ValueExpression[string] {
 		return valueExpression(value)
 }
 
-func (e *PurchaseOrderExpression) OrderNumber() *ValueExpression[OrderNumber] {
+func (e *PurchaseOrderExpression) OrderNumber() *ValueExpression[PurchaseOrder_OrderNumber] {
 	raw, present, failure := e.scalar("order_number", "order_number", "OrderNumber")
-	if failure != nil { return notLoadedExpression[OrderNumber](failure) }
-	if !present || raw.IsNull() { return missingExpression[OrderNumber]() }
-	value, valid := raw.TryText(); if !valid { return missingExpression[OrderNumber]() }
-		return valueExpression(value)
+	if failure != nil { return notLoadedExpression[PurchaseOrder_OrderNumber](failure) }
+	if !present || raw.IsNull() { return missingExpression[PurchaseOrder_OrderNumber]() }
+	value, valid := raw.TryText(); if !valid { return missingExpression[PurchaseOrder_OrderNumber]() }
+		return valueExpression(PurchaseOrder_OrderNumber(value))
 }
 
 func (e *PurchaseOrderExpression) Version() *ValueExpression[int64] {

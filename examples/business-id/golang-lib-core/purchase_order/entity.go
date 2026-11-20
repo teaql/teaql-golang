@@ -13,6 +13,7 @@ import (
 	"github.com/teaql/teaql-golang/data_service"
 	"github.com/teaql/teaql-golang/runtime"
 	"purchase-order-numbering-core-workspace/lib/internal/generatedjson"
+	"purchase-order-numbering-core-workspace/lib/internal/expressiongraph"
 )
 
 var (
@@ -23,7 +24,7 @@ var (
 	_ = errors.As
 )
 
-type OrderNumber string
+type OrderNumber = expressiongraph.PurchaseOrder_OrderNumber
 
 func NewOrderNumber(value string) (OrderNumber, error) {
 	if strings.TrimSpace(value) == "" {
@@ -31,8 +32,6 @@ func NewOrderNumber(value string) (OrderNumber, error) {
 	}
 	return OrderNumber(value), nil
 }
-
-func (value OrderNumber) String() string { return string(value) }
 
 func OrderNumberDefinition() (core.BusinessIDDefinition, error) {
 	return core.NewBusinessIDDefinition(
