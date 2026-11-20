@@ -2,7 +2,6 @@ package main
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
 	"os"
 	"regexp"
@@ -80,10 +79,10 @@ func run() error {
 	if err != nil {
 		return err
 	}
-	_, err = rejected.AuditAs(" ").Save(context)
-	var intent *core.RequestIntentError
-	if !errors.As(err, &intent) || intent.Code != "REQUEST_COMMENT_REQUIRED" || intent.RequestKind != "mutation" {
-		return fmt.Errorf("expected missing mutation comment rejection, got %v", err)
+	failure := rejectBlankAudit(rejected)
+	intent, ok := failure.(*core.RequestIntentError)
+	if !ok || intent.Code != "REQUEST_COMMENT_REQUIRED" || intent.RequestKind != "mutation" {
+		return fmt.Errorf("expected missing mutation comment rejection, got %v", failure)
 	}
 	found, err := ordering.Q.PurchaseOrders().WithSupplierIs(rejectedSupplier).Limit(2).
 		Comment("Look for the unaudited purchase order").
@@ -101,6 +100,13 @@ func run() error {
 		"secondId": secondID, "secondNumber": secondNumber.String(),
 		"retryNumber": retry.OrderNumber().String(), "rejection": intent.Code, "typedReadback": true,
 	})
+}
+
+// The fluent builder rejects a blank comment before a save can be made.
+func rejectBlankAudit(order *purchase_order.PurchaseOrder) (failure any) {
+	defer func() { failure = recover() }()
+	order.AuditAs(" ")
+	return nil
 }
 
 func prepareOrder(context *runtime.UserContext, supplier string) (*purchase_order.PurchaseOrder, error) {
