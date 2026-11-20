@@ -62,7 +62,7 @@ echo "PASS: all ${#module_files[@]} Go example modules resolve the local runtime
 go run ./examples/basic
 go run ./examples/business-id
 go run ./examples/mutation-policy
-(cd examples/conformance && go test ./... -count=1 && go run ./src)
+TEAQL_CONFORMANCE_EVIDENCE_DIR="$inventory_evidence/conformance" bash examples/conformance/verify.sh
 # The test runs the actual console twice against an isolated SQLite path. Do not
 # reuse .local/order.db: older example schemas may predate teaql_id_space.
 TEAQL_ORDER_EVIDENCE_DIR="$inventory_evidence/order-management" bash examples/order-management/verify.sh
