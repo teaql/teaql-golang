@@ -33,7 +33,9 @@ TEAQL_FREIGHT_QUOTE_EVIDENCE_DIR="$inventory_evidence/freight-quotes" bash examp
 # The three profile fixtures deliberately reuse one module name. Their own
 # verifier isolates and checks every actual runtime origin above; do not merge
 # them into this unrelated workspace or silently omit their executions.
-mapfile -t module_files < <(find "$repo/examples" -name go.mod -type f ! -path "$repo/examples/expression-profiles/*" ! -path '*/standard-telemetry/*' ! -path '*/standard-order/*' ! -path '*/standard-graph/*' ! -path '*/standard-stream/*' | sort)
+# Context Derived's frozen fixture shares the current library's module name.
+# The case verifier checks the fixture identity alongside its native run above.
+mapfile -t module_files < <(find "$repo/examples" -name go.mod -type f ! -path "$repo/examples/expression-profiles/*" ! -path "$repo/examples/context-derived/fixture/go.mod" ! -path '*/standard-telemetry/*' ! -path '*/standard-order/*' ! -path '*/standard-graph/*' ! -path '*/standard-stream/*' | sort)
 module_dirs=("$repo")
 for module_file in "${module_files[@]}"; do
   module_dirs+=("$(dirname "$module_file")")
@@ -45,14 +47,12 @@ export GOWORK="$workspace/go.work"
 # Frozen consumers declare these deliberately unpublished v0.0.0 edges.
 # A version-qualified workspace replacement also resolves pruned module-graph
 # loading; a use entry alone still attempts to look up that version remotely.
-go work edit "-replace=checker-fix-advanced-core-workspace/lib@v0.0.0=$repo/examples/fix-e-alignment/generated"
-go work edit "-replace=scalar-type-conformance-service-core-workspace/lib@v0.0.0=$repo/examples/scalar-type-probe/generated"
-go work edit "-replace=freight-quote-settlement-core-workspace/lib@v0.0.0=$repo/examples/scalar-type-probe/golang-lib-core"
-go work edit "-replace=order-service-routing-core-workspace/lib@v0.0.0=$repo/examples/typed-runtime-spi/golang-lib-core"
-go work edit "-replace=purchase-order-numbering-core-workspace/lib@v0.0.0=$repo/examples/business-id/golang-lib-core"
-go work edit "-replace=first-order-service-core-workspace/lib@v0.0.0=$repo/examples/basic/golang-lib-core"
-go work edit "-replace=customer-onboarding-service-core-workspace/lib@v0.0.0=$repo/examples/mutation-policy/golang-lib-core"
-go work edit "-replace=robot-kanban-service-core-workspace/lib@v0.0.0=$repo/examples/task_board/golang-lib-core"
+for module_file in "${module_files[@]}"; do
+  module_id="$(awk '$1 == "module" { print $2; exit }' "$module_file")"
+  if [[ "$module_id" == */lib ]]; then
+    go work edit "-replace=$module_id@v0.0.0=$(dirname "$module_file")"
+  fi
+done
 cp "$workspace/go.work" "$inventory_evidence/go.work"
 echo "Local Go example workspace (removed on exit): $GOWORK"
 for module_file in "${module_files[@]}"; do
