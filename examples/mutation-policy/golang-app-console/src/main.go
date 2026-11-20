@@ -17,7 +17,7 @@ import (
 
 const (
 	blockedEmail = "blocked@example.com"
-	policyKey    = "Customer.saveGraph"
+	policyKey    = "customer.saveGraph"
 	denialCode   = "CUSTOMER_EMAIL_BLOCKED"
 )
 
@@ -30,7 +30,7 @@ func (p *approvalPolicy) Identity() runtime.MutationPolicyIdentity { return p.id
 
 func (p *approvalPolicy) Review(_ *runtime.UserContext, plan *runtime.MutationPlan) runtime.MutationDecision {
 	p.reviewed = append(p.reviewed, len(plan.Operations))
-	if plan.RequestKey != policyKey || plan.RootEntity != "Customer" || len(plan.Operations) != 2 {
+	if plan.RequestKey != policyKey || plan.RootEntity != "customer" || len(plan.Operations) != 2 {
 		return runtime.DenyMutation("CUSTOMER_GRAPH_INCOMPLETE", "the full onboarding graph is required")
 	}
 	var profile, contact, blocked bool
@@ -39,10 +39,10 @@ func (p *approvalPolicy) Review(_ *runtime.UserContext, plan *runtime.MutationPl
 			return runtime.DenyMutation("CUSTOMER_GRAPH_INCOMPLETE", "expected new onboarding records")
 		}
 		switch operation.Entity {
-		case "Customer":
+		case "customer":
 			profile = true
 			blocked = operation.ChangedValues["email"] == core.ValText(blockedEmail)
-		case "CustomerContact":
+		case "customer_contact":
 			contact = true
 		}
 	}
@@ -50,7 +50,7 @@ func (p *approvalPolicy) Review(_ *runtime.UserContext, plan *runtime.MutationPl
 		return runtime.DenyMutation("CUSTOMER_GRAPH_INCOMPLETE", "profile and contact are both required")
 	}
 	if blocked {
-		return runtime.DenyMutation(denialCode, "reserved customer email", "Customer.email")
+		return runtime.DenyMutation(denialCode, "reserved customer email", "customer.email")
 	}
 	return runtime.AllowMutation()
 }
