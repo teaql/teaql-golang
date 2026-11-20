@@ -20,6 +20,7 @@ const (
 	reference = "PO-ROUTED"
 	requested = "Receive a valve kit"
 	accepted  = "Receive two valve kits"
+	orderType = "purchase_order"
 )
 
 var (
@@ -39,7 +40,7 @@ func (schema *schemaValidator) EnsureSchema(ctx context.Context, metadata runtim
 	if schema.deny {
 		return schemaRefused
 	}
-	order := metadata.Entity("PurchaseOrder")
+	order := metadata.Entity(orderType)
 	if order == nil || order.TabName != "purchase_order_data" {
 		return errors.New("the generated purchase order schema is missing")
 	}
@@ -55,7 +56,7 @@ type deskIDs struct {
 
 func (ids *deskIDs) GenerateId(entity string) (uint64, error) {
 	ids.calls++
-	if ids.fail || entity != "PurchaseOrder" {
+	if ids.fail || entity != orderType {
 		return 0, numberingFailed
 	}
 	ids.next++
@@ -63,7 +64,7 @@ func (ids *deskIDs) GenerateId(entity string) (uint64, error) {
 }
 
 func (ids *deskIDs) EnsureIdFloor(_ context.Context, entity string, floor uint64) error {
-	if entity != "PurchaseOrder" {
+	if entity != orderType {
 		return fmt.Errorf("unmanaged order ID floor for %s", entity)
 	}
 	ids.floor = floor
@@ -188,7 +189,7 @@ func run() error {
 	ids.fail = true
 	before := provider.begins
 	rejected, err := prepareOrder(caller)
-	if rejected != nil || err == nil || !strings.Contains(err.Error(), numberingFailed.Error()) ||
+	if rejected != nil || !errors.Is(err, numberingFailed) ||
 		fallback.calls != 0 || provider.begins != before {
 		return fmt.Errorf("failed allocation reached mutation or the default generator: %v", err)
 	}
@@ -219,7 +220,7 @@ func readOrder(caller *runtime.UserContext) (*purchase_order.PurchaseOrder, erro
 }
 
 func placeAndRevise(caller *runtime.UserContext, provider *businessProvider, ids *deskIDs) error {
-	if err := caller.EnsureInternalIdFloor(context.Background(), "PurchaseOrder", 900); err != nil {
+	if err := caller.EnsureInternalIdFloor(context.Background(), orderType, 900); err != nil {
 		return err
 	}
 	order, err := prepareOrder(caller)
