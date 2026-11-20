@@ -87,6 +87,7 @@ TEAQL_CONFORMANCE_EVIDENCE_DIR="$inventory_evidence/conformance" bash examples/c
 TEAQL_ORDER_EVIDENCE_DIR="$inventory_evidence/order-management" bash examples/order-management/verify.sh
 TEAQL_SCHOOL_EVIDENCE_DIR="$inventory_evidence/school-management" bash examples/school-management/verify.sh
 go run ./examples/security-foundations
+TEAQL_ORDER_PRIVACY_EVIDENCE_DIR="$inventory_evidence/order-privacy" bash examples/security-foundations/verify-privacy.sh
 TEAQL_CONTEXT_SPI_EVIDENCE_DIR="$inventory_evidence/order-service-routing" bash examples/typed-runtime-spi/verify.sh
 (cd examples/task_board/golang-app-console/src && go test -race . -count=1 && \
   TEAQL_TASK_BOARD_DB="$inventory_evidence/task-board.sqlite" go run -race .)
