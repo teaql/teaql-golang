@@ -126,7 +126,7 @@ func run() error {
 	if err != nil {
 		return err
 	}
-	loaded, err := lookup(context, primary.Id(), claims.Id, reference, email)
+	loaded, err := lookup(context, primary.Id(), claims.ID, reference, email)
 	if err != nil {
 		return err
 	}
