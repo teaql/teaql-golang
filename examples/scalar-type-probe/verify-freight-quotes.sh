@@ -4,6 +4,7 @@ example="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 repo="$(cd "$example/../.." && pwd)"
 app="$example/golang-app-console"
 library="$example/golang-lib-core"
+domain_module=freight-quote-settlement-core-workspace/lib
 go_binary="$(command -v "${GO:-go}")"
 if [[ -n "${TEAQL_FREIGHT_QUOTE_EVIDENCE_DIR:-}" ]]; then
   evidence="$TEAQL_FREIGHT_QUOTE_EVIDENCE_DIR"
@@ -27,11 +28,11 @@ export GO="$go_binary" GOENV=off
 export GOCACHE="${GOCACHE:-$scratch/cache}"
 (cd "$scratch" && GOWORK=off "$GO" work init "$repo" "$library" "$app")
 export GOWORK="$scratch/go.work"
-"$GO" work edit "-replace=freight-quote-settlement-core-workspace/lib@v0.0.0=$library"
+"$GO" work edit "-replace=$domain_module@v0.0.0=$library"
 cp "$GOWORK" "$evidence/go.work"
 (
   cd "$app"
-  "$GO" list -m -f '{{.Dir}}' github.com/teaql/teaql-golang freight-quote-settlement-core-workspace/lib +    > "$evidence/module-origins.log"
+  "$GO" list -m -f '{{.Dir}}' github.com/teaql/teaql-golang "$domain_module" > "$evidence/module-origins.log"
   printf '%s\n' "$repo" "$library" | cmp - "$evidence/module-origins.log"
   "$GO" build -o "$scratch/freight-quotes" ./src
 )

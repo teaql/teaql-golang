@@ -24,7 +24,7 @@ TEAQL_NATURAL_MESSAGES_EVIDENCE_DIR="$inventory_evidence/natural-messages" node 
 TEAQL_SQLITE_LIFECYCLE_EVIDENCE_DIR="$inventory_evidence/sqlite-lifecycle" node examples/sqlite-lifecycle/verify-local.cjs
 TEAQL_GENERATED_E_PROFILE_EVIDENCE_DIR="$inventory_evidence/expression-profiles" node examples/expression-profiles/verify-local.cjs
 bash examples/object-storage/verify.sh
-TEAQL_FREIGHT_QUOTE_EVIDENCE_DIR="$inventory_evidence/freight-quotes" +  bash examples/scalar-type-probe/verify-freight-quotes.sh
+TEAQL_FREIGHT_QUOTE_EVIDENCE_DIR="$inventory_evidence/freight-quotes" bash examples/scalar-type-probe/verify-freight-quotes.sh
 # An example must test this checkout, never an older published runtime. Go
 # ignores dependency-module replace directives. A library's standalone go.mod
 # can therefore resolve differently from its application. Bind every module in
