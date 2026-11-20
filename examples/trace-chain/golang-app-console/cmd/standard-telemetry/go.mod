@@ -1,12 +1,11 @@
-module teaql-standard-order-example
+module teaql-trace-chain-standard-telemetry-example
 
 go 1.25.0
 
 require (
-	github.com/shopspring/decimal v1.4.0
 	github.com/teaql/teaql-golang v0.3.1
 	github.com/teaql/teaql-golang/telemetry/standard v0.0.0
-	request-tree-order-service-core-workspace/lib v0.0.0
+	trace-chain-service-core-workspace/lib v0.0.0
 )
 
 require (
@@ -17,6 +16,7 @@ require (
 	github.com/google/uuid v1.6.0 // indirect
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.29.0 // indirect
 	github.com/mattn/go-sqlite3 v1.14.16 // indirect
+	github.com/shopspring/decimal v1.4.0 // indirect
 	go.opentelemetry.io/auto/sdk v1.2.1 // indirect
 	go.opentelemetry.io/otel v1.45.0 // indirect
 	go.opentelemetry.io/otel/exporters/otlp/otlplog/otlploghttp v0.21.0 // indirect
@@ -39,8 +39,8 @@ require (
 	google.golang.org/protobuf v1.36.11 // indirect
 )
 
-replace github.com/teaql/teaql-golang => ../../..
+replace github.com/teaql/teaql-golang => ../../../../..
 
-replace github.com/teaql/teaql-golang/telemetry/standard => ../../../telemetry/standard
+replace github.com/teaql/teaql-golang/telemetry/standard => ../../../../../telemetry/standard
 
-replace request-tree-order-service-core-workspace/lib => ./lib
+replace trace-chain-service-core-workspace/lib => ../../../golang-lib-core

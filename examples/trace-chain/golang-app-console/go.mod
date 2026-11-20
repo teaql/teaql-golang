@@ -7,6 +7,6 @@ require (
 	trace-chain-service-core-workspace/lib v0.0.0
 )
 
-replace github.com/teaql/teaql-golang => ../..
+replace github.com/teaql/teaql-golang => ../../..
 
-replace trace-chain-service-core-workspace/lib => ./lib
+replace trace-chain-service-core-workspace/lib => ../golang-lib-core

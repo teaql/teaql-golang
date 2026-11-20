@@ -39,8 +39,8 @@ require (
 	google.golang.org/protobuf v1.36.11 // indirect
 )
 
-replace github.com/teaql/teaql-golang => ../../..
+replace github.com/teaql/teaql-golang => ../../../../../..
 
-replace github.com/teaql/teaql-golang/telemetry/standard => ../../../telemetry/standard
+replace github.com/teaql/teaql-golang/telemetry/standard => ../../../../../../telemetry/standard
 
-replace request-tree-order-service-core-workspace/lib => ../standard-order/lib
+replace request-tree-order-service-core-workspace/lib => ../../../golang-lib-core
