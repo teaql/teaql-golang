@@ -24,8 +24,7 @@ TEAQL_NATURAL_MESSAGES_EVIDENCE_DIR="$inventory_evidence/natural-messages" node 
 TEAQL_SQLITE_LIFECYCLE_EVIDENCE_DIR="$inventory_evidence/sqlite-lifecycle" node examples/sqlite-lifecycle/verify-local.cjs
 TEAQL_GENERATED_E_PROFILE_EVIDENCE_DIR="$inventory_evidence/expression-profiles" node examples/expression-profiles/verify-local.cjs
 bash examples/object-storage/verify.sh
-bash examples/scalar-type-probe/verify.sh
-node examples/scalar-type-probe/verify-integral.cjs
+TEAQL_FREIGHT_QUOTE_EVIDENCE_DIR="$inventory_evidence/freight-quotes" +  bash examples/scalar-type-probe/verify-freight-quotes.sh
 # An example must test this checkout, never an older published runtime. Go
 # ignores dependency-module replace directives. A library's standalone go.mod
 # can therefore resolve differently from its application. Bind every module in
@@ -48,6 +47,7 @@ export GOWORK="$workspace/go.work"
 # loading; a use entry alone still attempts to look up that version remotely.
 go work edit "-replace=checker-fix-advanced-core-workspace/lib@v0.0.0=$repo/examples/fix-e-alignment/generated"
 go work edit "-replace=scalar-type-conformance-service-core-workspace/lib@v0.0.0=$repo/examples/scalar-type-probe/generated"
+go work edit "-replace=freight-quote-settlement-core-workspace/lib@v0.0.0=$repo/examples/scalar-type-probe/golang-lib-core"
 go work edit "-replace=purchase-order-numbering-core-workspace/lib@v0.0.0=$repo/examples/business-id/golang-lib-core"
 go work edit "-replace=first-order-service-core-workspace/lib@v0.0.0=$repo/examples/basic/golang-lib-core"
 go work edit "-replace=customer-onboarding-service-core-workspace/lib@v0.0.0=$repo/examples/mutation-policy/golang-lib-core"

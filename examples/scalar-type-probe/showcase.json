@@ -1,0 +1,39 @@
+{
+  "generatedDomainLibraryHandEdited": false,
+  "goalId": "go:examples/scalar-type-probe",
+  "library": {
+    "generatedFilesManifestSHA256": "850b69674043081f948393009e1ce4e98d05c71d2a7369dc801a1a6693009137",
+    "root": "golang-lib-core",
+    "scope": "golang-lib-core"
+  },
+  "model": {
+    "path": "freight-quote.xml",
+    "sha256": "076fdf926be1a8b71e61cdfaf66b539f54c1ac2182e1f2bc75897dfab52d6d38"
+  },
+  "producer": {
+    "generator": {
+      "artifactKind": "qualified source build",
+      "jarSHA256": "029f602cf0e2de4ec0910495c340fbeb41f11772b6aca875569f498811158e7d",
+      "qualificationReceiptSHA256": "1012520de60d49cfc1e45c7e08fcf204dd2db36a163909e1e36752065a31047a",
+      "sourceCommit": "99d6bde2351d79b7d8b1b1c5cbc78c5dc777b6f2",
+      "tag": "unreleased-source-99d6bde2"
+    },
+    "receipt": "teaql-conformance/evidence/2026-11-20-example-showcase-remediation/go-freight-quote-generation/receipt.json",
+    "receiptSHA256": "c80aa44b7abdcf58e54f48eae8ee2bb98a6836aba26d57a844163e6d3ab743b9"
+  },
+  "scene": "Precise freight quotes and delivery commitments",
+  "schema": "teaql.model-workspace-showcase/v1",
+  "status": "implemented-pending-native-qualification",
+  "verification": [
+    "bash",
+    "examples/scalar-type-probe/verify-freight-quotes.sh"
+  ],
+  "workspace": {
+    "applicationOwnedFiles": [
+      "src/main.go"
+    ],
+    "generatedFilesManifestSHA256": "c24d5aa4956aa0ba11b022ff6a051271f37581eb46c5908519a09e2efea0edff",
+    "root": "golang-app-console",
+    "scope": "golang-app-console"
+  }
+}

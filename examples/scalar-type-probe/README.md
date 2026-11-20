@@ -1,4 +1,17 @@
-# Generated scalar and typed wall-clock example
+# Freight quote settlement
+
+The generated Go console registers three freight bids, revises an offshore bid
+and queries the exact total. It demonstrates shipment numbers beyond the
+JavaScript safe integer range, a local delivery window and an instant in UTC.
+An out-of-range package count is rejected at the modeled field. A second
+process reads the same SQLite file and checks the retained revision.
+
+`freight-quote.xml` owns the model, `golang-lib-core` contains the generated
+domain library and `golang-app-console` uses the generated Q, E and audited
+save APIs. Run the console and both scalar calibrations with
+`bash examples/scalar-type-probe/verify-freight-quotes.sh`.
+
+## Generated scalar and typed wall-clock calibration
 
 From the runtime repository root:
 
