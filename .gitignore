@@ -23,8 +23,7 @@ profile.cov
 # Go workspace file
 go.work
 go.work.sum
-!examples/trace-chain/go.work
-!examples/trace-chain/go.work.sum
+!examples/trace-chain/golang-app-console/go.work
 
 # env file
 .env
