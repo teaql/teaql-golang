@@ -31,9 +31,17 @@
     "receipt": "teaql-conformance/evidence/2026-11-20-example-showcase-remediation/school-generation/receipt.json",
     "receiptSHA256": "86cdc634a758fdf746de3323e8cd5c4fd32a050e50c0b7b04c5e64b397a1165f"
   },
+  "qualification": {
+    "businessReceipt": "teaql-conformance/evidence/2026-11-20-example-showcase-remediation/go-school-scopes/runtime/school-management/business-receipt.json",
+    "businessReceiptSHA256": "5a44ba88544910fbbae9805d51bf0ce5fd29b4e4454e94a4885affb4ae62aa74",
+    "nativeReceipt": "teaql-conformance/evidence/2026-11-20-example-showcase-remediation/go-school-scopes/receipt.json",
+    "nativeReceiptSHA256": "936c049b28fcdc8a8defde549aa0da9a96165bf88a25e34c9234d252eee98576",
+    "remainingFullRuntimeInventory": true,
+    "sourceCommit": "1aa696c92676e93d2c3d09cb49a66da15bdaa9de"
+  },
   "scene": "School startup, constant reconciliation and an audited School directory",
   "schema": "teaql.model-workspace-showcase/v1",
-  "status": "implemented-pending-native-qualification",
+  "status": "focused-verified",
   "verification": [
     "bash",
     "verify.sh"
