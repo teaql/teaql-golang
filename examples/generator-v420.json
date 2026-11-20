@@ -767,6 +767,10 @@
           "emittedPath": "entity_json.go",
           "sha256": "7abfd436177671e1c2396465a77e3668d477c157d36b9c079761f05ddab1a170"
         },
+        "examples/order-management/golang-lib-core/go.mod": {
+          "emittedPath": "go.mod",
+          "sha256": "72e40fbe0aba472916a13c8d7521ccf36d316d17b4245b7e9907ee2bf86dd8e2"
+        },
         "examples/order-management/golang-lib-core/internal/expressiongraph/graph.go": {
           "emittedPath": "internal/expressiongraph/graph.go",
           "sha256": "c1581ecf234cd4c7994d815a4e638c18c8cd1c59ee1622f2e5c7670cea3f6928"
@@ -896,13 +900,6 @@
           "commit": "021b1ed8bee5db7eef38a6b1e3a3ef2e7ac69daa",
           "jarSHA256": "34dd804dccf05470dad46d086d58412e4a9dfcd0a1c6ed34f8f90c55ff478220",
           "release": "unreleased-source-021b1ed8"
-        }
-      },
-      "preservedApplicationFiles": {
-        "examples/order-management/golang-lib-core/go.mod": {
-          "emittedSHA256": "72e40fbe0aba472916a13c8d7521ccf36d316d17b4245b7e9907ee2bf86dd8e2",
-          "reason": "Application manifest, local dependency wiring or application-specific instructions preserved",
-          "sha256": "07451c36742d0aef7c50caa2c80c623af6fa815933e6517a44c99bbe2a43d096"
         }
       }
     },

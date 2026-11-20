@@ -1,0 +1,51 @@
+{
+  "expected": {
+    "exactAmount": "129.95",
+    "orderDate": "2026-08-12",
+    "orderNumber": "WEB-2026-001",
+    "orders": 1,
+    "originalIntentPrivacyAndIdempotenceAssertionsRetained": true,
+    "presets": 1,
+    "sameDatabaseRuns": 2
+  },
+  "generatedDomainLibraryHandEdited": false,
+  "goalId": "go:examples/order-management",
+  "library": {
+    "generatedFilesManifestSHA256": "e12c1c9f1528aeb73565e1ed4102e9c70b2288bc7854d5fc50924ead6439c6d7",
+    "root": "golang-lib-core",
+    "scope": "golang-lib-core"
+  },
+  "model": {
+    "path": "model.xml",
+    "sha256": "a50951aa0df35cac1f4ed64ef0646860941916aed1ec0919b5b299ef4ad6a303"
+  },
+  "producer": {
+    "generator": {
+      "artifactKind": "qualified source build; not a public release",
+      "jarSHA256": "34dd804dccf05470dad46d086d58412e4a9dfcd0a1c6ed34f8f90c55ff478220",
+      "qualificationReceiptSHA256": "5119b9f3a5c95fb84f527885fdd5bac0fe79a56352a55b8acf116f67fd12787d",
+      "sourceCommit": "021b1ed8bee5db7eef38a6b1e3a3ef2e7ac69daa",
+      "tag": "unreleased-source-021b1ed8"
+    },
+    "receipt": "teaql-conformance/evidence/2026-11-20-example-showcase-remediation/order-generation/receipt.json",
+    "receiptSHA256": "5041246b7c9f452219d943efa393ea380ce7f7e172da739a945bb49da2ba5db2"
+  },
+  "scene": "Order terminal query, governed audit output and reusable search",
+  "schema": "teaql.model-workspace-showcase/v1",
+  "status": "implemented-pending-native-qualification",
+  "verification": [
+    "bash",
+    "verify.sh"
+  ],
+  "workspace": {
+    "applicationOwnedFiles": [
+      "src/main.go",
+      "src/main_test.go",
+      "go.mod",
+      "go.sum"
+    ],
+    "generatedFilesManifestSHA256": "f1092a8fe69c66bc5f881d7dbde2389da88e5c61f3986d7549eb4c394eee8830",
+    "root": "golang-app-console",
+    "scope": "golang-app-console"
+  }
+}
