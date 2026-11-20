@@ -21,9 +21,17 @@
     "receipt": "teaql-conformance/evidence/2026-11-20-example-showcase-remediation/robot-task-board-generation/receipt.json",
     "receiptSHA256": "7289a98fb719c2c8eece8ffa3d218725e125d766f659f78b4bc4cd2dbca3b635"
   },
+  "qualification": {
+    "businessReceipt": "teaql-conformance/evidence/2026-11-20-example-showcase-remediation/go-robot-task-board-native/runtime/task-board/receipt.json",
+    "businessReceiptSHA256": "346fe1b3511e7c846ab30a74579bc02330dddd999e049d3fb6c97e6639940842",
+    "nativeReceipt": "teaql-conformance/evidence/2026-11-20-example-showcase-remediation/go-robot-task-board-native/receipt.json",
+    "nativeReceiptSHA256": "b5fbfc21f599cad9f73a26cb84119ef82c0d5cc3beec03179293f546432cb601",
+    "remainingFullRuntimeInventory": true,
+    "sourceCommit": "fc17a9a86daf7bd1e260108a8e678ea318a4bc1c"
+  },
   "scene": "Robot task creation, rename and execution history",
   "schema": "teaql.model-workspace-showcase/v1",
-  "status": "implemented-pending-native-qualification",
+  "status": "focused-verified",
   "verification": [
     "golang-app-console/src/main.go"
   ],
