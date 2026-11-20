@@ -42,7 +42,8 @@ func lookup(context *runtime.UserContext, merchant, id uint64, reference, email 
 	return domain.Q.CustomerOrders().WithIdIs(id).WithOrderNumberIs(reference).
 		WithMerchantMatching(domain.Q.MerchantsMinimal().WithIdIs(merchant)).
 		WithCustomerProfileMatching(domain.Q.CustomerProfilesMinimal().WithEmailIs(email)).
-		SelectCustomerProfile().Limit(1).Comment("Load the scoped order and delivery profile").
+		SelectCustomerProfileWith(domain.Q.CustomerProfilesMinimal().SelectEmail().Comment("Read the authorized delivery email")).
+		Limit(1).Comment("Load the scoped order and delivery profile").
 		Purpose("Review a dispatch order for the authenticated merchant").ExecuteForOne(context)
 }
 
