@@ -1019,105 +1019,109 @@
     },
     {
       "archiveSHA256": "9f8a97aef1fdb0c47c24b4ac8550cf85554feb474cd64c20e6d25bc0bb9b59f0",
-      "destination": "examples/school-management",
+      "destination": "examples/school-management/golang-lib-core",
       "generatedFiles": {
-        "examples/school-management/e.go": {
+        "examples/school-management/golang-lib-core/e.go": {
           "emittedPath": "e.go",
           "sha256": "4dbf656a5c4fdebe4e877166353cab849a94d21de06967086915cd26b155a435"
         },
-        "examples/school-management/entity_json.go": {
+        "examples/school-management/golang-lib-core/entity_json.go": {
           "emittedPath": "entity_json.go",
           "sha256": "7b39c65a147e4d1de344d209261e130f34cfd848a13e300df7ce83cd666865a6"
         },
-        "examples/school-management/internal/expressiongraph/graph.go": {
+        "examples/school-management/golang-lib-core/go.mod": {
+          "emittedPath": "go.mod",
+          "sha256": "ba54cb5868b4b30910e908e9a9d756563f0a284d6d470147583fab7e36100c38"
+        },
+        "examples/school-management/golang-lib-core/internal/expressiongraph/graph.go": {
           "emittedPath": "internal/expressiongraph/graph.go",
           "sha256": "a5c666a110677d9b3e7844171e270e36ce9314c4e1f714a9b1b9d620efe0ef97"
         },
-        "examples/school-management/internal/generatedjson/model.go": {
+        "examples/school-management/golang-lib-core/internal/generatedjson/model.go": {
           "emittedPath": "internal/generatedjson/model.go",
           "sha256": "b33aa1f3a994d0d6fef96f217d726f17de47ca488c3445981e3e365a45c5c9aa"
         },
-        "examples/school-management/internal/generatedsearch/search_models.go": {
+        "examples/school-management/golang-lib-core/internal/generatedsearch/search_models.go": {
           "emittedPath": "internal/generatedsearch/search_models.go",
           "sha256": "a31452e7f781ecbae548883b080afaca0bae9e099486ee87a1c5989228384164"
         },
-        "examples/school-management/lib.go": {
+        "examples/school-management/golang-lib-core/lib.go": {
           "emittedPath": "lib.go",
           "sha256": "8d4d2db09bce758d256d63814b47a05922467445e11a2d91fee0daef9cbff5e0"
         },
-        "examples/school-management/platform/behavior.go": {
+        "examples/school-management/golang-lib-core/platform/behavior.go": {
           "emittedPath": "platform/behavior.go",
           "sha256": "a2bf9efebdfc883eb0e6457f2f79646f578212889cf9a1fd20f91f0a1a1be5a8"
         },
-        "examples/school-management/platform/checker.go": {
+        "examples/school-management/golang-lib-core/platform/checker.go": {
           "emittedPath": "platform/checker.go",
           "sha256": "ae95114ab80d2d5e2793f9392cf55f54a5c9fd68401a6a24946d7a8f4368a1bd"
         },
-        "examples/school-management/platform/entity.go": {
+        "examples/school-management/golang-lib-core/platform/entity.go": {
           "emittedPath": "platform/entity.go",
           "sha256": "a5f49880f27c2052f4c63cb2a7ea2eb442315a72879967438e13a9b52129b74f"
         },
-        "examples/school-management/platform/expression.go": {
+        "examples/school-management/golang-lib-core/platform/expression.go": {
           "emittedPath": "platform/expression.go",
           "sha256": "8ff3a8831738474483ede8debb758a959733a79d7bcb42980b53a4547ad5269c"
         },
-        "examples/school-management/platform/request.go": {
+        "examples/school-management/golang-lib-core/platform/request.go": {
           "emittedPath": "platform/request.go",
           "sha256": "426f4950982fb61f67fc50784ce8a952924c00f4d13842c054f86262fbf3312d"
         },
-        "examples/school-management/q.go": {
+        "examples/school-management/golang-lib-core/q.go": {
           "emittedPath": "q.go",
           "sha256": "53e0fd84b305502c98cd533ffe6280568083b0bfb73d37615756758885f0c975"
         },
-        "examples/school-management/runtime.go": {
+        "examples/school-management/golang-lib-core/runtime.go": {
           "emittedPath": "runtime.go",
           "sha256": "e447a585b17067f223c708c67e96d8d1cdd8ce123016fc3d43b4f7217d2b55a0"
         },
-        "examples/school-management/school/behavior.go": {
+        "examples/school-management/golang-lib-core/school/behavior.go": {
           "emittedPath": "school/behavior.go",
           "sha256": "67f8698be5914f10037b8369505c8b792df48e74dbd2cf26fc281ea44254c0e6"
         },
-        "examples/school-management/school/checker.go": {
+        "examples/school-management/golang-lib-core/school/checker.go": {
           "emittedPath": "school/checker.go",
           "sha256": "7eeb520f1f690e5abb2a56446ad5f919a96839d7709297d0d7887493a906d6df"
         },
-        "examples/school-management/school/entity.go": {
+        "examples/school-management/golang-lib-core/school/entity.go": {
           "emittedPath": "school/entity.go",
           "sha256": "1d5ee7855b242f640e76691873a7744c8666ffd83d85b66b9e1a49846691398e"
         },
-        "examples/school-management/school/expression.go": {
+        "examples/school-management/golang-lib-core/school/expression.go": {
           "emittedPath": "school/expression.go",
           "sha256": "1b7684780a9e5286cfeae5d8468f8257039d6d0843e9fd1049e0d4d55e24c748"
         },
-        "examples/school-management/school/request.go": {
+        "examples/school-management/golang-lib-core/school/request.go": {
           "emittedPath": "school/request.go",
           "sha256": "846d74b07d50ff66b66c3aa4aaa76bcc47572079bb66c9ee708df81316137636"
         },
-        "examples/school-management/school_type/behavior.go": {
+        "examples/school-management/golang-lib-core/school_type/behavior.go": {
           "emittedPath": "school_type/behavior.go",
           "sha256": "a05e868f84fe6ef03c85c6ea73938887bb3758ff7dea74942ec5ef9d50e2ce28"
         },
-        "examples/school-management/school_type/checker.go": {
+        "examples/school-management/golang-lib-core/school_type/checker.go": {
           "emittedPath": "school_type/checker.go",
           "sha256": "fede55c385b25274234d30c25971ff0f0bb123b83e44784843f0a23d260fe4b6"
         },
-        "examples/school-management/school_type/entity.go": {
+        "examples/school-management/golang-lib-core/school_type/entity.go": {
           "emittedPath": "school_type/entity.go",
           "sha256": "619a2742be7c88df8d1e2fa38b5b17904acad824c2cd0f2e42f45371bb4e4939"
         },
-        "examples/school-management/school_type/expression.go": {
+        "examples/school-management/golang-lib-core/school_type/expression.go": {
           "emittedPath": "school_type/expression.go",
           "sha256": "d1e5cffeed58408d4c035a9992e2120a7c36261e54eaf99ebe274f0394a279e6"
         },
-        "examples/school-management/school_type/request.go": {
+        "examples/school-management/golang-lib-core/school_type/request.go": {
           "emittedPath": "school_type/request.go",
           "sha256": "1ee5fb1af6eec77810aea8419dd767c89489148cff11152ac2a4c1d701da57c7"
         },
-        "examples/school-management/teaql/checker-model.json": {
+        "examples/school-management/golang-lib-core/teaql/checker-model.json": {
           "emittedPath": "teaql/checker-model.json",
           "sha256": "d20402b2a81d6497d189de0395c924d04c3d06a2c4eb8e432df61a84ced90b51"
         },
-        "examples/school-management/teaql/model-provenance.json": {
+        "examples/school-management/golang-lib-core/teaql/model-provenance.json": {
           "emittedPath": "teaql/model-provenance.json",
           "sha256": "37dfcdffaeb5cabe6ffb233212ec4afec39d19c242b3cbcee53e3634c3715a2e"
         }
@@ -1138,13 +1142,6 @@
           "commit": "021b1ed8bee5db7eef38a6b1e3a3ef2e7ac69daa",
           "jarSHA256": "34dd804dccf05470dad46d086d58412e4a9dfcd0a1c6ed34f8f90c55ff478220",
           "release": "unreleased-source-021b1ed8"
-        }
-      },
-      "preservedApplicationFiles": {
-        "examples/school-management/go.mod": {
-          "emittedSHA256": "ba54cb5868b4b30910e908e9a9d756563f0a284d6d470147583fab7e36100c38",
-          "reason": "Application manifest, local dependency wiring or application-specific instructions preserved",
-          "sha256": "2fba8e677a101e2f74d2d819cdbd2e3f21e9ba82de72a5b1b7887e64bd6a9145"
         }
       }
     },

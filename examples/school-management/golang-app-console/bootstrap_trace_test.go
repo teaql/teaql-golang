@@ -1,6 +1,7 @@
-package lib
+package showcase_test
 
 import (
+	. "school-management-service-core-workspace/lib"
 	"database/sql"
 	"fmt"
 	"os"

@@ -66,8 +66,7 @@ go run ./examples/mutation-policy
 # The test runs the actual console twice against an isolated SQLite path. Do not
 # reuse .local/order.db: older example schemas may predate teaql_id_space.
 (cd examples/order-management/golang-app-console && go test ./... -count=1)
-(cd examples/school-management && go test ./... -count=1)
-bash scripts/verify-school-bootstrap-example.sh
+TEAQL_SCHOOL_EVIDENCE_DIR="$inventory_evidence/school-management" bash examples/school-management/verify.sh
 go run ./examples/security-foundations
 go run ./examples/typed-runtime-spi
 (cd examples/task_board && go test ./... -count=1 && go run .)
