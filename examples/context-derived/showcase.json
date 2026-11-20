@@ -1,0 +1,40 @@
+{
+  "generatedDomainLibraryHandEdited": false,
+  "goalId": "go:examples/context-derived",
+  "library": {
+    "generatedFilesManifestSHA256": "5e11b3bbe8b588e8d528cdba6d52c56b41e87a4c0bdcc7a2fb32a050243c715b",
+    "root": "golang-lib-core",
+    "scope": "golang-lib-core"
+  },
+  "model": {
+    "path": "model.xml",
+    "sha256": "9bb36d7f9d639d04cfe9344e5152ee68e1844a8552538413c16569c6e8df4f8e"
+  },
+  "producer": {
+    "generator": {
+      "artifactKind": "qualified source build; not a public release",
+      "jarSHA256": "34dd804dccf05470dad46d086d58412e4a9dfcd0a1c6ed34f8f90c55ff478220",
+      "qualificationReceiptSHA256": "5119b9f3a5c95fb84f527885fdd5bac0fe79a56352a55b8acf116f67fd12787d",
+      "sourceCommit": "021b1ed8bee5db7eef38a6b1e3a3ef2e7ac69daa",
+      "tag": "unreleased-source-021b1ed8"
+    },
+    "receipt": "teaql-conformance/evidence/2026-11-20-example-showcase-remediation/context-field-qualified-generation/receipt.json",
+    "receiptSHA256": "fd8c37aeb5622a41a2dd8768724e432d5f97b58bf720f39217a8f31a8f4c1d90"
+  },
+  "scene": "Catalog entry edits with trusted Context defaults, no-op saves and rollback",
+  "schema": "teaql.model-workspace-showcase/v1",
+  "status": "implemented-pending-native-qualification",
+  "verification": [
+    "node",
+    "verify-local.cjs"
+  ],
+  "workspace": {
+    "applicationOwnedFiles": [
+      "go.mod",
+      "context_fix_test.go"
+    ],
+    "generatedFilesManifestSHA256": "69ff6e3a242bdc0783a9d1363bef48bed73ed592fe3260531e96ce92ac7d34fc",
+    "root": "golang-app-console",
+    "scope": "golang-app-console"
+  }
+}
