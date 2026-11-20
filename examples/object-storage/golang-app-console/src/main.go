@@ -32,7 +32,7 @@ const filename = "receipt.txt"
 type orderAudit struct{ events []*runtime.SafeAuditEvent }
 
 func (a *orderAudit) OnSafeEvent(_ *runtime.UserContext, event *runtime.SafeAuditEvent) error {
-	if event.Entity == "CustomerOrder" || event.Entity == "OrderAttachment" {
+	if event.Entity == "customer_order" || event.Entity == "order_attachment" {
 		a.events = append(a.events, event)
 	}
 	return nil
@@ -99,7 +99,12 @@ func verify(database, download string, round int) {
 	_, err := rand.Read(random)
 	must(err)
 	key := checked(core.NewObjectKey("private-order-attachments/" + hex.EncodeToString(random)))
-	defer func() { must(storage.Delete(key)) }()
+	uploaded := false
+	defer func() {
+		if uploaded {
+			must(storage.Delete(key))
+		}
+	}()
 	require(!checked(storage.Exists(key)), "new attachment key already exists")
 	body := []byte(receipt)
 	length := int64(len(body))
@@ -108,6 +113,7 @@ func verify(database, download string, round int) {
 	put = checked(put.WithContentType(mediaType))
 	put = checked(put.WithMetadata(map[string]string{"receipt-sha256": digest}))
 	checked(storage.PutBytes(key, body, put))
+	uploaded = true
 
 	attachment := checked(lib.Q.OrderAttachments().Comment("prepare receipt attachment").
 		Purpose("save the uploaded receipt reference on its order").NewEntity(context))
@@ -145,6 +151,7 @@ func verify(database, download string, round int) {
 	must(os.WriteFile(download, returned, 0o600))
 
 	must(storage.Delete(persistedKey))
+	uploaded = false
 	_, err = storage.Get(persistedKey)
 	expect(core.StorageNotFound, err)
 	require(!checked(storage.Exists(persistedKey)), "missing attachment reported present")
@@ -154,7 +161,7 @@ func verify(database, download string, round int) {
 	for _, event := range events {
 		require(event.TraceID == trace, "storage observation escaped the attachment Context")
 	}
-	require(len(audit.events) == 2 && audit.events[0].Entity == "CustomerOrder" && audit.events[1].Entity == "OrderAttachment",
+	require(len(audit.events) == 2 && audit.events[0].Entity == "customer_order" && audit.events[1].Entity == "order_attachment",
 		"committed order and attachment audits missing")
 	require(!strings.Contains(string(checked(json.Marshal(events))), key.Value()) &&
 		!strings.Contains(string(checked(json.Marshal(audit.events))), key.Value()), "private object key reached safe events")
