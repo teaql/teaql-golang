@@ -51,6 +51,7 @@ go work edit "-replace=scalar-type-conformance-service-core-workspace/lib@v0.0.0
 go work edit "-replace=purchase-order-numbering-core-workspace/lib@v0.0.0=$repo/examples/business-id/golang-lib-core"
 go work edit "-replace=first-order-service-core-workspace/lib@v0.0.0=$repo/examples/basic/golang-lib-core"
 go work edit "-replace=customer-onboarding-service-core-workspace/lib@v0.0.0=$repo/examples/mutation-policy/golang-lib-core"
+go work edit "-replace=robot-kanban-service-core-workspace/lib@v0.0.0=$repo/examples/task_board/golang-lib-core"
 cp "$workspace/go.work" "$inventory_evidence/go.work"
 echo "Local Go example workspace (removed on exit): $GOWORK"
 for module_file in "${module_files[@]}"; do
@@ -86,7 +87,8 @@ TEAQL_ORDER_EVIDENCE_DIR="$inventory_evidence/order-management" bash examples/or
 TEAQL_SCHOOL_EVIDENCE_DIR="$inventory_evidence/school-management" bash examples/school-management/verify.sh
 go run ./examples/security-foundations
 go run ./examples/typed-runtime-spi
-(cd examples/task_board && go test ./... -count=1 && go run .)
+(cd examples/task_board/golang-app-console/src && go test -race . -count=1 && \
+  TEAQL_TASK_BOARD_DB="$inventory_evidence/task-board.sqlite" go run -race .)
 bash examples/trace-chain/verify.sh
 bash examples/trace-chain/verify-standard-telemetry.sh
 bash examples/trace-chain/verify-standard-order.sh

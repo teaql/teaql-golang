@@ -18,6 +18,7 @@ func run() error {
 			return err
 		}
 		database = file.Name()
+		defer os.Remove(database)
 		if err := file.Close(); err != nil {
 			return err
 		}

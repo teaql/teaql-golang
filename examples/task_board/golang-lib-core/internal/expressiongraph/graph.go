@@ -11,6 +11,7 @@ import (
 var _ = time.Time{}
 var _ = decimal.Decimal{}
 
+
 // Implemented by generated entities; reads only their already-loaded graph.
 type entityView interface {
 	core.Entity
