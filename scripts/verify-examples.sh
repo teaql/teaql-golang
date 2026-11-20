@@ -48,6 +48,7 @@ export GOWORK="$workspace/go.work"
 # loading; a use entry alone still attempts to look up that version remotely.
 go work edit "-replace=checker-fix-advanced-core-workspace/lib@v0.0.0=$repo/examples/fix-e-alignment/generated"
 go work edit "-replace=scalar-type-conformance-service-core-workspace/lib@v0.0.0=$repo/examples/scalar-type-probe/generated"
+go work edit "-replace=purchase-order-numbering-core-workspace/lib@v0.0.0=$repo/examples/business-id/golang-lib-core"
 cp "$workspace/go.work" "$inventory_evidence/go.work"
 echo "Local Go example workspace (removed on exit): $GOWORK"
 for module_file in "${module_files[@]}"; do
@@ -60,7 +61,13 @@ for module_file in "${module_files[@]}"; do
 done
 echo "PASS: all ${#module_files[@]} Go example modules resolve the local runtime"
 go run ./examples/basic
-go run ./examples/business-id
+(
+  cd examples/business-id/golang-app-console
+  go run ./calibration
+  TEAQL_BUSINESS_ID_KEY_V1_HEX=000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f \
+  TEAQL_PURCHASE_NUMBERING_ROUND=inventory \
+  PURCHASE_ORDER_NUMBERING_CORE_DATABASE_URL="$inventory_evidence/business-id.sqlite" go run ./src
+)
 go run ./examples/mutation-policy
 TEAQL_CONFORMANCE_EVIDENCE_DIR="$inventory_evidence/conformance" bash examples/conformance/verify.sh
 # The test runs the actual console twice against an isolated SQLite path. Do not
