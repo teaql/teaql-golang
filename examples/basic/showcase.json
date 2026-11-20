@@ -1,0 +1,40 @@
+{
+  "generatedDomainLibraryHandEdited": false,
+  "goalId": "go:examples/basic",
+  "library": {
+    "generatedFilesManifestSHA256": "795ec955f3e7bd229afd803e7b6c51e7e4c4c2a12416894cb3212345fd07f484",
+    "root": "golang-lib-core",
+    "scope": "golang-lib-core"
+  },
+  "model": {
+    "path": "model.xml",
+    "sha256": "163ae2b34d976cb2c4cfbb1816c401e97ba848b965d550bfc01b39df06b7c65f"
+  },
+  "producer": {
+    "generator": {
+      "artifactKind": "qualified source build",
+      "jarSHA256": "029f602cf0e2de4ec0910495c340fbeb41f11772b6aca875569f498811158e7d",
+      "qualificationReceiptSHA256": "1012520de60d49cfc1e45c7e08fcf204dd2db36a163909e1e36752065a31047a",
+      "sourceCommit": "99d6bde2351d79b7d8b1b1c5cbc78c5dc777b6f2",
+      "tag": "unreleased-source-99d6bde2"
+    },
+    "receipt": "teaql-conformance/evidence/2026-11-20-example-showcase-remediation/customer-approval-first-order-school-schema-generation/receipt.json",
+    "receiptSHA256": "0dfc2d5e5752541338c6f29613e7fa50fc28465c9ad059f9aacffce3c3d60424"
+  },
+  "scene": "Place a first order for tea delivery",
+  "schema": "teaql.model-workspace-showcase/v1",
+  "status": "implemented-pending-native-qualification",
+  "verification": [
+    "golang-app-console/src/main.go"
+  ],
+  "workspace": {
+    "applicationOwnedFiles": [
+      "src/main.go",
+      "calibration/main.go",
+      "go.mod"
+    ],
+    "generatedFilesManifestSHA256": "455d841158355cad9508882e806630ed7f1fffc19b6f84f32c740c6dba5e574b",
+    "root": "golang-app-console",
+    "scope": "golang-app-console"
+  }
+}

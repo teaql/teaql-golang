@@ -49,6 +49,8 @@ export GOWORK="$workspace/go.work"
 go work edit "-replace=checker-fix-advanced-core-workspace/lib@v0.0.0=$repo/examples/fix-e-alignment/generated"
 go work edit "-replace=scalar-type-conformance-service-core-workspace/lib@v0.0.0=$repo/examples/scalar-type-probe/generated"
 go work edit "-replace=purchase-order-numbering-core-workspace/lib@v0.0.0=$repo/examples/business-id/golang-lib-core"
+go work edit "-replace=first-order-service-core-workspace/lib@v0.0.0=$repo/examples/basic/golang-lib-core"
+go work edit "-replace=customer-onboarding-service-core-workspace/lib@v0.0.0=$repo/examples/mutation-policy/golang-lib-core"
 cp "$workspace/go.work" "$inventory_evidence/go.work"
 echo "Local Go example workspace (removed on exit): $GOWORK"
 for module_file in "${module_files[@]}"; do
@@ -60,7 +62,11 @@ for module_file in "${module_files[@]}"; do
   fi
 done
 echo "PASS: all ${#module_files[@]} Go example modules resolve the local runtime"
-go run ./examples/basic
+(
+  cd examples/basic/golang-app-console
+  go run ./calibration
+  TEAQL_SHOWCASE_ROUND=inventory FIRST_ORDER_SERVICE_CORE_DATABASE_URL="$inventory_evidence/first-order.sqlite" go run ./src
+)
 (
   cd examples/business-id/golang-app-console
   go run ./calibration
@@ -68,7 +74,11 @@ go run ./examples/basic
   TEAQL_PURCHASE_NUMBERING_ROUND=inventory \
   PURCHASE_ORDER_NUMBERING_CORE_DATABASE_URL="$inventory_evidence/business-id.sqlite" go run ./src
 )
-go run ./examples/mutation-policy
+(
+  cd examples/mutation-policy/golang-app-console
+  go run ./calibration
+  TEAQL_SHOWCASE_ROUND=inventory CUSTOMER_ONBOARDING_SERVICE_CORE_DATABASE_URL="$inventory_evidence/customer-approval.sqlite" go run ./src
+)
 TEAQL_CONFORMANCE_EVIDENCE_DIR="$inventory_evidence/conformance" bash examples/conformance/verify.sh
 # The test runs the actual console twice against an isolated SQLite path. Do not
 # reuse .local/order.db: older example schemas may predate teaql_id_space.
