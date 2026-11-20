@@ -48,6 +48,7 @@ export GOWORK="$workspace/go.work"
 go work edit "-replace=checker-fix-advanced-core-workspace/lib@v0.0.0=$repo/examples/fix-e-alignment/generated"
 go work edit "-replace=scalar-type-conformance-service-core-workspace/lib@v0.0.0=$repo/examples/scalar-type-probe/generated"
 go work edit "-replace=freight-quote-settlement-core-workspace/lib@v0.0.0=$repo/examples/scalar-type-probe/golang-lib-core"
+go work edit "-replace=order-service-routing-core-workspace/lib@v0.0.0=$repo/examples/typed-runtime-spi/golang-lib-core"
 go work edit "-replace=purchase-order-numbering-core-workspace/lib@v0.0.0=$repo/examples/business-id/golang-lib-core"
 go work edit "-replace=first-order-service-core-workspace/lib@v0.0.0=$repo/examples/basic/golang-lib-core"
 go work edit "-replace=customer-onboarding-service-core-workspace/lib@v0.0.0=$repo/examples/mutation-policy/golang-lib-core"
@@ -86,7 +87,7 @@ TEAQL_CONFORMANCE_EVIDENCE_DIR="$inventory_evidence/conformance" bash examples/c
 TEAQL_ORDER_EVIDENCE_DIR="$inventory_evidence/order-management" bash examples/order-management/verify.sh
 TEAQL_SCHOOL_EVIDENCE_DIR="$inventory_evidence/school-management" bash examples/school-management/verify.sh
 go run ./examples/security-foundations
-go run ./examples/typed-runtime-spi
+TEAQL_CONTEXT_SPI_EVIDENCE_DIR="$inventory_evidence/order-service-routing" bash examples/typed-runtime-spi/verify.sh
 (cd examples/task_board/golang-app-console/src && go test -race . -count=1 && \
   TEAQL_TASK_BOARD_DB="$inventory_evidence/task-board.sqlite" go run -race .)
 bash examples/trace-chain/verify.sh
