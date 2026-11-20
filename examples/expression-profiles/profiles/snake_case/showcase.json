@@ -1,0 +1,39 @@
+{
+  "generatedDomainLibraryHandEdited": false,
+  "goalId": "go:examples/expression-profiles",
+  "library": {
+    "generatedFilesManifestSHA256": "8e6c823e6cfdc34f2c1a5e8074ef4ba22c3768887af269728029063b387a3fa9",
+    "root": "golang-lib-core",
+    "scope": "golang-lib-core"
+  },
+  "model": {
+    "path": "model.xml",
+    "sha256": "9ef6fdfe684a40e0d027e70c4a819a96a2ea9a8bb5d8ccb9132ac783414ecb48"
+  },
+  "producer": {
+    "generator": {
+      "artifactKind": "qualified source build",
+      "jarSHA256": "029f602cf0e2de4ec0910495c340fbeb41f11772b6aca875569f498811158e7d",
+      "qualificationReceiptSHA256": "1012520de60d49cfc1e45c7e08fcf204dd2db36a163909e1e36752065a31047a",
+      "sourceCommit": "99d6bde2351d79b7d8b1b1c5cbc78c5dc777b6f2",
+      "tag": "unreleased-source-99d6bde2"
+    },
+    "receipt": "teaql-conformance/evidence/2026-11-20-example-showcase-remediation/dispatch-document-profiles-generation/receipt.json",
+    "receiptSHA256": "11b1084da4040d1a68378b9ee879d98dd18d61b7eace2700c2e3dc207276c1b3"
+  },
+  "scene": "Read a dispatch order in snake_case",
+  "schema": "teaql.model-workspace-showcase/v1",
+  "status": "covered-by-parent-qualification",
+  "verification": [
+    "bash",
+    "examples/expression-profiles/verify-dispatch.sh"
+  ],
+  "workspace": {
+    "applicationOwnedFiles": [
+      "src/main.go"
+    ],
+    "generatedFilesManifestSHA256": "0b0f55750a6de346394241c0cbba6ed1607a38646a187d81910181309867a428",
+    "root": "golang-app-console",
+    "scope": "golang-app-console"
+  }
+}

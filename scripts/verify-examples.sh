@@ -22,7 +22,7 @@ TEAQL_FIX_E_EVIDENCE_DIR="$inventory_evidence/fix-e" node examples/fix-e-alignme
 TEAQL_CONTEXT_FIX_EVIDENCE_DIR="$inventory_evidence/context-derived" node examples/context-derived/verify-local.cjs
 TEAQL_NATURAL_MESSAGES_EVIDENCE_DIR="$inventory_evidence/natural-messages" node examples/natural-messages/verify-local.cjs
 TEAQL_SQLITE_LIFECYCLE_EVIDENCE_DIR="$inventory_evidence/sqlite-lifecycle" node examples/sqlite-lifecycle/verify-local.cjs
-TEAQL_GENERATED_E_PROFILE_EVIDENCE_DIR="$inventory_evidence/expression-profiles" node examples/expression-profiles/verify-local.cjs
+TEAQL_DISPATCH_PROFILE_EVIDENCE_DIR="$inventory_evidence/expression-profiles" bash examples/expression-profiles/verify-dispatch.sh
 bash examples/object-storage/verify.sh
 TEAQL_FREIGHT_QUOTE_EVIDENCE_DIR="$inventory_evidence/freight-quotes" bash examples/scalar-type-probe/verify-freight-quotes.sh
 # An example must test this checkout, never an older published runtime. Go
