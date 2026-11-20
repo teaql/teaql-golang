@@ -1,0 +1,67 @@
+{
+  "generatedDomainLibraryHandEdited": false,
+  "goalId": "go:examples/fix-e-alignment",
+  "library": {
+    "generatedFilesManifestSHA256": "caf8e87dac45436a1d130d880b0df83506b0401d5555a6a651b6624b42612fc4",
+    "root": "golang-lib-core",
+    "scope": "golang-lib-core"
+  },
+  "model": {
+    "path": "model.xml",
+    "sha256": "a2cf4c907cb084cb0946e993eeba586c8c0701a89fdc4a849808aa743be033b7"
+  },
+  "producer": {
+    "generator": {
+      "artifactKind": "qualified source build; not a public release",
+      "jarSHA256": "34dd804dccf05470dad46d086d58412e4a9dfcd0a1c6ed34f8f90c55ff478220",
+      "qualificationReceiptSHA256": "5119b9f3a5c95fb84f527885fdd5bac0fe79a56352a55b8acf116f67fd12787d",
+      "sourceCommit": "021b1ed8bee5db7eef38a6b1e3a3ef2e7ac69daa",
+      "tag": "unreleased-source-021b1ed8"
+    },
+    "receipt": "teaql-conformance/evidence/2026-11-20-example-showcase-remediation/purchase-order-fix-generation/receipt.json",
+    "receiptSHA256": "920c683d71de38e609d2be2c3d8b7f2fb6c014e3b123edd5c4ea694fc6e91a48"
+  },
+  "scene": "Purchase-order Fix, precise expressions and sparse graph edits with actual governed persistence",
+  "schema": "teaql.model-workspace-showcase/v1",
+  "status": "implemented-pending-native-qualification",
+  "verification": [
+    "node",
+    "verify-local.cjs"
+  ],
+  "workspace": {
+    "applicationOwnedFiles": [
+      "go.mod",
+      "restoration_test.go",
+      "graph_view_test.go",
+      "projection_views_test.go",
+      "loading_test.go",
+      "verify_test.go",
+      "authoritative_deletion_test.go",
+      "unchanged_views_test.go",
+      "partial_ancestors_test.go",
+      "expression_boundary_test.go",
+      "context_root_test.go",
+      "provider_guard_test.go",
+      "concurrent_query_test.go",
+      "ledger_composition_test.go",
+      "deletion_lifecycle_test.go",
+      "checker_exact_ranges_test.go",
+      "ownership_test.go",
+      "explicit_hydration_test.go",
+      "restoration_combinations_test.go",
+      "expression_recursive_test.go",
+      "version_lifecycle_test.go",
+      "paged_ownership_test.go",
+      "rollback_views_test.go",
+      "checker_boundaries_test.go",
+      "partial_root_test.go",
+      "prepared_snapshot_test.go",
+      "graph_fix_test.go",
+      "checker_metadata_test.go",
+      "operational_deadline_test.go"
+    ],
+    "generatedFilesManifestSHA256": "6f891e1145b8d12e08ac4568a2eec8f02673bddb769ae6b8dbeea29eb8e9acca",
+    "root": "golang-app-console",
+    "scope": "golang-app-console"
+  }
+}

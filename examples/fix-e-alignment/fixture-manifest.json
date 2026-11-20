@@ -5,7 +5,7 @@
   "files": {
     "e.go": "7910bee58509d2c72ff7aafccddd372fe5b617d1bfefe19ffbefe415d59546f4",
     "entity_json.go": "a2ce8174310c5de1b036c4895d880a89114d4698e0669f92fa690eacad9f3442",
-    "go.mod": "d5f72fdb4142475205e0d2a03582b43127bdb4abe291bbd9f984f8d2cb07848d",
+    "go.mod": "e87c10668410ea22d7fd2ffef880bfb603ed48ccc138b2218b234cb44c099864",
     "internal/expressiongraph/graph.go": "a5da7c2a28dd32413ae1fc7a930f6714b392eb56903f1381e89170f04a91eeea",
     "internal/generatedjson/model.go": "d373fea48af6f7448fdfd631f434424510e7b1f8a0c4546e443e04c683563aed",
     "internal/generatedsearch/search_models.go": "684ab28a36b174cf143210391ca062178ad7997454d7f0fc49656f58cd45f730",
@@ -31,18 +31,18 @@
     "tenant/request.go": "416b787f12f69baabe771bd0fd6353641aee555f6af3d9d6ff4e067dc64ae7ba"
   },
   "generatedManifestSha256": "caf8e87dac45436a1d130d880b0df83506b0401d5555a6a651b6624b42612fc4",
-  "generationReceipt": "teaql-conformance/evidence/2026-11-19-runtime-examples-refresh/generation-unified-intent-current-source/go/fix-e-alignment/model/receipt.json",
+  "generationReceipt": "teaql-conformance/evidence/2026-11-20-example-showcase-remediation/purchase-order-fix-generation/go/purchase-order-showcase/library/receipt.json",
   "generatorCommit": "021b1ed8bee5db7eef38a6b1e3a3ef2e7ac69daa",
   "generatorJarSHA256": "34dd804dccf05470dad46d086d58412e4a9dfcd0a1c6ed34f8f90c55ff478220",
   "generatorRelease": "unreleased-source-021b1ed8",
   "language": "go",
   "modelSha256": "a2cf4c907cb084cb0946e993eeba586c8c0701a89fdc4a849808aa743be033b7",
-  "previousFixtureManifestSha256": "361edc5462cd9f6f5a7670d9d9445a4ee01ec8ce81124bce6c6d34fcc2803fc5",
+  "previousFixtureManifestSha256": "08f8a86fb45c20019cccbdd5c3dd895be531169bb9599f43368150edadf08931",
   "previousOrigin": {
     "commit": "e5fb37782823de2fe0c33912dc10855c1c68da07",
     "path": "examples/fix-e-alignment/fixture-manifest.json"
   },
-  "producerReceiptSha256": "375ac83d00b3e8585b76dc40a8a8b8f66dab014f3100991c2a27ebb5f1e929ac",
+  "producerReceiptSha256": "9a3531eca84ddd11b757ae6aa7c5dfdee804254ed2e83989112187b68bbcef50",
   "producerSource": {
     "commit": "021b1ed8bee5db7eef38a6b1e3a3ef2e7ac69daa",
     "jarSHA256": "34dd804dccf05470dad46d086d58412e4a9dfcd0a1c6ed34f8f90c55ff478220",

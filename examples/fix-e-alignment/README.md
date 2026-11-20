@@ -1,5 +1,8 @@
 # Generated graph save and loaded-view regression
 
+`model.xml` owns `golang-lib-core` and `golang-app-console`. All 28 original source/test files now live in the native workspace and keep their exact bytes. Its module consumes the named sibling library and this SDK source. The verifier materializes those scopes in owned scratch, retains all 32 original top-level race tests twice on the same stores, and keeps compact results while removing its compiler outputs. Current scope provenance is in `showcase.json`.
+
+
 ```sh
 node examples/fix-e-alignment/verify-local.cjs
 ```
