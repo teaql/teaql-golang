@@ -21,9 +21,17 @@
     "receipt": "teaql-conformance/evidence/2026-11-20-example-showcase-remediation/purchase-order-fix-generation/receipt.json",
     "receiptSHA256": "920c683d71de38e609d2be2c3d8b7f2fb6c014e3b123edd5c4ea694fc6e91a48"
   },
+  "qualification": {
+    "businessReceipt": "teaql-conformance/evidence/2026-11-20-example-showcase-remediation/go-purchase-order-native-scopes/runtime/fix-e/receipt.json",
+    "businessReceiptSHA256": "b954abaaa1227eee175f05800d2767c1bb046ac68acb7009c6f9ca1c6e04eb79",
+    "nativeReceipt": "teaql-conformance/evidence/2026-11-20-example-showcase-remediation/go-purchase-order-native-scopes/receipt.json",
+    "nativeReceiptSHA256": "7dbbd5e0792e2ee67cad1090153c6d36844e8ea2c4a2becf820388144d03dd27",
+    "remainingFullRuntimeInventory": true,
+    "sourceCommit": "79762eb53a2d2584285a31cc4035dfbbb242ef8b"
+  },
   "scene": "Purchase-order Fix, precise expressions and sparse graph edits with actual governed persistence",
   "schema": "teaql.model-workspace-showcase/v1",
-  "status": "implemented-pending-native-qualification",
+  "status": "focused-verified",
   "verification": [
     "node",
     "verify-local.cjs"
