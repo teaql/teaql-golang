@@ -30,9 +30,17 @@
     "receipt": "teaql-conformance/evidence/2026-11-20-example-showcase-remediation/order-generation/receipt.json",
     "receiptSHA256": "5041246b7c9f452219d943efa393ea380ce7f7e172da739a945bb49da2ba5db2"
   },
+  "qualification": {
+    "businessReceipt": "teaql-conformance/evidence/2026-11-20-example-showcase-remediation/go-order-scopes/runtime/order-management/business-receipt.json",
+    "businessReceiptSHA256": "aa11e0aa03a95f361cacc3e7c58a3edef3d2e52c62c7130ee813422fef144296",
+    "nativeReceipt": "teaql-conformance/evidence/2026-11-20-example-showcase-remediation/go-order-scopes/receipt.json",
+    "nativeReceiptSHA256": "fe8ccd4bd32d5fdd08d4b1cdc8abc11ec8d96575a20521cca7b8912473700db4",
+    "remainingFullRuntimeInventory": true,
+    "sourceCommit": "0a244ab184bd352343c2c7069f6c2e3c855919fd"
+  },
   "scene": "Order terminal query, governed audit output and reusable search",
   "schema": "teaql.model-workspace-showcase/v1",
-  "status": "implemented-pending-native-qualification",
+  "status": "focused-verified",
   "verification": [
     "bash",
     "verify.sh"
