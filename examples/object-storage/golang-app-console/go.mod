@@ -1,16 +1,18 @@
-module teaql-object-storage-example
+module order-attachment-service-core-workspace
 
-go 1.24.0
+go 1.25.0
 
 require (
+	order-attachment-service-core-workspace/lib v0.0.0
 	github.com/aws/aws-sdk-go-v2 v1.47.3
 	github.com/aws/aws-sdk-go-v2/credentials v1.20.9
 	github.com/aws/aws-sdk-go-v2/service/s3 v1.114.3
-	github.com/teaql/teaql-golang v0.3.1
+	github.com/teaql/teaql-golang v0.6.0
 	github.com/teaql/teaql-golang/objectstorage/s3 v0.3.1
 )
 
 require (
+	github.com/mattn/go-sqlite3 v1.14.16 // indirect
 	github.com/aws/aws-sdk-go-v2/aws/protocol/eventstream v1.7.22 // indirect
 	github.com/aws/aws-sdk-go-v2/internal/configsources v1.5.6 // indirect
 	github.com/aws/aws-sdk-go-v2/internal/endpoints/v2 v2.8.6 // indirect
@@ -23,6 +25,8 @@ require (
 	github.com/shopspring/decimal v1.4.0 // indirect
 )
 
-replace github.com/teaql/teaql-golang => ../..
+replace github.com/teaql/teaql-golang => ../../..
 
-replace github.com/teaql/teaql-golang/objectstorage/s3 => ../../objectstorage/s3
+replace github.com/teaql/teaql-golang/objectstorage/s3 => ../../../objectstorage/s3
+
+replace order-attachment-service-core-workspace/lib => ../golang-lib-core
