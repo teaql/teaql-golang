@@ -1,0 +1,74 @@
+{
+  "generatedDomainLibraryHandEdited": false,
+  "goalId": "go:examples/supplier-onboarding-i18n",
+  "library": {
+    "generatedFilesManifestSHA256": "10d92d3bbbc075d84eca3ce78b9ec3c50cbcd29e4dc7f58145c3d59515a3a023",
+    "root": "golang-lib-core",
+    "scope": "golang-lib-core"
+  },
+  "model": {
+    "path": "model.xml",
+    "sha256": "961f3048ca9c8e9120d81fc0ce9a3ea35629c8d9607aab80319156c21391e2c5"
+  },
+  "producer": {
+    "assistSHA256": {
+      "golang-assist-create-supplier.md": "bade49a2d7bffb4ebb776d50b294c5a057269b831022a15f2c4acd4eec0e98fb",
+      "golang-assist-i18n.md": "a083e9a4e50ebe6dcf9930be292ec707a6562c22a9c15b38ec24548712c4239b",
+      "golang-assist-query-supplier.md": "45ef397fc0ed8d0c332d2df98b4d4763b20ce71f2fa3096cfe33bfe7a2055718"
+    },
+    "evaluationSHA256": "c7a0b3fe8953aec1f5c4a1ebc0ce02f6f17a11bd0db1fceddd395d7848dc985c",
+    "generatorBaseCommit": "92d612e95cde33c323a1b026b5c567f8c8fa4562",
+    "scopes": [
+      "golang-app-console",
+      "golang-lib-core"
+    ]
+  },
+  "qualification": {
+    "baseCommit": "776f3ff9323f42d914c764d6cba0b18de2ece4db",
+    "evidence": "teaql-conformance/evidence/2026-11-21-i18n-standard-examples/go.jsonl",
+    "stdoutSHA256": "8c0f026f0c872cb1f00a0ec8551fa77fc450eab81574e0c47dc1cb2985101013"
+  },
+  "scene": "Warehouse supplier onboarding with two real checker rejections and locale isolation",
+  "schema": "teaql.model-workspace-showcase/v1",
+  "semanticModel": {
+    "path": "semantics.json",
+    "sha256": "5ac183bbe622b4bf7bfc157d367714d36a88722c03d64fc1ba68d8ef01faaf18"
+  },
+  "status": "focused-verified",
+  "verification": [
+    "bash",
+    "run.sh",
+    "--verify"
+  ],
+  "workspace": {
+    "applicationEntry": "src/main.go",
+    "applicationOwnedFiles": [
+      "golang-app-console/src/main.go"
+    ],
+    "domainSourcesFromLibrary": [
+      "e.go",
+      "entity_json.go",
+      "go.mod",
+      "internal/generatedjson/model.go",
+      "internal/generatedsearch/search_models.go",
+      "lib.go",
+      "q.go",
+      "runtime.go",
+      "supplier/behavior.go",
+      "supplier/checker.go",
+      "supplier/entity.go",
+      "supplier/expression.go",
+      "supplier/request.go",
+      "teaql/checker-model.json",
+      "teaql/model-provenance.json",
+      "warehouse/behavior.go",
+      "warehouse/checker.go",
+      "warehouse/entity.go",
+      "warehouse/expression.go",
+      "warehouse/request.go"
+    ],
+    "generatedFilesManifestSHA256": "10d92d3bbbc075d84eca3ce78b9ec3c50cbcd29e4dc7f58145c3d59515a3a023",
+    "root": "golang-app-console",
+    "scope": "golang-app-console"
+  }
+}
