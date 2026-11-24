@@ -110,6 +110,15 @@ func (s *contextTransaction) fail(err error) {
 	}
 }
 
+// RecordTransactionSaveFailure preserves generated admission failures that occur
+// before ExecutePreparedGraphSave can enlist the graph.
+func (c *UserContext) RecordTransactionSaveFailure(err error) error {
+	if c.contextTransaction != nil {
+		c.contextTransaction.fail(err)
+	}
+	return err
+}
+
 func (s *contextTransaction) recordSaveResult(err *error) {
 	if failure := recover(); failure != nil {
 		s.fail(errors.New("graph save panicked"))
