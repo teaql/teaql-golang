@@ -1,4 +1,5 @@
 'use strict';
+const {currentLibraryInputs}=require('./current-library.cjs');
 const fs = require('node:fs'), path = require('node:path'), os = require('node:os');
 const crypto = require('node:crypto'), assert = require('node:assert/strict'), cp = require('node:child_process');
 const {createOwnedRunner, ownedBytes} = require('../fix-e-alignment/owned-command.cjs');
@@ -31,13 +32,14 @@ function runtimeHash() {
 async function main() {
   try {
     const disk = fs.statfsSync(scratch); assert(disk.bavail * disk.bsize > 2 * 1024 ** 3);
-    report.fixture = inputs(); report.sourceSha256 = runtimeHash();
+    report.currentLibrary=currentLibraryInputs(); report.fixture = inputs(); report.sourceSha256 = runtimeHash();
     report.sourceCommit = cp.execFileSync('git', ['-C',repo,'rev-parse','HEAD']).toString().trim();
-    const app = fs.readFileSync(path.join(__dirname,'context_fix_test.go')); report.applicationSha256 = sha(app);
-    fs.writeFileSync(path.join(scratch,'context_fix_test.go'),app);
-    const mod = fs.readFileSync(path.join(__dirname,'go.mod'),'utf8')
-      .replace('=> ./fixture','=> '+JSON.stringify(fixture)).replace('=> ../..','=> '+JSON.stringify(repo));
-    fs.writeFileSync(path.join(scratch,'go.mod'),mod);
+    const app=path.join(scratch,'golang-app-console'),generated=path.join(scratch,'golang-lib-core');
+    fs.cpSync(path.join(__dirname,'golang-app-console'),app,{recursive:true});
+    fs.cpSync(path.join(__dirname,'golang-lib-core'),generated,{recursive:true});
+    report.applicationSha256=sha(fs.readFileSync(path.join(app,'context_fix_test.go')));
+    const mod=fs.readFileSync(path.join(app,'go.mod'),'utf8').replace('=> ../../..','=> '+JSON.stringify(repo));
+    fs.writeFileSync(path.join(app,'go.mod'),mod);
     const env = {...process.env, GOWORK:'off', GOENV:'off', GOMAXPROCS:'2', GOTMPDIR:path.join(scratch,'tmp'),
       TEAQL_TELEMETRY_ENABLED:'false', TEAQL_CONTEXT_FIX_DB:path.join(output,'fixture.sqlite')};
     fs.mkdirSync(env.GOTMPDIR);
@@ -45,7 +47,7 @@ async function main() {
     const go = process.env.GO || 'go';
     async function run(name, command, timeout=300000) {
       const log = path.join(output,name+'.log'), fd = fs.openSync(log,'wx'); let result;
-      try { result = await runner.run(command,{cwd:scratch,env,timeout,stdio:['ignore',fd,fd]}); }
+      try { result = await runner.run(command,{cwd:app,env,timeout,stdio:['ignore',fd,fd]}); }
       finally { fs.closeSync(fd); }
       const bytes = fs.readFileSync(log);
       report.commands.push({name,command,exitCode:result.status,signal:result.signal,logSha256:sha(bytes)});
@@ -61,11 +63,11 @@ async function main() {
       const log=await run('round-'+round,[binary,'-test.v','-test.count=1','-test.timeout=60s'],90000);
       assert.match(log,/GO_CONTEXT_FIX_SQLITE=passed typedQ=true typedE=true noOpProviderCalls=0 failedCheckProviderCalls=0 updateAudits=1 objectLocation=true graphRollback=true/);
       assert(!log.includes('WARNING: DATA RACE'));
-      assert.deepEqual(inputs(),report.fixture); assert.equal(runtimeHash(),report.sourceSha256);
+      assert.deepEqual(currentLibraryInputs(),report.currentLibrary); assert.deepEqual(inputs(),report.fixture); assert.equal(runtimeHash(),report.sourceSha256);
       report.rounds.push({round,passed:true});
     }
-    fs.copyFileSync(path.join(scratch,'go.mod'),path.join(output,'resolved-go.mod'));
-    fs.copyFileSync(path.join(scratch,'go.sum'),path.join(output,'resolved-go.sum'));
+    fs.copyFileSync(path.join(app,'go.mod'),path.join(output,'resolved-go.mod'));
+    fs.copyFileSync(path.join(app,'go.sum'),path.join(output,'resolved-go.sum'));
     report.sameDatabase=true; report.databaseSha256=sha(fs.readFileSync(path.join(output,'fixture.sqlite')));
     report.passed=true;
   } catch(error) { report.error=error.stack; process.exitCode=1; console.error(error.stack); }

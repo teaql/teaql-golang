@@ -4,6 +4,7 @@ const fs = require("node:fs"), path = require("node:path"), os = require("node:o
 const example = __dirname, repo = path.resolve(example, "../.."), sha = bytes => crypto.createHash("sha256").update(bytes).digest("hex");
 const {validateExpressionBoundaries} = require('./expression-boundaries.cjs');
 const {validateRecursiveExpressions} = require('./expression-recursive.cjs');
+const application=path.join(example,'golang-app-console');
 function fingerprint() {
   const m = JSON.parse(fs.readFileSync(path.join(example, 'fixture-manifest.json')));
   assert.equal(m.language, 'go'); assert.equal(m.evaluationErrors, 0);
@@ -13,8 +14,8 @@ function fingerprint() {
     const name = path.join(prefix, e.name), file = path.join(dir, e.name); assert(!e.isSymbolicLink());
     if (e.isDirectory()) visit(file, name); else { assert(e.isFile()); files.push(name); }
   } }
-  visit(path.join(example, 'generated')); assert.deepEqual(files.sort(), Object.keys(m.files).sort());
-  for (const [name, expected] of Object.entries(m.files)) assert.equal(sha(fs.readFileSync(path.join(example, 'generated', name))), expected, name);
+  visit(path.join(example, 'golang-lib-core')); assert.deepEqual(files.sort(), Object.keys(m.files).sort());
+  for (const [name, expected] of Object.entries(m.files)) assert.equal(sha(fs.readFileSync(path.join(example, 'golang-lib-core', name))), expected, name);
   return m;
 }
 const requested = process.env.TEAQL_FIX_E_EVIDENCE_DIR;
@@ -29,33 +30,36 @@ try {
   const disk = fs.statfsSync(scratch); assert(disk.bavail * disk.bsize > 4 * 1024 ** 3);
   const m = fingerprint(); report.modelSha256 = m.modelSha256;
   report.fixtureGeneratorCommit = m.generatorCommit;
-  report.explicitHydrationApplicationSha256 = sha(fs.readFileSync(path.join(example, 'explicit_hydration_test.go')));
+  report.explicitHydrationApplicationSha256 = sha(fs.readFileSync(path.join(application, 'explicit_hydration_test.go')));
   report.explicitHydrationRounds = [];
-  report.contextRootApplicationSha256 = sha(fs.readFileSync(path.join(example, 'context_root_test.go')));
-  report.partialAncestorApplicationSha256 = sha(fs.readFileSync(path.join(example, 'partial_ancestors_test.go')));
-  report.partialRootApplicationSha256 = sha(fs.readFileSync(path.join(example, 'partial_root_test.go')));
-  report.projectionApplicationSha256 = sha(fs.readFileSync(path.join(example, 'projection_views_test.go')));
-  report.unchangedApplicationSha256 = sha(fs.readFileSync(path.join(example, 'unchanged_views_test.go')));
-  report.rollbackApplicationSha256 = sha(fs.readFileSync(path.join(example, 'rollback_views_test.go')));
-  report.checkerBoundaryApplicationSha256 = sha(fs.readFileSync(path.join(example, 'checker_boundaries_test.go')));
-  report.expressionBoundaryApplicationSha256 = sha(fs.readFileSync(path.join(example, 'expression_boundary_test.go')));
+  report.contextRootApplicationSha256 = sha(fs.readFileSync(path.join(application, 'context_root_test.go')));
+  report.partialAncestorApplicationSha256 = sha(fs.readFileSync(path.join(application, 'partial_ancestors_test.go')));
+  report.partialRootApplicationSha256 = sha(fs.readFileSync(path.join(application, 'partial_root_test.go')));
+  report.projectionApplicationSha256 = sha(fs.readFileSync(path.join(application, 'projection_views_test.go')));
+  report.unchangedApplicationSha256 = sha(fs.readFileSync(path.join(application, 'unchanged_views_test.go')));
+  report.rollbackApplicationSha256 = sha(fs.readFileSync(path.join(application, 'rollback_views_test.go')));
+  report.checkerBoundaryApplicationSha256 = sha(fs.readFileSync(path.join(application, 'checker_boundaries_test.go')));
+  report.expressionBoundaryApplicationSha256 = sha(fs.readFileSync(path.join(application, 'expression_boundary_test.go')));
   report.expressionBoundaryValidatorSha256 = sha(fs.readFileSync(path.join(example, 'expression-boundaries.cjs')));
   report.expressionBoundaryRounds = [];
-  report.recursiveExpressionApplicationSha256 = sha(fs.readFileSync(path.join(example, 'expression_recursive_test.go')));
+  report.recursiveExpressionApplicationSha256 = sha(fs.readFileSync(path.join(application, 'expression_recursive_test.go')));
   report.recursiveExpressionValidatorSha256 = sha(fs.readFileSync(path.join(example, 'expression-recursive.cjs')));
   report.recursiveExpressionRounds = [];
-  report.graphApplicationSha256 = sha(fs.readFileSync(path.join(example, 'graph_fix_test.go')));
-  report.graphViewApplicationSha256 = sha(fs.readFileSync(path.join(example, 'graph_view_test.go')));
+  report.graphApplicationSha256 = sha(fs.readFileSync(path.join(application, 'graph_fix_test.go')));
+  report.graphViewApplicationSha256 = sha(fs.readFileSync(path.join(application, 'graph_view_test.go')));
   report.graphRounds = [];
-  report.concurrentQueryApplicationSha256 = sha(fs.readFileSync(path.join(example, 'concurrent_query_test.go')));
+  report.concurrentQueryApplicationSha256 = sha(fs.readFileSync(path.join(application, 'concurrent_query_test.go')));
   report.concurrentQueryRounds = [];
-  report.operationalDeadlineApplicationSha256 = sha(fs.readFileSync(path.join(example, 'operational_deadline_test.go')));
+  report.operationalDeadlineApplicationSha256 = sha(fs.readFileSync(path.join(application, 'operational_deadline_test.go')));
   report.operationalDeadlineRounds = [];
-  const manifest = fs.readFileSync(path.join(example, 'go.mod'), 'utf8')
-    + '\nreplace checker-fix-advanced-core-workspace/lib => ' + JSON.stringify(path.join(example, 'generated'))
-    + '\nreplace github.com/teaql/teaql-golang => ' + JSON.stringify(repo) + '\n';
-  fs.writeFileSync(path.join(scratch, 'go.mod'), manifest); fs.writeFileSync(path.join(evidence, 'consumer-go.mod'), manifest);
-  for (const file of fs.readdirSync(example).filter(file => file.endsWith('_test.go'))) fs.copyFileSync(path.join(example, file), path.join(scratch, file));
+  const consumer=path.join(scratch,'golang-app-console'),generated=path.join(scratch,'golang-lib-core');
+  fs.cpSync(application,consumer,{recursive:true});
+  fs.cpSync(path.join(example,'golang-lib-core'),generated,{recursive:true});
+  const manifest=fs.readFileSync(path.join(consumer,'go.mod'),'utf8')
+    .replace('replace github.com/teaql/teaql-golang => ../../..',
+      'replace github.com/teaql/teaql-golang => '+JSON.stringify(repo));
+  fs.writeFileSync(path.join(consumer,'go.mod'),manifest);
+  fs.writeFileSync(path.join(evidence,'consumer-go.mod'),manifest);
   const env = {...process.env, GOWORK: 'off', GOCACHE: path.join(scratch, 'cache'), GOTMPDIR: path.join(scratch, 'tmp'),
     GOMAXPROCS: '2', TEAQL_FIX_E_DB: path.join(evidence, 'fixture.sqlite'),
     CORE236_GO_RUNTIME_ROOT: repo, CORE236_GO_GRAPH_DB: path.join(evidence, 'graph'),
@@ -63,7 +67,7 @@ try {
   fs.mkdirSync(env.GOTMPDIR);
   async function run(command, log, timeout) {
     const file = path.join(evidence, log), fd = fs.openSync(file, 'w'); let result;
-    try { result = await runner.run(command, {cwd: scratch, env, timeout, stdio: ['ignore', fd, fd]}); }
+    try { result = await runner.run(command, {cwd: consumer, env, timeout, stdio: ['ignore', fd, fd]}); }
     finally { fs.closeSync(fd); }
     const bytes = fs.readFileSync(file);
     report.commands.push({command, exitCode: result.status, signal: result.signal, logSha256: sha(bytes)});
@@ -75,8 +79,8 @@ try {
   assert.equal(report.runtimeOrigin.Replace?.Dir, repo);
   await run(['go', 'test', '-race', '-mod=mod', '-c', '-o', binary, '.'], 'build.log', 300000);
   report.binarySha256 = sha(fs.readFileSync(binary));
-  fs.copyFileSync(path.join(scratch, 'go.mod'), path.join(evidence, 'resolved-go.mod'));
-  if (fs.existsSync(path.join(scratch, 'go.sum'))) fs.copyFileSync(path.join(scratch, 'go.sum'), path.join(evidence, 'consumer-go.sum'));
+  fs.copyFileSync(path.join(consumer, 'go.mod'), path.join(evidence, 'resolved-go.mod'));
+  if (fs.existsSync(path.join(consumer, 'go.sum'))) fs.copyFileSync(path.join(consumer, 'go.sum'), path.join(evidence, 'consumer-go.sum'));
   for (const round of [1, 2]) {
     env.TEAQL_PARTIAL_ROOT_ROUND = String(round);
     env.CORE236_GO_GRAPH_ROUND = String(round);

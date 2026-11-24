@@ -71,7 +71,7 @@ own Go APIs.
 These application-code excerpts assume the example's generated imports, trusted
 Context and an existing object identity. `Q` and `E` belong to the generated
 domain library, not a generic runtime object with arbitrary field strings.
-See the [application source](examples/school-management/bootstrap_test.go) for complete setup.
+See the [application source](examples/school-management/golang-app-console/bootstrap_test.go) for complete setup.
 
 ```go
 schoolTypeDetails := Q.SchoolTypesMinimal().SelectCode()
@@ -252,7 +252,7 @@ final execution report. It is a workflow, not a guarantee of unattended correctn
 Go 1.22+ for the documented development baseline; optional integrations have their own dependencies. From a checkout of this repository:
 
 ```bash
-cd examples/school-management
+cd examples/school-management/golang-app-console
 go test -v ./... -count=1
 ```
 

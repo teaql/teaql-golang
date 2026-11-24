@@ -1,19 +1,34 @@
 #!/usr/bin/env bash
 set -euo pipefail
 repo="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
-example="$repo/examples/trace-chain/standard-graph"
+example="$repo/examples/trace-chain/standard-order/golang-app-console/cmd/standard-graph"
 modern_go="${TEAQL_TELEMETRY_GO_BINARY:-go}"
-evidence="$(mktemp -d -t teaql-go-standard-graph.XXXXXXXX)"
+evidence="${TEAQL_TRACE_CHAIN_STANDARD_EVIDENCE_DIR:-$(mktemp -d -t teaql-go-standard-graph.XXXXXXXX)}"
+mkdir -p "$evidence"
+scratch="$(mktemp -d -t teaql-go-trace-executable.XXXXXXXX)"
+cleanup() {
+  status=$?
+  trap - EXIT
+  rm -rf -- "$scratch" || { [[ "$status" != 0 ]] || status=1; }
+  exit "$status"
+}
+trap cleanup EXIT
+trap 'exit 130' INT
+trap 'exit 143' TERM
 echo "Go standard graph evidence: $evidence"
-fingerprint() { (cd "$example/../standard-order/lib" && rg --files -g '*.go' | LC_ALL=C sort | xargs -d '\n' sha256sum); }
+fingerprint() { (cd "$example/../../../golang-lib-core" && rg --files -g '*.go' | LC_ALL=C sort | xargs -d '\n' sha256sum); }
 fingerprint > "$evidence/library-before.sha256"
-(cd "$example" && GOWORK=off GOTOOLCHAIN=local "$modern_go" build -mod=readonly -o "$evidence/graph" . > "$evidence/build.log" 2>&1)
+(cd "$example" && GOWORK=off GOTOOLCHAIN=local "$modern_go" build -mod=readonly -o "$scratch/graph" . > "$evidence/build.log" 2>&1)
 for round in 1 2; do
-  TEAQL_STANDARD_GRAPH_DB="$evidence/graphs.sqlite" "$evidence/graph" > "$evidence/run-$round.log" 2>&1
+  TEAQL_STANDARD_GRAPH_DB="$evidence/graphs.sqlite" "$scratch/graph" > "$evidence/run-$round.log" 2>&1
   rg -q 'GO_STANDARD_GRAPH PASSED savedEntities=3 rolledBackEntities=3 recoveredEntities=3' "$evidence/run-$round.log"
   if [[ "$round" == 1 ]]; then expected=4; else expected=0; fi
   rg -q "first_seed_audits=$expected repeat_seed_audits=0" "$evidence/run-$round.log"
-  for name in TEAQL_TELEMETRY_ENABLED TEAQL_TELEMETRY_SERVICE_NAME TEAQL_TELEMETRY_OTLP_ENDPOINT; do rg -q "$name" "$evidence/run-$round.log"; done
+  if [[ "${TEAQL_TELEMETRY_ENABLED:-false}" == "true" ]]; then
+    rg -Fq 'TeaQL telemetry: enabled' "$evidence/run-$round.log"
+  else
+    for name in TEAQL_TELEMETRY_ENABLED TEAQL_TELEMETRY_SERVICE_NAME TEAQL_TELEMETRY_OTLP_ENDPOINT; do rg -q "$name" "$evidence/run-$round.log"; done
+  fi
   cat "$evidence/run-$round.log"
 done
 fingerprint > "$evidence/library-after.sha256"

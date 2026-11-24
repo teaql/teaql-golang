@@ -23,6 +23,27 @@ var (
 	_ = errors.As
 )
 
+const (
+    teaqlIdStorageKey = "id"
+    teaqlIdModelKey = "id"
+    teaqlNameStorageKey = "name"
+    teaqlNameModelKey = "name"
+    teaqlFilterJsonStorageKey = "filter_json"
+    teaqlFilterJsonModelKey = "filter_json"
+    teaqlRequestIdStorageKey = "request_id"
+    teaqlRequestIdModelKey = "request_id"
+    teaqlOwnerUserIdStorageKey = "owner_user_id"
+    teaqlOwnerUserIdModelKey = "owner_user_id"
+    teaqlCommercePlatformStorageKey = "commerce_platform_id"
+    teaqlCommercePlatformModelKey = "commerce_platform"
+    teaqlCreateTimeStorageKey = "create_time"
+    teaqlCreateTimeModelKey = "create_time"
+    teaqlUpdateTimeStorageKey = "update_time"
+    teaqlUpdateTimeModelKey = "update_time"
+    teaqlVersionStorageKey = "version"
+    teaqlVersionModelKey = "version"
+)
+
 
 type OrderSearchPreset struct {
 	base        *core.BaseEntityData
@@ -193,11 +214,11 @@ func (e *OrderSearchPreset) teaqlFromRecord(record core.Record, captureLoaded bo
 }
 
 func (e *OrderSearchPreset) teaqlScalarSnapshot(record core.Record) core.LoadedScalarSnapshot {
-	return core.NewLoadedScalarSnapshot(record, "id", "name", "filter_json", "request_id", "owner_user_id", "commerce_platform_id", "create_time", "update_time", "version")
+	return core.NewLoadedScalarSnapshot(record, teaqlIdStorageKey, teaqlNameStorageKey, teaqlFilterJsonStorageKey, teaqlRequestIdStorageKey, teaqlOwnerUserIdStorageKey, teaqlCommercePlatformStorageKey, teaqlCreateTimeStorageKey, teaqlUpdateTimeStorageKey, teaqlVersionStorageKey)
 }
 
 func (e *OrderSearchPreset) teaqlLoadedScalarSnapshot(record core.Record) core.LoadedScalarSnapshot {
-	return core.NewOwnedLoadedScalarSnapshot(e.EntityKey(), e.base.Version, record, "id", "name", "filter_json", "request_id", "owner_user_id", "commerce_platform_id", "create_time", "update_time", "version")
+	return core.NewOwnedLoadedScalarSnapshot(e.EntityKey(), e.base.Version, record, teaqlIdStorageKey, teaqlNameStorageKey, teaqlFilterJsonStorageKey, teaqlRequestIdStorageKey, teaqlOwnerUserIdStorageKey, teaqlCommercePlatformStorageKey, teaqlCreateTimeStorageKey, teaqlUpdateTimeStorageKey, teaqlVersionStorageKey)
 }
 
 func (e *OrderSearchPreset) teaqlAcceptPersisted(context *runtime.UserContext, record core.Record) error {
@@ -302,15 +323,15 @@ func (e *OrderSearchPreset) JSONQueryProperties() core.Record { return e.base.Qu
 func (e *OrderSearchPreset) LoadedJSONFields() core.Record {
 	all := e.IntoRecord()
 	selected := make(core.Record)
-	if e.IsLoaded("id") { if value, present := all["id"]; present { selected["id"] = value } }
-	if e.IsLoaded("name") { if value, present := all["name"]; present { selected["name"] = value } }
-	if e.IsLoaded("filter_json") { if value, present := all["filter_json"]; present { selected["filter_json"] = value } }
-	if e.IsLoaded("request_id") { if value, present := all["request_id"]; present { selected["request_id"] = value } }
-	if e.IsLoaded("owner_user_id") { if value, present := all["owner_user_id"]; present { selected["owner_user_id"] = value } }
-	if e.IsLoaded("commerce_platform_id") { if value, present := all["commerce_platform_id"]; present { selected["commerce_platform_id"] = value } }
-	if e.IsLoaded("create_time") { if value, present := all["create_time"]; present { selected["create_time"] = value } }
-	if e.IsLoaded("update_time") { if value, present := all["update_time"]; present { selected["update_time"] = value } }
-	if e.IsLoaded("version") { if value, present := all["version"]; present { selected["version"] = value } }
+	if e.IsLoaded(teaqlIdStorageKey) { if value, present := all[teaqlIdStorageKey]; present { selected[teaqlIdStorageKey] = value } }
+	if e.IsLoaded(teaqlNameStorageKey) { if value, present := all[teaqlNameStorageKey]; present { selected[teaqlNameStorageKey] = value } }
+	if e.IsLoaded(teaqlFilterJsonStorageKey) { if value, present := all[teaqlFilterJsonStorageKey]; present { selected[teaqlFilterJsonStorageKey] = value } }
+	if e.IsLoaded(teaqlRequestIdStorageKey) { if value, present := all[teaqlRequestIdStorageKey]; present { selected[teaqlRequestIdStorageKey] = value } }
+	if e.IsLoaded(teaqlOwnerUserIdStorageKey) { if value, present := all[teaqlOwnerUserIdStorageKey]; present { selected[teaqlOwnerUserIdStorageKey] = value } }
+	if e.IsLoaded(teaqlCommercePlatformStorageKey) { if value, present := all[teaqlCommercePlatformStorageKey]; present { selected[teaqlCommercePlatformStorageKey] = value } }
+	if e.IsLoaded(teaqlCreateTimeStorageKey) { if value, present := all[teaqlCreateTimeStorageKey]; present { selected[teaqlCreateTimeStorageKey] = value } }
+	if e.IsLoaded(teaqlUpdateTimeStorageKey) { if value, present := all[teaqlUpdateTimeStorageKey]; present { selected[teaqlUpdateTimeStorageKey] = value } }
+	if e.IsLoaded(teaqlVersionStorageKey) { if value, present := all[teaqlVersionStorageKey]; present { selected[teaqlVersionStorageKey] = value } }
 	if e.isRelationLoaded("commercePlatformEntity") { if target, present := e.relations["commercePlatformEntity"]; present && target != nil { selected["commercePlatformEntity"] = core.Value{V: target} } }
 	return selected
 }
@@ -413,46 +434,47 @@ func (e *OrderSearchPreset) TeaqlPreflightWithinGraph(context *runtime.UserConte
 		operation := core.MutationUpdate
 		if e.isNew { operation = core.MutationInsert }
 		if operation == core.MutationUpdate {
-			if !e.IsLoaded("id") {
-				result := runtime.CheckResult{RuleID: "invalid_type", EntityType: "OrderSearchPreset", CanonicalLocation: runtime.Location().Property("id"), Message: "Mutation requires a fully loaded entity"}
+			if !e.IsLoaded(teaqlIdStorageKey) {
+				result := runtime.CheckResult{RuleID: "invalid_type", EntityType: "OrderSearchPreset", CanonicalLocation: runtime.Location().Property(teaqlIdModelKey), Message: "Mutation requires a fully loaded entity"}
 				return &runtime.RuntimeError{Type: "Check", CheckResults: []runtime.CheckResult{result}}
 			}
-			if !e.IsLoaded("name") {
-				result := runtime.CheckResult{RuleID: "invalid_type", EntityType: "OrderSearchPreset", CanonicalLocation: runtime.Location().Property("name"), Message: "Mutation requires a fully loaded entity"}
+			if !e.IsLoaded(teaqlNameStorageKey) {
+				result := runtime.CheckResult{RuleID: "invalid_type", EntityType: "OrderSearchPreset", CanonicalLocation: runtime.Location().Property(teaqlNameModelKey), Message: "Mutation requires a fully loaded entity"}
 				return &runtime.RuntimeError{Type: "Check", CheckResults: []runtime.CheckResult{result}}
 			}
-			if !e.IsLoaded("filter_json") {
-				result := runtime.CheckResult{RuleID: "invalid_type", EntityType: "OrderSearchPreset", CanonicalLocation: runtime.Location().Property("filter_json"), Message: "Mutation requires a fully loaded entity"}
+			if !e.IsLoaded(teaqlFilterJsonStorageKey) {
+				result := runtime.CheckResult{RuleID: "invalid_type", EntityType: "OrderSearchPreset", CanonicalLocation: runtime.Location().Property(teaqlFilterJsonModelKey), Message: "Mutation requires a fully loaded entity"}
 				return &runtime.RuntimeError{Type: "Check", CheckResults: []runtime.CheckResult{result}}
 			}
-			if !e.IsLoaded("request_id") {
-				result := runtime.CheckResult{RuleID: "invalid_type", EntityType: "OrderSearchPreset", CanonicalLocation: runtime.Location().Property("request_id"), Message: "Mutation requires a fully loaded entity"}
+			if !e.IsLoaded(teaqlRequestIdStorageKey) {
+				result := runtime.CheckResult{RuleID: "invalid_type", EntityType: "OrderSearchPreset", CanonicalLocation: runtime.Location().Property(teaqlRequestIdModelKey), Message: "Mutation requires a fully loaded entity"}
 				return &runtime.RuntimeError{Type: "Check", CheckResults: []runtime.CheckResult{result}}
 			}
-			if !e.IsLoaded("owner_user_id") {
-				result := runtime.CheckResult{RuleID: "invalid_type", EntityType: "OrderSearchPreset", CanonicalLocation: runtime.Location().Property("owner_user_id"), Message: "Mutation requires a fully loaded entity"}
+			if !e.IsLoaded(teaqlOwnerUserIdStorageKey) {
+				result := runtime.CheckResult{RuleID: "invalid_type", EntityType: "OrderSearchPreset", CanonicalLocation: runtime.Location().Property(teaqlOwnerUserIdModelKey), Message: "Mutation requires a fully loaded entity"}
 				return &runtime.RuntimeError{Type: "Check", CheckResults: []runtime.CheckResult{result}}
 			}
-			if !e.IsLoaded("commerce_platform_id") {
-				result := runtime.CheckResult{RuleID: "invalid_type", EntityType: "OrderSearchPreset", CanonicalLocation: runtime.Location().Property("commerce_platform"), Message: "Mutation requires a fully loaded entity"}
+			if !e.IsLoaded(teaqlCommercePlatformStorageKey) {
+				result := runtime.CheckResult{RuleID: "invalid_type", EntityType: "OrderSearchPreset", CanonicalLocation: runtime.Location().Property(teaqlCommercePlatformModelKey), Message: "Mutation requires a fully loaded entity"}
 				return &runtime.RuntimeError{Type: "Check", CheckResults: []runtime.CheckResult{result}}
 			}
-			if !e.IsLoaded("create_time") {
-				result := runtime.CheckResult{RuleID: "invalid_type", EntityType: "OrderSearchPreset", CanonicalLocation: runtime.Location().Property("create_time"), Message: "Mutation requires a fully loaded entity"}
+			if !e.IsLoaded(teaqlCreateTimeStorageKey) {
+				result := runtime.CheckResult{RuleID: "invalid_type", EntityType: "OrderSearchPreset", CanonicalLocation: runtime.Location().Property(teaqlCreateTimeModelKey), Message: "Mutation requires a fully loaded entity"}
 				return &runtime.RuntimeError{Type: "Check", CheckResults: []runtime.CheckResult{result}}
 			}
-			if !e.IsLoaded("update_time") {
-				result := runtime.CheckResult{RuleID: "invalid_type", EntityType: "OrderSearchPreset", CanonicalLocation: runtime.Location().Property("update_time"), Message: "Mutation requires a fully loaded entity"}
+			if !e.IsLoaded(teaqlUpdateTimeStorageKey) {
+				result := runtime.CheckResult{RuleID: "invalid_type", EntityType: "OrderSearchPreset", CanonicalLocation: runtime.Location().Property(teaqlUpdateTimeModelKey), Message: "Mutation requires a fully loaded entity"}
 				return &runtime.RuntimeError{Type: "Check", CheckResults: []runtime.CheckResult{result}}
 			}
-			if !e.IsLoaded("version") {
-				result := runtime.CheckResult{RuleID: "invalid_type", EntityType: "OrderSearchPreset", CanonicalLocation: runtime.Location().Property("version"), Message: "Mutation requires a fully loaded entity"}
+			if !e.IsLoaded(teaqlVersionStorageKey) {
+				result := runtime.CheckResult{RuleID: "invalid_type", EntityType: "OrderSearchPreset", CanonicalLocation: runtime.Location().Property(teaqlVersionModelKey), Message: "Mutation requires a fully loaded entity"}
 				return &runtime.RuntimeError{Type: "Check", CheckResults: []runtime.CheckResult{result}}
 			}
 		}
 		checkedValues := e.IntoRecord()
 		valuesBeforeCheck := e.IntoRecord()
-		checkErr := runtime.CheckAndFixGraphEntity(context, &runtime.CheckAndFixInput{Entity: "order_search_preset", Operation: operation, Values: checkedValues}, e.root, e.EntityKey())
+		context.CaptureContextFixUndo(e.EntityName(), func() *core.BaseEntityData { return e.base }, e.root, e.EntityKey())
+		checkErr := runtime.CheckAndFixGraphEntity(context, &runtime.CheckAndFixInput{Entity: "order_search_preset", Operation: operation, Values: checkedValues, OldValues: e.loadedSnapshot.ValuesFor(e.EntityKey(), e.base.Version)}, e.root, e.EntityKey())
 		for field, value := range checkedValues {
 			if before, exists := valuesBeforeCheck[field]; !exists || !reflect.DeepEqual(before, value) {
 				e.base.PutDynamic(field, value)
@@ -463,7 +485,7 @@ func (e *OrderSearchPreset) TeaqlPreflightWithinGraph(context *runtime.UserConte
 		}
 		if checkErr != nil { return checkErr }
 	}
-	return nil
+	return e.TeaqlNormalizeMutationGraph(context)
 }
 
 type teaqlOrderSearchPresetSaveSnapshot struct {
@@ -637,7 +659,7 @@ func (e *OrderSearchPreset) TeaqlSaveWithinGraph(context *runtime.UserContext, i
 	} else {
 		checkedValues := e.IntoRecord()
 		valuesBeforeCheck := e.IntoRecord()
-		checkErr := runtime.CheckAndFixGraphEntity(context, &runtime.CheckAndFixInput{Entity: "order_search_preset", Operation: core.MutationUpdate, Values: checkedValues}, e.root, e.EntityKey())
+		checkErr := runtime.CheckAndFixGraphEntity(context, &runtime.CheckAndFixInput{Entity: "order_search_preset", Operation: core.MutationUpdate, Values: checkedValues, OldValues: e.loadedSnapshot.ValuesFor(e.EntityKey(), e.base.Version)}, e.root, e.EntityKey())
 		for field, value := range checkedValues {
 			if before, exists := valuesBeforeCheck[field]; !exists || !reflect.DeepEqual(before, value) {
 				canonical, mappingErr := context.CanonicalLedgerField(e.EntityName(), field)
@@ -698,91 +720,91 @@ func (e *OrderSearchPreset) UpdateId(value uint64) *OrderSearchPreset {
 	oldKey := e.EntityKey()
 	e.base.Id = value
 	e.root.Rekey(oldKey, e.EntityKey())
-	e.loadState["id"] = true
+	e.loadState[teaqlIdStorageKey] = true
 	return e
 }
 
 func (e *OrderSearchPreset) Name() string {
-	val, _ := e.base.GetDynamic("name")
+	val, _ := e.base.GetDynamic(teaqlNameStorageKey)
 	res, _ := val.TryText()
 	return res}
 
 func (e *OrderSearchPreset) UpdateName(value string) *OrderSearchPreset {
 	e.teaqlEnsureState()
-	e.base.PutDynamic("name", core.ValText(value))
-	e.dirtyFields["name"] = true
-	e.root.Set(e.EntityKey(), "name", core.ValText(value))
-	e.loadState["name"] = true
+	e.base.PutDynamic(teaqlNameStorageKey, core.ValText(value))
+	e.dirtyFields[teaqlNameStorageKey] = true
+	e.root.Set(e.EntityKey(), teaqlNameModelKey, core.ValText(value))
+	e.loadState[teaqlNameStorageKey] = true
 	return e
 }
 
 func (e *OrderSearchPreset) FilterJson() string {
-	val, _ := e.base.GetDynamic("filter_json")
+	val, _ := e.base.GetDynamic(teaqlFilterJsonStorageKey)
 	res, _ := val.TryText()
 	return res}
 
 func (e *OrderSearchPreset) UpdateFilterJson(value string) *OrderSearchPreset {
 	e.teaqlEnsureState()
-	e.base.PutDynamic("filter_json", core.ValText(value))
-	e.dirtyFields["filter_json"] = true
-	e.root.Set(e.EntityKey(), "filter_json", core.ValText(value))
-	e.loadState["filter_json"] = true
+	e.base.PutDynamic(teaqlFilterJsonStorageKey, core.ValText(value))
+	e.dirtyFields[teaqlFilterJsonStorageKey] = true
+	e.root.Set(e.EntityKey(), teaqlFilterJsonModelKey, core.ValText(value))
+	e.loadState[teaqlFilterJsonStorageKey] = true
 	return e
 }
 
 func (e *OrderSearchPreset) RequestId() string {
-	val, _ := e.base.GetDynamic("request_id")
+	val, _ := e.base.GetDynamic(teaqlRequestIdStorageKey)
 	res, _ := val.TryText()
 	return res}
 
 func (e *OrderSearchPreset) UpdateRequestId(value string) *OrderSearchPreset {
 	e.teaqlEnsureState()
-	e.base.PutDynamic("request_id", core.ValText(value))
-	e.dirtyFields["request_id"] = true
-	e.root.Set(e.EntityKey(), "request_id", core.ValText(value))
-	e.loadState["request_id"] = true
+	e.base.PutDynamic(teaqlRequestIdStorageKey, core.ValText(value))
+	e.dirtyFields[teaqlRequestIdStorageKey] = true
+	e.root.Set(e.EntityKey(), teaqlRequestIdModelKey, core.ValText(value))
+	e.loadState[teaqlRequestIdStorageKey] = true
 	return e
 }
 
 func (e *OrderSearchPreset) OwnerUserId() string {
-	val, _ := e.base.GetDynamic("owner_user_id")
+	val, _ := e.base.GetDynamic(teaqlOwnerUserIdStorageKey)
 	res, _ := val.TryText()
 	return res}
 
 func (e *OrderSearchPreset) UpdateOwnerUserId(value string) *OrderSearchPreset {
 	e.teaqlEnsureState()
-	e.base.PutDynamic("owner_user_id", core.ValText(value))
-	e.dirtyFields["owner_user_id"] = true
-	e.root.Set(e.EntityKey(), "owner_user_id", core.ValText(value))
-	e.loadState["owner_user_id"] = true
+	e.base.PutDynamic(teaqlOwnerUserIdStorageKey, core.ValText(value))
+	e.dirtyFields[teaqlOwnerUserIdStorageKey] = true
+	e.root.Set(e.EntityKey(), teaqlOwnerUserIdModelKey, core.ValText(value))
+	e.loadState[teaqlOwnerUserIdStorageKey] = true
 	return e
 }
 
 func (e *OrderSearchPreset) CreateTime() time.Time {
-	val, _ := e.base.GetDynamic("create_time")
+	val, _ := e.base.GetDynamic(teaqlCreateTimeStorageKey)
 	res, _ := val.TryTime()
 	return res}
 
 func (e *OrderSearchPreset) UpdateCreateTime(value time.Time) *OrderSearchPreset {
 	e.teaqlEnsureState()
-	e.base.PutDynamic("create_time", core.ValTimestamp(value.UnixMilli()))
-	e.dirtyFields["create_time"] = true
-	e.root.Set(e.EntityKey(), "create_time", core.ValTimestamp(value.UnixMilli()))
-	e.loadState["create_time"] = true
+	e.base.PutDynamic(teaqlCreateTimeStorageKey, core.ValTimestamp(value.UnixMilli()))
+	e.dirtyFields[teaqlCreateTimeStorageKey] = true
+	e.root.Set(e.EntityKey(), teaqlCreateTimeModelKey, core.ValTimestamp(value.UnixMilli()))
+	e.loadState[teaqlCreateTimeStorageKey] = true
 	return e
 }
 
 func (e *OrderSearchPreset) UpdateTime() time.Time {
-	val, _ := e.base.GetDynamic("update_time")
+	val, _ := e.base.GetDynamic(teaqlUpdateTimeStorageKey)
 	res, _ := val.TryTime()
 	return res}
 
 func (e *OrderSearchPreset) UpdateUpdateTime(value time.Time) *OrderSearchPreset {
 	e.teaqlEnsureState()
-	e.base.PutDynamic("update_time", core.ValTimestamp(value.UnixMilli()))
-	e.dirtyFields["update_time"] = true
-	e.root.Set(e.EntityKey(), "update_time", core.ValTimestamp(value.UnixMilli()))
-	e.loadState["update_time"] = true
+	e.base.PutDynamic(teaqlUpdateTimeStorageKey, core.ValTimestamp(value.UnixMilli()))
+	e.dirtyFields[teaqlUpdateTimeStorageKey] = true
+	e.root.Set(e.EntityKey(), teaqlUpdateTimeModelKey, core.ValTimestamp(value.UnixMilli()))
+	e.loadState[teaqlUpdateTimeStorageKey] = true
 	return e
 }
 
@@ -793,26 +815,26 @@ func (e *OrderSearchPreset) Version() int64 {
 func (e *OrderSearchPreset) UpdateVersion(value int64) *OrderSearchPreset {
 	e.teaqlEnsureState()
 	e.base.Version = value
-	e.loadState["version"] = true
+	e.loadState[teaqlVersionStorageKey] = true
 	return e
 }
 func (e *OrderSearchPreset) CommercePlatformId() uint64 {
-	val, _ := e.base.GetDynamic("commerce_platform_id")
+	val, _ := e.base.GetDynamic(teaqlCommercePlatformStorageKey)
 	res, _ := val.TryU64()
 	return res
 }
 
 func (e *OrderSearchPreset) UpdateCommercePlatformId(value uint64) *OrderSearchPreset {
-	previous, present := e.base.GetDynamic("commerce_platform_id")
-	e.base.PutDynamic("commerce_platform_id", core.ValU64(value))
-	e.dirtyFields["commerce_platform_id"] = true
-	current, _ := e.base.GetDynamic("commerce_platform_id")
+	previous, present := e.base.GetDynamic(teaqlCommercePlatformStorageKey)
+	e.base.PutDynamic(teaqlCommercePlatformStorageKey, core.ValU64(value))
+	e.dirtyFields[teaqlCommercePlatformStorageKey] = true
+	current, _ := e.base.GetDynamic(teaqlCommercePlatformStorageKey)
 	if !present || !reflect.DeepEqual(previous, current) {
 		delete(e.relations, "commercePlatformEntity")
 		delete(e.loadedRelations, "commercePlatformEntity")
 	}
-	e.root.Set(e.EntityKey(), "commerce_platform", core.ValU64(value))
-	e.loadState["commerce_platform_id"] = true
+	e.root.Set(e.EntityKey(), teaqlCommercePlatformModelKey, core.ValU64(value))
+	e.loadState[teaqlCommercePlatformStorageKey] = true
 	return e
 }
 // DEBUG: constantObjectField is false

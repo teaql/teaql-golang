@@ -3,7 +3,7 @@
 
 > [!WARNING]
 > **DO NOT GUESS TOOL APIS**
-> Do not guess how to use `context.http()` or other built-in tool integrations.
+> Do not guess generated or runtime tool methods.
 
 > [!IMPORTANT]
 > **USE TEAQL'S OWN TOOLING FIRST**
@@ -12,28 +12,26 @@
 To get the exact API usage and examples for TeaQL Tool APIs, execute the following command:
 
 ```bash
-cargo teaql --input models/runtime-example-conformance-service.xml rust-assist-tool-api/[module]
+cargo teaql --input models/runtime-example-conformance-service.xml golang-assist-runtime-custom
 ```
 
 > `models/runtime-example-conformance-service.xml` is the default model path. Adjust if your model file is located elsewhere.
 
-Replace `[module]` with one of the following:
-
-| module | T:: Facade | Description |
-|--------|------------|-------------|
-| http   | `context.http()` | HTTP client for external service calls |
+Use the current Go Runtime Customization Assist for supported infrastructure.
+Do not translate Rust tool methods into Go. If the required tool operation is
+not documented, report `MISSING_ASSIST` instead of inspecting generated source.
 
 Once the command succeeds, read its output. Use the printed code as a template to write your logic.
 
 ## Domain Object Assist APIs
 
-If you need reference code or tool APIs specifically tailored for your domain objects (e.g., `user`, `order`), TeaQL provides code generators that yield perfect, ready-to-copy Rust code snippets.
+For domain-object code, retrieve the current Go object/action Assist.
 
 You can query these assist APIs for any object defined in your `models/runtime-example-conformance-service.xml`:
 
 | Target | Description | Example Command |
 |--------|-------------|-----------------|
-| `rust-assist-query/[object]` | How to query and filter `[object]` | `cargo teaql --input models/runtime-example-conformance-service.xml rust-assist-query/school` |
-| `rust-assist-create/[object]` | How to insert/create `[object]` | `cargo teaql --input models/runtime-example-conformance-service.xml rust-assist-create/school` |
-| `rust-assist-update/[object]` | How to update `[object]` | `cargo teaql --input models/runtime-example-conformance-service.xml rust-assist-update/school` |
-| `rust-assist-delete/[object]` | How to delete `[object]` | `cargo teaql --input models/runtime-example-conformance-service.xml rust-assist-delete/school` |
+| `golang-assist-query/[object]` | How to query and filter `[object]` | `cargo teaql --input models/runtime-example-conformance-service.xml golang-assist-query/school` |
+| `golang-assist-create/[object]` | How to insert/create `[object]` | `cargo teaql --input models/runtime-example-conformance-service.xml golang-assist-create/school` |
+| `golang-assist-update/[object]` | How to update `[object]` | `cargo teaql --input models/runtime-example-conformance-service.xml golang-assist-update/school` |
+| `golang-assist-delete/[object]` | How to delete `[object]` | `cargo teaql --input models/runtime-example-conformance-service.xml golang-assist-delete/school` |

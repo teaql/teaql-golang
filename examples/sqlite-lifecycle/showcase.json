@@ -1,0 +1,48 @@
+{
+  "generatedDomainLibraryHandEdited": false,
+  "goalId": "go:examples/sqlite-lifecycle",
+  "library": {
+    "generatedFilesManifestSHA256": "caf8e87dac45436a1d130d880b0df83506b0401d5555a6a651b6624b42612fc4",
+    "root": "../fix-e-alignment/golang-lib-core",
+    "scope": "golang-lib-core"
+  },
+  "model": {
+    "path": "../fix-e-alignment/model.xml",
+    "sha256": "a2cf4c907cb084cb0946e993eeba586c8c0701a89fdc4a849808aa743be033b7"
+  },
+  "producer": {
+    "generator": {
+      "artifactKind": "qualified source build; not a public release",
+      "jarSHA256": "34dd804dccf05470dad46d086d58412e4a9dfcd0a1c6ed34f8f90c55ff478220",
+      "qualificationReceiptSHA256": "5119b9f3a5c95fb84f527885fdd5bac0fe79a56352a55b8acf116f67fd12787d",
+      "sourceCommit": "021b1ed8bee5db7eef38a6b1e3a3ef2e7ac69daa",
+      "tag": "unreleased-source-021b1ed8"
+    },
+    "receipt": "teaql-conformance/evidence/2026-11-20-example-showcase-remediation/purchase-order-fix-generation/receipt.json",
+    "receiptSHA256": "920c683d71de38e609d2be2c3d8b7f2fb6c014e3b123edd5c4ea694fc6e91a48"
+  },
+  "qualification": {
+    "businessReceipt": "teaql-conformance/evidence/2026-11-20-example-showcase-remediation/go-sqlite-lifecycle-row-readback/runtime/sqlite-lifecycle/receipt.json",
+    "businessReceiptSHA256": "cf94916a9d9630d0f2680a65c1f933ce4c0f6174e32a068ff8672c3fc0742ed7",
+    "nativeReceipt": "teaql-conformance/evidence/2026-11-20-example-showcase-remediation/go-sqlite-lifecycle-row-readback/receipt.json",
+    "nativeReceiptSHA256": "1040aebef4df3f920b97986badc5432dbc0b1cb3be498f825db6211bb22502fe",
+    "remainingFullRuntimeInventory": true,
+    "sourceCommit": "f2c57f2512dee5a54c356f00ac9d3dc5f1ab8247"
+  },
+  "scene": "Exact purchase orders before and after four SQLite connection transitions",
+  "schema": "teaql.model-workspace-showcase/v1",
+  "status": "focused-verified",
+  "verification": [
+    "node",
+    "examples/sqlite-lifecycle/verify-local.cjs"
+  ],
+  "workspace": {
+    "applicationOwnedFiles": [
+      "go.mod",
+      "lifecycle_test.go"
+    ],
+    "generatedFilesManifestSHA256": "6f891e1145b8d12e08ac4568a2eec8f02673bddb769ae6b8dbeea29eb8e9acca",
+    "root": "golang-app-console",
+    "scope": "golang-app-console"
+  }
+}

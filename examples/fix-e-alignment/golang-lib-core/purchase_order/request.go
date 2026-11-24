@@ -1,0 +1,1175 @@
+
+
+package purchase_order
+
+import (
+	"fmt"
+	"time"
+
+	"github.com/shopspring/decimal"
+	"github.com/teaql/teaql-golang/core"
+	"github.com/teaql/teaql-golang/data_service"
+	"github.com/teaql/teaql-golang/runtime"
+	"checker-fix-advanced-core-workspace/lib/internal/generatedsearch"
+	"checker-fix-advanced-core-workspace/lib/order_item"
+)
+
+var (
+	_ = time.Time{}
+	_ = decimal.Decimal{}
+)
+
+type PurchaseOrderRequest struct {
+	Query       *core.SelectQuery
+	queryOptions *core.QueryOptions
+	purposeText string
+	commentText string
+	relationFactories map[string]func(core.Record) (core.Entity, error)
+	dynamicSearchWarnings []core.DynamicSearchWarning
+}
+
+type ExecutablePurchaseOrderRequest struct {
+	request *PurchaseOrderRequest
+}
+
+func NewPurchaseOrderRequest() *PurchaseOrderRequest {
+	r := &PurchaseOrderRequest{
+		Query: core.NewSelectQuery("purchase_order"),
+		queryOptions: core.NewQueryOptions(),
+		relationFactories: make(map[string]func(core.Record) (core.Entity, error)),
+	}
+	r.Query.AndFilter(core.ExprGte("version", core.ValI64(1)))
+	return r
+}
+
+func NewPurchaseOrderMinimalRequest() *PurchaseOrderRequest {
+	r := NewPurchaseOrderRequest()
+	r.Query.Projects("id", "version")
+	return r
+}
+
+func (r *PurchaseOrderRequest) GetQuery() *core.SelectQuery {
+	return r.Query
+}
+
+// FilterByJson validates all clauses before changing this request.
+func (r *PurchaseOrderRequest) FilterByJson(source []byte) (*PurchaseOrderRequest, error) {
+	query, warnings, err := generatedsearch.Apply(r.Query, source, nil)
+	if err != nil { return nil, err }
+	r.Query = query
+	r.dynamicSearchWarnings = append(r.dynamicSearchWarnings, warnings...)
+	return r, nil
+}
+
+func (r *PurchaseOrderRequest) DynamicSearchWarnings() []core.DynamicSearchWarning {
+	return append([]core.DynamicSearchWarning(nil), r.dynamicSearchWarnings...)
+}
+
+func (r *PurchaseOrderRequest) GetQuerySelection() *core.QuerySelection {
+	selection := core.NewQuerySelection(r.Query)
+	selection.QueryOptions = r.queryOptions
+	return selection
+}
+
+func (r *PurchaseOrderRequest) GetEntityDescriptor() *core.EntityDescriptor {
+	return newLoadedPurchaseOrder().EntityDescriptor()
+}
+
+func (r *PurchaseOrderRequest) NewRelationEntity() core.Entity {
+	return newLoadedPurchaseOrder()
+}
+
+// Generated query infrastructure. Preserve this request's selected nested
+// factories without importing parent packages or using a global registry.
+func (r *PurchaseOrderRequest) TeaqlHydrateQueryRecord(rec core.Record) (core.Entity, error) {
+	return r.teaqlHydrateQueryRecord(rec)
+}
+
+func (r *PurchaseOrderRequest) teaqlHydrateQueryRecord(rec core.Record) (*PurchaseOrder, error) {
+	entity := newLoadedPurchaseOrder()
+	if err := entity.FromRecord(rec); err != nil { return nil, err }
+	if relationValue, selected := rec["tenantEntity"]; selected {
+		entity.markRelationLoaded("tenantEntity")
+		if childRecord, ok := relationValue.V.(core.Record); ok {
+			if factory := r.relationFactories["tenantEntity"]; factory != nil {
+				childEntity, err := factory(childRecord)
+				if err != nil { return nil, err }
+				entity.setRelationEntity("tenantEntity", childEntity)
+			}
+		}
+	}
+	if relationValue, selected := rec["orderItemList"]; selected {
+		entity.markRelationLoaded("orderItemList")
+		factory := r.relationFactories["orderItemList"]
+		if factory == nil { return nil, fmt.Errorf("missing generated query hydrator for relation orderItemList") }
+		childRecords, ok := relationValue.V.([]core.Record)
+			if !ok { return nil, fmt.Errorf("relation orderItemList has unexpected runtime type %T", relationValue.V) }
+			for _, childRecord := range childRecords {
+				child, err := factory(childRecord)
+				if err != nil { return nil, err }
+				childEntity, ok := child.(*order_item.OrderItem)
+				if !ok { return nil, fmt.Errorf("unexpected generated query child type for relation orderItemList") }
+				childEntity.AttachEntityRoot(entity.EntityRoot())
+				entity.OrderItemList().Add(childEntity)
+			}}
+	return entity, nil
+}
+
+func (r *PurchaseOrderRequest) Comment(comment string) *PurchaseOrderRequest {
+	r.commentText = comment
+	r.Query.Comment(comment)
+	return r
+}
+
+func (r *PurchaseOrderRequest) Purpose(purpose string) *ExecutablePurchaseOrderRequest {
+	r.purposeText = purpose
+	return &ExecutablePurchaseOrderRequest{request: r}
+}
+
+func (r *ExecutablePurchaseOrderRequest) Comment(comment string) *ExecutablePurchaseOrderRequest {
+	r.request.commentText = comment
+	r.request.Query.Comment(comment)
+	return r
+}
+
+func (r *PurchaseOrderRequest) Limit(limit uint64) *PurchaseOrderRequest {
+	r.Query.Limit(limit)
+	return r
+}
+
+func (r *PurchaseOrderRequest) Offset(offset uint64) *PurchaseOrderRequest {
+	r.Query.Offset(offset)
+	return r
+}
+
+func (r *PurchaseOrderRequest) OptimizeForContinuousPageFetch() *PurchaseOrderRequest {
+	r.Query.OptimizeForContinuousPageFetch()
+	return r
+}
+
+func (r *PurchaseOrderRequest) OptimizeForContinuousPageFetchWith(namespace string, ttlSeconds uint64) *PurchaseOrderRequest {
+	r.Query.OptimizeForContinuousPageFetchWith(namespace, ttlSeconds)
+	return r
+}
+
+func (r *PurchaseOrderRequest) OptimizePaginationWithIDSet() *PurchaseOrderRequest {
+	r.Query.OptimizePaginationWithIDSet()
+	return r
+}
+
+func (r *PurchaseOrderRequest) OptimizePaginationWithIDSetConfig(namespace string, ttlSeconds, maxIDs uint64) *PurchaseOrderRequest {
+	r.Query.OptimizePaginationWithIDSetConfig(namespace, ttlSeconds, maxIDs)
+	return r
+}
+
+func (r *PurchaseOrderRequest) TopNProbeParentThreshold(threshold uint64) *PurchaseOrderRequest {
+	r.Query.TopNProbeParentThreshold(threshold)
+	return r
+}
+
+func removePurchaseOrderVersionFilter(expr *core.Expr) *core.Expr {
+	if expr == nil { return nil }
+	if expr.Type == core.ExprTypeBinary && expr.Left != nil &&
+		expr.Left.Type == core.ExprTypeColumn && expr.Left.Column == "version" {
+		return nil
+	}
+	if expr.Type != core.ExprTypeAnd { return expr }
+	parts := make([]*core.Expr, 0, len(expr.Parts))
+	for _, part := range expr.Parts {
+		if kept := removePurchaseOrderVersionFilter(part); kept != nil {
+			parts = append(parts, kept)
+		}
+	}
+	if len(parts) == 0 { return nil }
+	if len(parts) == 1 { return parts[0] }
+	return core.ExprAndNode(parts...)
+}
+
+func (r *PurchaseOrderRequest) WithDeletedRows() *PurchaseOrderRequest {
+	r.Query.Filter = removePurchaseOrderVersionFilter(r.Query.Filter)
+	return r
+}
+
+func (r *PurchaseOrderRequest) DeletedRowsOnly() *PurchaseOrderRequest {
+	r.WithDeletedRows()
+	r.Query.AndFilter(core.ExprLte("version", core.ValI64(-1)))
+	return r
+}
+
+func (r *PurchaseOrderRequest) SelectId() *PurchaseOrderRequest {
+	r.Query.Project(teaqlIdStorageKey)
+	return r
+}
+
+func (r *PurchaseOrderRequest) WithIdIs(value uint64) *PurchaseOrderRequest {
+	r.Query.AndFilter(core.ExprEq(teaqlIdStorageKey, core.ValU64(value)))
+	return r
+}
+func (r *PurchaseOrderRequest) WithIdIsNot(value uint64) *PurchaseOrderRequest {
+	r.Query.AndFilter(core.ExprNe(teaqlIdStorageKey, core.ValU64(value)))
+	return r
+}
+func (r *PurchaseOrderRequest) WithIdIn(values []uint64) *PurchaseOrderRequest {
+	converted := make([]core.Value, 0, len(values))
+	for _, value := range values {
+		converted = append(converted, core.ValU64(value))
+	}
+	r.Query.AndFilter(core.ExprInList(teaqlIdStorageKey, converted))
+	return r
+}
+func (r *PurchaseOrderRequest) WithIdNotIn(values []uint64) *PurchaseOrderRequest {
+	converted := make([]core.Value, 0, len(values))
+	for _, value := range values {
+		converted = append(converted, core.ValU64(value))
+	}
+	r.Query.AndFilter(core.ExprNotInList(teaqlIdStorageKey, converted))
+	return r
+}
+func (r *PurchaseOrderRequest) WithIdGreaterThan(value uint64) *PurchaseOrderRequest {
+	r.Query.AndFilter(core.ExprGt(teaqlIdStorageKey, core.ValU64(value)))
+	return r
+}
+func (r *PurchaseOrderRequest) WithIdGreaterThanOrEqualTo(value uint64) *PurchaseOrderRequest {
+	r.Query.AndFilter(core.ExprGte(teaqlIdStorageKey, core.ValU64(value)))
+	return r
+}
+func (r *PurchaseOrderRequest) WithIdLessThan(value uint64) *PurchaseOrderRequest {
+	r.Query.AndFilter(core.ExprLt(teaqlIdStorageKey, core.ValU64(value)))
+	return r
+}
+func (r *PurchaseOrderRequest) WithIdLessThanOrEqualTo(value uint64) *PurchaseOrderRequest {
+	r.Query.AndFilter(core.ExprLte(teaqlIdStorageKey, core.ValU64(value)))
+	return r
+}
+func (r *PurchaseOrderRequest) WithIdBetween(lower uint64, upper uint64) *PurchaseOrderRequest {
+	value := lower
+	from := core.ValU64(value)
+	value = upper
+	to := core.ValU64(value)
+	r.Query.AndFilter(core.ExprBetweenNode(teaqlIdStorageKey, from, to))
+	return r
+}
+func (r *PurchaseOrderRequest) WithIdIsKnown() *PurchaseOrderRequest {
+	r.Query.AndFilter(core.ExprIsNotNullNode(teaqlIdStorageKey))
+	return r
+}
+func (r *PurchaseOrderRequest) WithIdIsUnknown() *PurchaseOrderRequest {
+	r.Query.AndFilter(core.ExprIsNullNode(teaqlIdStorageKey))
+	return r
+}
+func (r *PurchaseOrderRequest) OrderByIdAsc() *PurchaseOrderRequest {
+	r.Query.OrderAsc(teaqlIdStorageKey)
+	return r
+}
+func (r *PurchaseOrderRequest) OrderByIdDesc() *PurchaseOrderRequest {
+	r.Query.OrderDesc(teaqlIdStorageKey)
+	return r
+}
+func (r *PurchaseOrderRequest) SelectTenant() *PurchaseOrderRequest {
+	r.Query.Project(teaqlTenantStorageKey)
+	return r
+}
+
+func (r *PurchaseOrderRequest) WithTenantIs(value uint64) *PurchaseOrderRequest {
+	r.Query.AndFilter(core.ExprEq(teaqlTenantStorageKey, core.ValU64(value)))
+	return r
+}
+func (r *PurchaseOrderRequest) WithTenantIsNot(value uint64) *PurchaseOrderRequest {
+	r.Query.AndFilter(core.ExprNe(teaqlTenantStorageKey, core.ValU64(value)))
+	return r
+}
+func (r *PurchaseOrderRequest) WithTenantIn(values []uint64) *PurchaseOrderRequest {
+	converted := make([]core.Value, 0, len(values))
+	for _, value := range values {
+		converted = append(converted, core.ValU64(value))
+	}
+	r.Query.AndFilter(core.ExprInList(teaqlTenantStorageKey, converted))
+	return r
+}
+func (r *PurchaseOrderRequest) WithTenantNotIn(values []uint64) *PurchaseOrderRequest {
+	converted := make([]core.Value, 0, len(values))
+	for _, value := range values {
+		converted = append(converted, core.ValU64(value))
+	}
+	r.Query.AndFilter(core.ExprNotInList(teaqlTenantStorageKey, converted))
+	return r
+}
+func (r *PurchaseOrderRequest) WithTenantGreaterThan(value uint64) *PurchaseOrderRequest {
+	r.Query.AndFilter(core.ExprGt(teaqlTenantStorageKey, core.ValU64(value)))
+	return r
+}
+func (r *PurchaseOrderRequest) WithTenantGreaterThanOrEqualTo(value uint64) *PurchaseOrderRequest {
+	r.Query.AndFilter(core.ExprGte(teaqlTenantStorageKey, core.ValU64(value)))
+	return r
+}
+func (r *PurchaseOrderRequest) WithTenantLessThan(value uint64) *PurchaseOrderRequest {
+	r.Query.AndFilter(core.ExprLt(teaqlTenantStorageKey, core.ValU64(value)))
+	return r
+}
+func (r *PurchaseOrderRequest) WithTenantLessThanOrEqualTo(value uint64) *PurchaseOrderRequest {
+	r.Query.AndFilter(core.ExprLte(teaqlTenantStorageKey, core.ValU64(value)))
+	return r
+}
+func (r *PurchaseOrderRequest) WithTenantBetween(lower uint64, upper uint64) *PurchaseOrderRequest {
+	value := lower
+	from := core.ValU64(value)
+	value = upper
+	to := core.ValU64(value)
+	r.Query.AndFilter(core.ExprBetweenNode(teaqlTenantStorageKey, from, to))
+	return r
+}
+func (r *PurchaseOrderRequest) WithTenantIsKnown() *PurchaseOrderRequest {
+	r.Query.AndFilter(core.ExprIsNotNullNode(teaqlTenantStorageKey))
+	return r
+}
+func (r *PurchaseOrderRequest) WithTenantIsUnknown() *PurchaseOrderRequest {
+	r.Query.AndFilter(core.ExprIsNullNode(teaqlTenantStorageKey))
+	return r
+}
+func (r *PurchaseOrderRequest) FacetByTenantAs(
+	name string,
+	nestedReq interface{ GetQuery() *core.SelectQuery },
+	includeAllFacets ...bool,
+) *PurchaseOrderRequest {
+	includeAll := true
+	if len(includeAllFacets) > 0 { includeAll = includeAllFacets[0] }
+	facet := core.NewFacetRequest(name, teaqlTenantStorageKey, core.QuerySelectionFor(nestedReq), includeAll)
+	facet.Operation = &core.QueryOperation{Kind: "facet", Method: "FacetByTenantAs", Alias: &name, Relation: "tenant"}
+	r.queryOptions.Facets = append(r.queryOptions.Facets, facet)
+	return r
+}
+func (r *PurchaseOrderRequest) OrderByTenantAsc() *PurchaseOrderRequest {
+	r.Query.OrderAsc(teaqlTenantStorageKey)
+	return r
+}
+func (r *PurchaseOrderRequest) OrderByTenantDesc() *PurchaseOrderRequest {
+	r.Query.OrderDesc(teaqlTenantStorageKey)
+	return r
+}
+func (r *PurchaseOrderRequest) SelectContactPhone() *PurchaseOrderRequest {
+	r.Query.Project(teaqlContactPhoneStorageKey)
+	return r
+}
+
+func (r *PurchaseOrderRequest) WithContactPhoneIs(value string) *PurchaseOrderRequest {
+	r.Query.AndFilter(core.ExprEq(teaqlContactPhoneStorageKey, core.ValText(value)))
+	return r
+}
+func (r *PurchaseOrderRequest) WithContactPhoneIsNot(value string) *PurchaseOrderRequest {
+	r.Query.AndFilter(core.ExprNe(teaqlContactPhoneStorageKey, core.ValText(value)))
+	return r
+}
+func (r *PurchaseOrderRequest) WithContactPhoneIn(values []string) *PurchaseOrderRequest {
+	converted := make([]core.Value, 0, len(values))
+	for _, value := range values {
+		converted = append(converted, core.ValText(value))
+	}
+	r.Query.AndFilter(core.ExprInList(teaqlContactPhoneStorageKey, converted))
+	return r
+}
+func (r *PurchaseOrderRequest) WithContactPhoneNotIn(values []string) *PurchaseOrderRequest {
+	converted := make([]core.Value, 0, len(values))
+	for _, value := range values {
+		converted = append(converted, core.ValText(value))
+	}
+	r.Query.AndFilter(core.ExprNotInList(teaqlContactPhoneStorageKey, converted))
+	return r
+}
+func (r *PurchaseOrderRequest) WithContactPhoneGreaterThan(value string) *PurchaseOrderRequest {
+	r.Query.AndFilter(core.ExprGt(teaqlContactPhoneStorageKey, core.ValText(value)))
+	return r
+}
+func (r *PurchaseOrderRequest) WithContactPhoneGreaterThanOrEqualTo(value string) *PurchaseOrderRequest {
+	r.Query.AndFilter(core.ExprGte(teaqlContactPhoneStorageKey, core.ValText(value)))
+	return r
+}
+func (r *PurchaseOrderRequest) WithContactPhoneLessThan(value string) *PurchaseOrderRequest {
+	r.Query.AndFilter(core.ExprLt(teaqlContactPhoneStorageKey, core.ValText(value)))
+	return r
+}
+func (r *PurchaseOrderRequest) WithContactPhoneLessThanOrEqualTo(value string) *PurchaseOrderRequest {
+	r.Query.AndFilter(core.ExprLte(teaqlContactPhoneStorageKey, core.ValText(value)))
+	return r
+}
+func (r *PurchaseOrderRequest) WithContactPhoneBetween(lower string, upper string) *PurchaseOrderRequest {
+	value := lower
+	from := core.ValText(value)
+	value = upper
+	to := core.ValText(value)
+	r.Query.AndFilter(core.ExprBetweenNode(teaqlContactPhoneStorageKey, from, to))
+	return r
+}
+func (r *PurchaseOrderRequest) WithContactPhoneIsKnown() *PurchaseOrderRequest {
+	r.Query.AndFilter(core.ExprIsNotNullNode(teaqlContactPhoneStorageKey))
+	return r
+}
+func (r *PurchaseOrderRequest) WithContactPhoneIsUnknown() *PurchaseOrderRequest {
+	r.Query.AndFilter(core.ExprIsNullNode(teaqlContactPhoneStorageKey))
+	return r
+}
+func (r *PurchaseOrderRequest) WithContactPhoneContaining(term string) *PurchaseOrderRequest {
+	r.Query.AndFilter(core.ExprContain(teaqlContactPhoneStorageKey, term))
+	return r
+}
+func (r *PurchaseOrderRequest) WithContactPhoneNotContaining(term string) *PurchaseOrderRequest {
+	r.Query.AndFilter(core.ExprNotContain(teaqlContactPhoneStorageKey, term))
+	return r
+}
+func (r *PurchaseOrderRequest) WithContactPhoneStartingWith(term string) *PurchaseOrderRequest {
+	r.Query.AndFilter(core.ExprBeginWith(teaqlContactPhoneStorageKey, term))
+	return r
+}
+func (r *PurchaseOrderRequest) WithContactPhoneNotStartingWith(term string) *PurchaseOrderRequest {
+	r.Query.AndFilter(core.ExprNotBeginWith(teaqlContactPhoneStorageKey, term))
+	return r
+}
+func (r *PurchaseOrderRequest) WithContactPhoneEndingWith(term string) *PurchaseOrderRequest {
+	r.Query.AndFilter(core.ExprEndWith(teaqlContactPhoneStorageKey, term))
+	return r
+}
+func (r *PurchaseOrderRequest) WithContactPhoneNotEndingWith(term string) *PurchaseOrderRequest {
+	r.Query.AndFilter(core.ExprNotEndWith(teaqlContactPhoneStorageKey, term))
+	return r
+}
+func (r *PurchaseOrderRequest) WithContactPhoneSoundingLike(term string) *PurchaseOrderRequest {
+	r.Query.AndFilter(core.ExprSoundLike(teaqlContactPhoneStorageKey, core.ValText(term)))
+	return r
+}
+func (r *PurchaseOrderRequest) OrderByContactPhoneAsc() *PurchaseOrderRequest {
+	r.Query.OrderAsc(teaqlContactPhoneStorageKey)
+	return r
+}
+func (r *PurchaseOrderRequest) OrderByContactPhoneDesc() *PurchaseOrderRequest {
+	r.Query.OrderDesc(teaqlContactPhoneStorageKey)
+	return r
+}
+func (r *PurchaseOrderRequest) SelectInternalNote() *PurchaseOrderRequest {
+	r.Query.Project(teaqlInternalNoteStorageKey)
+	return r
+}
+
+func (r *PurchaseOrderRequest) WithInternalNoteIs(value *string) *PurchaseOrderRequest {
+	r.Query.AndFilter(core.ExprEq(teaqlInternalNoteStorageKey, func() core.Value { if value == nil { return core.ValNull() }; return core.ValText((*value)) }()))
+	return r
+}
+func (r *PurchaseOrderRequest) WithInternalNoteIsNot(value *string) *PurchaseOrderRequest {
+	r.Query.AndFilter(core.ExprNe(teaqlInternalNoteStorageKey, func() core.Value { if value == nil { return core.ValNull() }; return core.ValText((*value)) }()))
+	return r
+}
+func (r *PurchaseOrderRequest) WithInternalNoteIn(values []*string) *PurchaseOrderRequest {
+	converted := make([]core.Value, 0, len(values))
+	for _, value := range values {
+		converted = append(converted, func() core.Value { if value == nil { return core.ValNull() }; return core.ValText((*value)) }())
+	}
+	r.Query.AndFilter(core.ExprInList(teaqlInternalNoteStorageKey, converted))
+	return r
+}
+func (r *PurchaseOrderRequest) WithInternalNoteNotIn(values []*string) *PurchaseOrderRequest {
+	converted := make([]core.Value, 0, len(values))
+	for _, value := range values {
+		converted = append(converted, func() core.Value { if value == nil { return core.ValNull() }; return core.ValText((*value)) }())
+	}
+	r.Query.AndFilter(core.ExprNotInList(teaqlInternalNoteStorageKey, converted))
+	return r
+}
+func (r *PurchaseOrderRequest) WithInternalNoteGreaterThan(value *string) *PurchaseOrderRequest {
+	r.Query.AndFilter(core.ExprGt(teaqlInternalNoteStorageKey, func() core.Value { if value == nil { return core.ValNull() }; return core.ValText((*value)) }()))
+	return r
+}
+func (r *PurchaseOrderRequest) WithInternalNoteGreaterThanOrEqualTo(value *string) *PurchaseOrderRequest {
+	r.Query.AndFilter(core.ExprGte(teaqlInternalNoteStorageKey, func() core.Value { if value == nil { return core.ValNull() }; return core.ValText((*value)) }()))
+	return r
+}
+func (r *PurchaseOrderRequest) WithInternalNoteLessThan(value *string) *PurchaseOrderRequest {
+	r.Query.AndFilter(core.ExprLt(teaqlInternalNoteStorageKey, func() core.Value { if value == nil { return core.ValNull() }; return core.ValText((*value)) }()))
+	return r
+}
+func (r *PurchaseOrderRequest) WithInternalNoteLessThanOrEqualTo(value *string) *PurchaseOrderRequest {
+	r.Query.AndFilter(core.ExprLte(teaqlInternalNoteStorageKey, func() core.Value { if value == nil { return core.ValNull() }; return core.ValText((*value)) }()))
+	return r
+}
+func (r *PurchaseOrderRequest) WithInternalNoteBetween(lower *string, upper *string) *PurchaseOrderRequest {
+	value := lower
+	from := func() core.Value { if value == nil { return core.ValNull() }; return core.ValText((*value)) }()
+	value = upper
+	to := func() core.Value { if value == nil { return core.ValNull() }; return core.ValText((*value)) }()
+	r.Query.AndFilter(core.ExprBetweenNode(teaqlInternalNoteStorageKey, from, to))
+	return r
+}
+func (r *PurchaseOrderRequest) WithInternalNoteIsKnown() *PurchaseOrderRequest {
+	r.Query.AndFilter(core.ExprIsNotNullNode(teaqlInternalNoteStorageKey))
+	return r
+}
+func (r *PurchaseOrderRequest) WithInternalNoteIsUnknown() *PurchaseOrderRequest {
+	r.Query.AndFilter(core.ExprIsNullNode(teaqlInternalNoteStorageKey))
+	return r
+}
+func (r *PurchaseOrderRequest) WithInternalNoteContaining(term string) *PurchaseOrderRequest {
+	r.Query.AndFilter(core.ExprContain(teaqlInternalNoteStorageKey, term))
+	return r
+}
+func (r *PurchaseOrderRequest) WithInternalNoteNotContaining(term string) *PurchaseOrderRequest {
+	r.Query.AndFilter(core.ExprNotContain(teaqlInternalNoteStorageKey, term))
+	return r
+}
+func (r *PurchaseOrderRequest) WithInternalNoteStartingWith(term string) *PurchaseOrderRequest {
+	r.Query.AndFilter(core.ExprBeginWith(teaqlInternalNoteStorageKey, term))
+	return r
+}
+func (r *PurchaseOrderRequest) WithInternalNoteNotStartingWith(term string) *PurchaseOrderRequest {
+	r.Query.AndFilter(core.ExprNotBeginWith(teaqlInternalNoteStorageKey, term))
+	return r
+}
+func (r *PurchaseOrderRequest) WithInternalNoteEndingWith(term string) *PurchaseOrderRequest {
+	r.Query.AndFilter(core.ExprEndWith(teaqlInternalNoteStorageKey, term))
+	return r
+}
+func (r *PurchaseOrderRequest) WithInternalNoteNotEndingWith(term string) *PurchaseOrderRequest {
+	r.Query.AndFilter(core.ExprNotEndWith(teaqlInternalNoteStorageKey, term))
+	return r
+}
+func (r *PurchaseOrderRequest) WithInternalNoteSoundingLike(term string) *PurchaseOrderRequest {
+	r.Query.AndFilter(core.ExprSoundLike(teaqlInternalNoteStorageKey, core.ValText(term)))
+	return r
+}
+func (r *PurchaseOrderRequest) OrderByInternalNoteAsc() *PurchaseOrderRequest {
+	r.Query.OrderAsc(teaqlInternalNoteStorageKey)
+	return r
+}
+func (r *PurchaseOrderRequest) OrderByInternalNoteDesc() *PurchaseOrderRequest {
+	r.Query.OrderDesc(teaqlInternalNoteStorageKey)
+	return r
+}
+func (r *PurchaseOrderRequest) SelectCreateTime() *PurchaseOrderRequest {
+	r.Query.Project(teaqlCreateTimeStorageKey)
+	return r
+}
+
+func (r *PurchaseOrderRequest) WithCreateTimeIs(value time.Time) *PurchaseOrderRequest {
+	r.Query.AndFilter(core.ExprEq(teaqlCreateTimeStorageKey, core.ValTimestamp(value.UnixMilli())))
+	return r
+}
+func (r *PurchaseOrderRequest) WithCreateTimeIsNot(value time.Time) *PurchaseOrderRequest {
+	r.Query.AndFilter(core.ExprNe(teaqlCreateTimeStorageKey, core.ValTimestamp(value.UnixMilli())))
+	return r
+}
+func (r *PurchaseOrderRequest) WithCreateTimeIn(values []time.Time) *PurchaseOrderRequest {
+	converted := make([]core.Value, 0, len(values))
+	for _, value := range values {
+		converted = append(converted, core.ValTimestamp(value.UnixMilli()))
+	}
+	r.Query.AndFilter(core.ExprInList(teaqlCreateTimeStorageKey, converted))
+	return r
+}
+func (r *PurchaseOrderRequest) WithCreateTimeNotIn(values []time.Time) *PurchaseOrderRequest {
+	converted := make([]core.Value, 0, len(values))
+	for _, value := range values {
+		converted = append(converted, core.ValTimestamp(value.UnixMilli()))
+	}
+	r.Query.AndFilter(core.ExprNotInList(teaqlCreateTimeStorageKey, converted))
+	return r
+}
+func (r *PurchaseOrderRequest) WithCreateTimeGreaterThan(value time.Time) *PurchaseOrderRequest {
+	r.Query.AndFilter(core.ExprGt(teaqlCreateTimeStorageKey, core.ValTimestamp(value.UnixMilli())))
+	return r
+}
+func (r *PurchaseOrderRequest) WithCreateTimeGreaterThanOrEqualTo(value time.Time) *PurchaseOrderRequest {
+	r.Query.AndFilter(core.ExprGte(teaqlCreateTimeStorageKey, core.ValTimestamp(value.UnixMilli())))
+	return r
+}
+func (r *PurchaseOrderRequest) WithCreateTimeLessThan(value time.Time) *PurchaseOrderRequest {
+	r.Query.AndFilter(core.ExprLt(teaqlCreateTimeStorageKey, core.ValTimestamp(value.UnixMilli())))
+	return r
+}
+func (r *PurchaseOrderRequest) WithCreateTimeLessThanOrEqualTo(value time.Time) *PurchaseOrderRequest {
+	r.Query.AndFilter(core.ExprLte(teaqlCreateTimeStorageKey, core.ValTimestamp(value.UnixMilli())))
+	return r
+}
+func (r *PurchaseOrderRequest) WithCreateTimeBetween(lower time.Time, upper time.Time) *PurchaseOrderRequest {
+	value := lower
+	from := core.ValTimestamp(value.UnixMilli())
+	value = upper
+	to := core.ValTimestamp(value.UnixMilli())
+	r.Query.AndFilter(core.ExprBetweenNode(teaqlCreateTimeStorageKey, from, to))
+	return r
+}
+func (r *PurchaseOrderRequest) WithCreateTimeIsKnown() *PurchaseOrderRequest {
+	r.Query.AndFilter(core.ExprIsNotNullNode(teaqlCreateTimeStorageKey))
+	return r
+}
+func (r *PurchaseOrderRequest) WithCreateTimeIsUnknown() *PurchaseOrderRequest {
+	r.Query.AndFilter(core.ExprIsNullNode(teaqlCreateTimeStorageKey))
+	return r
+}
+func (r *PurchaseOrderRequest) OrderByCreateTimeAsc() *PurchaseOrderRequest {
+	r.Query.OrderAsc(teaqlCreateTimeStorageKey)
+	return r
+}
+func (r *PurchaseOrderRequest) OrderByCreateTimeDesc() *PurchaseOrderRequest {
+	r.Query.OrderDesc(teaqlCreateTimeStorageKey)
+	return r
+}
+func (r *PurchaseOrderRequest) SelectUpdateTime() *PurchaseOrderRequest {
+	r.Query.Project(teaqlUpdateTimeStorageKey)
+	return r
+}
+
+func (r *PurchaseOrderRequest) WithUpdateTimeIs(value time.Time) *PurchaseOrderRequest {
+	r.Query.AndFilter(core.ExprEq(teaqlUpdateTimeStorageKey, core.ValTimestamp(value.UnixMilli())))
+	return r
+}
+func (r *PurchaseOrderRequest) WithUpdateTimeIsNot(value time.Time) *PurchaseOrderRequest {
+	r.Query.AndFilter(core.ExprNe(teaqlUpdateTimeStorageKey, core.ValTimestamp(value.UnixMilli())))
+	return r
+}
+func (r *PurchaseOrderRequest) WithUpdateTimeIn(values []time.Time) *PurchaseOrderRequest {
+	converted := make([]core.Value, 0, len(values))
+	for _, value := range values {
+		converted = append(converted, core.ValTimestamp(value.UnixMilli()))
+	}
+	r.Query.AndFilter(core.ExprInList(teaqlUpdateTimeStorageKey, converted))
+	return r
+}
+func (r *PurchaseOrderRequest) WithUpdateTimeNotIn(values []time.Time) *PurchaseOrderRequest {
+	converted := make([]core.Value, 0, len(values))
+	for _, value := range values {
+		converted = append(converted, core.ValTimestamp(value.UnixMilli()))
+	}
+	r.Query.AndFilter(core.ExprNotInList(teaqlUpdateTimeStorageKey, converted))
+	return r
+}
+func (r *PurchaseOrderRequest) WithUpdateTimeGreaterThan(value time.Time) *PurchaseOrderRequest {
+	r.Query.AndFilter(core.ExprGt(teaqlUpdateTimeStorageKey, core.ValTimestamp(value.UnixMilli())))
+	return r
+}
+func (r *PurchaseOrderRequest) WithUpdateTimeGreaterThanOrEqualTo(value time.Time) *PurchaseOrderRequest {
+	r.Query.AndFilter(core.ExprGte(teaqlUpdateTimeStorageKey, core.ValTimestamp(value.UnixMilli())))
+	return r
+}
+func (r *PurchaseOrderRequest) WithUpdateTimeLessThan(value time.Time) *PurchaseOrderRequest {
+	r.Query.AndFilter(core.ExprLt(teaqlUpdateTimeStorageKey, core.ValTimestamp(value.UnixMilli())))
+	return r
+}
+func (r *PurchaseOrderRequest) WithUpdateTimeLessThanOrEqualTo(value time.Time) *PurchaseOrderRequest {
+	r.Query.AndFilter(core.ExprLte(teaqlUpdateTimeStorageKey, core.ValTimestamp(value.UnixMilli())))
+	return r
+}
+func (r *PurchaseOrderRequest) WithUpdateTimeBetween(lower time.Time, upper time.Time) *PurchaseOrderRequest {
+	value := lower
+	from := core.ValTimestamp(value.UnixMilli())
+	value = upper
+	to := core.ValTimestamp(value.UnixMilli())
+	r.Query.AndFilter(core.ExprBetweenNode(teaqlUpdateTimeStorageKey, from, to))
+	return r
+}
+func (r *PurchaseOrderRequest) WithUpdateTimeIsKnown() *PurchaseOrderRequest {
+	r.Query.AndFilter(core.ExprIsNotNullNode(teaqlUpdateTimeStorageKey))
+	return r
+}
+func (r *PurchaseOrderRequest) WithUpdateTimeIsUnknown() *PurchaseOrderRequest {
+	r.Query.AndFilter(core.ExprIsNullNode(teaqlUpdateTimeStorageKey))
+	return r
+}
+func (r *PurchaseOrderRequest) OrderByUpdateTimeAsc() *PurchaseOrderRequest {
+	r.Query.OrderAsc(teaqlUpdateTimeStorageKey)
+	return r
+}
+func (r *PurchaseOrderRequest) OrderByUpdateTimeDesc() *PurchaseOrderRequest {
+	r.Query.OrderDesc(teaqlUpdateTimeStorageKey)
+	return r
+}
+func (r *PurchaseOrderRequest) SelectVersion() *PurchaseOrderRequest {
+	r.Query.Project(teaqlVersionStorageKey)
+	return r
+}
+
+func (r *PurchaseOrderRequest) WithVersionIs(value int64) *PurchaseOrderRequest {
+	r.Query.AndFilter(core.ExprEq(teaqlVersionStorageKey, core.ValI64(value)))
+	return r
+}
+func (r *PurchaseOrderRequest) WithVersionIsNot(value int64) *PurchaseOrderRequest {
+	r.Query.AndFilter(core.ExprNe(teaqlVersionStorageKey, core.ValI64(value)))
+	return r
+}
+func (r *PurchaseOrderRequest) WithVersionIn(values []int64) *PurchaseOrderRequest {
+	converted := make([]core.Value, 0, len(values))
+	for _, value := range values {
+		converted = append(converted, core.ValI64(value))
+	}
+	r.Query.AndFilter(core.ExprInList(teaqlVersionStorageKey, converted))
+	return r
+}
+func (r *PurchaseOrderRequest) WithVersionNotIn(values []int64) *PurchaseOrderRequest {
+	converted := make([]core.Value, 0, len(values))
+	for _, value := range values {
+		converted = append(converted, core.ValI64(value))
+	}
+	r.Query.AndFilter(core.ExprNotInList(teaqlVersionStorageKey, converted))
+	return r
+}
+func (r *PurchaseOrderRequest) WithVersionGreaterThan(value int64) *PurchaseOrderRequest {
+	r.Query.AndFilter(core.ExprGt(teaqlVersionStorageKey, core.ValI64(value)))
+	return r
+}
+func (r *PurchaseOrderRequest) WithVersionGreaterThanOrEqualTo(value int64) *PurchaseOrderRequest {
+	r.Query.AndFilter(core.ExprGte(teaqlVersionStorageKey, core.ValI64(value)))
+	return r
+}
+func (r *PurchaseOrderRequest) WithVersionLessThan(value int64) *PurchaseOrderRequest {
+	r.Query.AndFilter(core.ExprLt(teaqlVersionStorageKey, core.ValI64(value)))
+	return r
+}
+func (r *PurchaseOrderRequest) WithVersionLessThanOrEqualTo(value int64) *PurchaseOrderRequest {
+	r.Query.AndFilter(core.ExprLte(teaqlVersionStorageKey, core.ValI64(value)))
+	return r
+}
+func (r *PurchaseOrderRequest) WithVersionBetween(lower int64, upper int64) *PurchaseOrderRequest {
+	value := lower
+	from := core.ValI64(value)
+	value = upper
+	to := core.ValI64(value)
+	r.Query.AndFilter(core.ExprBetweenNode(teaqlVersionStorageKey, from, to))
+	return r
+}
+func (r *PurchaseOrderRequest) WithVersionIsKnown() *PurchaseOrderRequest {
+	r.Query.AndFilter(core.ExprIsNotNullNode(teaqlVersionStorageKey))
+	return r
+}
+func (r *PurchaseOrderRequest) WithVersionIsUnknown() *PurchaseOrderRequest {
+	r.Query.AndFilter(core.ExprIsNullNode(teaqlVersionStorageKey))
+	return r
+}
+func (r *PurchaseOrderRequest) OrderByVersionAsc() *PurchaseOrderRequest {
+	r.Query.OrderAsc(teaqlVersionStorageKey)
+	return r
+}
+func (r *PurchaseOrderRequest) OrderByVersionDesc() *PurchaseOrderRequest {
+	r.Query.OrderDesc(teaqlVersionStorageKey)
+	return r
+}
+
+func (r *PurchaseOrderRequest) SelectTenantWith(child interface {
+	GetQuery() *core.SelectQuery
+	NewRelationEntity() core.Entity
+}) *PurchaseOrderRequest {
+	runtime.EnsureRelationProjection(r.Query, teaqlTenantStorageKey)
+	r.Query.RelationQuerySelection("tenantEntity", core.QuerySelectionFor(child))
+	r.Query.Relations[len(r.Query.Relations)-1].Operation = &core.QueryOperation{Kind: "relation", Method: "SelectTenantWith", Relation: "tenantEntity"}
+	r.relationFactories["tenantEntity"] = func(record core.Record) (core.Entity, error) {
+		if hydrator, ok := child.(interface { TeaqlHydrateQueryRecord(core.Record) (core.Entity, error) }); ok {
+			return hydrator.TeaqlHydrateQueryRecord(record)
+		}
+		entity := child.NewRelationEntity()
+		if err := entity.FromRecord(record); err != nil { return nil, err }
+		return entity, nil
+	}
+	return r
+}
+
+func (r *PurchaseOrderRequest) WithTenantMatching(child interface {
+	GetQuery() *core.SelectQuery
+	GetEntityDescriptor() *core.EntityDescriptor
+}) *PurchaseOrderRequest {
+	r.Query.AndFilter(core.ExprInSubQuery(teaqlTenantStorageKey, child.GetEntityDescriptor(), child.GetQuery(), "id"))
+	return r
+}
+
+func (r *PurchaseOrderRequest) WithoutTenantMatching(child interface {
+	GetQuery() *core.SelectQuery
+	GetEntityDescriptor() *core.EntityDescriptor
+}) *PurchaseOrderRequest {
+	r.Query.AndFilter(core.ExprNotInSubQuery(teaqlTenantStorageKey, child.GetEntityDescriptor(), child.GetQuery(), "id"))
+	return r
+}
+
+func (r *PurchaseOrderRequest) CountOrderItems() *PurchaseOrderRequest {
+	return r.CountOrderItemsAs("countOrderItems")
+
+}
+func (r *PurchaseOrderRequest) CountOrderItemsAs(alias string) *PurchaseOrderRequest {
+	r.CountOrderItemsWith(alias, order_item.NewOrderItemRequest())
+	r.Query.RelationAggregates[len(r.Query.RelationAggregates)-1].Operation = &core.QueryOperation{Kind: "count", Method: "CountOrderItemsAs", Alias: &alias, Relation: "orderItemList"}
+	return r
+}
+func (r *PurchaseOrderRequest) CountOrderItemsWith(alias string, child *order_item.OrderItemRequest) *PurchaseOrderRequest {
+	query := child.GetQuery().Clone()
+	query.Aggregates = nil
+	query.Count(alias)
+	aggregate := core.NewRelationAggregate("orderItemList", alias, query, true)
+	aggregate.Operation = &core.QueryOperation{Kind: "count", Method: "CountOrderItemsWith", Alias: &alias, Relation: "orderItemList"}
+	r.Query.RelationAggregates = append(r.Query.RelationAggregates, aggregate)
+	return r
+}
+
+func (r *PurchaseOrderRequest) SumUnitPriceOfOrderItems() *PurchaseOrderRequest {
+	return r.SumUnitPriceOfOrderItemsAs("sumUnitPriceOfOrderItems", order_item.NewOrderItemRequest())
+}
+func (r *PurchaseOrderRequest) SumUnitPriceOfOrderItemsAs(alias string, child *order_item.OrderItemRequest) *PurchaseOrderRequest {
+	query := child.GetQuery().Clone()
+	query.Aggregates = nil
+	query.Sum("unit_price", alias)
+	aggregate := core.NewRelationAggregate("orderItemList", alias, query, true)
+	aggregate.Operation = &core.QueryOperation{Kind: "aggregate", Method: "SumUnitPriceOfOrderItemsAs", Alias: &alias, Relation: "orderItemList"}
+	r.Query.RelationAggregates = append(r.Query.RelationAggregates, aggregate)
+	return r
+}
+func (r *PurchaseOrderRequest) MinUnitPriceOfOrderItems() *PurchaseOrderRequest {
+	return r.MinUnitPriceOfOrderItemsAs("minUnitPriceOfOrderItems", order_item.NewOrderItemRequest())
+}
+func (r *PurchaseOrderRequest) MinUnitPriceOfOrderItemsAs(alias string, child *order_item.OrderItemRequest) *PurchaseOrderRequest {
+	query := child.GetQuery().Clone()
+	query.Aggregates = nil
+	query.Min("unit_price", alias)
+	aggregate := core.NewRelationAggregate("orderItemList", alias, query, true)
+	aggregate.Operation = &core.QueryOperation{Kind: "aggregate", Method: "MinUnitPriceOfOrderItemsAs", Alias: &alias, Relation: "orderItemList"}
+	r.Query.RelationAggregates = append(r.Query.RelationAggregates, aggregate)
+	return r
+}
+func (r *PurchaseOrderRequest) MaxUnitPriceOfOrderItems() *PurchaseOrderRequest {
+	return r.MaxUnitPriceOfOrderItemsAs("maxUnitPriceOfOrderItems", order_item.NewOrderItemRequest())
+}
+func (r *PurchaseOrderRequest) MaxUnitPriceOfOrderItemsAs(alias string, child *order_item.OrderItemRequest) *PurchaseOrderRequest {
+	query := child.GetQuery().Clone()
+	query.Aggregates = nil
+	query.Max("unit_price", alias)
+	aggregate := core.NewRelationAggregate("orderItemList", alias, query, true)
+	aggregate.Operation = &core.QueryOperation{Kind: "aggregate", Method: "MaxUnitPriceOfOrderItemsAs", Alias: &alias, Relation: "orderItemList"}
+	r.Query.RelationAggregates = append(r.Query.RelationAggregates, aggregate)
+	return r
+}
+func (r *PurchaseOrderRequest) AvgUnitPriceOfOrderItems() *PurchaseOrderRequest {
+	return r.AvgUnitPriceOfOrderItemsAs("avgUnitPriceOfOrderItems", order_item.NewOrderItemRequest())
+}
+func (r *PurchaseOrderRequest) AvgUnitPriceOfOrderItemsAs(alias string, child *order_item.OrderItemRequest) *PurchaseOrderRequest {
+	query := child.GetQuery().Clone()
+	query.Aggregates = nil
+	query.Avg("unit_price", alias)
+	aggregate := core.NewRelationAggregate("orderItemList", alias, query, true)
+	aggregate.Operation = &core.QueryOperation{Kind: "aggregate", Method: "AvgUnitPriceOfOrderItemsAs", Alias: &alias, Relation: "orderItemList"}
+	r.Query.RelationAggregates = append(r.Query.RelationAggregates, aggregate)
+	return r
+}
+func (r *PurchaseOrderRequest) StandardDeviationUnitPriceOfOrderItems() *PurchaseOrderRequest {
+	return r.StandardDeviationUnitPriceOfOrderItemsAs("standardDeviationUnitPriceOfOrderItems", order_item.NewOrderItemRequest())
+}
+func (r *PurchaseOrderRequest) StandardDeviationUnitPriceOfOrderItemsAs(alias string, child *order_item.OrderItemRequest) *PurchaseOrderRequest {
+	query := child.GetQuery().Clone()
+	query.Aggregates = nil
+	query.Stddev("unit_price", alias)
+	aggregate := core.NewRelationAggregate("orderItemList", alias, query, true)
+	aggregate.Operation = &core.QueryOperation{Kind: "aggregate", Method: "StandardDeviationUnitPriceOfOrderItemsAs", Alias: &alias, Relation: "orderItemList"}
+	r.Query.RelationAggregates = append(r.Query.RelationAggregates, aggregate)
+	return r
+}
+func (r *PurchaseOrderRequest) SquareRootOfPopulationStandardDeviationUnitPriceOfOrderItems() *PurchaseOrderRequest {
+	return r.SquareRootOfPopulationStandardDeviationUnitPriceOfOrderItemsAs("squareRootOfPopulationStandardDeviationUnitPriceOfOrderItems", order_item.NewOrderItemRequest())
+}
+func (r *PurchaseOrderRequest) SquareRootOfPopulationStandardDeviationUnitPriceOfOrderItemsAs(alias string, child *order_item.OrderItemRequest) *PurchaseOrderRequest {
+	query := child.GetQuery().Clone()
+	query.Aggregates = nil
+	query.StddevPop("unit_price", alias)
+	aggregate := core.NewRelationAggregate("orderItemList", alias, query, true)
+	aggregate.Operation = &core.QueryOperation{Kind: "aggregate", Method: "SquareRootOfPopulationStandardDeviationUnitPriceOfOrderItemsAs", Alias: &alias, Relation: "orderItemList"}
+	r.Query.RelationAggregates = append(r.Query.RelationAggregates, aggregate)
+	return r
+}
+func (r *PurchaseOrderRequest) SampleVarianceUnitPriceOfOrderItems() *PurchaseOrderRequest {
+	return r.SampleVarianceUnitPriceOfOrderItemsAs("sampleVarianceUnitPriceOfOrderItems", order_item.NewOrderItemRequest())
+}
+func (r *PurchaseOrderRequest) SampleVarianceUnitPriceOfOrderItemsAs(alias string, child *order_item.OrderItemRequest) *PurchaseOrderRequest {
+	query := child.GetQuery().Clone()
+	query.Aggregates = nil
+	query.VarSamp("unit_price", alias)
+	aggregate := core.NewRelationAggregate("orderItemList", alias, query, true)
+	aggregate.Operation = &core.QueryOperation{Kind: "aggregate", Method: "SampleVarianceUnitPriceOfOrderItemsAs", Alias: &alias, Relation: "orderItemList"}
+	r.Query.RelationAggregates = append(r.Query.RelationAggregates, aggregate)
+	return r
+}
+func (r *PurchaseOrderRequest) SamplePopulationVarianceUnitPriceOfOrderItems() *PurchaseOrderRequest {
+	return r.SamplePopulationVarianceUnitPriceOfOrderItemsAs("samplePopulationVarianceUnitPriceOfOrderItems", order_item.NewOrderItemRequest())
+}
+func (r *PurchaseOrderRequest) SamplePopulationVarianceUnitPriceOfOrderItemsAs(alias string, child *order_item.OrderItemRequest) *PurchaseOrderRequest {
+	query := child.GetQuery().Clone()
+	query.Aggregates = nil
+	query.VarPop("unit_price", alias)
+	aggregate := core.NewRelationAggregate("orderItemList", alias, query, true)
+	aggregate.Operation = &core.QueryOperation{Kind: "aggregate", Method: "SamplePopulationVarianceUnitPriceOfOrderItemsAs", Alias: &alias, Relation: "orderItemList"}
+	r.Query.RelationAggregates = append(r.Query.RelationAggregates, aggregate)
+	return r
+}
+func (r *PurchaseOrderRequest) MinCreateTimeOfOrderItems() *PurchaseOrderRequest {
+	return r.MinCreateTimeOfOrderItemsAs("minCreateTimeOfOrderItems", order_item.NewOrderItemRequest())
+}
+func (r *PurchaseOrderRequest) MinCreateTimeOfOrderItemsAs(alias string, child *order_item.OrderItemRequest) *PurchaseOrderRequest {
+	query := child.GetQuery().Clone()
+	query.Aggregates = nil
+	query.Min("create_time", alias)
+	aggregate := core.NewRelationAggregate("orderItemList", alias, query, true)
+	aggregate.Operation = &core.QueryOperation{Kind: "aggregate", Method: "MinCreateTimeOfOrderItemsAs", Alias: &alias, Relation: "orderItemList"}
+	r.Query.RelationAggregates = append(r.Query.RelationAggregates, aggregate)
+	return r
+}
+func (r *PurchaseOrderRequest) MaxCreateTimeOfOrderItems() *PurchaseOrderRequest {
+	return r.MaxCreateTimeOfOrderItemsAs("maxCreateTimeOfOrderItems", order_item.NewOrderItemRequest())
+}
+func (r *PurchaseOrderRequest) MaxCreateTimeOfOrderItemsAs(alias string, child *order_item.OrderItemRequest) *PurchaseOrderRequest {
+	query := child.GetQuery().Clone()
+	query.Aggregates = nil
+	query.Max("create_time", alias)
+	aggregate := core.NewRelationAggregate("orderItemList", alias, query, true)
+	aggregate.Operation = &core.QueryOperation{Kind: "aggregate", Method: "MaxCreateTimeOfOrderItemsAs", Alias: &alias, Relation: "orderItemList"}
+	r.Query.RelationAggregates = append(r.Query.RelationAggregates, aggregate)
+	return r
+}
+func (r *PurchaseOrderRequest) MinUpdateTimeOfOrderItems() *PurchaseOrderRequest {
+	return r.MinUpdateTimeOfOrderItemsAs("minUpdateTimeOfOrderItems", order_item.NewOrderItemRequest())
+}
+func (r *PurchaseOrderRequest) MinUpdateTimeOfOrderItemsAs(alias string, child *order_item.OrderItemRequest) *PurchaseOrderRequest {
+	query := child.GetQuery().Clone()
+	query.Aggregates = nil
+	query.Min("update_time", alias)
+	aggregate := core.NewRelationAggregate("orderItemList", alias, query, true)
+	aggregate.Operation = &core.QueryOperation{Kind: "aggregate", Method: "MinUpdateTimeOfOrderItemsAs", Alias: &alias, Relation: "orderItemList"}
+	r.Query.RelationAggregates = append(r.Query.RelationAggregates, aggregate)
+	return r
+}
+func (r *PurchaseOrderRequest) MaxUpdateTimeOfOrderItems() *PurchaseOrderRequest {
+	return r.MaxUpdateTimeOfOrderItemsAs("maxUpdateTimeOfOrderItems", order_item.NewOrderItemRequest())
+}
+func (r *PurchaseOrderRequest) MaxUpdateTimeOfOrderItemsAs(alias string, child *order_item.OrderItemRequest) *PurchaseOrderRequest {
+	query := child.GetQuery().Clone()
+	query.Aggregates = nil
+	query.Max("update_time", alias)
+	aggregate := core.NewRelationAggregate("orderItemList", alias, query, true)
+	aggregate.Operation = &core.QueryOperation{Kind: "aggregate", Method: "MaxUpdateTimeOfOrderItemsAs", Alias: &alias, Relation: "orderItemList"}
+	r.Query.RelationAggregates = append(r.Query.RelationAggregates, aggregate)
+	return r
+}
+
+func (r *PurchaseOrderRequest) SelectOrderItemList() *PurchaseOrderRequest {
+	return r.SelectOrderItemListWith(order_item.NewOrderItemRequest())
+}
+
+func (r *PurchaseOrderRequest) SelectOrderItemListWith(child *order_item.OrderItemRequest) *PurchaseOrderRequest {
+	r.Query.RelationQuerySelection("orderItemList", child.GetQuerySelection())
+	r.Query.Relations[len(r.Query.Relations)-1].Operation = &core.QueryOperation{Kind: "relation", Method: "SelectOrderItemListWith", Relation: "orderItemList"}
+	r.relationFactories["orderItemList"] = child.TeaqlHydrateQueryRecord
+	return r
+}
+
+func (r *PurchaseOrderRequest) HaveOrderItems() *PurchaseOrderRequest {
+	return r.WithOrderItemListMatching(order_item.NewOrderItemRequest())
+}
+
+func (r *PurchaseOrderRequest) HaveNoOrderItems() *PurchaseOrderRequest {
+	return r.WithoutOrderItemListMatching(order_item.NewOrderItemRequest())
+}
+
+func (r *PurchaseOrderRequest) WithOrderItemListMatching(child *order_item.OrderItemRequest) *PurchaseOrderRequest {
+	r.Query.AndFilter(core.ExprInSubQuery("id", child.GetEntityDescriptor(), child.GetQuery(), "purchase_order_id"))
+	return r
+}
+
+func (r *PurchaseOrderRequest) WithoutOrderItemListMatching(child *order_item.OrderItemRequest) *PurchaseOrderRequest {
+	r.Query.AndFilter(core.ExprNotInSubQuery("id", child.GetEntityDescriptor(), child.GetQuery(), "purchase_order_id"))
+	return r
+}
+
+func (e *ExecutablePurchaseOrderRequest) NewEntity(context *runtime.UserContext) (*PurchaseOrder, error) {
+	r := e.request
+	if _, err := core.NewQueryIntent(&r.commentText, &r.purposeText); err != nil { panic(err) }
+	return NewPurchaseOrder(context)
+}
+
+func (e *ExecutablePurchaseOrderRequest) ExecuteForOne(context *runtime.UserContext) (*PurchaseOrder, error) {
+	request := *e.request
+	request.Query = e.request.Query.Clone()
+	request.Query.Limit(1)
+	executable := *e
+	executable.request = &request
+	list, err := executable.ExecuteForList(context)
+	if err != nil {
+		return nil, err
+	}
+	if len(list.Data) == 0 {
+		return nil, nil // Or a specific Not Found error
+	}
+	return list.Data[0], nil
+}
+
+func (e *ExecutablePurchaseOrderRequest) ExecuteForList(context *runtime.UserContext) (*core.SmartList[*PurchaseOrder], error) {
+	// Apply trusted policy once. The runtime owns the entire typed list lifecycle,
+	// including optional exact count, facets and hydration failures.
+	r := e.request
+	if _, err := core.NewQueryIntent(&r.commentText, &r.purposeText); err != nil { return nil, err }
+	query := r.Query.Clone()
+	query.Comment(r.commentText).Purpose(r.purposeText)
+	query, plan, err := runtime.CaptureQueryPlan(query, r.queryOptions)
+	if err != nil { return nil, err }
+	query = plan.WithQueryDiagnostics(query)
+	authorized, err := context.PrepareEntityQuery(query)
+	if err != nil { return nil, err }
+	dsRaw := context.GetResource("dataService")
+	ds, ok := dsRaw.(data_service.QueryExecutor)
+	if !ok { return nil, fmt.Errorf("dataService does not implement data_service.QueryExecutor") }
+	service := runtime.NewRuntimeDataService(context.Metadata, ds)
+	return runtime.ExecuteTypedList(context, service, authorized, plan, func(rec core.Record) (*PurchaseOrder, error) {
+		entity, err := r.teaqlHydrateQueryRecord(rec)
+		if err != nil { return nil, err }
+		if err := runtime.CaptureEntityQueryProperties(entity, authorized); err != nil { return nil, err }
+		return entity, nil
+	})
+}
+
+// ExecuteForStream consumes a provider cursor one chunk at a time. Returning
+// an error from yield releases the database resources. runtime.ErrStopStream
+// records an intentional early stop; other callback errors remain failures.
+func (e *ExecutablePurchaseOrderRequest) ExecuteForStream(context *runtime.UserContext, chunkSize int, yield func(*PurchaseOrder) error) error {
+	r := e.request
+	if _, err := core.NewQueryIntent(&r.commentText, &r.purposeText); err != nil { return err }
+	if yield == nil {
+		return fmt.Errorf("stream consumer must not be nil")
+	}
+	query := r.Query.Clone()
+	query.Comment(r.commentText).Purpose(r.purposeText)
+	query, err := runtime.CaptureStreamQuery(query, r.queryOptions)
+	if err != nil { return err }
+	authorized, err := context.PrepareEntityQuery(query)
+	if err != nil { return err }
+	dsRaw := context.GetResource("dataService")
+	ds, ok := dsRaw.(data_service.StreamQueryExecutor)
+	if !ok {
+		return fmt.Errorf("dataService does not implement data_service.StreamQueryExecutor")
+	}
+	return runtime.ExecuteTypedStream(context, ds, authorized, chunkSize, func(rec core.Record) (*PurchaseOrder, error) {
+		entity := newLoadedPurchaseOrder()
+		if err := entity.FromRecord(rec); err != nil { return nil, err }
+		if err := runtime.CaptureEntityQueryProperties(entity, authorized); err != nil { return nil, err }
+		return entity, nil
+	}, yield)
+}
+
+func (e *ExecutablePurchaseOrderRequest) ExecuteRecords(context *runtime.UserContext) ([]core.Record, error) {
+	rows, _, _, err := e.executeRecords(context)
+	return rows, err
+}
+
+// executeRecords returns the same authorized snapshot used for row execution
+// so facets can derive their membership query without reapplying root policy.
+func (e *ExecutablePurchaseOrderRequest) executeRecords(context *runtime.UserContext) ([]core.Record, *core.SelectQuery, *runtime.FacetPlan, error) {
+	r := e.request
+	if _, err := core.NewQueryIntent(&r.commentText, &r.purposeText); err != nil { return nil, nil, nil, err }
+	query := r.Query.Clone()
+	query.Comment(r.commentText).Purpose(r.purposeText)
+	query, plan, err := runtime.CaptureQueryPlan(query, r.queryOptions)
+	if err != nil { return nil, nil, nil, err }
+	query = plan.WithQueryDiagnostics(query)
+	authorized, err := context.PrepareQuery(query)
+	if err != nil { return nil, nil, nil, err }
+
+	dsRaw := context.GetResource("dataService")
+	if dsRaw == nil {
+		return nil, nil, nil, fmt.Errorf("dataService not found in UserContext")
+	}
+
+	ds, ok := dsRaw.(data_service.QueryExecutor)
+	if !ok {
+		return nil, nil, nil, fmt.Errorf("dataService does not implement data_service.QueryExecutor")
+	}
+
+	rows, err := runtime.NewRuntimeDataService(context.Metadata, ds).FetchAllWithFacetPlan(context, authorized, plan)
+	if err != nil {
+		return nil, nil, nil, err
+	}
+	return rows, authorized, plan, nil
+}
+
+// ExecuteForRows preserves aggregate/group projections as records while keeping
+// the cross-language SmartList result boundary.
+func (e *ExecutablePurchaseOrderRequest) ExecuteForRows(context *runtime.UserContext) (*core.SmartList[core.Record], error) {
+	rows, err := e.ExecuteRecords(context)
+	if err != nil { return nil, err }
+	return core.NewSmartList(rows), nil
+}
+
+func (r *PurchaseOrderRequest) Count() *PurchaseOrderRequest {
+	return r.CountAs("count")
+}
+
+func (r *PurchaseOrderRequest) CountAs(alias string) *PurchaseOrderRequest {
+	r.Query.CountField("id", alias)
+	r.queryOptions.PageCountOperation = &core.QueryOperation{Kind: "count", Method: "CountAs", Alias: &alias}
+	return r
+}
+
+
+func (r *PurchaseOrderRequest) GroupById() *PurchaseOrderRequest {
+	r.Query.WithGroupBy(teaqlIdStorageKey)
+	return r
+}
+
+func (r *PurchaseOrderRequest) GroupByIdAs(alias string) *PurchaseOrderRequest {
+	r.Query.WithGroupBy(teaqlIdStorageKey)
+	r.Query.ProjectExpr(alias, core.ExprColumnNode(teaqlIdStorageKey))
+	return r
+}
+func (r *PurchaseOrderRequest) GroupByTenant() *PurchaseOrderRequest {
+	r.Query.WithGroupBy(teaqlTenantStorageKey)
+	return r
+}
+
+func (r *PurchaseOrderRequest) GroupByTenantAs(alias string) *PurchaseOrderRequest {
+	r.Query.WithGroupBy(teaqlTenantStorageKey)
+	r.Query.ProjectExpr(alias, core.ExprColumnNode(teaqlTenantStorageKey))
+	return r
+}
+func (r *PurchaseOrderRequest) GroupByContactPhone() *PurchaseOrderRequest {
+	r.Query.WithGroupBy(teaqlContactPhoneStorageKey)
+	return r
+}
+
+func (r *PurchaseOrderRequest) GroupByContactPhoneAs(alias string) *PurchaseOrderRequest {
+	r.Query.WithGroupBy(teaqlContactPhoneStorageKey)
+	r.Query.ProjectExpr(alias, core.ExprColumnNode(teaqlContactPhoneStorageKey))
+	return r
+}
+func (r *PurchaseOrderRequest) GroupByInternalNote() *PurchaseOrderRequest {
+	r.Query.WithGroupBy(teaqlInternalNoteStorageKey)
+	return r
+}
+
+func (r *PurchaseOrderRequest) GroupByInternalNoteAs(alias string) *PurchaseOrderRequest {
+	r.Query.WithGroupBy(teaqlInternalNoteStorageKey)
+	r.Query.ProjectExpr(alias, core.ExprColumnNode(teaqlInternalNoteStorageKey))
+	return r
+}
+func (r *PurchaseOrderRequest) GroupByCreateTime() *PurchaseOrderRequest {
+	r.Query.WithGroupBy(teaqlCreateTimeStorageKey)
+	return r
+}
+
+func (r *PurchaseOrderRequest) GroupByCreateTimeAs(alias string) *PurchaseOrderRequest {
+	r.Query.WithGroupBy(teaqlCreateTimeStorageKey)
+	r.Query.ProjectExpr(alias, core.ExprColumnNode(teaqlCreateTimeStorageKey))
+	return r
+}
+func (r *PurchaseOrderRequest) GroupByUpdateTime() *PurchaseOrderRequest {
+	r.Query.WithGroupBy(teaqlUpdateTimeStorageKey)
+	return r
+}
+
+func (r *PurchaseOrderRequest) GroupByUpdateTimeAs(alias string) *PurchaseOrderRequest {
+	r.Query.WithGroupBy(teaqlUpdateTimeStorageKey)
+	r.Query.ProjectExpr(alias, core.ExprColumnNode(teaqlUpdateTimeStorageKey))
+	return r
+}
+func (r *PurchaseOrderRequest) GroupByVersion() *PurchaseOrderRequest {
+	r.Query.WithGroupBy(teaqlVersionStorageKey)
+	return r
+}
+
+func (r *PurchaseOrderRequest) GroupByVersionAs(alias string) *PurchaseOrderRequest {
+	r.Query.WithGroupBy(teaqlVersionStorageKey)
+	r.Query.ProjectExpr(alias, core.ExprColumnNode(teaqlVersionStorageKey))
+	return r
+}

@@ -1,4 +1,16 @@
-# Typed Runtime SPI example
+# Purchase order service routing
+
+The console installs a schema validator, a purchasing ID allocator and an
+observable SQLite executor on the trusted Context. It places one order and
+retries a revision after a write failure. It verifies rollback, custom identity,
+and the last accepted revision after restart. A schema refusal skips business
+execution. An allocation refusal skips mutation and the default generator.
+
+`model.xml` defines the purchasing desk and its orders. The generated
+`golang-app-console` uses Q and E from `golang-lib-core`. Run both launches
+and the original typed SPI calibration with `bash examples/typed-runtime-spi/verify.sh`.
+
+## Original schema and ID calibration
 
 Run `go run ./examples/typed-runtime-spi` from this repository. It installs a
 schema executor independently of any query/mutation provider and verifies

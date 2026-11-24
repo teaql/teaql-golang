@@ -1,0 +1,2023 @@
+{
+  "jarSHA256": "ba0a502363884c206a46b6d5da89b0854b7f3e84072dd88544b15573c0d70812",
+  "release": "v5.0.0",
+  "schema": "teaql.runtime-example-regeneration/v1",
+  "scopes": {
+    "examples/basic/golang-app-console": {
+      "emitted": {
+        "teaql/checker-model.json": "aa8be15a54103b217c9b393d4377060df10e1c156037a19b2a42703f61fb3bca",
+        "teaql/model-provenance.json": "b484f20ab99ae7212a07bbf080fcefa52cb46fe2886d8ea284a88a9c2e75b0ae"
+      },
+      "model": "examples/basic/model.xml",
+      "modelEntrypoint": "model.xml",
+      "modelSHA256": "163ae2b34d976cb2c4cfbb1816c401e97ba848b965d550bfc01b39df06b7c65f",
+      "provenance": {
+        "generatorVersion": "783ff0d8",
+        "modelUuid": null,
+        "revisionHash": "sha256:849e6a30e71ac12c832d34503996dc0e91184af5a43bbc7bb1c7b970949f6e3e",
+        "schemaVersion": 1
+      },
+      "retainedWorkspaceFiles": {
+        ".gitignore": {
+          "emittedSHA256": "48fc3a4590eaf6568ce898f8b1925998d7076eea091d05787063e266e0253e5f",
+          "sourceSHA256": "48fc3a4590eaf6568ce898f8b1925998d7076eea091d05787063e266e0253e5f"
+        },
+        "AGENTS.md": {
+          "emittedSHA256": "2b7c0037de71241ddc0866fc699dbac9cc477280254e211c3d22c54ccf661995",
+          "sourceSHA256": "2b7c0037de71241ddc0866fc699dbac9cc477280254e211c3d22c54ccf661995"
+        },
+        "Makefile": {
+          "emittedSHA256": "cfce38caa8a3c79e8f3f13a409b9504fd8e46b7868eaf4a71c212d62f4045456",
+          "sourceSHA256": "cfce38caa8a3c79e8f3f13a409b9504fd8e46b7868eaf4a71c212d62f4045456"
+        },
+        "README.md": {
+          "emittedSHA256": "ca143e1513c9ce007d9c26b3ef625c17c3351c14a1cc34adc23ffeed0cbd4414",
+          "sourceSHA256": "ca143e1513c9ce007d9c26b3ef625c17c3351c14a1cc34adc23ffeed0cbd4414"
+        },
+        "RUNTIME_CUSTOM_GUIDE.md": {
+          "emittedSHA256": "8769b0951e0708460918b290db578e6f38832fc03b241f644aab1fe43b81a830",
+          "sourceSHA256": "8769b0951e0708460918b290db578e6f38832fc03b241f644aab1fe43b81a830"
+        },
+        "STANDARD_TELEMETRY.md": {
+          "emittedSHA256": "442314d6169163b75a0f8c14afb21d87ceef35656fab948a1b786a3bfcef87e0",
+          "sourceSHA256": "442314d6169163b75a0f8c14afb21d87ceef35656fab948a1b786a3bfcef87e0"
+        },
+        "TOOL_API_GUIDE.md": {
+          "emittedSHA256": "14bb9067f23362632e9051667206993072ba210ad120375c0365d1698ed67fef",
+          "sourceSHA256": "14bb9067f23362632e9051667206993072ba210ad120375c0365d1698ed67fef"
+        },
+        "go.mod": {
+          "emittedSHA256": "0a6b90c8de6c1dbfe524517854e873b40edadfaa2e3907535739bf9a68311800",
+          "sourceSHA256": "068766e2e7d10911cdf834e9e0021c7376e51ae040a35b23b8c550a81a767366"
+        },
+        "src/main.go": {
+          "emittedSHA256": "387fbea6de7a8871eb854fe938733b10b8fdaa08fbd9dda595710368adb4f653",
+          "sourceSHA256": "4a22ea171e0edacb8ba096ef363bc3e3dd2263a956cd4abb032e78c4ca15c4b1"
+        },
+        "teaql-i18n.json": {
+          "emittedSHA256": "5889c927e080bee4d1ca1e881ed529a63c09a99f56907974a9b7513a77ccec08",
+          "sourceSHA256": "5889c927e080bee4d1ca1e881ed529a63c09a99f56907974a9b7513a77ccec08"
+        }
+      },
+      "scope": "golang-app-console"
+    },
+    "examples/basic/golang-lib-core": {
+      "emitted": {
+        "e.go": "3170f80123b0a1604909144bce3cacb553505125a57d6a9c1fc7f355beee4356",
+        "entity_json.go": "9a66f8f8b99047dd8d00073eadaf5a177c668ed3baaa0b0043592cb1aa8ad44e",
+        "internal/expressiongraph/graph.go": "a4a257e79cde227d16064d3aafe2c5651fcdc5c16b258d6c06a2f080c5ebf9eb",
+        "internal/generatedjson/model.go": "764ecabf345ffdcb77f4a2ac575bdcbf4e986e8375fe8d410959b3bc88d57a2d",
+        "internal/generatedsearch/search_models.go": "4f75046245a6697a3534eeb242ee9a46927fc8bd9dabfa99f94511d082dbfda8",
+        "lib.go": "29a916de410a7744b422dea4d3d12eb38ddcd1c18ed886a22251ea3faf220960",
+        "platform/behavior.go": "a2bf9efebdfc883eb0e6457f2f79646f578212889cf9a1fd20f91f0a1a1be5a8",
+        "platform/checker.go": "ae95114ab80d2d5e2793f9392cf55f54a5c9fd68401a6a24946d7a8f4368a1bd",
+        "platform/entity.go": "e278af4903e4dc08cccd4768b4ebb3d7e3e776df370a8cd5e20b4389c170c1a0",
+        "platform/expression.go": "3e5529ba31a7a7dcd7bbf8bfb95588d62c3fb110d4fc075687b5cfc4c7100bc2",
+        "platform/request.go": "94beac4ae55fcff47f1ac63c8f069cc6ba76f13c505c7719586727ddd31156fa",
+        "purchase_order/behavior.go": "7f70d05c8f7879720a1a76ccd405684fedefae895aba6e9fbf1371137968a8f7",
+        "purchase_order/checker.go": "1c2bb40949d6a04e92ac1dba63c681727447a2b7027c7b7c50b83609eef39b90",
+        "purchase_order/entity.go": "0f0a6467d55a18de458d92e92e6837454464ffb62a57bafb97d91edfb9df52ce",
+        "purchase_order/expression.go": "44e17553f005c46a02db5e7b67c180de68167747a44dcf419542b7cb6a2ff64d",
+        "purchase_order/request.go": "62ee8e1693c49a53484b3d3d499bde1f84e3ea8e66ed0596f9fc5262478f029b",
+        "q.go": "a96d1a5e76ed96724b771833d977e03d18c72634d190ce7def7b1487cebcc347",
+        "runtime.go": "fffeed1d3d8d30fccb485d280959747c660065b0e08016f2a29a8b48a7d9c797",
+        "teaql/checker-model.json": "aa8be15a54103b217c9b393d4377060df10e1c156037a19b2a42703f61fb3bca",
+        "teaql/model-provenance.json": "b484f20ab99ae7212a07bbf080fcefa52cb46fe2886d8ea284a88a9c2e75b0ae"
+      },
+      "model": "examples/basic/model.xml",
+      "modelEntrypoint": "model.xml",
+      "modelSHA256": "163ae2b34d976cb2c4cfbb1816c401e97ba848b965d550bfc01b39df06b7c65f",
+      "provenance": {
+        "generatorVersion": "783ff0d8",
+        "modelUuid": null,
+        "revisionHash": "sha256:849e6a30e71ac12c832d34503996dc0e91184af5a43bbc7bb1c7b970949f6e3e",
+        "schemaVersion": 1
+      },
+      "retainedWorkspaceFiles": {
+        "go.mod": {
+          "emittedSHA256": "4840d368639e2c1dfb9601f425717fd1a39edc7da3200e881a631efca7ad300f",
+          "sourceSHA256": "4840d368639e2c1dfb9601f425717fd1a39edc7da3200e881a631efca7ad300f"
+        }
+      },
+      "scope": "golang-lib-core"
+    },
+    "examples/business-id/golang-app-console": {
+      "emitted": {
+        "teaql/checker-model.json": "514e10212e125b57197488aee5bcbcd9274cced80a6e779721c29172a0659f99",
+        "teaql/model-provenance.json": "057f7e01cb642d4b53e9a867d781dd74152aa2bf69d451e72373239594abb22a"
+      },
+      "model": "examples/business-id/model.xml",
+      "modelEntrypoint": "model.xml",
+      "modelSHA256": "04eb9dcc3062ceae19a3de676d89d9ad8647fb0d691f3ad653b6ba4462904c71",
+      "provenance": {
+        "generatorVersion": "783ff0d8",
+        "modelUuid": null,
+        "revisionHash": "sha256:ae5ea6f908693b88007259e6347336dc7d1a5469b4c3db8e554eec0c27e4e30f",
+        "schemaVersion": 1
+      },
+      "retainedWorkspaceFiles": {
+        ".gitignore": {
+          "emittedSHA256": "48fc3a4590eaf6568ce898f8b1925998d7076eea091d05787063e266e0253e5f",
+          "sourceSHA256": "48fc3a4590eaf6568ce898f8b1925998d7076eea091d05787063e266e0253e5f"
+        },
+        "AGENTS.md": {
+          "emittedSHA256": "2b7c0037de71241ddc0866fc699dbac9cc477280254e211c3d22c54ccf661995",
+          "sourceSHA256": "2b7c0037de71241ddc0866fc699dbac9cc477280254e211c3d22c54ccf661995"
+        },
+        "Makefile": {
+          "emittedSHA256": "cfce38caa8a3c79e8f3f13a409b9504fd8e46b7868eaf4a71c212d62f4045456",
+          "sourceSHA256": "cfce38caa8a3c79e8f3f13a409b9504fd8e46b7868eaf4a71c212d62f4045456"
+        },
+        "README.md": {
+          "emittedSHA256": "ffefbb414b3ade217e7d17ee829fb136fc7ae838e9f31efb638ed2544cc08a49",
+          "sourceSHA256": "ffefbb414b3ade217e7d17ee829fb136fc7ae838e9f31efb638ed2544cc08a49"
+        },
+        "RUNTIME_CUSTOM_GUIDE.md": {
+          "emittedSHA256": "8bd5f289e01d719ebc1c38cbd875f1fc7a775c352017f7ce9839ecd51fff6914",
+          "sourceSHA256": "8bd5f289e01d719ebc1c38cbd875f1fc7a775c352017f7ce9839ecd51fff6914"
+        },
+        "STANDARD_TELEMETRY.md": {
+          "emittedSHA256": "442314d6169163b75a0f8c14afb21d87ceef35656fab948a1b786a3bfcef87e0",
+          "sourceSHA256": "442314d6169163b75a0f8c14afb21d87ceef35656fab948a1b786a3bfcef87e0"
+        },
+        "TOOL_API_GUIDE.md": {
+          "emittedSHA256": "52db11bf0422352b5ead81321759e50ccce67e009a3f552881b880401f443fa4",
+          "sourceSHA256": "52db11bf0422352b5ead81321759e50ccce67e009a3f552881b880401f443fa4"
+        },
+        "go.mod": {
+          "emittedSHA256": "2ae573be03bf0d332ca532fcfa3b04848d43aac4a3fa982535c6860f664bea09",
+          "sourceSHA256": "2884ce7a5a00209c8d7e5399a7c74853c9d865e6366a8af15afdcaeaf80817e0"
+        },
+        "src/main.go": {
+          "emittedSHA256": "92cc9101a71375529bc6ce61308355cfc206a83f64dc159cd4b9d085573ad84e",
+          "sourceSHA256": "30f7c9b9da0adc1ca00907c79eaeac37a10cc8c0a045dc9e3bc893db5e233e77"
+        },
+        "teaql-i18n.json": {
+          "emittedSHA256": "6c1af4fb7d421f2a554c1b52077f9fbc736d5e17623c3305b20a0d030672937f",
+          "sourceSHA256": "6c1af4fb7d421f2a554c1b52077f9fbc736d5e17623c3305b20a0d030672937f"
+        }
+      },
+      "scope": "golang-app-console"
+    },
+    "examples/business-id/golang-lib-core": {
+      "emitted": {
+        "e.go": "acda8e9ae679735d56ab2a212c55effd023f887dd510a8915add7d474c62d64b",
+        "entity_json.go": "e5d24a54e23c094af10993ef62dd3fe60f3a73098f9693d195c14e13d95f324b",
+        "internal/expressiongraph/graph.go": "0ff099cbb4efd06dcb3ab794efb52f3e12cb18a8df13418546ab3151fe3ca281",
+        "internal/generatedjson/model.go": "b6e2567c36ce608a8a147fdf7d3fcf7aaf86c0937eb47fc6238f1d69e73f572d",
+        "internal/generatedsearch/search_models.go": "66ccacb8fc7df950713037ebcdde641d2bc2082d3e20e7a8f1510d465e5ce27d",
+        "lib.go": "16ef264ef005beb4cbd97a3aa19d3f6e9770f5aa7c4a94dfcdf4232019784d20",
+        "platform/behavior.go": "a2bf9efebdfc883eb0e6457f2f79646f578212889cf9a1fd20f91f0a1a1be5a8",
+        "platform/checker.go": "ae95114ab80d2d5e2793f9392cf55f54a5c9fd68401a6a24946d7a8f4368a1bd",
+        "platform/entity.go": "36aad2cd15e82aee510b447e0c25656aa2a95ed735cd217cc454878dbf94c516",
+        "platform/expression.go": "8460e513ee8ea7f90f9072168308d714f677855be1a0adc9b8e51f75838648dc",
+        "platform/request.go": "e77328aad6c39e67138e97710599143763d6f3ad852a7f3fa2055eed3c909c20",
+        "purchase_order/behavior.go": "7f70d05c8f7879720a1a76ccd405684fedefae895aba6e9fbf1371137968a8f7",
+        "purchase_order/checker.go": "1c2bb40949d6a04e92ac1dba63c681727447a2b7027c7b7c50b83609eef39b90",
+        "purchase_order/entity.go": "9d5b018b7bb29af50c4af9c21f7d283e9dce4864f544e7acf45b7baee65dd955",
+        "purchase_order/expression.go": "68baa60fb5de94e6b20557cd4624c4ce709f7076665930eb333dca585a69bbd1",
+        "purchase_order/request.go": "51c4ac7968e6c4309bd6009e6da5a8293f3925c181151592fa5d88461e4b1701",
+        "q.go": "1a05d746b8e90e4bed6796ca99ace1057051f91e904a646f5213bf10c2672c9a",
+        "runtime.go": "78b382fb06abc45692243526a24193f0adeb3e78b2e0757523f60158caccfb29",
+        "teaql/checker-model.json": "514e10212e125b57197488aee5bcbcd9274cced80a6e779721c29172a0659f99",
+        "teaql/model-provenance.json": "057f7e01cb642d4b53e9a867d781dd74152aa2bf69d451e72373239594abb22a"
+      },
+      "model": "examples/business-id/model.xml",
+      "modelEntrypoint": "model.xml",
+      "modelSHA256": "04eb9dcc3062ceae19a3de676d89d9ad8647fb0d691f3ad653b6ba4462904c71",
+      "provenance": {
+        "generatorVersion": "783ff0d8",
+        "modelUuid": null,
+        "revisionHash": "sha256:ae5ea6f908693b88007259e6347336dc7d1a5469b4c3db8e554eec0c27e4e30f",
+        "schemaVersion": 1
+      },
+      "retainedWorkspaceFiles": {
+        "go.mod": {
+          "emittedSHA256": "df3dbc95d6d943e08da9f9e3dd7695506202e1b1912580757038649b2967905b",
+          "sourceSHA256": "df3dbc95d6d943e08da9f9e3dd7695506202e1b1912580757038649b2967905b"
+        }
+      },
+      "scope": "golang-lib-core"
+    },
+    "examples/conformance/golang-app-console": {
+      "emitted": {
+        "teaql/checker-model.json": "c9f54577d9f0b3b467449c507c4ee9402afb6089858624aa8e5cfddacaecfe73",
+        "teaql/model-provenance.json": "3b6c48164a41d047adc9d684bc259b71a6c18e6fa9fe70aeae067b520cc75688"
+      },
+      "model": "examples/conformance/model.xml",
+      "modelEntrypoint": "model.xml",
+      "modelSHA256": "0a59f66db2487fdd0430087dd5985ae780225c088ad800679cb57c593c6bcee7",
+      "provenance": {
+        "generatorVersion": "783ff0d8",
+        "modelUuid": null,
+        "revisionHash": "sha256:15e3876863021b944cb4a7d74ae399afca20e12d724328cf21ae9805289b83d5",
+        "schemaVersion": 1
+      },
+      "retainedWorkspaceFiles": {
+        ".gitignore": {
+          "emittedSHA256": "48fc3a4590eaf6568ce898f8b1925998d7076eea091d05787063e266e0253e5f",
+          "sourceSHA256": "48fc3a4590eaf6568ce898f8b1925998d7076eea091d05787063e266e0253e5f"
+        },
+        "AGENTS.md": {
+          "emittedSHA256": "d1148aa82ea0b0dfd5a87c22ae48ea032e29a43e85b269e866dbfaae8df0eae5",
+          "sourceSHA256": "d1148aa82ea0b0dfd5a87c22ae48ea032e29a43e85b269e866dbfaae8df0eae5"
+        },
+        "Makefile": {
+          "emittedSHA256": "cfce38caa8a3c79e8f3f13a409b9504fd8e46b7868eaf4a71c212d62f4045456",
+          "sourceSHA256": "cfce38caa8a3c79e8f3f13a409b9504fd8e46b7868eaf4a71c212d62f4045456"
+        },
+        "README.md": {
+          "emittedSHA256": "5de6abd65a318a2ab412f99c3b848f77b7a90970382d678ab4080f4da1bf6d27",
+          "sourceSHA256": "5de6abd65a318a2ab412f99c3b848f77b7a90970382d678ab4080f4da1bf6d27"
+        },
+        "RUNTIME_CUSTOM_GUIDE.md": {
+          "emittedSHA256": "c90ca05f392c6a6090515b654eae63aa7e7ac380f89fad8f12c06d179ef5ec39",
+          "sourceSHA256": "c90ca05f392c6a6090515b654eae63aa7e7ac380f89fad8f12c06d179ef5ec39"
+        },
+        "STANDARD_TELEMETRY.md": {
+          "emittedSHA256": "442314d6169163b75a0f8c14afb21d87ceef35656fab948a1b786a3bfcef87e0",
+          "sourceSHA256": "442314d6169163b75a0f8c14afb21d87ceef35656fab948a1b786a3bfcef87e0"
+        },
+        "TOOL_API_GUIDE.md": {
+          "emittedSHA256": "29baa8c92cb3103380e3688fed6ba5f6bce8934bde4493180c02d720e9c0d839",
+          "sourceSHA256": "29baa8c92cb3103380e3688fed6ba5f6bce8934bde4493180c02d720e9c0d839"
+        },
+        "go.mod": {
+          "emittedSHA256": "9e7474c9f5d0397cd25c503e5644dfa999b68e7f8e754e456461e2f02ec55845",
+          "sourceSHA256": "094d70145047cd6151e960e0a155e1d493fbe2781dcca1b4a2c132481f187931"
+        },
+        "src/main.go": {
+          "emittedSHA256": "c6fb4827bb25ad36639fa1839279813eadffcb91bd5c104f4ecc05fe4528556a",
+          "sourceSHA256": "ebf0c248ed62a51e8be072a8e70e883029f6a59cee5bae820a11b6b995fe513a"
+        },
+        "teaql-i18n.json": {
+          "emittedSHA256": "fa0ea9576dccfb6ef4e940b00b53abb843ee492741e98da5001e6ea2ad79b2cb",
+          "sourceSHA256": "fa0ea9576dccfb6ef4e940b00b53abb843ee492741e98da5001e6ea2ad79b2cb"
+        }
+      },
+      "scope": "golang-app-console"
+    },
+    "examples/conformance/golang-lib-core": {
+      "emitted": {
+        "e.go": "6bf3b5f5d17f85e8e6fcfcd3cad089759b68585dea255c3a4b0d68469fd6841c",
+        "entity_json.go": "7c053a2f6345eee97e413df6877d44713620d97ce0a95cc60dce1f59adce5db0",
+        "internal/expressiongraph/graph.go": "8ad20f578a4328bc70fa19a3d1e5caf357d531d19541208847aa5e306893af4c",
+        "internal/generatedjson/model.go": "f157e2497aa56407362997e438989654e436ec8fa5fe34d2949142990690edd1",
+        "internal/generatedsearch/search_models.go": "a11f9779be214c16dbeb974df7c16354fc130a93f308715b6047cfc18a920e86",
+        "lib.go": "04a51a907ef878cc2d7f366167cfed4c52a142d35b4cf5d1c3ec166c5cd89214",
+        "platform/behavior.go": "a2bf9efebdfc883eb0e6457f2f79646f578212889cf9a1fd20f91f0a1a1be5a8",
+        "platform/checker.go": "ae95114ab80d2d5e2793f9392cf55f54a5c9fd68401a6a24946d7a8f4368a1bd",
+        "platform/entity.go": "a429562756c775d83afe2decad80d59d78dbae347ce71b941dd3b567559e7cb9",
+        "platform/expression.go": "b8d04cc78558b664e596f56026be554303d9a5ab5d806b02098994d278fa855b",
+        "platform/request.go": "c6edc742085215b491d694c448d82e2f75bc45daa37ad7e854e3cc817c9e201a",
+        "q.go": "ae64bd9f0aa97df858ac72614523117e063d9b8bcb537eece6006471347b8e3e",
+        "runtime.go": "e0f8cda5856668fa3ff6f60b2a30d1d10f9ec7113540374251af7add13d8dd48",
+        "teaql/checker-model.json": "c9f54577d9f0b3b467449c507c4ee9402afb6089858624aa8e5cfddacaecfe73",
+        "teaql/model-provenance.json": "3b6c48164a41d047adc9d684bc259b71a6c18e6fa9fe70aeae067b520cc75688",
+        "work_item/behavior.go": "2c30ddc5e0fc3ab24930180b779747ac958248b11fdb6cee310166c7471f0ada",
+        "work_item/checker.go": "a9696ef2aa83b222153db63631e74eefaeb4e16d0e4cbb66959b59e44204cc3c",
+        "work_item/entity.go": "1c17d37b5c71675924c38a043f31f2523ed72054d04a0a44f6fb37b5a5045847",
+        "work_item/expression.go": "71b84b9776f19dc2ebdcd4e3697fa423d86b1f2afb9e66c6c33450b5393477b5",
+        "work_item/request.go": "2b113fe3b598f1eaf1d0bc32aa4d9de23ce2e14389375b762e653ada1a1747ae"
+      },
+      "model": "examples/conformance/model.xml",
+      "modelEntrypoint": "model.xml",
+      "modelSHA256": "0a59f66db2487fdd0430087dd5985ae780225c088ad800679cb57c593c6bcee7",
+      "provenance": {
+        "generatorVersion": "783ff0d8",
+        "modelUuid": null,
+        "revisionHash": "sha256:15e3876863021b944cb4a7d74ae399afca20e12d724328cf21ae9805289b83d5",
+        "schemaVersion": 1
+      },
+      "retainedWorkspaceFiles": {
+        "go.mod": {
+          "emittedSHA256": "71527de5733137ba6980c7ea328d3f78334ade18cdf050e3fab8f2044e7f45c0",
+          "sourceSHA256": "71527de5733137ba6980c7ea328d3f78334ade18cdf050e3fab8f2044e7f45c0"
+        }
+      },
+      "scope": "golang-lib-core"
+    },
+    "examples/context-derived/golang-app-console": {
+      "emitted": {
+        "teaql/checker-model.json": "864534402093962b4c977f6cbff6643c0dd5ab71d5bbe1c69e063561c7b57f63",
+        "teaql/model-provenance.json": "b82e242154699127699909d5c062544e0108818af22b34afd88735d451a2981a"
+      },
+      "model": "examples/context-derived/model.xml",
+      "modelEntrypoint": "model.xml",
+      "modelSHA256": "9bb36d7f9d639d04cfe9344e5152ee68e1844a8552538413c16569c6e8df4f8e",
+      "provenance": {
+        "generatorVersion": "783ff0d8",
+        "modelUuid": null,
+        "revisionHash": "sha256:6b56c7731c396cfbe063dab00be61c651b6862ec05b1cd02b641ddbd8f4cfa30",
+        "schemaVersion": 1
+      },
+      "retainedWorkspaceFiles": {
+        ".gitignore": {
+          "emittedSHA256": "48fc3a4590eaf6568ce898f8b1925998d7076eea091d05787063e266e0253e5f",
+          "sourceSHA256": "48fc3a4590eaf6568ce898f8b1925998d7076eea091d05787063e266e0253e5f"
+        },
+        "AGENTS.md": {
+          "emittedSHA256": "94d004fdb571472c1f81eb10d215f3d35ebb7fda9fc9394720cb988f21b807da",
+          "sourceSHA256": "94d004fdb571472c1f81eb10d215f3d35ebb7fda9fc9394720cb988f21b807da"
+        },
+        "Makefile": {
+          "emittedSHA256": "cfce38caa8a3c79e8f3f13a409b9504fd8e46b7868eaf4a71c212d62f4045456",
+          "sourceSHA256": "cfce38caa8a3c79e8f3f13a409b9504fd8e46b7868eaf4a71c212d62f4045456"
+        },
+        "README.md": {
+          "emittedSHA256": "7cced8e387a34235c63df0c12ab8ebebcd79ffe61b960bd327f0f7e373dd4361",
+          "sourceSHA256": "7cced8e387a34235c63df0c12ab8ebebcd79ffe61b960bd327f0f7e373dd4361"
+        },
+        "RUNTIME_CUSTOM_GUIDE.md": {
+          "emittedSHA256": "dfa6d78d75237fc1d1e20de628e57f0b983d5a372dc26af3d5d14b799d018fed",
+          "sourceSHA256": "dfa6d78d75237fc1d1e20de628e57f0b983d5a372dc26af3d5d14b799d018fed"
+        },
+        "STANDARD_TELEMETRY.md": {
+          "emittedSHA256": "442314d6169163b75a0f8c14afb21d87ceef35656fab948a1b786a3bfcef87e0",
+          "sourceSHA256": "442314d6169163b75a0f8c14afb21d87ceef35656fab948a1b786a3bfcef87e0"
+        },
+        "TOOL_API_GUIDE.md": {
+          "emittedSHA256": "c95154f73f371fe1beff3b81a154c4e7b5b541846c87d36bd25d76dcf187267f",
+          "sourceSHA256": "c95154f73f371fe1beff3b81a154c4e7b5b541846c87d36bd25d76dcf187267f"
+        },
+        "go.mod": {
+          "emittedSHA256": "a3e60beb98e5e92e3919ce80fba8e55ef2c4021092444f482333ffb69b649846",
+          "sourceSHA256": "e1f24401b5aac0e1380bfcebe099d2fd938a930d54608425380d56a48597f46a"
+        },
+        "src/main.go": {
+          "emittedSHA256": "1e7a9dde477459a4f0f5a9980f15ce2a0e9f880da91ec19cdd5c3eb12b0bae2d",
+          "sourceSHA256": "1e7a9dde477459a4f0f5a9980f15ce2a0e9f880da91ec19cdd5c3eb12b0bae2d"
+        },
+        "teaql-i18n.json": {
+          "emittedSHA256": "872f2be4fb4df7d76c732d627ae016b07cb39591ef833169277c67db4ec726e8",
+          "sourceSHA256": "872f2be4fb4df7d76c732d627ae016b07cb39591ef833169277c67db4ec726e8"
+        }
+      },
+      "scope": "golang-app-console"
+    },
+    "examples/context-derived/golang-lib-core": {
+      "emitted": {
+        "catalog/behavior.go": "3d06e6c6d083269757d4de750dec8f5c814dce12c1531bfc1224a71b81e06d38",
+        "catalog/checker.go": "0972a48852e4f71474fc4bcee77b3cf9816c6f31e2cedb8545eb70780e8f837a",
+        "catalog/entity.go": "67798c086b248970e1c89925526a59c7979e84605a380bc9557c920db1ffe0c6",
+        "catalog/expression.go": "5149f0c29085f565edd4ec6124751520653eae0a6025871f7b7d669e557b949b",
+        "catalog/request.go": "eddf5fa80ddcf073bd5f2d8b84bd8d678f8d2e513dd62d802c7a7ca1e9bb27e0",
+        "e.go": "65ccb01d67a24d6f9d3379953533fd31e409ab2884fa7c98a2d60c1d1898e8b0",
+        "entity_json.go": "7a0c3fe9276e94b0393c8cfa4e2d299baaf06f625e6cd8ac7bba69b5c28ca66f",
+        "entry/behavior.go": "cc244af921cd66d01063bb232fe520fb89a3ccf25b121ddc4e174d2d3677e30d",
+        "entry/checker.go": "2999fac12938dd86397a9a79861ecb4a32a4baaea9325081068e7411c0dfdbe0",
+        "entry/entity.go": "d1c0ff301590452c9158984d431900c3793bdfc430cecaee2ab01b0d5e105a7f",
+        "entry/expression.go": "5180d29d2735df695c1dcc49b27e1e58287a5dd31e6e286b5f4e3c50375aac6a",
+        "entry/request.go": "17e0733bff584a354e2fedfcb2264d2bb62ec9e5be665e40866278ab2ce7b4e6",
+        "internal/expressiongraph/graph.go": "7f7fcddb1513a6e4a3f51dd1278f10a532cbbfdc5cce9c753daf2333bfdaf8e0",
+        "internal/generatedjson/model.go": "44e6e199b2ab6c031d263bf94e6a3d03361cb3b9ea97a44f6146c05efa4b0078",
+        "internal/generatedsearch/search_models.go": "8bd32cbb54262441eb761b5bfbb2e3c08937c6939883a2c2f883b3b2bc7d9023",
+        "lib.go": "7dfb22b797225dd9d1d551348295cb849dd7b9c37fd60d06d6d5e981d1bfa639",
+        "q.go": "71b4c3f2e778dfa1f37523ef0fd967bd888d250cc2706c7cbe0a0a41c13907d6",
+        "runtime.go": "6724571aecfacf6f910ea02baea31ef0900136cb334144b011d9911495fe226e",
+        "teaql/checker-model.json": "864534402093962b4c977f6cbff6643c0dd5ab71d5bbe1c69e063561c7b57f63",
+        "teaql/model-provenance.json": "b82e242154699127699909d5c062544e0108818af22b34afd88735d451a2981a"
+      },
+      "model": "examples/context-derived/model.xml",
+      "modelEntrypoint": "model.xml",
+      "modelSHA256": "9bb36d7f9d639d04cfe9344e5152ee68e1844a8552538413c16569c6e8df4f8e",
+      "provenance": {
+        "generatorVersion": "783ff0d8",
+        "modelUuid": null,
+        "revisionHash": "sha256:6b56c7731c396cfbe063dab00be61c651b6862ec05b1cd02b641ddbd8f4cfa30",
+        "schemaVersion": 1
+      },
+      "retainedWorkspaceFiles": {
+        "go.mod": {
+          "emittedSHA256": "140f8032111e636819040e3ce41f1d86a80f82fc432ef6068e7a936b4e1f683d",
+          "sourceSHA256": "140f8032111e636819040e3ce41f1d86a80f82fc432ef6068e7a936b4e1f683d"
+        }
+      },
+      "scope": "golang-lib-core"
+    },
+    "examples/expression-profiles/golang-app-console": {
+      "emitted": {
+        "teaql/checker-model.json": "f6340a6c45a640efc09656df4ac4831cfeb56ee1995bedad71731130ce912239",
+        "teaql/model-provenance.json": "4aa80e40e65053d9616d88495dbfd3493f66ef01984e2883a542c3043996a1c0"
+      },
+      "model": "examples/expression-profiles/model.xml",
+      "modelEntrypoint": "model.xml",
+      "modelSHA256": "80efe091edc3c7e43fa0b654cc1fecf65fda6664434b3a3ee8d8676027e70ede",
+      "provenance": {
+        "generatorVersion": "783ff0d8",
+        "modelUuid": null,
+        "revisionHash": "sha256:82928fecf7bfba6e8b5a07dd27bb007e24489b0f739d9e9ceb5dbfcb9bb56357",
+        "schemaVersion": 1
+      },
+      "retainedWorkspaceFiles": {
+        ".gitignore": {
+          "emittedSHA256": "48fc3a4590eaf6568ce898f8b1925998d7076eea091d05787063e266e0253e5f",
+          "sourceSHA256": "48fc3a4590eaf6568ce898f8b1925998d7076eea091d05787063e266e0253e5f"
+        },
+        "AGENTS.md": {
+          "emittedSHA256": "7f4c0dc0122909d027cab0254140a6ef66d1646d0361a234638c79e79b130f17",
+          "sourceSHA256": "7f4c0dc0122909d027cab0254140a6ef66d1646d0361a234638c79e79b130f17"
+        },
+        "Makefile": {
+          "emittedSHA256": "cfce38caa8a3c79e8f3f13a409b9504fd8e46b7868eaf4a71c212d62f4045456",
+          "sourceSHA256": "cfce38caa8a3c79e8f3f13a409b9504fd8e46b7868eaf4a71c212d62f4045456"
+        },
+        "README.md": {
+          "emittedSHA256": "b04d54037e2a9e146e8d2dc335e9f020ad8dbba8459770e57beffb10890d6746",
+          "sourceSHA256": "b04d54037e2a9e146e8d2dc335e9f020ad8dbba8459770e57beffb10890d6746"
+        },
+        "RUNTIME_CUSTOM_GUIDE.md": {
+          "emittedSHA256": "fbf72a0c635035253e6e674da810aeb7984e007fec635965d443ffd26ae50493",
+          "sourceSHA256": "fbf72a0c635035253e6e674da810aeb7984e007fec635965d443ffd26ae50493"
+        },
+        "STANDARD_TELEMETRY.md": {
+          "emittedSHA256": "442314d6169163b75a0f8c14afb21d87ceef35656fab948a1b786a3bfcef87e0",
+          "sourceSHA256": "442314d6169163b75a0f8c14afb21d87ceef35656fab948a1b786a3bfcef87e0"
+        },
+        "TOOL_API_GUIDE.md": {
+          "emittedSHA256": "7059bb4c576175381e7a41ab16a7868a2eb1b2bec7b2a6baac0ff580af81f888",
+          "sourceSHA256": "7059bb4c576175381e7a41ab16a7868a2eb1b2bec7b2a6baac0ff580af81f888"
+        },
+        "go.mod": {
+          "emittedSHA256": "976ecd11745d0ddc072f3a66a749c19f363d25300fe8d88c42e2e907fa9140a2",
+          "sourceSHA256": "976ecd11745d0ddc072f3a66a749c19f363d25300fe8d88c42e2e907fa9140a2"
+        },
+        "src/main.go": {
+          "emittedSHA256": "ad67b09d08341efe253c17a06489eb0a302547be1dbb5c4c961c5eeb9b10c0b3",
+          "sourceSHA256": "f62fc56edde5ce563bbc605298373024386564be9e9dbd84d24222ad9adcde87"
+        },
+        "teaql-i18n.json": {
+          "emittedSHA256": "f8ee2997dfc1784293d9090d19774c7b5ea8335f6cbd8aa05a1bc7d88ae817f9",
+          "sourceSHA256": "f8ee2997dfc1784293d9090d19774c7b5ea8335f6cbd8aa05a1bc7d88ae817f9"
+        }
+      },
+      "scope": "golang-app-console"
+    },
+    "examples/expression-profiles/golang-lib-core": {
+      "emitted": {
+        "dispatch_order/behavior.go": "f09ded43f3f02c379856cfa3298dd897eb61fa3474b82c40392dedde0a140a67",
+        "dispatch_order/checker.go": "a9961170534f62691d9de11ee02065721a2b0022cd20d047a57f26e7ce56da96",
+        "dispatch_order/entity.go": "9302a1ee4bfc37af2e8490a2cf69428d3f24404cbe74ab7c1fbce944fc851adf",
+        "dispatch_order/expression.go": "1be63c89706188b19b21d1939915d560247b0e01c9c570b19c2b7a767525650b",
+        "dispatch_order/request.go": "78d64e8657f5cb14f61e6b8dd79443c7ff11d94728779dafbfb79e4dc7a5edbc",
+        "distribution_center/behavior.go": "c46335984b0058770d0ad744d31b30f5573f066ab46aeb861d6c6ef18ed6b0c3",
+        "distribution_center/checker.go": "b5d2af00c119f5fce2bdf08991a94eeca4c4cad51650841893a112785315f8d8",
+        "distribution_center/entity.go": "ce25278d4d8ec2947037d202ff33092192a4921796d082afbd41989069e7c9c6",
+        "distribution_center/expression.go": "cc61a3384c860046cc00bab43672d414f4df3c03d29c217fb3a2df847b1b3317",
+        "distribution_center/request.go": "739d25d11ea08a390e761a5fae059af376ca2d69764b05e5f5a5ba087f795592",
+        "e.go": "914710f7741bbdbb6a132f846cd397c8f62ed56ce5b52903e3722bbe5122270c",
+        "entity_json.go": "807c8e085a95f534e0a9433af5fee14a79c58d18996c5f4af5eaf89dbeaaea4d",
+        "internal/expressiongraph/graph.go": "869ebdf6a2d2479e5db311e741b67ab2682a8800238a08c115232dfd8f31faea",
+        "internal/generatedjson/model.go": "73d4f9c0fe9099cf6268379ba11739c224bcbcc2c276794e187d86624edf0b54",
+        "internal/generatedsearch/search_models.go": "4c361a8a19404a20b1a95b8212967c411f5dc9285fcf14ee525322e625e6e513",
+        "lib.go": "f47da559112eb0f05c9a2f254db6dce088ce853cedff91e5cdba25f14f938fd6",
+        "q.go": "5e439aad026e86d2c9cf1ed6efc7a2aea8e20a3947ce4f2f1111956cd5753eb2",
+        "runtime.go": "b84ae8f9eeb00fc10e76e9b27d9d7805e131c4742355bf4e283b1cfe61965f04",
+        "teaql/checker-model.json": "f6340a6c45a640efc09656df4ac4831cfeb56ee1995bedad71731130ce912239",
+        "teaql/model-provenance.json": "4aa80e40e65053d9616d88495dbfd3493f66ef01984e2883a542c3043996a1c0"
+      },
+      "model": "examples/expression-profiles/model.xml",
+      "modelEntrypoint": "model.xml",
+      "modelSHA256": "80efe091edc3c7e43fa0b654cc1fecf65fda6664434b3a3ee8d8676027e70ede",
+      "provenance": {
+        "generatorVersion": "783ff0d8",
+        "modelUuid": null,
+        "revisionHash": "sha256:82928fecf7bfba6e8b5a07dd27bb007e24489b0f739d9e9ceb5dbfcb9bb56357",
+        "schemaVersion": 1
+      },
+      "retainedWorkspaceFiles": {
+        "go.mod": {
+          "emittedSHA256": "501002ed30725d2601e3aea23ef471f33acefed7fe5e73bba74f1650ee908c19",
+          "sourceSHA256": "501002ed30725d2601e3aea23ef471f33acefed7fe5e73bba74f1650ee908c19"
+        }
+      },
+      "scope": "golang-lib-core"
+    },
+    "examples/expression-profiles/profiles/PascalCase/golang-app-console": {
+      "emitted": {
+        "teaql/checker-model.json": "f6340a6c45a640efc09656df4ac4831cfeb56ee1995bedad71731130ce912239",
+        "teaql/model-provenance.json": "c1a449847044f09be3acd66110b39b4765835dac3718b917487768a6f01fc0f9"
+      },
+      "model": "examples/expression-profiles/profiles/PascalCase/model.xml",
+      "modelEntrypoint": "model.xml",
+      "modelSHA256": "0b74f30c25123ae9e3a65799cfb5a67f46b96f985b4a0dad1a1daa9ed52d80be",
+      "provenance": {
+        "generatorVersion": "783ff0d8",
+        "modelUuid": null,
+        "revisionHash": "sha256:c81061a7486ddff695193e6b0e4922a72da08c3b8d83a49adaf116da8a60eea3",
+        "schemaVersion": 1
+      },
+      "retainedWorkspaceFiles": {
+        ".gitignore": {
+          "emittedSHA256": "48fc3a4590eaf6568ce898f8b1925998d7076eea091d05787063e266e0253e5f",
+          "sourceSHA256": "48fc3a4590eaf6568ce898f8b1925998d7076eea091d05787063e266e0253e5f"
+        },
+        "AGENTS.md": {
+          "emittedSHA256": "7f4c0dc0122909d027cab0254140a6ef66d1646d0361a234638c79e79b130f17",
+          "sourceSHA256": "7f4c0dc0122909d027cab0254140a6ef66d1646d0361a234638c79e79b130f17"
+        },
+        "Makefile": {
+          "emittedSHA256": "cfce38caa8a3c79e8f3f13a409b9504fd8e46b7868eaf4a71c212d62f4045456",
+          "sourceSHA256": "cfce38caa8a3c79e8f3f13a409b9504fd8e46b7868eaf4a71c212d62f4045456"
+        },
+        "README.md": {
+          "emittedSHA256": "b04d54037e2a9e146e8d2dc335e9f020ad8dbba8459770e57beffb10890d6746",
+          "sourceSHA256": "b04d54037e2a9e146e8d2dc335e9f020ad8dbba8459770e57beffb10890d6746"
+        },
+        "RUNTIME_CUSTOM_GUIDE.md": {
+          "emittedSHA256": "fbf72a0c635035253e6e674da810aeb7984e007fec635965d443ffd26ae50493",
+          "sourceSHA256": "fbf72a0c635035253e6e674da810aeb7984e007fec635965d443ffd26ae50493"
+        },
+        "STANDARD_TELEMETRY.md": {
+          "emittedSHA256": "442314d6169163b75a0f8c14afb21d87ceef35656fab948a1b786a3bfcef87e0",
+          "sourceSHA256": "442314d6169163b75a0f8c14afb21d87ceef35656fab948a1b786a3bfcef87e0"
+        },
+        "TOOL_API_GUIDE.md": {
+          "emittedSHA256": "7059bb4c576175381e7a41ab16a7868a2eb1b2bec7b2a6baac0ff580af81f888",
+          "sourceSHA256": "7059bb4c576175381e7a41ab16a7868a2eb1b2bec7b2a6baac0ff580af81f888"
+        },
+        "go.mod": {
+          "emittedSHA256": "976ecd11745d0ddc072f3a66a749c19f363d25300fe8d88c42e2e907fa9140a2",
+          "sourceSHA256": "976ecd11745d0ddc072f3a66a749c19f363d25300fe8d88c42e2e907fa9140a2"
+        },
+        "src/main.go": {
+          "emittedSHA256": "ad67b09d08341efe253c17a06489eb0a302547be1dbb5c4c961c5eeb9b10c0b3",
+          "sourceSHA256": "f62fc56edde5ce563bbc605298373024386564be9e9dbd84d24222ad9adcde87"
+        },
+        "teaql-i18n.json": {
+          "emittedSHA256": "f8ee2997dfc1784293d9090d19774c7b5ea8335f6cbd8aa05a1bc7d88ae817f9",
+          "sourceSHA256": "f8ee2997dfc1784293d9090d19774c7b5ea8335f6cbd8aa05a1bc7d88ae817f9"
+        }
+      },
+      "scope": "golang-app-console"
+    },
+    "examples/expression-profiles/profiles/PascalCase/golang-lib-core": {
+      "emitted": {
+        "dispatch_order/behavior.go": "f09ded43f3f02c379856cfa3298dd897eb61fa3474b82c40392dedde0a140a67",
+        "dispatch_order/checker.go": "a9961170534f62691d9de11ee02065721a2b0022cd20d047a57f26e7ce56da96",
+        "dispatch_order/entity.go": "9302a1ee4bfc37af2e8490a2cf69428d3f24404cbe74ab7c1fbce944fc851adf",
+        "dispatch_order/expression.go": "9fbe2e107f4cabe10dc9b6251e04437a622c74c95cb885b35d5d1ecbe05a23ca",
+        "dispatch_order/request.go": "78d64e8657f5cb14f61e6b8dd79443c7ff11d94728779dafbfb79e4dc7a5edbc",
+        "distribution_center/behavior.go": "c46335984b0058770d0ad744d31b30f5573f066ab46aeb861d6c6ef18ed6b0c3",
+        "distribution_center/checker.go": "b5d2af00c119f5fce2bdf08991a94eeca4c4cad51650841893a112785315f8d8",
+        "distribution_center/entity.go": "ce25278d4d8ec2947037d202ff33092192a4921796d082afbd41989069e7c9c6",
+        "distribution_center/expression.go": "fe26ab17ed51cb24ce25d99c8172e17df0918aaceb2204e129c56b1e0c0bbb4e",
+        "distribution_center/request.go": "739d25d11ea08a390e761a5fae059af376ca2d69764b05e5f5a5ba087f795592",
+        "e.go": "914710f7741bbdbb6a132f846cd397c8f62ed56ce5b52903e3722bbe5122270c",
+        "entity_json.go": "807c8e085a95f534e0a9433af5fee14a79c58d18996c5f4af5eaf89dbeaaea4d",
+        "internal/expressiongraph/graph.go": "869ebdf6a2d2479e5db311e741b67ab2682a8800238a08c115232dfd8f31faea",
+        "internal/generatedjson/model.go": "ceb1df567791e1c467bd510e7f109b07c6023e573c827c7f4252d75ee58770dc",
+        "internal/generatedsearch/search_models.go": "e39b13f706cb860061a555486657c7787b9d46a8cf52ecf619ced2cdf9627568",
+        "lib.go": "f47da559112eb0f05c9a2f254db6dce088ce853cedff91e5cdba25f14f938fd6",
+        "q.go": "5e439aad026e86d2c9cf1ed6efc7a2aea8e20a3947ce4f2f1111956cd5753eb2",
+        "runtime.go": "b84ae8f9eeb00fc10e76e9b27d9d7805e131c4742355bf4e283b1cfe61965f04",
+        "teaql/checker-model.json": "f6340a6c45a640efc09656df4ac4831cfeb56ee1995bedad71731130ce912239",
+        "teaql/model-provenance.json": "c1a449847044f09be3acd66110b39b4765835dac3718b917487768a6f01fc0f9"
+      },
+      "model": "examples/expression-profiles/profiles/PascalCase/model.xml",
+      "modelEntrypoint": "model.xml",
+      "modelSHA256": "0b74f30c25123ae9e3a65799cfb5a67f46b96f985b4a0dad1a1daa9ed52d80be",
+      "provenance": {
+        "generatorVersion": "783ff0d8",
+        "modelUuid": null,
+        "revisionHash": "sha256:c81061a7486ddff695193e6b0e4922a72da08c3b8d83a49adaf116da8a60eea3",
+        "schemaVersion": 1
+      },
+      "retainedWorkspaceFiles": {
+        "go.mod": {
+          "emittedSHA256": "501002ed30725d2601e3aea23ef471f33acefed7fe5e73bba74f1650ee908c19",
+          "sourceSHA256": "501002ed30725d2601e3aea23ef471f33acefed7fe5e73bba74f1650ee908c19"
+        }
+      },
+      "scope": "golang-lib-core"
+    },
+    "examples/expression-profiles/profiles/snake_case/golang-app-console": {
+      "emitted": {
+        "teaql/checker-model.json": "f6340a6c45a640efc09656df4ac4831cfeb56ee1995bedad71731130ce912239",
+        "teaql/model-provenance.json": "22f7bd617c96fae5e9e57340cba113b74db3d487d60230d72579010338ac0edf"
+      },
+      "model": "examples/expression-profiles/profiles/snake_case/model.xml",
+      "modelEntrypoint": "model.xml",
+      "modelSHA256": "9ef6fdfe684a40e0d027e70c4a819a96a2ea9a8bb5d8ccb9132ac783414ecb48",
+      "provenance": {
+        "generatorVersion": "783ff0d8",
+        "modelUuid": null,
+        "revisionHash": "sha256:0bc2e816eee3aa4ef14d859ad86a99481dee20b1f0a20e36105acd0d4bf2f2a4",
+        "schemaVersion": 1
+      },
+      "retainedWorkspaceFiles": {
+        ".gitignore": {
+          "emittedSHA256": "48fc3a4590eaf6568ce898f8b1925998d7076eea091d05787063e266e0253e5f",
+          "sourceSHA256": "48fc3a4590eaf6568ce898f8b1925998d7076eea091d05787063e266e0253e5f"
+        },
+        "AGENTS.md": {
+          "emittedSHA256": "7f4c0dc0122909d027cab0254140a6ef66d1646d0361a234638c79e79b130f17",
+          "sourceSHA256": "7f4c0dc0122909d027cab0254140a6ef66d1646d0361a234638c79e79b130f17"
+        },
+        "Makefile": {
+          "emittedSHA256": "cfce38caa8a3c79e8f3f13a409b9504fd8e46b7868eaf4a71c212d62f4045456",
+          "sourceSHA256": "cfce38caa8a3c79e8f3f13a409b9504fd8e46b7868eaf4a71c212d62f4045456"
+        },
+        "README.md": {
+          "emittedSHA256": "b04d54037e2a9e146e8d2dc335e9f020ad8dbba8459770e57beffb10890d6746",
+          "sourceSHA256": "b04d54037e2a9e146e8d2dc335e9f020ad8dbba8459770e57beffb10890d6746"
+        },
+        "RUNTIME_CUSTOM_GUIDE.md": {
+          "emittedSHA256": "fbf72a0c635035253e6e674da810aeb7984e007fec635965d443ffd26ae50493",
+          "sourceSHA256": "fbf72a0c635035253e6e674da810aeb7984e007fec635965d443ffd26ae50493"
+        },
+        "STANDARD_TELEMETRY.md": {
+          "emittedSHA256": "442314d6169163b75a0f8c14afb21d87ceef35656fab948a1b786a3bfcef87e0",
+          "sourceSHA256": "442314d6169163b75a0f8c14afb21d87ceef35656fab948a1b786a3bfcef87e0"
+        },
+        "TOOL_API_GUIDE.md": {
+          "emittedSHA256": "7059bb4c576175381e7a41ab16a7868a2eb1b2bec7b2a6baac0ff580af81f888",
+          "sourceSHA256": "7059bb4c576175381e7a41ab16a7868a2eb1b2bec7b2a6baac0ff580af81f888"
+        },
+        "go.mod": {
+          "emittedSHA256": "976ecd11745d0ddc072f3a66a749c19f363d25300fe8d88c42e2e907fa9140a2",
+          "sourceSHA256": "976ecd11745d0ddc072f3a66a749c19f363d25300fe8d88c42e2e907fa9140a2"
+        },
+        "src/main.go": {
+          "emittedSHA256": "ad67b09d08341efe253c17a06489eb0a302547be1dbb5c4c961c5eeb9b10c0b3",
+          "sourceSHA256": "f62fc56edde5ce563bbc605298373024386564be9e9dbd84d24222ad9adcde87"
+        },
+        "teaql-i18n.json": {
+          "emittedSHA256": "f8ee2997dfc1784293d9090d19774c7b5ea8335f6cbd8aa05a1bc7d88ae817f9",
+          "sourceSHA256": "f8ee2997dfc1784293d9090d19774c7b5ea8335f6cbd8aa05a1bc7d88ae817f9"
+        }
+      },
+      "scope": "golang-app-console"
+    },
+    "examples/expression-profiles/profiles/snake_case/golang-lib-core": {
+      "emitted": {
+        "dispatch_order/behavior.go": "f09ded43f3f02c379856cfa3298dd897eb61fa3474b82c40392dedde0a140a67",
+        "dispatch_order/checker.go": "a9961170534f62691d9de11ee02065721a2b0022cd20d047a57f26e7ce56da96",
+        "dispatch_order/entity.go": "9302a1ee4bfc37af2e8490a2cf69428d3f24404cbe74ab7c1fbce944fc851adf",
+        "dispatch_order/expression.go": "13574fed67282f9ad6a290d4cc2affbb835231ed5dc72baeec8ccd8ecd8fe6a3",
+        "dispatch_order/request.go": "78d64e8657f5cb14f61e6b8dd79443c7ff11d94728779dafbfb79e4dc7a5edbc",
+        "distribution_center/behavior.go": "c46335984b0058770d0ad744d31b30f5573f066ab46aeb861d6c6ef18ed6b0c3",
+        "distribution_center/checker.go": "b5d2af00c119f5fce2bdf08991a94eeca4c4cad51650841893a112785315f8d8",
+        "distribution_center/entity.go": "ce25278d4d8ec2947037d202ff33092192a4921796d082afbd41989069e7c9c6",
+        "distribution_center/expression.go": "0d5d00c95aae846b4c07b7ce9e95807b8e930164446b5870ef69e2090463beb9",
+        "distribution_center/request.go": "739d25d11ea08a390e761a5fae059af376ca2d69764b05e5f5a5ba087f795592",
+        "e.go": "914710f7741bbdbb6a132f846cd397c8f62ed56ce5b52903e3722bbe5122270c",
+        "entity_json.go": "807c8e085a95f534e0a9433af5fee14a79c58d18996c5f4af5eaf89dbeaaea4d",
+        "internal/expressiongraph/graph.go": "869ebdf6a2d2479e5db311e741b67ab2682a8800238a08c115232dfd8f31faea",
+        "internal/generatedjson/model.go": "41b6023cbf03ca71880633e1d0d7542cc0a0203959caf5f312ff5dbdcefec5cc",
+        "internal/generatedsearch/search_models.go": "4c361a8a19404a20b1a95b8212967c411f5dc9285fcf14ee525322e625e6e513",
+        "lib.go": "f47da559112eb0f05c9a2f254db6dce088ce853cedff91e5cdba25f14f938fd6",
+        "q.go": "5e439aad026e86d2c9cf1ed6efc7a2aea8e20a3947ce4f2f1111956cd5753eb2",
+        "runtime.go": "b84ae8f9eeb00fc10e76e9b27d9d7805e131c4742355bf4e283b1cfe61965f04",
+        "teaql/checker-model.json": "f6340a6c45a640efc09656df4ac4831cfeb56ee1995bedad71731130ce912239",
+        "teaql/model-provenance.json": "22f7bd617c96fae5e9e57340cba113b74db3d487d60230d72579010338ac0edf"
+      },
+      "model": "examples/expression-profiles/profiles/snake_case/model.xml",
+      "modelEntrypoint": "model.xml",
+      "modelSHA256": "9ef6fdfe684a40e0d027e70c4a819a96a2ea9a8bb5d8ccb9132ac783414ecb48",
+      "provenance": {
+        "generatorVersion": "783ff0d8",
+        "modelUuid": null,
+        "revisionHash": "sha256:0bc2e816eee3aa4ef14d859ad86a99481dee20b1f0a20e36105acd0d4bf2f2a4",
+        "schemaVersion": 1
+      },
+      "retainedWorkspaceFiles": {
+        "go.mod": {
+          "emittedSHA256": "501002ed30725d2601e3aea23ef471f33acefed7fe5e73bba74f1650ee908c19",
+          "sourceSHA256": "501002ed30725d2601e3aea23ef471f33acefed7fe5e73bba74f1650ee908c19"
+        }
+      },
+      "scope": "golang-lib-core"
+    },
+    "examples/fix-e-alignment/golang-app-console": {
+      "emitted": {
+        "teaql/checker-model.json": "716f390faabcff0d4694242efc3fb44a0245c3d611b240e346ffdfef54256cea",
+        "teaql/model-provenance.json": "1a1c49e67a579f9fb339acb0913d3cd1a8df2b031f109626673c2b4f3cc6570b"
+      },
+      "model": "examples/fix-e-alignment/model.xml",
+      "modelEntrypoint": "model.xml",
+      "modelSHA256": "a2cf4c907cb084cb0946e993eeba586c8c0701a89fdc4a849808aa743be033b7",
+      "provenance": {
+        "generatorVersion": "783ff0d8",
+        "modelUuid": null,
+        "revisionHash": "sha256:96fba0f3e785fef2792149fa1b226f4ea09863f94d4aff4b31427d4875bf612c",
+        "schemaVersion": 1
+      },
+      "retainedWorkspaceFiles": {
+        ".gitignore": {
+          "emittedSHA256": "48fc3a4590eaf6568ce898f8b1925998d7076eea091d05787063e266e0253e5f",
+          "sourceSHA256": "48fc3a4590eaf6568ce898f8b1925998d7076eea091d05787063e266e0253e5f"
+        },
+        "AGENTS.md": {
+          "emittedSHA256": "6d23d3d143bdbec93e3778a13f1aa9045cb4e380b46e25e68441e9a4249171a2",
+          "sourceSHA256": "6d23d3d143bdbec93e3778a13f1aa9045cb4e380b46e25e68441e9a4249171a2"
+        },
+        "Makefile": {
+          "emittedSHA256": "cfce38caa8a3c79e8f3f13a409b9504fd8e46b7868eaf4a71c212d62f4045456",
+          "sourceSHA256": "cfce38caa8a3c79e8f3f13a409b9504fd8e46b7868eaf4a71c212d62f4045456"
+        },
+        "README.md": {
+          "emittedSHA256": "3c44a68c31406743ad88380feef6942a5c7f4b6b40719f419936bf8075042087",
+          "sourceSHA256": "3c44a68c31406743ad88380feef6942a5c7f4b6b40719f419936bf8075042087"
+        },
+        "RUNTIME_CUSTOM_GUIDE.md": {
+          "emittedSHA256": "d4093372f42dcc221fce31d869d8e2c19195a1ea9a2d24495a954963df1351c3",
+          "sourceSHA256": "d4093372f42dcc221fce31d869d8e2c19195a1ea9a2d24495a954963df1351c3"
+        },
+        "STANDARD_TELEMETRY.md": {
+          "emittedSHA256": "442314d6169163b75a0f8c14afb21d87ceef35656fab948a1b786a3bfcef87e0",
+          "sourceSHA256": "442314d6169163b75a0f8c14afb21d87ceef35656fab948a1b786a3bfcef87e0"
+        },
+        "TOOL_API_GUIDE.md": {
+          "emittedSHA256": "6e41d72346d1e8cb899e7b3f5fc67ba4115e3dd95ed030c1a53fe8d94d12ca76",
+          "sourceSHA256": "6e41d72346d1e8cb899e7b3f5fc67ba4115e3dd95ed030c1a53fe8d94d12ca76"
+        },
+        "go.mod": {
+          "emittedSHA256": "6bcac5e8f51e943477e37d11a0da36c176e573920e076133c0626367a0cc1d11",
+          "sourceSHA256": "e2ee75a8fa94cb06eea690458791caba46bd143f34d5ffb171d40d1225c71e9b"
+        },
+        "src/main.go": {
+          "emittedSHA256": "f5e8130b6dd71e30a1ce64a0f6d01ef9e6da5fdb7bd71ea69d33695a857c84ba",
+          "sourceSHA256": "f5e8130b6dd71e30a1ce64a0f6d01ef9e6da5fdb7bd71ea69d33695a857c84ba"
+        },
+        "teaql-i18n.json": {
+          "emittedSHA256": "c8229ce36ed92393409dd95a5e6a6bd72c9818c95520d5d2e3656ac6f7c0f014",
+          "sourceSHA256": "c8229ce36ed92393409dd95a5e6a6bd72c9818c95520d5d2e3656ac6f7c0f014"
+        }
+      },
+      "scope": "golang-app-console"
+    },
+    "examples/fix-e-alignment/golang-lib-core": {
+      "emitted": {
+        "e.go": "7910bee58509d2c72ff7aafccddd372fe5b617d1bfefe19ffbefe415d59546f4",
+        "entity_json.go": "a2ce8174310c5de1b036c4895d880a89114d4698e0669f92fa690eacad9f3442",
+        "internal/expressiongraph/graph.go": "8dad3f5107d39034fa5973789e589818ddebf62c60550a57f79c95426c1947ad",
+        "internal/generatedjson/model.go": "d373fea48af6f7448fdfd631f434424510e7b1f8a0c4546e443e04c683563aed",
+        "internal/generatedsearch/search_models.go": "684ab28a36b174cf143210391ca062178ad7997454d7f0fc49656f58cd45f730",
+        "lib.go": "72bf51dda2b3dc6e6aa5563a70ec68d27cf5ab641ff47790c465427026e5fc83",
+        "order_item/behavior.go": "0d1c08bf44cc8f2268b5b5c998fae61e24b6a6c07589bb0b49337e5882d9dc6a",
+        "order_item/checker.go": "02e151227137a4eb1df8824d4ba83bcd08057bc88c57beb33f63096a0b0434af",
+        "order_item/entity.go": "b4fb1a45359f29cb82bcce811b3bd59f544c9fbe93cd67b1ed50af79b7102475",
+        "order_item/expression.go": "fbc3e9bd21fe412fb1161705b35de74d7353ae8ff81bc4502bbd8c0d6faba8c7",
+        "order_item/request.go": "6a7a122e6b2f4e68f81fea592077ac672c4c79eb384cde3a135a9bf420da63d9",
+        "purchase_order/behavior.go": "7f70d05c8f7879720a1a76ccd405684fedefae895aba6e9fbf1371137968a8f7",
+        "purchase_order/checker.go": "1c2bb40949d6a04e92ac1dba63c681727447a2b7027c7b7c50b83609eef39b90",
+        "purchase_order/entity.go": "c0b5e3aa18ef1640a1dcd3b93ad3da0841b92d0cbc28fa3a822e698d9bc939b1",
+        "purchase_order/expression.go": "e2ff80e2bd514014eb3a57e63a952a41319d437d3c6d7b701b77ae97afd9d002",
+        "purchase_order/request.go": "3e03662d01781717d6dd12cb43c707bfa102efa6357ad014710fef31388c5dc7",
+        "q.go": "ac0053a2dfbd9a1f823df07e928220ceaa5ffda25d4c44037f4524c53e51b384",
+        "runtime.go": "5d752e54232569df2a36bb0a7a7aaafdb0d7c200d0d99929b279f506005dc1b7",
+        "teaql/checker-model.json": "716f390faabcff0d4694242efc3fb44a0245c3d611b240e346ffdfef54256cea",
+        "teaql/model-provenance.json": "1a1c49e67a579f9fb339acb0913d3cd1a8df2b031f109626673c2b4f3cc6570b",
+        "tenant/behavior.go": "a5320eac18f5b810aab79a1acff3ee45117e7e0a5abb5896592cd00a8ebd095c",
+        "tenant/checker.go": "78409224822eecf82ae5617141b0116f808a6d1bab0b483789b6496a49c013e8",
+        "tenant/entity.go": "71c73d6c6fe080dd551793384dd397cbd339fb7d1a4480d2bebe9506f77fc42d",
+        "tenant/expression.go": "bd382e2c9811cd1d85f1c64401cfdc8f1c14dfe6fceb17b987e059c5ce26a37b",
+        "tenant/request.go": "63023991894fb83e5f38009ae3a7a38d97b0f7da354cc3b1af87c40588ff2a6d"
+      },
+      "model": "examples/fix-e-alignment/model.xml",
+      "modelEntrypoint": "model.xml",
+      "modelSHA256": "a2cf4c907cb084cb0946e993eeba586c8c0701a89fdc4a849808aa743be033b7",
+      "provenance": {
+        "generatorVersion": "783ff0d8",
+        "modelUuid": null,
+        "revisionHash": "sha256:96fba0f3e785fef2792149fa1b226f4ea09863f94d4aff4b31427d4875bf612c",
+        "schemaVersion": 1
+      },
+      "retainedWorkspaceFiles": {
+        "go.mod": {
+          "emittedSHA256": "e87c10668410ea22d7fd2ffef880bfb603ed48ccc138b2218b234cb44c099864",
+          "sourceSHA256": "e87c10668410ea22d7fd2ffef880bfb603ed48ccc138b2218b234cb44c099864"
+        }
+      },
+      "scope": "golang-lib-core"
+    },
+    "examples/mutation-policy/golang-app-console": {
+      "emitted": {
+        "teaql/checker-model.json": "96a803519aea3aad17d53b57787db7b547cb40d693607209ebf2319e81fa888a",
+        "teaql/model-provenance.json": "e231626f598e519a9ec7fd24116e6ea34934e7da4eb3c8bd01ad09a5bd7f89dc"
+      },
+      "model": "examples/mutation-policy/model.xml",
+      "modelEntrypoint": "model.xml",
+      "modelSHA256": "55d87208e2f03d597c194ec4c976a446807f2a004547fec55b5916608a135628",
+      "provenance": {
+        "generatorVersion": "783ff0d8",
+        "modelUuid": null,
+        "revisionHash": "sha256:cb3ade5d48349f16a9173cc89ef043f057b63493bd1876e5a68b91b8871c99a4",
+        "schemaVersion": 1
+      },
+      "retainedWorkspaceFiles": {
+        ".gitignore": {
+          "emittedSHA256": "48fc3a4590eaf6568ce898f8b1925998d7076eea091d05787063e266e0253e5f",
+          "sourceSHA256": "48fc3a4590eaf6568ce898f8b1925998d7076eea091d05787063e266e0253e5f"
+        },
+        "AGENTS.md": {
+          "emittedSHA256": "85927272bc0aad8a9d7b961cef8d43e6b532d6e5124a0ebc41e5d746a0fae5e7",
+          "sourceSHA256": "85927272bc0aad8a9d7b961cef8d43e6b532d6e5124a0ebc41e5d746a0fae5e7"
+        },
+        "Makefile": {
+          "emittedSHA256": "cfce38caa8a3c79e8f3f13a409b9504fd8e46b7868eaf4a71c212d62f4045456",
+          "sourceSHA256": "cfce38caa8a3c79e8f3f13a409b9504fd8e46b7868eaf4a71c212d62f4045456"
+        },
+        "README.md": {
+          "emittedSHA256": "2046a26c18b38dea0dd210612a3a9f39e9bec7a8053016a3ecb1dd7d66557df7",
+          "sourceSHA256": "2046a26c18b38dea0dd210612a3a9f39e9bec7a8053016a3ecb1dd7d66557df7"
+        },
+        "RUNTIME_CUSTOM_GUIDE.md": {
+          "emittedSHA256": "3c4308fa0b4787ee894b5402d932dd992b175dc2783021205a1455576a15f148",
+          "sourceSHA256": "3c4308fa0b4787ee894b5402d932dd992b175dc2783021205a1455576a15f148"
+        },
+        "STANDARD_TELEMETRY.md": {
+          "emittedSHA256": "442314d6169163b75a0f8c14afb21d87ceef35656fab948a1b786a3bfcef87e0",
+          "sourceSHA256": "442314d6169163b75a0f8c14afb21d87ceef35656fab948a1b786a3bfcef87e0"
+        },
+        "TOOL_API_GUIDE.md": {
+          "emittedSHA256": "640a353808575828bf20264868683f5bcd18ed63f0a353dd09f351951999d298",
+          "sourceSHA256": "640a353808575828bf20264868683f5bcd18ed63f0a353dd09f351951999d298"
+        },
+        "go.mod": {
+          "emittedSHA256": "ba5bd303ea6f5736c612594d0422c12f6772db1bb61bcb78adc179b9e5c3e614",
+          "sourceSHA256": "2d85107f0c5a8408a2d77bc6c1bda0addf71945cfaef1842dca0f25d5abfae54"
+        },
+        "src/main.go": {
+          "emittedSHA256": "cd2a35acb2908512275b9bfc10599fe4d8faa913fcd06ac5abf190f43d76d15a",
+          "sourceSHA256": "25e7a2cf5c09932fbea8449e9dfe15e7ce3225365ec83016cc6655e058c8553b"
+        },
+        "teaql-i18n.json": {
+          "emittedSHA256": "b4acee7d90d29cc295800609f9fb64076667d9bd672aea4dd507f5afad7dcb2c",
+          "sourceSHA256": "b4acee7d90d29cc295800609f9fb64076667d9bd672aea4dd507f5afad7dcb2c"
+        }
+      },
+      "scope": "golang-app-console"
+    },
+    "examples/mutation-policy/golang-lib-core": {
+      "emitted": {
+        "customer/behavior.go": "feb6fcbd025ab8d3f85293f3ec75fd63b30c87a3abd4143f2327d36b592f6a44",
+        "customer/checker.go": "003db818e57763e609fb670b182a2de387efb351d42a405d2a19d1ef442b186b",
+        "customer/entity.go": "8122a6bda7b628141eb8c49f7ca29bbe5d0417ee41ab902afb7db908ec26705f",
+        "customer/expression.go": "424af58a6565e2c4f0e1b3303ff2ba5a247780a26142385b1a4ade249ced5eb8",
+        "customer/request.go": "12b2b06cd25db26c45a18efd865bef66eb25ea7fd4e596f95f5123d95ab4679d",
+        "customer_contact/behavior.go": "309dc94448d5bb3c01aba558af2be1fc69ffd0bad78710e2be5485724b205173",
+        "customer_contact/checker.go": "408337d5e0c2188516dd5ecbe5cf4619e0af588ca413458514a66d99b131fb02",
+        "customer_contact/entity.go": "08d4e43406a617cc8dbd0f77e82ebfe6ea1ab32152bfeac65a40229370079e98",
+        "customer_contact/expression.go": "291c71430b806788d67bbb15cfeb45f57fc658c430b28f8ed5fa46a996525c75",
+        "customer_contact/request.go": "452ca9d6a9df50b5768b5791c87249ecc8021d5c48ea3d5d819da6383bd1e132",
+        "e.go": "5019eb21dd6405ca3e9b7e63f34339cc0e90a1643af2515a4594a4100c94bc80",
+        "entity_json.go": "479a3200b57c9ab9523515bbaa5325e9dce4167277404fb89870d59069a31625",
+        "internal/expressiongraph/graph.go": "62fa91c6b656b43299af0a1387e9e55097b40ebf4b4d4624622c6bf66f9b8c66",
+        "internal/generatedjson/model.go": "b5414198985d78933fb5d64b04a858bef8f0a811eb5c8e6ead0a103b68fb6d05",
+        "internal/generatedsearch/search_models.go": "367d1352a19db94c10c724c8adfe1b37db9124ded175de45af6d7083949589cc",
+        "lib.go": "7c87770ba14616af72bcd4da51ae2093efa024f7cbb4d32bb1d204de365f26f6",
+        "platform/behavior.go": "a2bf9efebdfc883eb0e6457f2f79646f578212889cf9a1fd20f91f0a1a1be5a8",
+        "platform/checker.go": "ae95114ab80d2d5e2793f9392cf55f54a5c9fd68401a6a24946d7a8f4368a1bd",
+        "platform/entity.go": "c977d070245c81d9e1d6474d600c37921633c950e8a7891b56097e0a785ef9aa",
+        "platform/expression.go": "348e338def6973e7cda7e3f32d3ff4f065f5438e9f6c458cdab2550fdd422110",
+        "platform/request.go": "27930f46a035b57ec2194df01ff7cf62862f46d294bd919810633d3891fe2f51",
+        "q.go": "fc8e1340c8a408d0358f161fcbfba2d52702801b50b7c273f734a4927857734f",
+        "runtime.go": "1b4682aca0717c903faf0355b37b7e5447a1dcd40cbe56bb3b7cc314dbeaa8a5",
+        "teaql/checker-model.json": "96a803519aea3aad17d53b57787db7b547cb40d693607209ebf2319e81fa888a",
+        "teaql/model-provenance.json": "e231626f598e519a9ec7fd24116e6ea34934e7da4eb3c8bd01ad09a5bd7f89dc"
+      },
+      "model": "examples/mutation-policy/model.xml",
+      "modelEntrypoint": "model.xml",
+      "modelSHA256": "55d87208e2f03d597c194ec4c976a446807f2a004547fec55b5916608a135628",
+      "provenance": {
+        "generatorVersion": "783ff0d8",
+        "modelUuid": null,
+        "revisionHash": "sha256:cb3ade5d48349f16a9173cc89ef043f057b63493bd1876e5a68b91b8871c99a4",
+        "schemaVersion": 1
+      },
+      "retainedWorkspaceFiles": {
+        "go.mod": {
+          "emittedSHA256": "f70bd715b0e323835548ffe01420bf5d133f07c197ac5ade537ebcf0cbcdd7a2",
+          "sourceSHA256": "f70bd715b0e323835548ffe01420bf5d133f07c197ac5ade537ebcf0cbcdd7a2"
+        }
+      },
+      "scope": "golang-lib-core"
+    },
+    "examples/natural-messages/golang-app-console": {
+      "emitted": {
+        "teaql/checker-model.json": "56eb9697682034f18e2fa37aae72b3a7543e3e93f1c03df0c6d65e704f18bae8",
+        "teaql/model-provenance.json": "31eea4a5dc72557853aebc3d45848e002653ea1a1e6b7324ebb28e21065948c5"
+      },
+      "model": "examples/natural-messages/model.xml",
+      "modelEntrypoint": "model.xml",
+      "modelSHA256": "871c28ee976d0fc0e35c21305870cf21f83bd0aed0b758bbf217b51ae65299b1",
+      "provenance": {
+        "generatorVersion": "783ff0d8",
+        "modelUuid": null,
+        "revisionHash": "sha256:094af9dfbcf1af26187ab979cce19104113bc051df7d35ff44a9d9b8832d3cae",
+        "schemaVersion": 1
+      },
+      "retainedWorkspaceFiles": {
+        ".gitignore": {
+          "emittedSHA256": "48fc3a4590eaf6568ce898f8b1925998d7076eea091d05787063e266e0253e5f",
+          "sourceSHA256": "48fc3a4590eaf6568ce898f8b1925998d7076eea091d05787063e266e0253e5f"
+        },
+        "AGENTS.md": {
+          "emittedSHA256": "94d004fdb571472c1f81eb10d215f3d35ebb7fda9fc9394720cb988f21b807da",
+          "sourceSHA256": "94d004fdb571472c1f81eb10d215f3d35ebb7fda9fc9394720cb988f21b807da"
+        },
+        "Makefile": {
+          "emittedSHA256": "cfce38caa8a3c79e8f3f13a409b9504fd8e46b7868eaf4a71c212d62f4045456",
+          "sourceSHA256": "cfce38caa8a3c79e8f3f13a409b9504fd8e46b7868eaf4a71c212d62f4045456"
+        },
+        "README.md": {
+          "emittedSHA256": "c3802e92bcad614fbe78d31adb88f189013d8b80769ebf5c15574695f6677798",
+          "sourceSHA256": "c3802e92bcad614fbe78d31adb88f189013d8b80769ebf5c15574695f6677798"
+        },
+        "RUNTIME_CUSTOM_GUIDE.md": {
+          "emittedSHA256": "96747324d02822ccec77dbc43af54a56a0fb71a2e0380c074678a1dde8ef87e7",
+          "sourceSHA256": "96747324d02822ccec77dbc43af54a56a0fb71a2e0380c074678a1dde8ef87e7"
+        },
+        "STANDARD_TELEMETRY.md": {
+          "emittedSHA256": "442314d6169163b75a0f8c14afb21d87ceef35656fab948a1b786a3bfcef87e0",
+          "sourceSHA256": "442314d6169163b75a0f8c14afb21d87ceef35656fab948a1b786a3bfcef87e0"
+        },
+        "TOOL_API_GUIDE.md": {
+          "emittedSHA256": "951d09c0555c2f6f865cf3b1ea8a1d1868045dff54bb6a8f5e86f05407d5c4d5",
+          "sourceSHA256": "951d09c0555c2f6f865cf3b1ea8a1d1868045dff54bb6a8f5e86f05407d5c4d5"
+        },
+        "go.mod": {
+          "emittedSHA256": "bf8694b3ca20708b3d11152b57e5e4047faf74dd4caa54780fc87be5db74081b",
+          "sourceSHA256": "e0cea5ef2157082138cfb459c0bb814256f098dc58f4c8284b31ccb7db2a703d"
+        },
+        "src/main.go": {
+          "emittedSHA256": "6b5077d3be9623ef73fa044500a53158ddd7824cd6b2cbe2feeda03aafe47b82",
+          "sourceSHA256": "6b5077d3be9623ef73fa044500a53158ddd7824cd6b2cbe2feeda03aafe47b82"
+        },
+        "teaql-i18n.json": {
+          "emittedSHA256": "3142adc809a66c3f45df816e926967273ba7fcf3470c00629fcd6fa8da693f06",
+          "sourceSHA256": "3142adc809a66c3f45df816e926967273ba7fcf3470c00629fcd6fa8da693f06"
+        }
+      },
+      "scope": "golang-app-console"
+    },
+    "examples/natural-messages/golang-lib-core": {
+      "emitted": {
+        "catalog/behavior.go": "3d06e6c6d083269757d4de750dec8f5c814dce12c1531bfc1224a71b81e06d38",
+        "catalog/checker.go": "0972a48852e4f71474fc4bcee77b3cf9816c6f31e2cedb8545eb70780e8f837a",
+        "catalog/entity.go": "f39b00152a124e6dc2f9ddc49e8737cac4a8bcca76dbc8340198bf2cc72383bb",
+        "catalog/expression.go": "c98b7e9d5b12a8e42923fa2b063b3dad9ab8a42df01e073d7ae5a816e682497d",
+        "catalog/request.go": "442d08e47ef5dd4cb2d7e5f5ff9102798da68cac5440483b427cb3159aac65da",
+        "e.go": "1b0768716b10e84f59d6a44a3636957b8bae5e15421c7f73b6c6329bb3681a48",
+        "entity_json.go": "a1165a7505ebac9ae8bc8844182ef013eddb56efd9d8a6c9860b186e80e89784",
+        "entry/behavior.go": "cc244af921cd66d01063bb232fe520fb89a3ccf25b121ddc4e174d2d3677e30d",
+        "entry/checker.go": "2999fac12938dd86397a9a79861ecb4a32a4baaea9325081068e7411c0dfdbe0",
+        "entry/entity.go": "8625711eef97ec1d562554ac5473104ef4dfb592c8c267dd02ce836a1c012b3f",
+        "entry/expression.go": "2fc6590235d2cdb3ad4bc31d6297413943f3600b3822ed575a2c07a92cecc537",
+        "entry/request.go": "dcdd777be1edd4ff03c1687ca7748c6f40b25d598518fe1eea218f398834178b",
+        "internal/expressiongraph/graph.go": "a035deeeac6cbae0aa188f2c972040e90f85e2ed7c25fd51d477d6bb65c71cb3",
+        "internal/generatedjson/model.go": "b795a8e7b11b844663eed3f55553985e737ea85c3764ecd5efa0d66df99290a3",
+        "internal/generatedsearch/search_models.go": "70cd335533a769184786062c187efc50c1aea5b8aa3d8093cbd658044e2198c8",
+        "lib.go": "d51b90c651225d0ec6862b6fddaa47668316a7a6ba41b48c55b9812de31f44bd",
+        "q.go": "f67da9bc73dd3c286e2f93043974d715141358ae77480336f9207410108566c4",
+        "runtime.go": "a56086a2f3a27100f6e46b26c9e5cb7dcfa79a0e42b4ec07c8bfd079b704e3cf",
+        "teaql/checker-model.json": "56eb9697682034f18e2fa37aae72b3a7543e3e93f1c03df0c6d65e704f18bae8",
+        "teaql/model-provenance.json": "31eea4a5dc72557853aebc3d45848e002653ea1a1e6b7324ebb28e21065948c5"
+      },
+      "model": "examples/natural-messages/model.xml",
+      "modelEntrypoint": "model.xml",
+      "modelSHA256": "871c28ee976d0fc0e35c21305870cf21f83bd0aed0b758bbf217b51ae65299b1",
+      "provenance": {
+        "generatorVersion": "783ff0d8",
+        "modelUuid": null,
+        "revisionHash": "sha256:094af9dfbcf1af26187ab979cce19104113bc051df7d35ff44a9d9b8832d3cae",
+        "schemaVersion": 1
+      },
+      "retainedWorkspaceFiles": {
+        "go.mod": {
+          "emittedSHA256": "a82e28fe16d965f83c587162bba7a4da0e281a04bb6b16e8a63a78fcdd7ef5b1",
+          "sourceSHA256": "a82e28fe16d965f83c587162bba7a4da0e281a04bb6b16e8a63a78fcdd7ef5b1"
+        }
+      },
+      "scope": "golang-lib-core"
+    },
+    "examples/object-storage/golang-app-console": {
+      "emitted": {
+        "teaql/checker-model.json": "98aafe0f0f4642ba57e713731661a476c1a78bd52038a1fb79cf5eacac031075",
+        "teaql/model-provenance.json": "cdfaa06a5ae0f03e808477124e7d4d362fba3395d7bade8185d8be323f9f85b1"
+      },
+      "model": "examples/object-storage/model.xml",
+      "modelEntrypoint": "model.xml",
+      "modelSHA256": "1e35ffb88509f292b75620d82996bbc50868c61fd34716f8be010dff7280eafc",
+      "provenance": {
+        "generatorVersion": "783ff0d8",
+        "modelUuid": null,
+        "revisionHash": "sha256:08f94683ccf143a5f5b1e9d39d647b338b410f1ebf18918b9832ca7a75ebbc12",
+        "schemaVersion": 1
+      },
+      "retainedWorkspaceFiles": {
+        ".gitignore": {
+          "emittedSHA256": "48fc3a4590eaf6568ce898f8b1925998d7076eea091d05787063e266e0253e5f",
+          "sourceSHA256": "48fc3a4590eaf6568ce898f8b1925998d7076eea091d05787063e266e0253e5f"
+        },
+        "AGENTS.md": {
+          "emittedSHA256": "c2033c514c5cad32562c845153b64b5c5b98f9fdda1707f3b009813dd62e6cdf",
+          "sourceSHA256": "c2033c514c5cad32562c845153b64b5c5b98f9fdda1707f3b009813dd62e6cdf"
+        },
+        "Makefile": {
+          "emittedSHA256": "cfce38caa8a3c79e8f3f13a409b9504fd8e46b7868eaf4a71c212d62f4045456",
+          "sourceSHA256": "cfce38caa8a3c79e8f3f13a409b9504fd8e46b7868eaf4a71c212d62f4045456"
+        },
+        "README.md": {
+          "emittedSHA256": "74193a841f37bb7be17bc6a0b81aaebc97c118249312bbcc8bd1be370e526963",
+          "sourceSHA256": "74193a841f37bb7be17bc6a0b81aaebc97c118249312bbcc8bd1be370e526963"
+        },
+        "RUNTIME_CUSTOM_GUIDE.md": {
+          "emittedSHA256": "8a984d987588b35c4d6c431d9c342901ea4a8a5501f0f2db295a52dddd8f6042",
+          "sourceSHA256": "8a984d987588b35c4d6c431d9c342901ea4a8a5501f0f2db295a52dddd8f6042"
+        },
+        "STANDARD_TELEMETRY.md": {
+          "emittedSHA256": "442314d6169163b75a0f8c14afb21d87ceef35656fab948a1b786a3bfcef87e0",
+          "sourceSHA256": "442314d6169163b75a0f8c14afb21d87ceef35656fab948a1b786a3bfcef87e0"
+        },
+        "TOOL_API_GUIDE.md": {
+          "emittedSHA256": "67100610ea19991e081e1568914c3f725c38e2c1631396f79166f49aa8a76205",
+          "sourceSHA256": "67100610ea19991e081e1568914c3f725c38e2c1631396f79166f49aa8a76205"
+        },
+        "go.mod": {
+          "emittedSHA256": "73c91827f5b2afe8a49266dbf017b6019f35e100ead6f4cbc32fe8f31b44d266",
+          "sourceSHA256": "da289a45954a871be1ebc75cbec836466d9fd6428ced462e7b789f075f2f9150"
+        },
+        "src/main.go": {
+          "emittedSHA256": "939d0ca7e4b1e2dd24019a80ce0382f60e560a94bb4d8946653702af48c18dc1",
+          "sourceSHA256": "cc71dc7d5e2a23927e41721d16a5055452c01d605a877b8213c6aae871a9075f"
+        },
+        "teaql-i18n.json": {
+          "emittedSHA256": "eeb37cccbb0d33b8881143eae771aa0eff562809ab979e8f3f683f2bb1adea43",
+          "sourceSHA256": "eeb37cccbb0d33b8881143eae771aa0eff562809ab979e8f3f683f2bb1adea43"
+        }
+      },
+      "scope": "golang-app-console"
+    },
+    "examples/object-storage/golang-lib-core": {
+      "emitted": {
+        "commerce_platform/behavior.go": "3b900c94d801b10720936cf327a6d6df64e0dc7cab7316d1bf55b92ad80be78b",
+        "commerce_platform/checker.go": "ad2db2adb1fa49dc3363f64f67c58cdd084fbb6b8acfc5ad21ba21c6c98bfdf5",
+        "commerce_platform/entity.go": "982cf51efa583bd963d9427212457ef2cfe13cac5b8b2086a920cabaf7d74731",
+        "commerce_platform/expression.go": "f3781c2a9cf924f04fd38903e1b989cfdf3490f692d233117d267e122294a5ca",
+        "commerce_platform/request.go": "81e6a98d618c92b0fc4235a645bcf229048f7bd2c0cc070808c3b25b4b6ebbfb",
+        "customer_order/behavior.go": "fc0f1cee247d602428a1dab95836106976e137375b5ba1fa4d295dfbd562612c",
+        "customer_order/checker.go": "6c93030644a04f0f89a2f01b12207189110623051812a081270efe5c9f583dd6",
+        "customer_order/entity.go": "9aeb2e9c9b4983ab104d286f2f9593f9d0fcf139d9664d96cc98ed721f19db9e",
+        "customer_order/expression.go": "1f1f5e75e62b6d6f95be9908ae4e3db3d7fc451112d8ed22c279b434aa921c21",
+        "customer_order/request.go": "c9a8f903d75386cdde7e706b85c443a69543344dee6dd01c463c146e29c11cf4",
+        "e.go": "0250c79b615230e2950eb26489de504322374eeac3b71d8ef6a6ce0791caf8b0",
+        "entity_json.go": "874b810f8e7f72701dec147120424456459588c1b0a77843be6c063aa2edb6a6",
+        "internal/expressiongraph/graph.go": "5b1e18abe034d86840bfa65079a611fb4cd9d5447c10638083d16c3ca1eedcf2",
+        "internal/generatedjson/model.go": "6d444a5431d4b16a96022e84bdf41084e67c7977780817352abf157dddd67088",
+        "internal/generatedsearch/search_models.go": "ca72b8f5813541655e9a4560bfb90bf48622657b6f6061222dac5f0e914cec6d",
+        "lib.go": "b369d1c6f3d8b23de82e245c78ff399a92fb44ce1704d3cbcc481df4bbafd3ce",
+        "order_attachment/behavior.go": "fa9563c111148a80bec35caf93e36ffcf0a0e94534760e84b16ada8d4f0c168b",
+        "order_attachment/checker.go": "45fbd72505edabaf91f2b13ad8359fde857d82ecd5ebe179249b63300ccf28cb",
+        "order_attachment/entity.go": "3307b524aa4681ccec60462b0d97478693667e45ca3c15195ea0278c9cbc45d8",
+        "order_attachment/expression.go": "8342b7d2dd02e2d3c1d2e5c9d3b277e5789ea4b2f6fa7d47854297cae0a66c06",
+        "order_attachment/request.go": "49deb34073fd4e4837f17734a4e123b94c50823a630de89d4f5404979fd369bc",
+        "q.go": "9a46e13b7257d80fc4bfd8d3639e1cba4c2eac8d6c4d4c697e7014d8ad04bbd7",
+        "runtime.go": "5992b608af3d4dc3360af486817cf58bcfb5a7c5c129784ff764f922bbf0c4fc",
+        "teaql/checker-model.json": "98aafe0f0f4642ba57e713731661a476c1a78bd52038a1fb79cf5eacac031075",
+        "teaql/model-provenance.json": "cdfaa06a5ae0f03e808477124e7d4d362fba3395d7bade8185d8be323f9f85b1"
+      },
+      "model": "examples/object-storage/model.xml",
+      "modelEntrypoint": "model.xml",
+      "modelSHA256": "1e35ffb88509f292b75620d82996bbc50868c61fd34716f8be010dff7280eafc",
+      "provenance": {
+        "generatorVersion": "783ff0d8",
+        "modelUuid": null,
+        "revisionHash": "sha256:08f94683ccf143a5f5b1e9d39d647b338b410f1ebf18918b9832ca7a75ebbc12",
+        "schemaVersion": 1
+      },
+      "retainedWorkspaceFiles": {
+        "go.mod": {
+          "emittedSHA256": "33ac4325743ac44d93297db8b29a4c6738496e19cb41b337d3caf762517e89fd",
+          "sourceSHA256": "33ac4325743ac44d93297db8b29a4c6738496e19cb41b337d3caf762517e89fd"
+        }
+      },
+      "scope": "golang-lib-core"
+    },
+    "examples/order-management/golang-app-console": {
+      "emitted": {
+        "teaql/checker-model.json": "e81098aae940ef473aed1baee20c4f194fec0eac7d284443e743984bb1edc492",
+        "teaql/model-provenance.json": "7ffd86f8125eef9a69bb17111ac935a2ae9d4bae0254031cfd87bf30db4e5a2d"
+      },
+      "model": "examples/order-management/model.xml",
+      "modelEntrypoint": "model.xml",
+      "modelSHA256": "a50951aa0df35cac1f4ed64ef0646860941916aed1ec0919b5b299ef4ad6a303",
+      "provenance": {
+        "generatorVersion": "783ff0d8",
+        "modelUuid": null,
+        "revisionHash": "sha256:fa66b9311ecd9adb22b88694333a384a6072ed26430431fc8b0d4eb56ddced1e",
+        "schemaVersion": 1
+      },
+      "retainedWorkspaceFiles": {
+        ".gitignore": {
+          "emittedSHA256": "48fc3a4590eaf6568ce898f8b1925998d7076eea091d05787063e266e0253e5f",
+          "sourceSHA256": "48fc3a4590eaf6568ce898f8b1925998d7076eea091d05787063e266e0253e5f"
+        },
+        "AGENTS.md": {
+          "emittedSHA256": "1e3799f9757fa295ff8be7cd9ed1c8b5e7e9025d506d5f0e69182a572c85dfc9",
+          "sourceSHA256": "1e3799f9757fa295ff8be7cd9ed1c8b5e7e9025d506d5f0e69182a572c85dfc9"
+        },
+        "Makefile": {
+          "emittedSHA256": "cfce38caa8a3c79e8f3f13a409b9504fd8e46b7868eaf4a71c212d62f4045456",
+          "sourceSHA256": "cfce38caa8a3c79e8f3f13a409b9504fd8e46b7868eaf4a71c212d62f4045456"
+        },
+        "README.md": {
+          "emittedSHA256": "40671cf40a100c49387d3d162d8ddc5da0446da6eec36aac06c4bfe40569e4eb",
+          "sourceSHA256": "40671cf40a100c49387d3d162d8ddc5da0446da6eec36aac06c4bfe40569e4eb"
+        },
+        "RUNTIME_CUSTOM_GUIDE.md": {
+          "emittedSHA256": "63c1c33a3b1154d0c217488230c30eed66ca1e6bb22aa5479032c9e89260d886",
+          "sourceSHA256": "63c1c33a3b1154d0c217488230c30eed66ca1e6bb22aa5479032c9e89260d886"
+        },
+        "STANDARD_TELEMETRY.md": {
+          "emittedSHA256": "442314d6169163b75a0f8c14afb21d87ceef35656fab948a1b786a3bfcef87e0",
+          "sourceSHA256": "442314d6169163b75a0f8c14afb21d87ceef35656fab948a1b786a3bfcef87e0"
+        },
+        "TOOL_API_GUIDE.md": {
+          "emittedSHA256": "e412b81819ca83985ce7daabd81d628c2d9d3aaec3b60daae473cd70b64e5b2d",
+          "sourceSHA256": "e412b81819ca83985ce7daabd81d628c2d9d3aaec3b60daae473cd70b64e5b2d"
+        },
+        "go.mod": {
+          "emittedSHA256": "4708d293f98f0ef701ca19c2b278b4b72b0d9e43892fd6c3d39527dd4e799b20",
+          "sourceSHA256": "a97c1cf858409da16669fa7cce43a83f0f18281c72945fcea44b8b1b69607eec"
+        },
+        "src/main.go": {
+          "emittedSHA256": "5560980f78787f077274cb802bf35a7470b80e8fb5c7444ffe9c6a7ad93ea634",
+          "sourceSHA256": "e10bf544272a103f6cd82d18d9664f0dcb9c0b3bb59dca000e20094b8f1ccc2d"
+        },
+        "teaql-i18n.json": {
+          "emittedSHA256": "4ae750ac80a6d6ccf296d8fe61d4db0f3cc4b66a285f8926720dfb87d4a42135",
+          "sourceSHA256": "4ae750ac80a6d6ccf296d8fe61d4db0f3cc4b66a285f8926720dfb87d4a42135"
+        }
+      },
+      "scope": "golang-app-console"
+    },
+    "examples/order-management/golang-lib-core": {
+      "emitted": {
+        "commerce_platform/behavior.go": "3b900c94d801b10720936cf327a6d6df64e0dc7cab7316d1bf55b92ad80be78b",
+        "commerce_platform/checker.go": "ad2db2adb1fa49dc3363f64f67c58cdd084fbb6b8acfc5ad21ba21c6c98bfdf5",
+        "commerce_platform/entity.go": "e4bae3518b7e1a48f4b9367be7a346776271060d5234b308933bc0ed68f8937c",
+        "commerce_platform/expression.go": "de8d946e56da8f42d076c2233c36c5fd49d23b90c80757ec601b7d3f59f99d4e",
+        "commerce_platform/request.go": "e9d0ba144f8ac46699f8bf831a784f3cf07cb382e5fb0536893828a4765be1e5",
+        "customer/behavior.go": "feb6fcbd025ab8d3f85293f3ec75fd63b30c87a3abd4143f2327d36b592f6a44",
+        "customer/checker.go": "003db818e57763e609fb670b182a2de387efb351d42a405d2a19d1ef442b186b",
+        "customer/entity.go": "efcfa64d72951e27b56b1026115ebd49ed8a19d5ac5e42ba31a7591dfea7373b",
+        "customer/expression.go": "8132c982c420f815466dfcf20979e83c9cba45e1aa63c8989f479cf9a09d5170",
+        "customer/request.go": "378ee303cc287f2d871ac96681203a208d5a83a14e061915e7f2ce4b008ff3fb",
+        "customer_order/behavior.go": "fc0f1cee247d602428a1dab95836106976e137375b5ba1fa4d295dfbd562612c",
+        "customer_order/checker.go": "6c93030644a04f0f89a2f01b12207189110623051812a081270efe5c9f583dd6",
+        "customer_order/entity.go": "dd978b3c810003d3f880606268727ce8b74a89ee4a04d9114f32e323258695c2",
+        "customer_order/expression.go": "b7a1f34bcefbaf444b6d82afb96d9ce720f505b54fce2ed00a711e187b8ab277",
+        "customer_order/request.go": "3ae2042194cdaa1c8e4d1c8aa82b7743c4f7cb319f48fc344be5c118fec90a57",
+        "e.go": "df548b884d62c1e0f62cb31542486937e79ac43c000911cbe6f32b409b2d2a06",
+        "entity_json.go": "7abfd436177671e1c2396465a77e3668d477c157d36b9c079761f05ddab1a170",
+        "internal/expressiongraph/graph.go": "eccf881855ec50c60c73523844816c665aa4764ba55e5a3869dce05812f06d02",
+        "internal/generatedjson/model.go": "c563eddc2b05b1a69d0e350b44fcf94110e738a4877f968475f19b17014bc5df",
+        "internal/generatedsearch/search_models.go": "025adb5b86a5fcf5ae82bd20691c995d632a06daae7bedfbf19d2c902fc44ca7",
+        "lib.go": "6bc2d5587ada1b6f224b3de9840954883c96deaea8ffe5c7ddb0db8457d54740",
+        "order_line/behavior.go": "003f3f02385fec50983b1496c670117ce27098c8789db017f0a2c15dea83a537",
+        "order_line/checker.go": "da0b7c2ad55deb170e313b1c1564b76e0800e632ad0c9eae145078f7df524f98",
+        "order_line/entity.go": "3f3e8902cfdac3a43f5dff9f7691ce1378fcd6ce597b21a580bc2f7aee515465",
+        "order_line/expression.go": "adafb4d6f97946651a416ef1634f55de9463cc266ca9987b3a64e1e9d0ac7b83",
+        "order_line/request.go": "db3eb2469ff41e4489632411cc28c04d190e0731512c7d88dd2698a059d1b3b7",
+        "order_search_preset/behavior.go": "4a6649a8233fad7e34fd24af4339cb0076b7e58dda12b09dc7914014af315095",
+        "order_search_preset/checker.go": "9b93139c7f5267f70a68a2d5c3a0ba215d5b3ef649a5587330593a6a77be5e06",
+        "order_search_preset/entity.go": "72f769ad3140ff96f0490a10830f9304fa1d741705cdfd7477ff931f68fdfedb",
+        "order_search_preset/expression.go": "487cd6d969f03ab1cec4886a6b00c3676b924a1092507b424e8383ab9e71c3ea",
+        "order_search_preset/request.go": "b3682d2ddcde98b3a4f88640fefe666feb0b385a21b2251c6a443990a7d67ed5",
+        "order_status/behavior.go": "5b06d271ff1d4717142d9dcb3b7c798943c87884f4e2dd7c19c5fa5cd5506ad3",
+        "order_status/checker.go": "079c517ae72dc93bad8875c8596086f3f7cc56bdc6e3d047ec21810b4210f6f7",
+        "order_status/entity.go": "0c3a0ba1c6b793825250ce84c7eee705113389b11997fcc7083368d162035769",
+        "order_status/expression.go": "837ad6c54de0d8ee999ba240d224793b770f3b99c7fdce127d308921a3e9c95d",
+        "order_status/request.go": "e65c72112de498922a8c84bbe6c91656a873e1717d61ad2d2bd30b40b63ff060",
+        "product/behavior.go": "bd44b82f519fc6ef45c8d6ade67362d37dfdaea44ada8497d79c7e8ad78e26a2",
+        "product/checker.go": "3de44dfe697971ffd64b2156992408e9a174f95b719c202a6a26aaf17fa7365d",
+        "product/entity.go": "affb5415ed0d5d3e7d249daa3b8c3f9b402dcd28c74fcfaa1f3801943f762a94",
+        "product/expression.go": "c7134fc86b87196e89710eba2a27c58a7a45d14943d137f6da55906fe38d008c",
+        "product/request.go": "af2dd77a2ca2f25dc5f60338f0235f57f2bd74cce65e6e810ca91b1a236bfe0d",
+        "q.go": "f94fbd0e817d1ab79d96a804f5a99ca9abcdcb955f1d9a5058f3da1771458961",
+        "runtime.go": "35d310e937bafe51352f7d2b482d497f6d6ecd24cedbad83b910965c287b3adb",
+        "teaql/checker-model.json": "e81098aae940ef473aed1baee20c4f194fec0eac7d284443e743984bb1edc492",
+        "teaql/model-provenance.json": "7ffd86f8125eef9a69bb17111ac935a2ae9d4bae0254031cfd87bf30db4e5a2d"
+      },
+      "model": "examples/order-management/model.xml",
+      "modelEntrypoint": "model.xml",
+      "modelSHA256": "a50951aa0df35cac1f4ed64ef0646860941916aed1ec0919b5b299ef4ad6a303",
+      "provenance": {
+        "generatorVersion": "783ff0d8",
+        "modelUuid": null,
+        "revisionHash": "sha256:fa66b9311ecd9adb22b88694333a384a6072ed26430431fc8b0d4eb56ddced1e",
+        "schemaVersion": 1
+      },
+      "retainedWorkspaceFiles": {
+        "go.mod": {
+          "emittedSHA256": "72e40fbe0aba472916a13c8d7521ccf36d316d17b4245b7e9907ee2bf86dd8e2",
+          "sourceSHA256": "72e40fbe0aba472916a13c8d7521ccf36d316d17b4245b7e9907ee2bf86dd8e2"
+        }
+      },
+      "scope": "golang-lib-core"
+    },
+    "examples/scalar-type-probe/golang-app-console": {
+      "emitted": {
+        "teaql/checker-model.json": "2ca57cb1d0f605186ebfc3ce029a365d19e7ba07cacadeb6c893ad3b8d3019ce",
+        "teaql/model-provenance.json": "44c415ae752e446d758ce7d951e02b985c76a72386f6c03f2f738a39f44cc237"
+      },
+      "model": "examples/scalar-type-probe/freight-quote.xml",
+      "modelEntrypoint": "freight-quote.xml",
+      "modelSHA256": "076fdf926be1a8b71e61cdfaf66b539f54c1ac2182e1f2bc75897dfab52d6d38",
+      "provenance": {
+        "generatorVersion": "783ff0d8",
+        "modelUuid": null,
+        "revisionHash": "sha256:833c5fc594652f4247ab0587040cdcba5da043d91c9d16cb602e28863fe69ca5",
+        "schemaVersion": 1
+      },
+      "retainedWorkspaceFiles": {
+        ".gitignore": {
+          "emittedSHA256": "48fc3a4590eaf6568ce898f8b1925998d7076eea091d05787063e266e0253e5f",
+          "sourceSHA256": "48fc3a4590eaf6568ce898f8b1925998d7076eea091d05787063e266e0253e5f"
+        },
+        "AGENTS.md": {
+          "emittedSHA256": "1be82b8391218c1274939800a7b0dfb0b9a03c8cf7a470e5a81e3345581851ab",
+          "sourceSHA256": "1be82b8391218c1274939800a7b0dfb0b9a03c8cf7a470e5a81e3345581851ab"
+        },
+        "Makefile": {
+          "emittedSHA256": "cfce38caa8a3c79e8f3f13a409b9504fd8e46b7868eaf4a71c212d62f4045456",
+          "sourceSHA256": "cfce38caa8a3c79e8f3f13a409b9504fd8e46b7868eaf4a71c212d62f4045456"
+        },
+        "README.md": {
+          "emittedSHA256": "75c23043669c41136844f04a950425321ac1eeffdad582b2fdc42d9f0a0dc5d7",
+          "sourceSHA256": "75c23043669c41136844f04a950425321ac1eeffdad582b2fdc42d9f0a0dc5d7"
+        },
+        "RUNTIME_CUSTOM_GUIDE.md": {
+          "emittedSHA256": "526f18a58293325864fc33d14a9267fe36b5c70ec591b78b6aa0afb4dd64b5f8",
+          "sourceSHA256": "526f18a58293325864fc33d14a9267fe36b5c70ec591b78b6aa0afb4dd64b5f8"
+        },
+        "STANDARD_TELEMETRY.md": {
+          "emittedSHA256": "442314d6169163b75a0f8c14afb21d87ceef35656fab948a1b786a3bfcef87e0",
+          "sourceSHA256": "442314d6169163b75a0f8c14afb21d87ceef35656fab948a1b786a3bfcef87e0"
+        },
+        "TOOL_API_GUIDE.md": {
+          "emittedSHA256": "12a470de656862f95579d360995db45cfd4f6b4da1d02a2056c0b7b75d0fbd67",
+          "sourceSHA256": "12a470de656862f95579d360995db45cfd4f6b4da1d02a2056c0b7b75d0fbd67"
+        },
+        "go.mod": {
+          "emittedSHA256": "a3f120555bf32c5b09944f1a4c02ee2a191c900ebfe35006ae0d07805edc5d04",
+          "sourceSHA256": "a3f120555bf32c5b09944f1a4c02ee2a191c900ebfe35006ae0d07805edc5d04"
+        },
+        "src/main.go": {
+          "emittedSHA256": "69171e3f5dcbcc7852a3aa507d90ad525a9cf2f599caf3a9005e203656e12520",
+          "sourceSHA256": "569e549fc007cfd22e14fda9b5f08ee6b63cdf207eb2f00e4fb6d3e82764450c"
+        },
+        "teaql-i18n.json": {
+          "emittedSHA256": "29159b1a0cfdb1a194e974f31e13246943003f423421c59c7e80d6188dc9b019",
+          "sourceSHA256": "29159b1a0cfdb1a194e974f31e13246943003f423421c59c7e80d6188dc9b019"
+        }
+      },
+      "scope": "golang-app-console"
+    },
+    "examples/scalar-type-probe/golang-lib-core": {
+      "emitted": {
+        "e.go": "2d0ec272974932afec6ab7a22f7f36e27b0f3a31551feb55a561097b60ec3b90",
+        "entity_json.go": "4e9c443789967e4d318ef95b117a5860ea2d50738e94b639a5ff12f1b8e869db",
+        "freight_quote/behavior.go": "3b33faff0a298071754ecced1e17e48d54fc928215da2f88a5ef7716fddaf44c",
+        "freight_quote/checker.go": "2f315ab11e19ba7ecf72c872e4f18bb448320bdbab388b1fe604699a2aa7ceda",
+        "freight_quote/entity.go": "872a8bdb492582106ae84742ca3ee2a660ef579a43bc334ddf290f5b8cc7b957",
+        "freight_quote/expression.go": "24e4bdbd95538e90d1b9999e7f0f102c0ed38a8f84a4909cd7cbc4fb7c430fa5",
+        "freight_quote/request.go": "acbf5596ffaceb464141f04389d7836931393e92ac99176aa46140c2779f6e59",
+        "internal/expressiongraph/graph.go": "01895b43ec39b31640c5605c423a61bbd7c50f02fe9cc22c5c9e86e01216de0a",
+        "internal/generatedjson/model.go": "7c904b2fa4ad38448b2b1cd01d81b3b8eec2197945454645b148fb324807ea08",
+        "internal/generatedsearch/search_models.go": "10ce2b292062bb949254bb960cdefe437127e8875aa733cff5832e4bfad6796c",
+        "lib.go": "dc8c23e84b77cc41d80f2d0378d7b247b3c40ee1b8c390885fe8e0d99f8bb2d9",
+        "platform/behavior.go": "a2bf9efebdfc883eb0e6457f2f79646f578212889cf9a1fd20f91f0a1a1be5a8",
+        "platform/checker.go": "ae95114ab80d2d5e2793f9392cf55f54a5c9fd68401a6a24946d7a8f4368a1bd",
+        "platform/entity.go": "0851738493923f500d33049c112e9db4a7b17f07bd45c570cac1aed7dfe1d58c",
+        "platform/expression.go": "f870214313ace88adebc2def26018aba06812306c654f3ad01b2252c4db53770",
+        "platform/request.go": "071dd9ea39d68f76d94b1a8e2d66510fc80ff86a5504f4f7d6015b555be9873e",
+        "q.go": "3c73241ff372e2bfb35f0065650781664c1ecc324ab5fcb8ae292cb4ca37afa8",
+        "runtime.go": "1c9d3a0d1faddcacca6d331fa539b525e622dd6cb8caf235b4c7cc5ef4afe8ec",
+        "teaql/checker-model.json": "2ca57cb1d0f605186ebfc3ce029a365d19e7ba07cacadeb6c893ad3b8d3019ce",
+        "teaql/model-provenance.json": "44c415ae752e446d758ce7d951e02b985c76a72386f6c03f2f738a39f44cc237"
+      },
+      "model": "examples/scalar-type-probe/freight-quote.xml",
+      "modelEntrypoint": "freight-quote.xml",
+      "modelSHA256": "076fdf926be1a8b71e61cdfaf66b539f54c1ac2182e1f2bc75897dfab52d6d38",
+      "provenance": {
+        "generatorVersion": "783ff0d8",
+        "modelUuid": null,
+        "revisionHash": "sha256:833c5fc594652f4247ab0587040cdcba5da043d91c9d16cb602e28863fe69ca5",
+        "schemaVersion": 1
+      },
+      "retainedWorkspaceFiles": {
+        "go.mod": {
+          "emittedSHA256": "b81b0a13f442525432d93309690846a32260e8a58a2f5c94f5b70e086093f6da",
+          "sourceSHA256": "b81b0a13f442525432d93309690846a32260e8a58a2f5c94f5b70e086093f6da"
+        }
+      },
+      "scope": "golang-lib-core"
+    },
+    "examples/school-management/golang-app-console": {
+      "emitted": {
+        "teaql/checker-model.json": "d20402b2a81d6497d189de0395c924d04c3d06a2c4eb8e432df61a84ced90b51",
+        "teaql/model-provenance.json": "af9797388c26d87c761cf563608b3edcf3b8639af0fd8bce09e451ef8b63fbed"
+      },
+      "model": "examples/school-management/models/school-model.xml",
+      "modelEntrypoint": "school-model.xml",
+      "modelSHA256": "b5cd06ae44464fc29ed24de82654b47c80f546110496756aa15923cee1c511b4",
+      "provenance": {
+        "generatorVersion": "783ff0d8",
+        "modelUuid": null,
+        "revisionHash": "sha256:5d2fc608b6317e2cbd4c0e4bd58bbe0dba4f7dc60a35e4cccabd1c83a4dfd810",
+        "schemaVersion": 1
+      },
+      "retainedWorkspaceFiles": {
+        ".gitignore": {
+          "emittedSHA256": "48fc3a4590eaf6568ce898f8b1925998d7076eea091d05787063e266e0253e5f",
+          "sourceSHA256": "48fc3a4590eaf6568ce898f8b1925998d7076eea091d05787063e266e0253e5f"
+        },
+        "AGENTS.md": {
+          "emittedSHA256": "e99768bd93170580e4ed5dd612092e5480d75f743827efef9833d08956b726ca",
+          "sourceSHA256": "e99768bd93170580e4ed5dd612092e5480d75f743827efef9833d08956b726ca"
+        },
+        "Makefile": {
+          "emittedSHA256": "cfce38caa8a3c79e8f3f13a409b9504fd8e46b7868eaf4a71c212d62f4045456",
+          "sourceSHA256": "cfce38caa8a3c79e8f3f13a409b9504fd8e46b7868eaf4a71c212d62f4045456"
+        },
+        "README.md": {
+          "emittedSHA256": "91097c505a8fb8452dfa3996f65f2aa86aad8af8633b6781d58abdcf49947683",
+          "sourceSHA256": "91097c505a8fb8452dfa3996f65f2aa86aad8af8633b6781d58abdcf49947683"
+        },
+        "RUNTIME_CUSTOM_GUIDE.md": {
+          "emittedSHA256": "1a5024bb3b8944c2c77b6f8a30b733bd298be3f7d46fc67af5c138240912eb09",
+          "sourceSHA256": "1a5024bb3b8944c2c77b6f8a30b733bd298be3f7d46fc67af5c138240912eb09"
+        },
+        "STANDARD_TELEMETRY.md": {
+          "emittedSHA256": "442314d6169163b75a0f8c14afb21d87ceef35656fab948a1b786a3bfcef87e0",
+          "sourceSHA256": "442314d6169163b75a0f8c14afb21d87ceef35656fab948a1b786a3bfcef87e0"
+        },
+        "TOOL_API_GUIDE.md": {
+          "emittedSHA256": "da125491a6ed7e0a228b0280fea51a1ff4fe0466e0127fc4509976fadc36d468",
+          "sourceSHA256": "da125491a6ed7e0a228b0280fea51a1ff4fe0466e0127fc4509976fadc36d468"
+        },
+        "go.mod": {
+          "emittedSHA256": "5d967804b5e65da10eff16bb465c36ebd9a857fe10019fb3050ed9dfecaea6c6",
+          "sourceSHA256": "cf714b89f3fa26aa5389336b78e8195ae67e3cb17234d53ad69b69ccd349d743"
+        },
+        "src/main.go": {
+          "emittedSHA256": "7fa8b72b28c7af32aba1a65e0a84269f2cb0ecce9b10858e31ffe0b246b1f50f",
+          "sourceSHA256": "d3ee42152f57f9eb04dda1210ddb0da77ea6e9f4f3cea69b4f960c804d9d0696"
+        },
+        "teaql-i18n.json": {
+          "emittedSHA256": "785b10a761a7e3d13b88878bc8702546b19f9bc637d28e76fa780fc79f97ca3d",
+          "sourceSHA256": "785b10a761a7e3d13b88878bc8702546b19f9bc637d28e76fa780fc79f97ca3d"
+        }
+      },
+      "scope": "golang-app-console"
+    },
+    "examples/school-management/golang-lib-core": {
+      "emitted": {
+        "e.go": "4dbf656a5c4fdebe4e877166353cab849a94d21de06967086915cd26b155a435",
+        "entity_json.go": "7b39c65a147e4d1de344d209261e130f34cfd848a13e300df7ce83cd666865a6",
+        "internal/expressiongraph/graph.go": "037dac587eabaa9cf9fd12e0f8af15431d101148b8694b433d5af0a0867bd329",
+        "internal/generatedjson/model.go": "b33aa1f3a994d0d6fef96f217d726f17de47ca488c3445981e3e365a45c5c9aa",
+        "internal/generatedsearch/search_models.go": "a31452e7f781ecbae548883b080afaca0bae9e099486ee87a1c5989228384164",
+        "lib.go": "8d4d2db09bce758d256d63814b47a05922467445e11a2d91fee0daef9cbff5e0",
+        "platform/behavior.go": "a2bf9efebdfc883eb0e6457f2f79646f578212889cf9a1fd20f91f0a1a1be5a8",
+        "platform/checker.go": "ae95114ab80d2d5e2793f9392cf55f54a5c9fd68401a6a24946d7a8f4368a1bd",
+        "platform/entity.go": "990bed1a265be867900aadb1702aed25eaf2ff3f82e87861ceb3a38df9b13d52",
+        "platform/expression.go": "8ff3a8831738474483ede8debb758a959733a79d7bcb42980b53a4547ad5269c",
+        "platform/request.go": "968d5229e6b8dd3724b6a087df6b43a0f9b42dc410981c27cdb84592969f5ab0",
+        "q.go": "53e0fd84b305502c98cd533ffe6280568083b0bfb73d37615756758885f0c975",
+        "runtime.go": "e447a585b17067f223c708c67e96d8d1cdd8ce123016fc3d43b4f7217d2b55a0",
+        "school/behavior.go": "67f8698be5914f10037b8369505c8b792df48e74dbd2cf26fc281ea44254c0e6",
+        "school/checker.go": "7eeb520f1f690e5abb2a56446ad5f919a96839d7709297d0d7887493a906d6df",
+        "school/entity.go": "24be4b3ad892ea8e593b2294c959346c1de347835cab5dfdc3b3337e917e8fe9",
+        "school/expression.go": "1b7684780a9e5286cfeae5d8468f8257039d6d0843e9fd1049e0d4d55e24c748",
+        "school/request.go": "4332ba0eac2e0d30d421d7e0144fa61276addcf1389c65a9d4367b506c3b0ac1",
+        "school_type/behavior.go": "a05e868f84fe6ef03c85c6ea73938887bb3758ff7dea74942ec5ef9d50e2ce28",
+        "school_type/checker.go": "fede55c385b25274234d30c25971ff0f0bb123b83e44784843f0a23d260fe4b6",
+        "school_type/entity.go": "5dddd7a75d77cce5581716e501053c27309a9898b983bdc3b4fb4e36740bb40a",
+        "school_type/expression.go": "d1e5cffeed58408d4c035a9992e2120a7c36261e54eaf99ebe274f0394a279e6",
+        "school_type/request.go": "79e72de0f2825ce99a8df201771fbdff9ae889c9e0a9304ea752a032763befd5",
+        "teaql/checker-model.json": "d20402b2a81d6497d189de0395c924d04c3d06a2c4eb8e432df61a84ced90b51",
+        "teaql/model-provenance.json": "af9797388c26d87c761cf563608b3edcf3b8639af0fd8bce09e451ef8b63fbed"
+      },
+      "model": "examples/school-management/models/school-model.xml",
+      "modelEntrypoint": "school-model.xml",
+      "modelSHA256": "b5cd06ae44464fc29ed24de82654b47c80f546110496756aa15923cee1c511b4",
+      "provenance": {
+        "generatorVersion": "783ff0d8",
+        "modelUuid": null,
+        "revisionHash": "sha256:5d2fc608b6317e2cbd4c0e4bd58bbe0dba4f7dc60a35e4cccabd1c83a4dfd810",
+        "schemaVersion": 1
+      },
+      "retainedWorkspaceFiles": {
+        "go.mod": {
+          "emittedSHA256": "ba54cb5868b4b30910e908e9a9d756563f0a284d6d470147583fab7e36100c38",
+          "sourceSHA256": "ba54cb5868b4b30910e908e9a9d756563f0a284d6d470147583fab7e36100c38"
+        }
+      },
+      "scope": "golang-lib-core"
+    },
+    "examples/security-foundations/golang-app-console": {
+      "emitted": {
+        "teaql/checker-model.json": "b2079b40ef70d9a6405c8606891df67c809fb89982026598200633e24a61559a",
+        "teaql/model-provenance.json": "53aec3bfcde282204c8106af0b9a7dd56cec06559a6ff55d5e06d9bc6f54ccb7"
+      },
+      "model": "examples/security-foundations/model.xml",
+      "modelEntrypoint": "model.xml",
+      "modelSHA256": "4bd3524659417a530665b6bcbfec928ee3e5845f2e96570346193fd64981551a",
+      "provenance": {
+        "generatorVersion": "783ff0d8",
+        "modelUuid": null,
+        "revisionHash": "sha256:fb96f88e8c6c737598d67e52cd0cb49e174286ab83ba418b0a041f42ecd3b4e8",
+        "schemaVersion": 1
+      },
+      "retainedWorkspaceFiles": {
+        ".gitignore": {
+          "emittedSHA256": "48fc3a4590eaf6568ce898f8b1925998d7076eea091d05787063e266e0253e5f",
+          "sourceSHA256": "48fc3a4590eaf6568ce898f8b1925998d7076eea091d05787063e266e0253e5f"
+        },
+        "AGENTS.md": {
+          "emittedSHA256": "27ef448416da6dcaa79597660cb4a13bc2a51eb487a27767ddbf8b62cc9b051a",
+          "sourceSHA256": "27ef448416da6dcaa79597660cb4a13bc2a51eb487a27767ddbf8b62cc9b051a"
+        },
+        "Makefile": {
+          "emittedSHA256": "cfce38caa8a3c79e8f3f13a409b9504fd8e46b7868eaf4a71c212d62f4045456",
+          "sourceSHA256": "cfce38caa8a3c79e8f3f13a409b9504fd8e46b7868eaf4a71c212d62f4045456"
+        },
+        "README.md": {
+          "emittedSHA256": "77734d60c0bc37c96c9c88cbfa9077e048f9516defff62b7e9caf8449a122af9",
+          "sourceSHA256": "77734d60c0bc37c96c9c88cbfa9077e048f9516defff62b7e9caf8449a122af9"
+        },
+        "RUNTIME_CUSTOM_GUIDE.md": {
+          "emittedSHA256": "c17d13810ea3f1f291abb074b316fe66928a68aa8a213b74bee91d19aff52f30",
+          "sourceSHA256": "c17d13810ea3f1f291abb074b316fe66928a68aa8a213b74bee91d19aff52f30"
+        },
+        "STANDARD_TELEMETRY.md": {
+          "emittedSHA256": "442314d6169163b75a0f8c14afb21d87ceef35656fab948a1b786a3bfcef87e0",
+          "sourceSHA256": "442314d6169163b75a0f8c14afb21d87ceef35656fab948a1b786a3bfcef87e0"
+        },
+        "TOOL_API_GUIDE.md": {
+          "emittedSHA256": "bba93c3e18ac026534581bd3336452bc25d95a8c1e7bfbff28e6977a1f1c0f86",
+          "sourceSHA256": "bba93c3e18ac026534581bd3336452bc25d95a8c1e7bfbff28e6977a1f1c0f86"
+        },
+        "go.mod": {
+          "emittedSHA256": "0616fd19c4c9fc5a6980b01749fde936130fb07f58e0f8b3b93c2a054eec1226",
+          "sourceSHA256": "f3ca03dd17b2c0c026590b535b5725c6e19085c2e962ada98a8ea79143a8aca4"
+        },
+        "src/main.go": {
+          "emittedSHA256": "046a199906a331c15e3131f4599b09d69c2bd9eb657ffa16a54b1d7445f903b7",
+          "sourceSHA256": "ee7e219d48a566e45511b02c0e6d425565edf59a8e53b2b299080c8b93233830"
+        },
+        "teaql-i18n.json": {
+          "emittedSHA256": "1fd0388bee97c6c9a9ed936df26d9783e00b61d519efb93f2cc31035cb9c9497",
+          "sourceSHA256": "1fd0388bee97c6c9a9ed936df26d9783e00b61d519efb93f2cc31035cb9c9497"
+        }
+      },
+      "scope": "golang-app-console"
+    },
+    "examples/security-foundations/golang-lib-core": {
+      "emitted": {
+        "customer_order/behavior.go": "fc0f1cee247d602428a1dab95836106976e137375b5ba1fa4d295dfbd562612c",
+        "customer_order/checker.go": "6c93030644a04f0f89a2f01b12207189110623051812a081270efe5c9f583dd6",
+        "customer_order/entity.go": "9623cebec4adb749fc3fb062d2d301c5bcc360c1f6baa286fe3b1cbef203f6af",
+        "customer_order/expression.go": "59cf446ab01ebc454c0e3aa6a08c8420ea50e7db9a84e59962cd2019d2248daf",
+        "customer_order/request.go": "a82fc2606d8faca4065970f53835e1629a4f923061fc23803e1a0c67f04b5007",
+        "customer_profile/behavior.go": "44acc1b4f957138f5ff3911b9cb1bfdc9968a368b5a6ff9bb307edbaf930d3b7",
+        "customer_profile/checker.go": "0b8d21c22f167ab8c38ad543c3b1ac8d1b08b5b26f1cc3cd9d0353fc35f21300",
+        "customer_profile/entity.go": "35eb1921d310a1cd33d572f18b8c8d3aa4a9470cb1f63af2fccdc04edd96977a",
+        "customer_profile/expression.go": "c14752c606236fc1aaae47057f4f4425a939b33dd1ffb0e6d227c554e9d29da5",
+        "customer_profile/request.go": "1ae2b7a7e1fd81de894e35f32c63e6d26e0f39109fe2fa40c21646f7c0aa5f11",
+        "e.go": "a0f21711fd259ed2098a3274408cd52f60239eaf4518699ad705ee64ad3ff03b",
+        "entity_json.go": "fc3efdb07a71b5810844f639d7d559625ad8e61f60d116304be824253b554098",
+        "internal/expressiongraph/graph.go": "979d303343fdec2eb8ec720802e409a8bd1e525469f0074034e30dbeac4daab0",
+        "internal/generatedjson/model.go": "29194f1ce9e14801ea7fa44b6367c00dd576951c08e336b72c5cb28b83e299f2",
+        "internal/generatedsearch/search_models.go": "487d87fb0db7e6d6219f091cad0a69afe0d38e412f53dd9836db133a52c6db6b",
+        "lib.go": "d3076c7e256863871bac2ff873d5e217e4c6dfdde85a5bd0fba65c91174b57d3",
+        "merchant/behavior.go": "0257c009096ea5c886a7a0df10fb38452eac8f77a9f2440ce3ff339d6412bcfe",
+        "merchant/checker.go": "447bf7a0fecca150cf1a9d55f70aa52914668e69f415934c0c81efe9462f3085",
+        "merchant/entity.go": "86dd211bfc4556f57a121b632ed4bf4f359e20281f78776bfbaf5045273b0534",
+        "merchant/expression.go": "ecc8e4e1fd847215c410a5f6fb28f98b5e1dbfa85d27b627206f01718004e6a6",
+        "merchant/request.go": "d83a3e99d191e220fad6cc995905f7e88446fb59734043c4abeef48e00c7dfae",
+        "q.go": "542c317a910b4ed3e0e9701b67f8d3983ce81cc9e8a21c1805d7c8cad7e5d918",
+        "runtime.go": "32fdc1bd681f6c128728a4ec1aa0347ec12058cb2197fe70b30e288e6ee807b4",
+        "teaql/checker-model.json": "b2079b40ef70d9a6405c8606891df67c809fb89982026598200633e24a61559a",
+        "teaql/model-provenance.json": "53aec3bfcde282204c8106af0b9a7dd56cec06559a6ff55d5e06d9bc6f54ccb7"
+      },
+      "model": "examples/security-foundations/model.xml",
+      "modelEntrypoint": "model.xml",
+      "modelSHA256": "4bd3524659417a530665b6bcbfec928ee3e5845f2e96570346193fd64981551a",
+      "provenance": {
+        "generatorVersion": "783ff0d8",
+        "modelUuid": null,
+        "revisionHash": "sha256:fb96f88e8c6c737598d67e52cd0cb49e174286ab83ba418b0a041f42ecd3b4e8",
+        "schemaVersion": 1
+      },
+      "retainedWorkspaceFiles": {
+        "go.mod": {
+          "emittedSHA256": "d40a574fbbf4fe7fb9b19c6c2461c8b1909dca3e1d3e3d04d9bde3bde2dbbf1d",
+          "sourceSHA256": "d40a574fbbf4fe7fb9b19c6c2461c8b1909dca3e1d3e3d04d9bde3bde2dbbf1d"
+        }
+      },
+      "scope": "golang-lib-core"
+    },
+    "examples/sqlite-lifecycle/golang-app-console": {
+      "emitted": {
+        "teaql/checker-model.json": "716f390faabcff0d4694242efc3fb44a0245c3d611b240e346ffdfef54256cea",
+        "teaql/model-provenance.json": "1a1c49e67a579f9fb339acb0913d3cd1a8df2b031f109626673c2b4f3cc6570b"
+      },
+      "model": "examples/fix-e-alignment/model.xml",
+      "modelEntrypoint": "model.xml",
+      "modelSHA256": "a2cf4c907cb084cb0946e993eeba586c8c0701a89fdc4a849808aa743be033b7",
+      "provenance": {
+        "generatorVersion": "783ff0d8",
+        "modelUuid": null,
+        "revisionHash": "sha256:96fba0f3e785fef2792149fa1b226f4ea09863f94d4aff4b31427d4875bf612c",
+        "schemaVersion": 1
+      },
+      "retainedWorkspaceFiles": {
+        ".gitignore": {
+          "emittedSHA256": "48fc3a4590eaf6568ce898f8b1925998d7076eea091d05787063e266e0253e5f",
+          "sourceSHA256": "48fc3a4590eaf6568ce898f8b1925998d7076eea091d05787063e266e0253e5f"
+        },
+        "AGENTS.md": {
+          "emittedSHA256": "6d23d3d143bdbec93e3778a13f1aa9045cb4e380b46e25e68441e9a4249171a2",
+          "sourceSHA256": "6d23d3d143bdbec93e3778a13f1aa9045cb4e380b46e25e68441e9a4249171a2"
+        },
+        "Makefile": {
+          "emittedSHA256": "cfce38caa8a3c79e8f3f13a409b9504fd8e46b7868eaf4a71c212d62f4045456",
+          "sourceSHA256": "cfce38caa8a3c79e8f3f13a409b9504fd8e46b7868eaf4a71c212d62f4045456"
+        },
+        "README.md": {
+          "emittedSHA256": "3c44a68c31406743ad88380feef6942a5c7f4b6b40719f419936bf8075042087",
+          "sourceSHA256": "3c44a68c31406743ad88380feef6942a5c7f4b6b40719f419936bf8075042087"
+        },
+        "RUNTIME_CUSTOM_GUIDE.md": {
+          "emittedSHA256": "d4093372f42dcc221fce31d869d8e2c19195a1ea9a2d24495a954963df1351c3",
+          "sourceSHA256": "d4093372f42dcc221fce31d869d8e2c19195a1ea9a2d24495a954963df1351c3"
+        },
+        "STANDARD_TELEMETRY.md": {
+          "emittedSHA256": "442314d6169163b75a0f8c14afb21d87ceef35656fab948a1b786a3bfcef87e0",
+          "sourceSHA256": "442314d6169163b75a0f8c14afb21d87ceef35656fab948a1b786a3bfcef87e0"
+        },
+        "TOOL_API_GUIDE.md": {
+          "emittedSHA256": "6e41d72346d1e8cb899e7b3f5fc67ba4115e3dd95ed030c1a53fe8d94d12ca76",
+          "sourceSHA256": "6e41d72346d1e8cb899e7b3f5fc67ba4115e3dd95ed030c1a53fe8d94d12ca76"
+        },
+        "go.mod": {
+          "emittedSHA256": "6bcac5e8f51e943477e37d11a0da36c176e573920e076133c0626367a0cc1d11",
+          "sourceSHA256": "253fa09ce3b193fab4a11e6197689eef4203f1689abbb8cc31016a2444e3d414"
+        },
+        "src/main.go": {
+          "emittedSHA256": "f5e8130b6dd71e30a1ce64a0f6d01ef9e6da5fdb7bd71ea69d33695a857c84ba",
+          "sourceSHA256": "f5e8130b6dd71e30a1ce64a0f6d01ef9e6da5fdb7bd71ea69d33695a857c84ba"
+        },
+        "teaql-i18n.json": {
+          "emittedSHA256": "c8229ce36ed92393409dd95a5e6a6bd72c9818c95520d5d2e3656ac6f7c0f014",
+          "sourceSHA256": "c8229ce36ed92393409dd95a5e6a6bd72c9818c95520d5d2e3656ac6f7c0f014"
+        }
+      },
+      "scope": "golang-app-console"
+    },
+    "examples/task_board/golang-app-console": {
+      "emitted": {
+        "teaql/checker-model.json": "af409d8bedab40a4ef621b71492884bd03ff1850eecd6016a809d01da3da77d0",
+        "teaql/model-provenance.json": "5796367d35661edbd6f7807471fc0291499caa313ee15d3b1c9dd2ac47e5ed04"
+      },
+      "model": "examples/task_board/model.xml",
+      "modelEntrypoint": "model.xml",
+      "modelSHA256": "f2fdd5037dbdee7f71e008f3ca04db75d8dd0e3138743de7a4744c197b0b567e",
+      "provenance": {
+        "generatorVersion": "783ff0d8",
+        "modelUuid": null,
+        "revisionHash": "sha256:7070f3bc2556a5879e8b2cabb17925a4e4e9a95615ae2f3b4e1bd53f7627374d",
+        "schemaVersion": 1
+      },
+      "retainedWorkspaceFiles": {
+        ".gitignore": {
+          "emittedSHA256": "48fc3a4590eaf6568ce898f8b1925998d7076eea091d05787063e266e0253e5f",
+          "sourceSHA256": "48fc3a4590eaf6568ce898f8b1925998d7076eea091d05787063e266e0253e5f"
+        },
+        "AGENTS.md": {
+          "emittedSHA256": "8468cdd15ca88c3f59a19dca89d9becb729f1fe4905b6ccaea74041b2d03e2b7",
+          "sourceSHA256": "8468cdd15ca88c3f59a19dca89d9becb729f1fe4905b6ccaea74041b2d03e2b7"
+        },
+        "Makefile": {
+          "emittedSHA256": "cfce38caa8a3c79e8f3f13a409b9504fd8e46b7868eaf4a71c212d62f4045456",
+          "sourceSHA256": "cfce38caa8a3c79e8f3f13a409b9504fd8e46b7868eaf4a71c212d62f4045456"
+        },
+        "README.md": {
+          "emittedSHA256": "04269d19370281b8aeddeb8389193b17b6643b390a1fef8cd838bce7a4a05b3d",
+          "sourceSHA256": "04269d19370281b8aeddeb8389193b17b6643b390a1fef8cd838bce7a4a05b3d"
+        },
+        "RUNTIME_CUSTOM_GUIDE.md": {
+          "emittedSHA256": "825a70653cdff9d3fac61d83cf2ef6254b2170cb1e7a1e5f80894f0d475f51f8",
+          "sourceSHA256": "825a70653cdff9d3fac61d83cf2ef6254b2170cb1e7a1e5f80894f0d475f51f8"
+        },
+        "STANDARD_TELEMETRY.md": {
+          "emittedSHA256": "442314d6169163b75a0f8c14afb21d87ceef35656fab948a1b786a3bfcef87e0",
+          "sourceSHA256": "442314d6169163b75a0f8c14afb21d87ceef35656fab948a1b786a3bfcef87e0"
+        },
+        "TOOL_API_GUIDE.md": {
+          "emittedSHA256": "baabf7fe9090550f7a43f9ac31c2bc313855da6d64752a9ecf76ce7c87f8a368",
+          "sourceSHA256": "baabf7fe9090550f7a43f9ac31c2bc313855da6d64752a9ecf76ce7c87f8a368"
+        },
+        "go.mod": {
+          "emittedSHA256": "7b7e1811c65b83bc8845b3a71cc0a4505e5c7318a7a60feefd2b65f39eba9809",
+          "sourceSHA256": "935df3739ef270d67ec192c46d7f2d5bea426911e684da06fac8967164396f1c"
+        },
+        "src/main.go": {
+          "emittedSHA256": "92c585ec8f117731a950975fb03662c0788a75b64795913b3ac9dcfe79704db4",
+          "sourceSHA256": "063852182d9940f42079aeb787bb30b1ca193fcee2a5681cc625a4b0d46cf24b"
+        },
+        "teaql-i18n.json": {
+          "emittedSHA256": "79b420e04edf1c1e1b9f4d04ddfc0ec8a6e2a2458e6a337a8c046bacb64c3a8d",
+          "sourceSHA256": "79b420e04edf1c1e1b9f4d04ddfc0ec8a6e2a2458e6a337a8c046bacb64c3a8d"
+        }
+      },
+      "scope": "golang-app-console"
+    },
+    "examples/task_board/golang-lib-core": {
+      "emitted": {
+        "e.go": "e43f15dc8e65eb52424cca81e83d715c847e34a2faf2dfc4c7b9f40c4f63ca1d",
+        "entity_json.go": "28869e99661ad7ac9819b7976f68de670d13d8731f849aae380149ea162bf28f",
+        "internal/expressiongraph/graph.go": "d6839679bebb2c375041125eb384c263aaa05fa64792bd164b6645866b501719",
+        "internal/generatedjson/model.go": "0d05d81eee44526dc10b3133da9f56ac1c6c2433ac32396201234ab67ab56b98",
+        "internal/generatedsearch/search_models.go": "f07b3cf28a4534031819c769dead4194a6af386aa4ccad47b27970c328f5c558",
+        "lib.go": "862d0a9f1d73f92b0d7a87df7f212123e65289246cdbc130d2ba8c382775247b",
+        "platform/behavior.go": "a2bf9efebdfc883eb0e6457f2f79646f578212889cf9a1fd20f91f0a1a1be5a8",
+        "platform/checker.go": "ae95114ab80d2d5e2793f9392cf55f54a5c9fd68401a6a24946d7a8f4368a1bd",
+        "platform/entity.go": "a7a8b94e6b85a65856454d45b272f3456bb70aa6c98ff5d8114324559e1a66cc",
+        "platform/expression.go": "0eba086a5376b21cfd8bddd136a79666ca5bb13f4868476c6c0d104c84c27702",
+        "platform/request.go": "08b9a70010d8fcb3653f3f51e39acb8077b8ff9b75d162f16859a00ad0429320",
+        "q.go": "5d2dcd512dd0877de4402212b3a5419aaeb8ad571472b62c0302a9d436c212b3",
+        "runtime.go": "fcccf48bb548d8dcefa5a4d648868901b81fcaf67d5b4e9bbe3e130fa2845a30",
+        "task/behavior.go": "9284d8db9ad06091c1cc171a8f883ed90d5442e92740428bff8d0115cf033c04",
+        "task/checker.go": "b5a5be8f9469ca457b5cdabb87f25126c69a09e56757bdbecfdb5b6c7b166edc",
+        "task/entity.go": "2bae4578410272ed5ed21268580bc92e3547b4703384916f46b34115ea057bef",
+        "task/expression.go": "ccbec2735df61190fdbd5e0065f55a6d14e46ded19998fc71656f98239256b7f",
+        "task/request.go": "ca2b7e33757f9c1ca8f5e496b2bb36d85cbcfee2d52d5067a6bf934f7353ecdb",
+        "task_execution_log/behavior.go": "839e31e4e7767f59db36dacae233bc1768a145cff821eca07bef1bd9420d91dd",
+        "task_execution_log/checker.go": "3745b729abc5b6355febc9b78ee56770ec21659439ea65ad75406a886a11da74",
+        "task_execution_log/entity.go": "fef280d7435d0491762c1cdde9098b269c84d2b9b224a4364c2b9ca828dc9954",
+        "task_execution_log/expression.go": "a8a029d993f78895ddfce64ca2cb473e2aa3e3bd3543cb9c086b576ec48b3334",
+        "task_execution_log/request.go": "3dc04e48293709a2d3e8f1a88e004b62f6dca57737ee9c89089361556508b82f",
+        "task_status/behavior.go": "7a03aeeba2feea4a010470a1b71566886adf1bfd5872bfdb684adcc67c3888b4",
+        "task_status/checker.go": "895440c0ea4faa4eeac0bc92bdbcb020c8d52ffe274711140a6756cd06c6f58b",
+        "task_status/entity.go": "94c44fc848b4a75e22d602110fdbced319361e5ffcb58f1a237e36a1b9083732",
+        "task_status/expression.go": "3ee98f90d92b1f8727f605e2e0ccb92371150a29ddcc578422e1c7b8ff3db818",
+        "task_status/request.go": "82adcd319b51cdfd8a9bf93d7775f38fe8d1e0eea00ba6b82445982c88b2742f",
+        "teaql/checker-model.json": "af409d8bedab40a4ef621b71492884bd03ff1850eecd6016a809d01da3da77d0",
+        "teaql/model-provenance.json": "5796367d35661edbd6f7807471fc0291499caa313ee15d3b1c9dd2ac47e5ed04"
+      },
+      "model": "examples/task_board/model.xml",
+      "modelEntrypoint": "model.xml",
+      "modelSHA256": "f2fdd5037dbdee7f71e008f3ca04db75d8dd0e3138743de7a4744c197b0b567e",
+      "provenance": {
+        "generatorVersion": "783ff0d8",
+        "modelUuid": null,
+        "revisionHash": "sha256:7070f3bc2556a5879e8b2cabb17925a4e4e9a95615ae2f3b4e1bd53f7627374d",
+        "schemaVersion": 1
+      },
+      "retainedWorkspaceFiles": {
+        "go.mod": {
+          "emittedSHA256": "e43967fc9f7c065a6bc31b9e12217108279b32d0ddadecc10ab8bcf1f1b8ca5a",
+          "sourceSHA256": "e43967fc9f7c065a6bc31b9e12217108279b32d0ddadecc10ab8bcf1f1b8ca5a"
+        }
+      },
+      "scope": "golang-lib-core"
+    },
+    "examples/trace-chain/golang-app-console": {
+      "emitted": {
+        "teaql/checker-model.json": "4f8b16a4464e10ac50788047b5eb81389f3bf329b5db255234b74254802bef9a",
+        "teaql/model-provenance.json": "afa9b0680b1913a852e4d8b5cf34007ba39fb110bad0fdf7237b5d5e8f698216"
+      },
+      "model": "examples/trace-chain/model.xml",
+      "modelEntrypoint": "model.xml",
+      "modelSHA256": "c9743d776718c7b27c97792f75f492fdc99bf427e4bd0c24bf3492de6520c9a2",
+      "provenance": {
+        "generatorVersion": "783ff0d8",
+        "modelUuid": null,
+        "revisionHash": "sha256:0b866ad8968101e3bf9429741f62228178182bf20d17f1092221810fd1a46e67",
+        "schemaVersion": 1
+      },
+      "retainedWorkspaceFiles": {
+        ".gitignore": {
+          "emittedSHA256": "48fc3a4590eaf6568ce898f8b1925998d7076eea091d05787063e266e0253e5f",
+          "sourceSHA256": "48fc3a4590eaf6568ce898f8b1925998d7076eea091d05787063e266e0253e5f"
+        },
+        "AGENTS.md": {
+          "emittedSHA256": "4db571b7cac0e68cd4348f753e6844068616c8c4652495a42975ab9bbe332a8f",
+          "sourceSHA256": "4db571b7cac0e68cd4348f753e6844068616c8c4652495a42975ab9bbe332a8f"
+        },
+        "Makefile": {
+          "emittedSHA256": "cfce38caa8a3c79e8f3f13a409b9504fd8e46b7868eaf4a71c212d62f4045456",
+          "sourceSHA256": "cfce38caa8a3c79e8f3f13a409b9504fd8e46b7868eaf4a71c212d62f4045456"
+        },
+        "README.md": {
+          "emittedSHA256": "3a60e2b7c52c722e0a4fd8949fa611417321c4a2f3319f78419526fcf0e80bf8",
+          "sourceSHA256": "3a60e2b7c52c722e0a4fd8949fa611417321c4a2f3319f78419526fcf0e80bf8"
+        },
+        "RUNTIME_CUSTOM_GUIDE.md": {
+          "emittedSHA256": "b028af7c3a4cb54753ef6686b2ffd584fe1604af9f7db446133d3db64b89b78c",
+          "sourceSHA256": "b028af7c3a4cb54753ef6686b2ffd584fe1604af9f7db446133d3db64b89b78c"
+        },
+        "STANDARD_TELEMETRY.md": {
+          "emittedSHA256": "442314d6169163b75a0f8c14afb21d87ceef35656fab948a1b786a3bfcef87e0",
+          "sourceSHA256": "442314d6169163b75a0f8c14afb21d87ceef35656fab948a1b786a3bfcef87e0"
+        },
+        "TOOL_API_GUIDE.md": {
+          "emittedSHA256": "a06f2373d4de49926a51ea32fd95d0e72866d3f332e621f318f24da675e8a6f7",
+          "sourceSHA256": "a06f2373d4de49926a51ea32fd95d0e72866d3f332e621f318f24da675e8a6f7"
+        },
+        "go.mod": {
+          "emittedSHA256": "9a06b0f8c824265163cfab344756376127ba2f38be71d9df0f70d2d13800a402",
+          "sourceSHA256": "780e7a6ca61dd08cfc4649c8b4141b4c9ecd0e65a9cf267c1696a8e3b043fac9"
+        },
+        "src/main.go": {
+          "emittedSHA256": "a639e73ea8017caee389770addf213977f1950cdaa9949203daed3ae1a75d6c0",
+          "sourceSHA256": "a639e73ea8017caee389770addf213977f1950cdaa9949203daed3ae1a75d6c0"
+        },
+        "teaql-i18n.json": {
+          "emittedSHA256": "5ff4a2f49563da43619a3bde0da4d3b73105e87824aef4851ba050b0509272d3",
+          "sourceSHA256": "5ff4a2f49563da43619a3bde0da4d3b73105e87824aef4851ba050b0509272d3"
+        }
+      },
+      "scope": "golang-app-console"
+    },
+    "examples/trace-chain/golang-lib-core": {
+      "emitted": {
+        "customer_order/behavior.go": "fc0f1cee247d602428a1dab95836106976e137375b5ba1fa4d295dfbd562612c",
+        "customer_order/checker.go": "6c93030644a04f0f89a2f01b12207189110623051812a081270efe5c9f583dd6",
+        "customer_order/entity.go": "2fc59ec05acf5c838ba8eb5c2d1195845ab219529fabb88a8ec1cf01fa51ae58",
+        "customer_order/expression.go": "493e61178b9f9d0b63c07ce0f4a02034d0bd078f3507c1c0e39508d27b131b63",
+        "customer_order/request.go": "e01afc7babf32f683dc7b984b4a1f30567b0d5e250103c0e19b9b5aaf14b6e78",
+        "e.go": "a91e6ed8b1854bcaa2fdd2da066ae36444c8aa10d927672932870717bd3522bb",
+        "entity_json.go": "e73f9b9a71452cff2b358bd9f0b60866bed313018a6e2a659282efb038e4abe8",
+        "internal/expressiongraph/graph.go": "0bcfa013c1f1b0a3821df1ebdc234571e6d3c2304c3997c4c0579cebd0b0f3ac",
+        "internal/generatedjson/model.go": "b658594580226360f03853a9227418d4ff4119abc8741f21c81decd74946f15a",
+        "internal/generatedsearch/search_models.go": "63fcc425872c49d6f6444af38b76672e8ee38b36913c7f9b3499082fc3049482",
+        "lib.go": "956441c46ff165a232271f9777b8350d29673fbdbbdb260b7863c16a76effeca",
+        "order_item/behavior.go": "0d1c08bf44cc8f2268b5b5c998fae61e24b6a6c07589bb0b49337e5882d9dc6a",
+        "order_item/checker.go": "02e151227137a4eb1df8824d4ba83bcd08057bc88c57beb33f63096a0b0434af",
+        "order_item/entity.go": "a411a67f8a951e9cd6dbae8ef4a0dfb4713788fc298781c5c8adc37985e16f26",
+        "order_item/expression.go": "ec8945809e5a9047d9701cbade60c54ca6b3bf2bd3aff85024592670a03daf3d",
+        "order_item/request.go": "5e7387dfad9c21b19301a4fa1355ddfa062ce6e397708fd211732cf39acafd8d",
+        "payment/behavior.go": "6f15a2d0d568b58c61f16574bc158c9393fdeafc6d13ae8a04c0c6ae551d508f",
+        "payment/checker.go": "b9fb61d66210588163a6ac98803c176f238ec633154ca504bca06c653c70a3ff",
+        "payment/entity.go": "12b21e9d2e8e143d6c7e41467e6a330315eafcd6e7751f538625e9b5e9bb717a",
+        "payment/expression.go": "58876b43e37d6ef97ca32e43cf9830458eab666d222cb48b12d48e8533acc8ac",
+        "payment/request.go": "a4cdb3524fd0e087fae648b3729170f90d7ec3cf3d49cf5888324c4e3c53b530",
+        "payment_attempt/behavior.go": "187c639e6633c0b3f5644fc29d73608cce4ce3c0ecc7dd6e9bba752cf42a731f",
+        "payment_attempt/checker.go": "c33b17c3b5ea147b900ee739df8d34941fb0fd865af8b069172adab91a63902b",
+        "payment_attempt/entity.go": "ac016c2c32a4002b180d1e5a3fa4cc99437074193a15457c52146ebf03888a3e",
+        "payment_attempt/expression.go": "951991156a49357f6fe80a3247bf4f29e283d1285e386eb21fe6eb313d70b079",
+        "payment_attempt/request.go": "ba2a804edb0bf1bfee475bf8e4b1d186c7ac9c090480ef0432898325fc50bf9d",
+        "platform/behavior.go": "a2bf9efebdfc883eb0e6457f2f79646f578212889cf9a1fd20f91f0a1a1be5a8",
+        "platform/checker.go": "ae95114ab80d2d5e2793f9392cf55f54a5c9fd68401a6a24946d7a8f4368a1bd",
+        "platform/entity.go": "712c7d39af8cb9623bc5330c139c477b6c9c6ca9d5a7093fb55debcd6218c500",
+        "platform/expression.go": "135c1e4e518dbf3be131ae2ff0b3ba7f1c720ad2ded84ab33e3d5dcdece04faf",
+        "platform/request.go": "3961d52e8472152b01499c10349a61bccf9d03f2393ad6f80b3d06e4e6fe98e2",
+        "q.go": "59c6f367b1ccc496fc1af0f4c0812ddaf6fff78b723c5b01a5e6b8ee820be9ad",
+        "runtime.go": "a74878485d95c2d4cf36a470f2ab0e336786ab9e19ec591f1540c9912d2b7cfe",
+        "shipment/behavior.go": "ede4d886b3c552efa5d3cacdd0de0885d0819d24e9d31216402818ef2979cb48",
+        "shipment/checker.go": "edb9435ea445033e998fcfc8ed8f8baf10ae70a90c644100857fcbb6fbe2291e",
+        "shipment/entity.go": "0ad6b4c1ad2f9dd2bc845a996ae46d1c4edb34626db66d0a4c743b99233d4125",
+        "shipment/expression.go": "b6502a04d09c38a1e474722bfa974d4cbe2c8d8898127e9886182a542e60f08c",
+        "shipment/request.go": "c21223b1ce683aeff05c7875273cf61941791b4a92da99c61e5ec5bdc578c17d",
+        "teaql/checker-model.json": "4f8b16a4464e10ac50788047b5eb81389f3bf329b5db255234b74254802bef9a",
+        "teaql/model-provenance.json": "afa9b0680b1913a852e4d8b5cf34007ba39fb110bad0fdf7237b5d5e8f698216"
+      },
+      "model": "examples/trace-chain/model.xml",
+      "modelEntrypoint": "model.xml",
+      "modelSHA256": "c9743d776718c7b27c97792f75f492fdc99bf427e4bd0c24bf3492de6520c9a2",
+      "provenance": {
+        "generatorVersion": "783ff0d8",
+        "modelUuid": null,
+        "revisionHash": "sha256:0b866ad8968101e3bf9429741f62228178182bf20d17f1092221810fd1a46e67",
+        "schemaVersion": 1
+      },
+      "retainedWorkspaceFiles": {
+        "go.mod": {
+          "emittedSHA256": "d6861c84d810ba19248e41dc5472f6a87d028c6a3f548f14d0485b98576b1737",
+          "sourceSHA256": "d6861c84d810ba19248e41dc5472f6a87d028c6a3f548f14d0485b98576b1737"
+        }
+      },
+      "scope": "golang-lib-core"
+    },
+    "examples/trace-chain/standard-order/golang-app-console": {
+      "emitted": {
+        "teaql/checker-model.json": "19d4a34e5e38e91bbcc7a24f9050b38e3069551ab8533feaf474dd88344eeb06",
+        "teaql/model-provenance.json": "104fbb539965c0964ee7debc713d21a6e092910aafc71e24a13a7a3beceebab8"
+      },
+      "model": "examples/trace-chain/standard-order/model.xml",
+      "modelEntrypoint": "model.xml",
+      "modelSHA256": "9e60ff448b17cbbc38035565643f44e6618841632cf4f08fdc089dc961c3a62c",
+      "provenance": {
+        "generatorVersion": "783ff0d8",
+        "modelUuid": null,
+        "revisionHash": "sha256:a7e84071ea8c35db440948aebd9700a04acc3921a0b6611e23c9997fa3ab8712",
+        "schemaVersion": 1
+      },
+      "retainedWorkspaceFiles": {
+        ".gitignore": {
+          "emittedSHA256": "48fc3a4590eaf6568ce898f8b1925998d7076eea091d05787063e266e0253e5f",
+          "sourceSHA256": "48fc3a4590eaf6568ce898f8b1925998d7076eea091d05787063e266e0253e5f"
+        },
+        "AGENTS.md": {
+          "emittedSHA256": "c80499cb2e2796db65c9268f46c2f6ae09904b2fb1de9d817d05304c77a10ed4",
+          "sourceSHA256": "c80499cb2e2796db65c9268f46c2f6ae09904b2fb1de9d817d05304c77a10ed4"
+        },
+        "Makefile": {
+          "emittedSHA256": "cfce38caa8a3c79e8f3f13a409b9504fd8e46b7868eaf4a71c212d62f4045456",
+          "sourceSHA256": "cfce38caa8a3c79e8f3f13a409b9504fd8e46b7868eaf4a71c212d62f4045456"
+        },
+        "README.md": {
+          "emittedSHA256": "d126188c94310134f59e2a0d50eb6ae163c95f2b643604ed9fcf437fe754ee34",
+          "sourceSHA256": "d126188c94310134f59e2a0d50eb6ae163c95f2b643604ed9fcf437fe754ee34"
+        },
+        "RUNTIME_CUSTOM_GUIDE.md": {
+          "emittedSHA256": "bc7ed8c95257a7ee0480c334daa2820263f37bf36f0fa96038e547a1ad0109c9",
+          "sourceSHA256": "bc7ed8c95257a7ee0480c334daa2820263f37bf36f0fa96038e547a1ad0109c9"
+        },
+        "STANDARD_TELEMETRY.md": {
+          "emittedSHA256": "442314d6169163b75a0f8c14afb21d87ceef35656fab948a1b786a3bfcef87e0",
+          "sourceSHA256": "442314d6169163b75a0f8c14afb21d87ceef35656fab948a1b786a3bfcef87e0"
+        },
+        "TOOL_API_GUIDE.md": {
+          "emittedSHA256": "d2560f99747712d14a618402b82c1d469161515ecdeb27186d9ebf8d2241fa31",
+          "sourceSHA256": "d2560f99747712d14a618402b82c1d469161515ecdeb27186d9ebf8d2241fa31"
+        },
+        "go.mod": {
+          "emittedSHA256": "5b56b9d581fc0b42b37bfca18249216dfc266d6523d088d4b06579973c9a1043",
+          "sourceSHA256": "3ed1f2ba9def841aef406fbf709002fc412f7b762070a46f0e84b69242ef9fe4"
+        },
+        "src/main.go": {
+          "emittedSHA256": "1413c6a22ed88887bf4ac3f811c1c41f8542432f3095c79a13a5006b3b7abc5a",
+          "sourceSHA256": "b51d664f2ec212495a6b8d59cd35b2002c10feb72ade1a1fda840dc6b35cab7a"
+        },
+        "teaql-i18n.json": {
+          "emittedSHA256": "ee5dc28e916a8907555d5d5a4d0e3cf2fa37aad047af37abed0800582af18d96",
+          "sourceSHA256": "ee5dc28e916a8907555d5d5a4d0e3cf2fa37aad047af37abed0800582af18d96"
+        }
+      },
+      "scope": "golang-app-console"
+    },
+    "examples/trace-chain/standard-order/golang-lib-core": {
+      "emitted": {
+        "customer/behavior.go": "feb6fcbd025ab8d3f85293f3ec75fd63b30c87a3abd4143f2327d36b592f6a44",
+        "customer/checker.go": "003db818e57763e609fb670b182a2de387efb351d42a405d2a19d1ef442b186b",
+        "customer/entity.go": "75024949b4a65215c7d1c138551c2c35e8a4761e67a0492e40635d3c8717f57c",
+        "customer/expression.go": "0a4284d36c4d11beae900b1489286beb039924c8a8cee0755ad5d206beda6022",
+        "customer/request.go": "307fc489519199a438b43c6d59cf983c613440739545ba59f7ab875b8e8e5ad2",
+        "customer_order/behavior.go": "fc0f1cee247d602428a1dab95836106976e137375b5ba1fa4d295dfbd562612c",
+        "customer_order/checker.go": "6c93030644a04f0f89a2f01b12207189110623051812a081270efe5c9f583dd6",
+        "customer_order/entity.go": "b214d9a21b60ded2fe296c66a212296e500319bca11982b69d5c81c13ec2df7a",
+        "customer_order/expression.go": "3c6c8840103215c3b267db8217e6af64f5a43a45c60ff802bf264e057c6a5ed3",
+        "customer_order/request.go": "e62283d0c616488f3c431f7eed4afc0cea282709b3eddb5d06827ad4e69843b3",
+        "e.go": "73fb5242f88b76a047297d4903dff64f91a39cbc2163166485e62b21716b97a6",
+        "entity_json.go": "ba981d96b8c37f6179a400c7b5134d602cfdf021ac3b34fd7b984c59d66070a6",
+        "internal/expressiongraph/graph.go": "6c41fdf5b3a52545975da98661875f308645eb88b25bc8167a3d53af5168ddf3",
+        "internal/generatedjson/model.go": "79f9b3a6b3d5f106768e6efcbb4bd10c1db32e93107e4b5603fd7cf6656de8b8",
+        "internal/generatedsearch/search_models.go": "de30f04a524e0ee853df04f2ddaf068a3b75ecf6f7a97343914da297ca1ecec1",
+        "lib.go": "a9789b5715dcb7ea54fa722dfd3f8d39eb0c23979839ec9ba124a7155acfee36",
+        "order_item/behavior.go": "0d1c08bf44cc8f2268b5b5c998fae61e24b6a6c07589bb0b49337e5882d9dc6a",
+        "order_item/checker.go": "02e151227137a4eb1df8824d4ba83bcd08057bc88c57beb33f63096a0b0434af",
+        "order_item/entity.go": "08e5df46ad3aa2b08f996c44264bf3769f9d9f319d9e27e654dff30c0d74d40d",
+        "order_item/expression.go": "7722b42a610a7839ca97bf856bccfaf0f05fc343c8c606b798d0f38fd06712e3",
+        "order_item/request.go": "b1271c4121f0d124554a9e909b41a9c5f3621307e17c64b4509e1ef87782ef4a",
+        "order_status/behavior.go": "5b06d271ff1d4717142d9dcb3b7c798943c87884f4e2dd7c19c5fa5cd5506ad3",
+        "order_status/checker.go": "079c517ae72dc93bad8875c8596086f3f7cc56bdc6e3d047ec21810b4210f6f7",
+        "order_status/entity.go": "ea171be79170ab1a1a036e33f0f8627c149e1ee9f9ec108c726cf01a5a8d2123",
+        "order_status/expression.go": "67b825cd2b1b381b08d14d64f776ab477081f09fbde72131f739a1dda101b089",
+        "order_status/request.go": "36096a7f334c8f1ed2f485af8a118e0bd9ca21ebaff03f13632dc56f88adb423",
+        "platform/behavior.go": "a2bf9efebdfc883eb0e6457f2f79646f578212889cf9a1fd20f91f0a1a1be5a8",
+        "platform/checker.go": "ae95114ab80d2d5e2793f9392cf55f54a5c9fd68401a6a24946d7a8f4368a1bd",
+        "platform/entity.go": "0111cd3610263f1ec982d22a31cae6fc9de361e010ac80100fc9b9a0fcedf19e",
+        "platform/expression.go": "22de381d641ad52edc51867cbaefeedb1d2475fa3bbeb2894bd5fe164aa3651d",
+        "platform/request.go": "cc13a902295152111bc811e81171138b1e83e768c01fec82042d0fd8d34099bd",
+        "q.go": "9b2f9855e45e01c6c7b8dc1e41c52ef93de60d27eeb9e7ba7988461e7cb499f5",
+        "runtime.go": "2d7895f98d3c6d77b45ca0cb50b7affcf13bb76ec10999bf6cbf2d649aef218e",
+        "teaql/checker-model.json": "19d4a34e5e38e91bbcc7a24f9050b38e3069551ab8533feaf474dd88344eeb06",
+        "teaql/model-provenance.json": "104fbb539965c0964ee7debc713d21a6e092910aafc71e24a13a7a3beceebab8"
+      },
+      "model": "examples/trace-chain/standard-order/model.xml",
+      "modelEntrypoint": "model.xml",
+      "modelSHA256": "9e60ff448b17cbbc38035565643f44e6618841632cf4f08fdc089dc961c3a62c",
+      "provenance": {
+        "generatorVersion": "783ff0d8",
+        "modelUuid": null,
+        "revisionHash": "sha256:a7e84071ea8c35db440948aebd9700a04acc3921a0b6611e23c9997fa3ab8712",
+        "schemaVersion": 1
+      },
+      "retainedWorkspaceFiles": {
+        "go.mod": {
+          "emittedSHA256": "c9863099c69a9e96130d76f5fdcf298d3935c58adc2c2c8370d90060ce99fb4c",
+          "sourceSHA256": "c9863099c69a9e96130d76f5fdcf298d3935c58adc2c2c8370d90060ce99fb4c"
+        }
+      },
+      "scope": "golang-lib-core"
+    },
+    "examples/typed-runtime-spi/golang-app-console": {
+      "emitted": {
+        "teaql/checker-model.json": "e91353cfaa944a6fdfbd00ed417f5c59bdb2dd10403e2b5e8adee486291ff3db",
+        "teaql/model-provenance.json": "6b821e1313ae2419baf6468b695f9e5296b9765669e58b714a2e0065a2b49202"
+      },
+      "model": "examples/typed-runtime-spi/model.xml",
+      "modelEntrypoint": "model.xml",
+      "modelSHA256": "cdc0e1c7236d7ef62f216060bde8e15e1bd758790959ceb1dff4d1d9635683b6",
+      "provenance": {
+        "generatorVersion": "783ff0d8",
+        "modelUuid": null,
+        "revisionHash": "sha256:688f35cc89cbd847bd22ccb1a0dd3d903d639dc470c3e2cb2ce789f1c58d97e7",
+        "schemaVersion": 1
+      },
+      "retainedWorkspaceFiles": {
+        ".gitignore": {
+          "emittedSHA256": "48fc3a4590eaf6568ce898f8b1925998d7076eea091d05787063e266e0253e5f",
+          "sourceSHA256": "48fc3a4590eaf6568ce898f8b1925998d7076eea091d05787063e266e0253e5f"
+        },
+        "AGENTS.md": {
+          "emittedSHA256": "2b7c0037de71241ddc0866fc699dbac9cc477280254e211c3d22c54ccf661995",
+          "sourceSHA256": "2b7c0037de71241ddc0866fc699dbac9cc477280254e211c3d22c54ccf661995"
+        },
+        "Makefile": {
+          "emittedSHA256": "cfce38caa8a3c79e8f3f13a409b9504fd8e46b7868eaf4a71c212d62f4045456",
+          "sourceSHA256": "cfce38caa8a3c79e8f3f13a409b9504fd8e46b7868eaf4a71c212d62f4045456"
+        },
+        "README.md": {
+          "emittedSHA256": "431202937ca3db4e86a77db243275c0e3edee9ea4998fff65384c7002273dae9",
+          "sourceSHA256": "431202937ca3db4e86a77db243275c0e3edee9ea4998fff65384c7002273dae9"
+        },
+        "RUNTIME_CUSTOM_GUIDE.md": {
+          "emittedSHA256": "3d77923e41fd39719b5dde2d1cb66a6b8f30bfd9d41933d73e678413d7a5a405",
+          "sourceSHA256": "3d77923e41fd39719b5dde2d1cb66a6b8f30bfd9d41933d73e678413d7a5a405"
+        },
+        "STANDARD_TELEMETRY.md": {
+          "emittedSHA256": "442314d6169163b75a0f8c14afb21d87ceef35656fab948a1b786a3bfcef87e0",
+          "sourceSHA256": "442314d6169163b75a0f8c14afb21d87ceef35656fab948a1b786a3bfcef87e0"
+        },
+        "TOOL_API_GUIDE.md": {
+          "emittedSHA256": "99320a9cf989cad5e3557ba5ecc866dceafb6e627b7a633272595738b0794363",
+          "sourceSHA256": "99320a9cf989cad5e3557ba5ecc866dceafb6e627b7a633272595738b0794363"
+        },
+        "go.mod": {
+          "emittedSHA256": "7071e5d9ed8cebc741caa880fcc6cd8c8864324f1212b2bd2f7370cac959e9d7",
+          "sourceSHA256": "7071e5d9ed8cebc741caa880fcc6cd8c8864324f1212b2bd2f7370cac959e9d7"
+        },
+        "src/main.go": {
+          "emittedSHA256": "0dcba18baa762c1afad844bcf6368375f1b1a5bde351421a1f4a4b172fcf0616",
+          "sourceSHA256": "ca8e7af0e6ceea258410f812f7bf186977d6deab499c730d1aba2295e496c7f6"
+        },
+        "teaql-i18n.json": {
+          "emittedSHA256": "809a9c4cbd06dabb232d3f2c4a7fb230ba3c6502a20378a06dbb6fcdb5034198",
+          "sourceSHA256": "809a9c4cbd06dabb232d3f2c4a7fb230ba3c6502a20378a06dbb6fcdb5034198"
+        }
+      },
+      "scope": "golang-app-console"
+    },
+    "examples/typed-runtime-spi/golang-lib-core": {
+      "emitted": {
+        "e.go": "afb58a07bcf96a939decc3bb56b4362e42de71ba16285c55fa29c5a5cfe8a3ad",
+        "entity_json.go": "98f3b785de7bb813e2f54765d62b207541a92a9847e5f15b950c1860b59d9242",
+        "internal/expressiongraph/graph.go": "54076eae203bc10080f7a221fdeaef6c5b598bf0cbe9f799e7ecce702067160e",
+        "internal/generatedjson/model.go": "48a4e07296658da6669ccd811bc73aed5dfc9e78fe54b53d108d12f00852e904",
+        "internal/generatedsearch/search_models.go": "5a73a46bc0354e0d87b310b913ef128341fc3a03aa942ccb23820f934468f94c",
+        "lib.go": "e036f139dac0026d31f762eb1bf38d39c41e9d2f0829a430d3a3ed1b9f377a7f",
+        "platform/behavior.go": "a2bf9efebdfc883eb0e6457f2f79646f578212889cf9a1fd20f91f0a1a1be5a8",
+        "platform/checker.go": "ae95114ab80d2d5e2793f9392cf55f54a5c9fd68401a6a24946d7a8f4368a1bd",
+        "platform/entity.go": "ef59e59b7de8c9104f016ebe82116751ccff0db9f98bc0054a2ca3f53b571718",
+        "platform/expression.go": "2d4944a6eb1f8f6ae1a73a54286b42ba4db39f8fe5451c2eb18ab93313dcd310",
+        "platform/request.go": "4eb931eca60ba99f949d59d18554e643f18f59fa56cb4f6426c1c4b1d220ef65",
+        "purchase_order/behavior.go": "7f70d05c8f7879720a1a76ccd405684fedefae895aba6e9fbf1371137968a8f7",
+        "purchase_order/checker.go": "1c2bb40949d6a04e92ac1dba63c681727447a2b7027c7b7c50b83609eef39b90",
+        "purchase_order/entity.go": "f72166e341069cc84b3a992344797ce4ae7c8fca3b88218e2e024b90297a98ec",
+        "purchase_order/expression.go": "2d8d2342a8bd15296f78284d9bbd20b9548169fe9fdb1e37e6988a27713db4b3",
+        "purchase_order/request.go": "d68a0c632939bdce045b62a1f16d8f722840ad4d7036f6f3d8548618460d93de",
+        "q.go": "ebf4e2dbf77d5923580bb8918d443d3e4070f70b249f4d52830d01c267b796cc",
+        "runtime.go": "87d839830f070873368ac1efee338bf18ed555e78fbe6abd97bdd995a8567156",
+        "teaql/checker-model.json": "e91353cfaa944a6fdfbd00ed417f5c59bdb2dd10403e2b5e8adee486291ff3db",
+        "teaql/model-provenance.json": "6b821e1313ae2419baf6468b695f9e5296b9765669e58b714a2e0065a2b49202"
+      },
+      "model": "examples/typed-runtime-spi/model.xml",
+      "modelEntrypoint": "model.xml",
+      "modelSHA256": "cdc0e1c7236d7ef62f216060bde8e15e1bd758790959ceb1dff4d1d9635683b6",
+      "provenance": {
+        "generatorVersion": "783ff0d8",
+        "modelUuid": null,
+        "revisionHash": "sha256:688f35cc89cbd847bd22ccb1a0dd3d903d639dc470c3e2cb2ce789f1c58d97e7",
+        "schemaVersion": 1
+      },
+      "retainedWorkspaceFiles": {
+        "go.mod": {
+          "emittedSHA256": "dcb45cabc496707bbe231bb16a103445106ad5b5c43ea9c9037baf5140858179",
+          "sourceSHA256": "dcb45cabc496707bbe231bb16a103445106ad5b5c43ea9c9037baf5140858179"
+        }
+      },
+      "scope": "golang-lib-core"
+    }
+  },
+  "sourceCommit": "783ff0d81751b030c1209043476e8326cc6da58b"
+}

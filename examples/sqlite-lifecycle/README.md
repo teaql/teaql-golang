@@ -1,4 +1,4 @@
-# SQLite connection lifecycle
+# Purchase orders across SQLite connection changes
 
 This example saves and reloads a small generated PurchaseOrder and OrderItem
 graph after physical SQLite connections change. Every new connection must retain
@@ -12,8 +12,9 @@ Run with Node.js, a CGO-enabled Go toolchain and a C compiler:
 node examples/sqlite-lifecycle/verify-local.cjs
 ```
 
-The verifier binds the runtime to this checkout and uses the retained generated
-library and model in [fix-e-alignment](../fix-e-alignment). It runs the same binary
+The generated console workspace owns the lifecycle test. It uses the unchanged
+purchase-order model and domain library owned by [fix-e-alignment](../fix-e-alignment).
+The verifier binds both local modules and runs the same workspace test binary
 twice without resetting its four databases. It checks physical connection
 discard, three simultaneously leased connections, idle eviction and cancellation
 of an owned SQL transaction. The application UserContext is never replaced.

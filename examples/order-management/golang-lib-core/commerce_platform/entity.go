@@ -29,6 +29,19 @@ var (
 	_ = errors.As
 )
 
+const (
+    teaqlIdStorageKey = "id"
+    teaqlIdModelKey = "id"
+    teaqlNameStorageKey = "name"
+    teaqlNameModelKey = "name"
+    teaqlCreateTimeStorageKey = "create_time"
+    teaqlCreateTimeModelKey = "create_time"
+    teaqlUpdateTimeStorageKey = "update_time"
+    teaqlUpdateTimeModelKey = "update_time"
+    teaqlVersionStorageKey = "version"
+    teaqlVersionModelKey = "version"
+)
+
 
 type CommercePlatform struct {
 	base        *core.BaseEntityData
@@ -54,99 +67,201 @@ type CommercePlatform struct {
 }
 
 type CustomerList struct {
-	items []*customer.Customer
+	items *core.SmartList[*customer.Customer]
 }
 
 func newCustomerList() *CustomerList {
-	return &CustomerList{items: make([]*customer.Customer, 0)}
+	return &CustomerList{items: core.NewSmartList([]*customer.Customer{})}
+}
+
+func (l *CustomerList) teaqlRows() *core.SmartList[*customer.Customer] {
+	if l.items == nil { l.items = core.NewSmartList([]*customer.Customer{}) }
+	return l.items
 }
 
 func (l *CustomerList) Add(entity *customer.Customer) {
-	l.items = append(l.items, entity)
+	l.teaqlRows().Push(entity)
+}
+
+// Set replaces one local relation member without changing its query metadata.
+func (l *CustomerList) Set(index int, entity *customer.Customer) {
+	l.teaqlRows().Set(index, entity)
 }
 
 func (l *CustomerList) Items() []*customer.Customer {
-	return l.items
+	return l.teaqlRows().IntoVec()
+}
+
+func (l *CustomerList) IsLoaded() bool { return l.teaqlRows().IsLoaded }
+
+// SmartList returns a detached query snapshot; writing it cannot change the owner's load state.
+func (l *CustomerList) SmartList() *core.SmartList[*customer.Customer] {
+	return core.MapSmartList(l.teaqlRows(), func(entity *customer.Customer) *customer.Customer { return entity })
 }
 
 type OrderStatusList struct {
-	items []*order_status.OrderStatus
+	items *core.SmartList[*order_status.OrderStatus]
 }
 
 func newOrderStatusList() *OrderStatusList {
-	return &OrderStatusList{items: make([]*order_status.OrderStatus, 0)}
+	return &OrderStatusList{items: core.NewSmartList([]*order_status.OrderStatus{})}
+}
+
+func (l *OrderStatusList) teaqlRows() *core.SmartList[*order_status.OrderStatus] {
+	if l.items == nil { l.items = core.NewSmartList([]*order_status.OrderStatus{}) }
+	return l.items
 }
 
 func (l *OrderStatusList) Add(entity *order_status.OrderStatus) {
-	l.items = append(l.items, entity)
+	l.teaqlRows().Push(entity)
+}
+
+// Set replaces one local relation member without changing its query metadata.
+func (l *OrderStatusList) Set(index int, entity *order_status.OrderStatus) {
+	l.teaqlRows().Set(index, entity)
 }
 
 func (l *OrderStatusList) Items() []*order_status.OrderStatus {
-	return l.items
+	return l.teaqlRows().IntoVec()
+}
+
+func (l *OrderStatusList) IsLoaded() bool { return l.teaqlRows().IsLoaded }
+
+// SmartList returns a detached query snapshot; writing it cannot change the owner's load state.
+func (l *OrderStatusList) SmartList() *core.SmartList[*order_status.OrderStatus] {
+	return core.MapSmartList(l.teaqlRows(), func(entity *order_status.OrderStatus) *order_status.OrderStatus { return entity })
 }
 
 type CustomerOrderList struct {
-	items []*customer_order.CustomerOrder
+	items *core.SmartList[*customer_order.CustomerOrder]
 }
 
 func newCustomerOrderList() *CustomerOrderList {
-	return &CustomerOrderList{items: make([]*customer_order.CustomerOrder, 0)}
+	return &CustomerOrderList{items: core.NewSmartList([]*customer_order.CustomerOrder{})}
+}
+
+func (l *CustomerOrderList) teaqlRows() *core.SmartList[*customer_order.CustomerOrder] {
+	if l.items == nil { l.items = core.NewSmartList([]*customer_order.CustomerOrder{}) }
+	return l.items
 }
 
 func (l *CustomerOrderList) Add(entity *customer_order.CustomerOrder) {
-	l.items = append(l.items, entity)
+	l.teaqlRows().Push(entity)
+}
+
+// Set replaces one local relation member without changing its query metadata.
+func (l *CustomerOrderList) Set(index int, entity *customer_order.CustomerOrder) {
+	l.teaqlRows().Set(index, entity)
 }
 
 func (l *CustomerOrderList) Items() []*customer_order.CustomerOrder {
-	return l.items
+	return l.teaqlRows().IntoVec()
+}
+
+func (l *CustomerOrderList) IsLoaded() bool { return l.teaqlRows().IsLoaded }
+
+// SmartList returns a detached query snapshot; writing it cannot change the owner's load state.
+func (l *CustomerOrderList) SmartList() *core.SmartList[*customer_order.CustomerOrder] {
+	return core.MapSmartList(l.teaqlRows(), func(entity *customer_order.CustomerOrder) *customer_order.CustomerOrder { return entity })
 }
 
 type ProductList struct {
-	items []*product.Product
+	items *core.SmartList[*product.Product]
 }
 
 func newProductList() *ProductList {
-	return &ProductList{items: make([]*product.Product, 0)}
+	return &ProductList{items: core.NewSmartList([]*product.Product{})}
+}
+
+func (l *ProductList) teaqlRows() *core.SmartList[*product.Product] {
+	if l.items == nil { l.items = core.NewSmartList([]*product.Product{}) }
+	return l.items
 }
 
 func (l *ProductList) Add(entity *product.Product) {
-	l.items = append(l.items, entity)
+	l.teaqlRows().Push(entity)
+}
+
+// Set replaces one local relation member without changing its query metadata.
+func (l *ProductList) Set(index int, entity *product.Product) {
+	l.teaqlRows().Set(index, entity)
 }
 
 func (l *ProductList) Items() []*product.Product {
-	return l.items
+	return l.teaqlRows().IntoVec()
+}
+
+func (l *ProductList) IsLoaded() bool { return l.teaqlRows().IsLoaded }
+
+// SmartList returns a detached query snapshot; writing it cannot change the owner's load state.
+func (l *ProductList) SmartList() *core.SmartList[*product.Product] {
+	return core.MapSmartList(l.teaqlRows(), func(entity *product.Product) *product.Product { return entity })
 }
 
 type OrderLineList struct {
-	items []*order_line.OrderLine
+	items *core.SmartList[*order_line.OrderLine]
 }
 
 func newOrderLineList() *OrderLineList {
-	return &OrderLineList{items: make([]*order_line.OrderLine, 0)}
+	return &OrderLineList{items: core.NewSmartList([]*order_line.OrderLine{})}
+}
+
+func (l *OrderLineList) teaqlRows() *core.SmartList[*order_line.OrderLine] {
+	if l.items == nil { l.items = core.NewSmartList([]*order_line.OrderLine{}) }
+	return l.items
 }
 
 func (l *OrderLineList) Add(entity *order_line.OrderLine) {
-	l.items = append(l.items, entity)
+	l.teaqlRows().Push(entity)
+}
+
+// Set replaces one local relation member without changing its query metadata.
+func (l *OrderLineList) Set(index int, entity *order_line.OrderLine) {
+	l.teaqlRows().Set(index, entity)
 }
 
 func (l *OrderLineList) Items() []*order_line.OrderLine {
-	return l.items
+	return l.teaqlRows().IntoVec()
+}
+
+func (l *OrderLineList) IsLoaded() bool { return l.teaqlRows().IsLoaded }
+
+// SmartList returns a detached query snapshot; writing it cannot change the owner's load state.
+func (l *OrderLineList) SmartList() *core.SmartList[*order_line.OrderLine] {
+	return core.MapSmartList(l.teaqlRows(), func(entity *order_line.OrderLine) *order_line.OrderLine { return entity })
 }
 
 type OrderSearchPresetList struct {
-	items []*order_search_preset.OrderSearchPreset
+	items *core.SmartList[*order_search_preset.OrderSearchPreset]
 }
 
 func newOrderSearchPresetList() *OrderSearchPresetList {
-	return &OrderSearchPresetList{items: make([]*order_search_preset.OrderSearchPreset, 0)}
+	return &OrderSearchPresetList{items: core.NewSmartList([]*order_search_preset.OrderSearchPreset{})}
+}
+
+func (l *OrderSearchPresetList) teaqlRows() *core.SmartList[*order_search_preset.OrderSearchPreset] {
+	if l.items == nil { l.items = core.NewSmartList([]*order_search_preset.OrderSearchPreset{}) }
+	return l.items
 }
 
 func (l *OrderSearchPresetList) Add(entity *order_search_preset.OrderSearchPreset) {
-	l.items = append(l.items, entity)
+	l.teaqlRows().Push(entity)
+}
+
+// Set replaces one local relation member without changing its query metadata.
+func (l *OrderSearchPresetList) Set(index int, entity *order_search_preset.OrderSearchPreset) {
+	l.teaqlRows().Set(index, entity)
 }
 
 func (l *OrderSearchPresetList) Items() []*order_search_preset.OrderSearchPreset {
-	return l.items
+	return l.teaqlRows().IntoVec()
+}
+
+func (l *OrderSearchPresetList) IsLoaded() bool { return l.teaqlRows().IsLoaded }
+
+// SmartList returns a detached query snapshot; writing it cannot change the owner's load state.
+func (l *OrderSearchPresetList) SmartList() *core.SmartList[*order_search_preset.OrderSearchPreset] {
+	return core.MapSmartList(l.teaqlRows(), func(entity *order_search_preset.OrderSearchPreset) *order_search_preset.OrderSearchPreset { return entity })
 }
 // CustomerListFacet reads this parent's collection facet, not a global count.
 func (e *CommercePlatform) CustomerListFacet(name string) (*core.SmartList[core.Record], bool) {
@@ -224,6 +339,12 @@ func NewCommercePlatform(context *runtime.UserContext) (*CommercePlatform, error
 func newLoadedCommercePlatform() *CommercePlatform {
 	entity := newUninitializedCommercePlatform()
 	entity.creationState.Hydrated()
+	entity.customerList.teaqlRows().IsLoaded = false
+	entity.orderStatusList.teaqlRows().IsLoaded = false
+	entity.customerOrderList.teaqlRows().IsLoaded = false
+	entity.productList.teaqlRows().IsLoaded = false
+	entity.orderLineList.teaqlRows().IsLoaded = false
+	entity.orderSearchPresetList.teaqlRows().IsLoaded = false
 	return entity
 }
 
@@ -268,6 +389,12 @@ func (e *CommercePlatform) setRelationEntity(name string, value core.Entity) {
 
 func (e *CommercePlatform) markRelationLoaded(name string) {
 	e.loadedRelations[name] = true
+	if name == "customerList" || name == "customer_list" { e.customerList.teaqlRows().IsLoaded = true }
+	if name == "orderStatusList" || name == "order_status_list" { e.orderStatusList.teaqlRows().IsLoaded = true }
+	if name == "customerOrderList" || name == "customer_order_list" { e.customerOrderList.teaqlRows().IsLoaded = true }
+	if name == "productList" || name == "product_list" { e.productList.teaqlRows().IsLoaded = true }
+	if name == "orderLineList" || name == "order_line_list" { e.orderLineList.teaqlRows().IsLoaded = true }
+	if name == "orderSearchPresetList" || name == "order_search_preset_list" { e.orderSearchPresetList.teaqlRows().IsLoaded = true }
 }
 
 func (e *CommercePlatform) isRelationLoaded(name string) bool {
@@ -337,11 +464,11 @@ func (e *CommercePlatform) teaqlFromRecord(record core.Record, captureLoaded boo
 }
 
 func (e *CommercePlatform) teaqlScalarSnapshot(record core.Record) core.LoadedScalarSnapshot {
-	return core.NewLoadedScalarSnapshot(record, "id", "name", "create_time", "update_time", "version")
+	return core.NewLoadedScalarSnapshot(record, teaqlIdStorageKey, teaqlNameStorageKey, teaqlCreateTimeStorageKey, teaqlUpdateTimeStorageKey, teaqlVersionStorageKey)
 }
 
 func (e *CommercePlatform) teaqlLoadedScalarSnapshot(record core.Record) core.LoadedScalarSnapshot {
-	return core.NewOwnedLoadedScalarSnapshot(e.EntityKey(), e.base.Version, record, "id", "name", "create_time", "update_time", "version")
+	return core.NewOwnedLoadedScalarSnapshot(e.EntityKey(), e.base.Version, record, teaqlIdStorageKey, teaqlNameStorageKey, teaqlCreateTimeStorageKey, teaqlUpdateTimeStorageKey, teaqlVersionStorageKey)
 }
 
 func (e *CommercePlatform) teaqlAcceptPersisted(context *runtime.UserContext, record core.Record) error {
@@ -464,37 +591,49 @@ func (e *CommercePlatform) JSONQueryProperties() core.Record { return e.base.Que
 func (e *CommercePlatform) LoadedJSONFields() core.Record {
 	all := e.IntoRecord()
 	selected := make(core.Record)
-	if e.IsLoaded("id") { if value, present := all["id"]; present { selected["id"] = value } }
-	if e.IsLoaded("name") { if value, present := all["name"]; present { selected["name"] = value } }
-	if e.IsLoaded("create_time") { if value, present := all["create_time"]; present { selected["create_time"] = value } }
-	if e.IsLoaded("update_time") { if value, present := all["update_time"]; present { selected["update_time"] = value } }
-	if e.IsLoaded("version") { if value, present := all["version"]; present { selected["version"] = value } }
-	if e.IsLoaded("customerList") {
+	if e.IsLoaded(teaqlIdStorageKey) { if value, present := all[teaqlIdStorageKey]; present { selected[teaqlIdStorageKey] = value } }
+	if e.IsLoaded(teaqlNameStorageKey) { if value, present := all[teaqlNameStorageKey]; present { selected[teaqlNameStorageKey] = value } }
+	if e.IsLoaded(teaqlCreateTimeStorageKey) { if value, present := all[teaqlCreateTimeStorageKey]; present { selected[teaqlCreateTimeStorageKey] = value } }
+	if e.IsLoaded(teaqlUpdateTimeStorageKey) { if value, present := all[teaqlUpdateTimeStorageKey]; present { selected[teaqlUpdateTimeStorageKey] = value } }
+	if e.IsLoaded(teaqlVersionStorageKey) { if value, present := all[teaqlVersionStorageKey]; present { selected[teaqlVersionStorageKey] = value } }
+	includeCustomerList := e.CustomerList().IsLoaded()
+	for _, child := range e.CustomerList().Items() { if child.IsNew() || child.IsMarkedAsDelete() || len(child.EntityRoot().Change(child.EntityKey())) > 0 { includeCustomerList = true } }
+	if includeCustomerList {
 		items := make([]core.Value, 0, len(e.CustomerList().Items()))
 		for _, child := range e.CustomerList().Items() { items = append(items, core.Value{V: child}) }
 		selected["customerList"] = core.ValList(items)
 	}
-	if e.IsLoaded("orderStatusList") {
+	includeOrderStatusList := e.OrderStatusList().IsLoaded()
+	for _, child := range e.OrderStatusList().Items() { if child.IsNew() || child.IsMarkedAsDelete() || len(child.EntityRoot().Change(child.EntityKey())) > 0 { includeOrderStatusList = true } }
+	if includeOrderStatusList {
 		items := make([]core.Value, 0, len(e.OrderStatusList().Items()))
 		for _, child := range e.OrderStatusList().Items() { items = append(items, core.Value{V: child}) }
 		selected["orderStatusList"] = core.ValList(items)
 	}
-	if e.IsLoaded("customerOrderList") {
+	includeCustomerOrderList := e.CustomerOrderList().IsLoaded()
+	for _, child := range e.CustomerOrderList().Items() { if child.IsNew() || child.IsMarkedAsDelete() || len(child.EntityRoot().Change(child.EntityKey())) > 0 { includeCustomerOrderList = true } }
+	if includeCustomerOrderList {
 		items := make([]core.Value, 0, len(e.CustomerOrderList().Items()))
 		for _, child := range e.CustomerOrderList().Items() { items = append(items, core.Value{V: child}) }
 		selected["customerOrderList"] = core.ValList(items)
 	}
-	if e.IsLoaded("productList") {
+	includeProductList := e.ProductList().IsLoaded()
+	for _, child := range e.ProductList().Items() { if child.IsNew() || child.IsMarkedAsDelete() || len(child.EntityRoot().Change(child.EntityKey())) > 0 { includeProductList = true } }
+	if includeProductList {
 		items := make([]core.Value, 0, len(e.ProductList().Items()))
 		for _, child := range e.ProductList().Items() { items = append(items, core.Value{V: child}) }
 		selected["productList"] = core.ValList(items)
 	}
-	if e.IsLoaded("orderLineList") {
+	includeOrderLineList := e.OrderLineList().IsLoaded()
+	for _, child := range e.OrderLineList().Items() { if child.IsNew() || child.IsMarkedAsDelete() || len(child.EntityRoot().Change(child.EntityKey())) > 0 { includeOrderLineList = true } }
+	if includeOrderLineList {
 		items := make([]core.Value, 0, len(e.OrderLineList().Items()))
 		for _, child := range e.OrderLineList().Items() { items = append(items, core.Value{V: child}) }
 		selected["orderLineList"] = core.ValList(items)
 	}
-	if e.IsLoaded("orderSearchPresetList") {
+	includeOrderSearchPresetList := e.OrderSearchPresetList().IsLoaded()
+	for _, child := range e.OrderSearchPresetList().Items() { if child.IsNew() || child.IsMarkedAsDelete() || len(child.EntityRoot().Change(child.EntityKey())) > 0 { includeOrderSearchPresetList = true } }
+	if includeOrderSearchPresetList {
 		items := make([]core.Value, 0, len(e.OrderSearchPresetList().Items()))
 		for _, child := range e.OrderSearchPresetList().Items() { items = append(items, core.Value{V: child}) }
 		selected["orderSearchPresetList"] = core.ValList(items)
@@ -952,30 +1091,31 @@ func (e *CommercePlatform) TeaqlPreflightWithinGraph(context *runtime.UserContex
 		operation := core.MutationUpdate
 		if e.isNew { operation = core.MutationInsert }
 		if operation == core.MutationUpdate {
-			if !e.IsLoaded("id") {
-				result := runtime.CheckResult{RuleID: "invalid_type", EntityType: "CommercePlatform", CanonicalLocation: runtime.Location().Property("id"), Message: "Mutation requires a fully loaded entity"}
+			if !e.IsLoaded(teaqlIdStorageKey) {
+				result := runtime.CheckResult{RuleID: "invalid_type", EntityType: "CommercePlatform", CanonicalLocation: runtime.Location().Property(teaqlIdModelKey), Message: "Mutation requires a fully loaded entity"}
 				return &runtime.RuntimeError{Type: "Check", CheckResults: []runtime.CheckResult{result}}
 			}
-			if !e.IsLoaded("name") {
-				result := runtime.CheckResult{RuleID: "invalid_type", EntityType: "CommercePlatform", CanonicalLocation: runtime.Location().Property("name"), Message: "Mutation requires a fully loaded entity"}
+			if !e.IsLoaded(teaqlNameStorageKey) {
+				result := runtime.CheckResult{RuleID: "invalid_type", EntityType: "CommercePlatform", CanonicalLocation: runtime.Location().Property(teaqlNameModelKey), Message: "Mutation requires a fully loaded entity"}
 				return &runtime.RuntimeError{Type: "Check", CheckResults: []runtime.CheckResult{result}}
 			}
-			if !e.IsLoaded("create_time") {
-				result := runtime.CheckResult{RuleID: "invalid_type", EntityType: "CommercePlatform", CanonicalLocation: runtime.Location().Property("create_time"), Message: "Mutation requires a fully loaded entity"}
+			if !e.IsLoaded(teaqlCreateTimeStorageKey) {
+				result := runtime.CheckResult{RuleID: "invalid_type", EntityType: "CommercePlatform", CanonicalLocation: runtime.Location().Property(teaqlCreateTimeModelKey), Message: "Mutation requires a fully loaded entity"}
 				return &runtime.RuntimeError{Type: "Check", CheckResults: []runtime.CheckResult{result}}
 			}
-			if !e.IsLoaded("update_time") {
-				result := runtime.CheckResult{RuleID: "invalid_type", EntityType: "CommercePlatform", CanonicalLocation: runtime.Location().Property("update_time"), Message: "Mutation requires a fully loaded entity"}
+			if !e.IsLoaded(teaqlUpdateTimeStorageKey) {
+				result := runtime.CheckResult{RuleID: "invalid_type", EntityType: "CommercePlatform", CanonicalLocation: runtime.Location().Property(teaqlUpdateTimeModelKey), Message: "Mutation requires a fully loaded entity"}
 				return &runtime.RuntimeError{Type: "Check", CheckResults: []runtime.CheckResult{result}}
 			}
-			if !e.IsLoaded("version") {
-				result := runtime.CheckResult{RuleID: "invalid_type", EntityType: "CommercePlatform", CanonicalLocation: runtime.Location().Property("version"), Message: "Mutation requires a fully loaded entity"}
+			if !e.IsLoaded(teaqlVersionStorageKey) {
+				result := runtime.CheckResult{RuleID: "invalid_type", EntityType: "CommercePlatform", CanonicalLocation: runtime.Location().Property(teaqlVersionModelKey), Message: "Mutation requires a fully loaded entity"}
 				return &runtime.RuntimeError{Type: "Check", CheckResults: []runtime.CheckResult{result}}
 			}
 		}
 		checkedValues := e.IntoRecord()
 		valuesBeforeCheck := e.IntoRecord()
-		checkErr := runtime.CheckAndFixGraphEntity(context, &runtime.CheckAndFixInput{Entity: "commerce_platform", Operation: operation, Values: checkedValues}, e.root, e.EntityKey())
+		context.CaptureContextFixUndo(e.EntityName(), func() *core.BaseEntityData { return e.base }, e.root, e.EntityKey())
+		checkErr := runtime.CheckAndFixGraphEntity(context, &runtime.CheckAndFixInput{Entity: "commerce_platform", Operation: operation, Values: checkedValues, OldValues: e.loadedSnapshot.ValuesFor(e.EntityKey(), e.base.Version)}, e.root, e.EntityKey())
 		for field, value := range checkedValues {
 			if before, exists := valuesBeforeCheck[field]; !exists || !reflect.DeepEqual(before, value) {
 				e.base.PutDynamic(field, value)
@@ -1100,7 +1240,7 @@ func (e *CommercePlatform) TeaqlPreflightWithinGraph(context *runtime.UserContex
 			return fmt.Errorf("preflight child from orderSearchPresetList: %w", err)
 		}
 	}
-	return nil
+	return e.TeaqlNormalizeMutationGraph(context)
 }
 
 type teaqlCommercePlatformSaveSnapshot struct {
@@ -1274,7 +1414,7 @@ func (e *CommercePlatform) TeaqlSaveWithinGraph(context *runtime.UserContext, in
 	} else {
 		checkedValues := e.IntoRecord()
 		valuesBeforeCheck := e.IntoRecord()
-		checkErr := runtime.CheckAndFixGraphEntity(context, &runtime.CheckAndFixInput{Entity: "commerce_platform", Operation: core.MutationUpdate, Values: checkedValues}, e.root, e.EntityKey())
+		checkErr := runtime.CheckAndFixGraphEntity(context, &runtime.CheckAndFixInput{Entity: "commerce_platform", Operation: core.MutationUpdate, Values: checkedValues, OldValues: e.loadedSnapshot.ValuesFor(e.EntityKey(), e.base.Version)}, e.root, e.EntityKey())
 		for field, value := range checkedValues {
 			if before, exists := valuesBeforeCheck[field]; !exists || !reflect.DeepEqual(before, value) {
 				canonical, mappingErr := context.CanonicalLedgerField(e.EntityName(), field)
@@ -1431,49 +1571,49 @@ func (e *CommercePlatform) UpdateId(value uint64) *CommercePlatform {
 	oldKey := e.EntityKey()
 	e.base.Id = value
 	e.root.Rekey(oldKey, e.EntityKey())
-	e.loadState["id"] = true
+	e.loadState[teaqlIdStorageKey] = true
 	return e
 }
 
 func (e *CommercePlatform) Name() string {
-	val, _ := e.base.GetDynamic("name")
+	val, _ := e.base.GetDynamic(teaqlNameStorageKey)
 	res, _ := val.TryText()
 	return res}
 
 func (e *CommercePlatform) UpdateName(value string) *CommercePlatform {
 	e.teaqlEnsureState()
-	e.base.PutDynamic("name", core.ValText(value))
-	e.dirtyFields["name"] = true
-	e.root.Set(e.EntityKey(), "name", core.ValText(value))
-	e.loadState["name"] = true
+	e.base.PutDynamic(teaqlNameStorageKey, core.ValText(value))
+	e.dirtyFields[teaqlNameStorageKey] = true
+	e.root.Set(e.EntityKey(), teaqlNameModelKey, core.ValText(value))
+	e.loadState[teaqlNameStorageKey] = true
 	return e
 }
 
 func (e *CommercePlatform) CreateTime() time.Time {
-	val, _ := e.base.GetDynamic("create_time")
+	val, _ := e.base.GetDynamic(teaqlCreateTimeStorageKey)
 	res, _ := val.TryTime()
 	return res}
 
 func (e *CommercePlatform) UpdateCreateTime(value time.Time) *CommercePlatform {
 	e.teaqlEnsureState()
-	e.base.PutDynamic("create_time", core.ValTimestamp(value.UnixMilli()))
-	e.dirtyFields["create_time"] = true
-	e.root.Set(e.EntityKey(), "create_time", core.ValTimestamp(value.UnixMilli()))
-	e.loadState["create_time"] = true
+	e.base.PutDynamic(teaqlCreateTimeStorageKey, core.ValTimestamp(value.UnixMilli()))
+	e.dirtyFields[teaqlCreateTimeStorageKey] = true
+	e.root.Set(e.EntityKey(), teaqlCreateTimeModelKey, core.ValTimestamp(value.UnixMilli()))
+	e.loadState[teaqlCreateTimeStorageKey] = true
 	return e
 }
 
 func (e *CommercePlatform) UpdateTime() time.Time {
-	val, _ := e.base.GetDynamic("update_time")
+	val, _ := e.base.GetDynamic(teaqlUpdateTimeStorageKey)
 	res, _ := val.TryTime()
 	return res}
 
 func (e *CommercePlatform) UpdateUpdateTime(value time.Time) *CommercePlatform {
 	e.teaqlEnsureState()
-	e.base.PutDynamic("update_time", core.ValTimestamp(value.UnixMilli()))
-	e.dirtyFields["update_time"] = true
-	e.root.Set(e.EntityKey(), "update_time", core.ValTimestamp(value.UnixMilli()))
-	e.loadState["update_time"] = true
+	e.base.PutDynamic(teaqlUpdateTimeStorageKey, core.ValTimestamp(value.UnixMilli()))
+	e.dirtyFields[teaqlUpdateTimeStorageKey] = true
+	e.root.Set(e.EntityKey(), teaqlUpdateTimeModelKey, core.ValTimestamp(value.UnixMilli()))
+	e.loadState[teaqlUpdateTimeStorageKey] = true
 	return e
 }
 
@@ -1484,7 +1624,7 @@ func (e *CommercePlatform) Version() int64 {
 func (e *CommercePlatform) UpdateVersion(value int64) *CommercePlatform {
 	e.teaqlEnsureState()
 	e.base.Version = value
-	e.loadState["version"] = true
+	e.loadState[teaqlVersionStorageKey] = true
 	return e
 }
 func (e *CommercePlatform) CustomerList() *CustomerList {

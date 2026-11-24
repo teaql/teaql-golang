@@ -89,6 +89,7 @@ func (r *TypePlatformRequest) teaqlHydrateQueryRecord(rec core.Record) (*TypePla
 	entity := newLoadedTypePlatform()
 	if err := entity.FromRecord(rec); err != nil { return nil, err }
 	if relationValue, selected := rec["scalarTypeProbeList"]; selected {
+		entity.markRelationLoaded("scalarTypeProbeList")
 		factory := r.relationFactories["scalarTypeProbeList"]
 		if factory == nil { return nil, fmt.Errorf("missing generated query hydrator for relation scalarTypeProbeList") }
 		childRecords, ok := relationValue.V.([]core.Record)
