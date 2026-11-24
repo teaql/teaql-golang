@@ -26,6 +26,9 @@ func validateLedgerComposition(root *core.EntityRoot) error {
 	if root == nil {
 		return nil
 	}
+	if root.TransactionOutcomeUnknown() {
+		return ErrTransactionOutcomeUnknown
+	}
 	return ledgerCompositionError(root.CompositionError())
 }
 

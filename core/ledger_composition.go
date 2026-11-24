@@ -50,6 +50,12 @@ func (r *EntityRoot) mergeFrom(other *EntityRoot, remember bool) error {
 	source := other.compositionSnapshot()
 	r.mu.Lock()
 	defer r.mu.Unlock()
+	if r.transactionOutcomeUnknown || source.transactionOutcomeUnknown {
+		if remember {
+			r.transactionOutcomeUnknown = true
+		}
+		return ErrTransactionOutcomeUnknown
+	}
 	if r.compositionError != nil {
 		return copyLedgerVersionConflict(r.compositionError)
 	}
@@ -108,6 +114,7 @@ func (r *EntityRoot) compositionSnapshot() *EntityRoot {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 	snapshot := NewEntityRoot()
+	snapshot.transactionOutcomeUnknown = r.transactionOutcomeUnknown
 	for key, entry := range r.changes {
 		values := make(Record, len(entry.Values))
 		for field, value := range entry.Values {

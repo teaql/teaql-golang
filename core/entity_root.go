@@ -1,6 +1,7 @@
 package core
 
 import (
+	"errors"
 	"fmt"
 	"sync"
 )
@@ -25,15 +26,31 @@ type EntityChange struct {
 
 // EntityRoot is the pending mutation ledger shared by a generated object graph.
 type EntityRoot struct {
-	mu               sync.RWMutex
-	changes          map[string]EntityChange
-	originalVersions map[string]int64
-	originalKeys     map[string]EntityKey
-	newKeys          map[string]EntityKey
-	deletedKeys      map[string]EntityKey
-	traceChains      map[string][]*TraceNode
-	traceKeys        map[string]EntityKey
-	compositionError *LedgerVersionConflict
+	mu                        sync.RWMutex
+	changes                   map[string]EntityChange
+	originalVersions          map[string]int64
+	originalKeys              map[string]EntityKey
+	newKeys                   map[string]EntityKey
+	deletedKeys               map[string]EntityKey
+	traceChains               map[string][]*TraceNode
+	traceKeys                 map[string]EntityKey
+	compositionError          *LedgerVersionConflict
+	transactionOutcomeUnknown bool
+}
+
+// ErrTransactionOutcomeUnknown indicates that this entity graph must be reloaded.
+var ErrTransactionOutcomeUnknown = errors.New("TRANSACTION_OUTCOME_UNKNOWN: reload the affected records before retrying")
+
+func (r *EntityRoot) TransactionOutcomeUnknown() bool {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+	return r.transactionOutcomeUnknown
+}
+
+func (r *EntityRoot) FenceTransactionOutcome() {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	r.transactionOutcomeUnknown = true
 }
 
 func NewEntityRoot() *EntityRoot {
@@ -86,6 +103,52 @@ func (r *EntityRoot) Change(key EntityKey) Record {
 		result[field] = value
 	}
 	return result
+}
+
+// CaptureTransactionKey preserves a pre-save baseline when a generated entity
+// advances to its authoritative version inside an enclosing transaction.
+func (r *EntityRoot) CaptureTransactionKey(key EntityKey) func(Record, bool) {
+	id := key.mapKey()
+	r.mu.RLock()
+	before := make(Record, len(r.changes[id].Values))
+	for field, value := range r.changes[id].Values {
+		before[field] = value
+	}
+	version, hadVersion := r.originalVersions[id]
+	_, wasNew := r.newKeys[id]
+	_, wasDeleted := r.deletedKeys[id]
+	trace, hadTrace := r.traceChains[id]
+	r.mu.RUnlock()
+	return func(later Record, deleted bool) {
+		r.mu.Lock()
+		defer r.mu.Unlock()
+		delete(r.changes, id)
+		delete(r.originalKeys, id)
+		delete(r.originalVersions, id)
+		delete(r.newKeys, id)
+		delete(r.deletedKeys, id)
+		delete(r.traceKeys, id)
+		delete(r.traceChains, id)
+		if hadVersion {
+			r.originalVersions[id], r.originalKeys[id] = version, key
+		}
+		if wasNew {
+			r.newKeys[id] = key
+		}
+		if hadTrace {
+			r.traceChains[id], r.traceKeys[id] = trace, key
+		}
+		if wasDeleted || deleted {
+			r.deletedKeys[id] = key
+			return
+		}
+		for field, value := range later {
+			before[field] = value
+		}
+		if len(before) != 0 {
+			r.changes[id] = EntityChange{Key: key, Values: before}
+		}
+	}
 }
 
 // CaptureFields is a framework save-attempt undo, not a second ledger. Only
