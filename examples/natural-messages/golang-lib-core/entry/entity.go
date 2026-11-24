@@ -23,6 +23,21 @@ var (
 	_ = errors.As
 )
 
+const (
+    teaqlIdStorageKey = "id"
+    teaqlIdModelKey = "id"
+    teaqlCatalogStorageKey = "catalog_id"
+    teaqlCatalogModelKey = "catalog"
+    teaqlNameStorageKey = "name"
+    teaqlNameModelKey = "name"
+    teaqlBornAtStorageKey = "born_at"
+    teaqlBornAtModelKey = "born_at"
+    teaqlTouchedAtStorageKey = "touched_at"
+    teaqlTouchedAtModelKey = "touched_at"
+    teaqlVersionStorageKey = "version"
+    teaqlVersionModelKey = "version"
+)
+
 
 type Entry struct {
 	base        *core.BaseEntityData
@@ -193,11 +208,11 @@ func (e *Entry) teaqlFromRecord(record core.Record, captureLoaded bool) error {
 }
 
 func (e *Entry) teaqlScalarSnapshot(record core.Record) core.LoadedScalarSnapshot {
-	return core.NewLoadedScalarSnapshot(record, "id", "catalog_id", "name", "born_at", "touched_at", "version")
+	return core.NewLoadedScalarSnapshot(record, teaqlIdStorageKey, teaqlCatalogStorageKey, teaqlNameStorageKey, teaqlBornAtStorageKey, teaqlTouchedAtStorageKey, teaqlVersionStorageKey)
 }
 
 func (e *Entry) teaqlLoadedScalarSnapshot(record core.Record) core.LoadedScalarSnapshot {
-	return core.NewOwnedLoadedScalarSnapshot(e.EntityKey(), e.base.Version, record, "id", "catalog_id", "name", "born_at", "touched_at", "version")
+	return core.NewOwnedLoadedScalarSnapshot(e.EntityKey(), e.base.Version, record, teaqlIdStorageKey, teaqlCatalogStorageKey, teaqlNameStorageKey, teaqlBornAtStorageKey, teaqlTouchedAtStorageKey, teaqlVersionStorageKey)
 }
 
 func (e *Entry) teaqlAcceptPersisted(context *runtime.UserContext, record core.Record) error {
@@ -302,12 +317,12 @@ func (e *Entry) JSONQueryProperties() core.Record { return e.base.QueryPropertie
 func (e *Entry) LoadedJSONFields() core.Record {
 	all := e.IntoRecord()
 	selected := make(core.Record)
-	if e.IsLoaded("id") { if value, present := all["id"]; present { selected["id"] = value } }
-	if e.IsLoaded("catalog_id") { if value, present := all["catalog_id"]; present { selected["catalog_id"] = value } }
-	if e.IsLoaded("name") { if value, present := all["name"]; present { selected["name"] = value } }
-	if e.IsLoaded("born_at") { if value, present := all["born_at"]; present { selected["born_at"] = value } }
-	if e.IsLoaded("touched_at") { if value, present := all["touched_at"]; present { selected["touched_at"] = value } }
-	if e.IsLoaded("version") { if value, present := all["version"]; present { selected["version"] = value } }
+	if e.IsLoaded(teaqlIdStorageKey) { if value, present := all[teaqlIdStorageKey]; present { selected[teaqlIdStorageKey] = value } }
+	if e.IsLoaded(teaqlCatalogStorageKey) { if value, present := all[teaqlCatalogStorageKey]; present { selected[teaqlCatalogStorageKey] = value } }
+	if e.IsLoaded(teaqlNameStorageKey) { if value, present := all[teaqlNameStorageKey]; present { selected[teaqlNameStorageKey] = value } }
+	if e.IsLoaded(teaqlBornAtStorageKey) { if value, present := all[teaqlBornAtStorageKey]; present { selected[teaqlBornAtStorageKey] = value } }
+	if e.IsLoaded(teaqlTouchedAtStorageKey) { if value, present := all[teaqlTouchedAtStorageKey]; present { selected[teaqlTouchedAtStorageKey] = value } }
+	if e.IsLoaded(teaqlVersionStorageKey) { if value, present := all[teaqlVersionStorageKey]; present { selected[teaqlVersionStorageKey] = value } }
 	if e.isRelationLoaded("catalogEntity") { if target, present := e.relations["catalogEntity"]; present && target != nil { selected["catalogEntity"] = core.Value{V: target} } }
 	return selected
 }
@@ -410,28 +425,28 @@ func (e *Entry) TeaqlPreflightWithinGraph(context *runtime.UserContext, intent c
 		operation := core.MutationUpdate
 		if e.isNew { operation = core.MutationInsert }
 		if operation == core.MutationUpdate {
-			if !e.IsLoaded("id") {
-				result := runtime.CheckResult{RuleID: "invalid_type", EntityType: "Entry", CanonicalLocation: runtime.Location().Property("id"), Message: "Mutation requires a fully loaded entity"}
+			if !e.IsLoaded(teaqlIdStorageKey) {
+				result := runtime.CheckResult{RuleID: "invalid_type", EntityType: "Entry", CanonicalLocation: runtime.Location().Property(teaqlIdModelKey), Message: "Mutation requires a fully loaded entity"}
 				return &runtime.RuntimeError{Type: "Check", CheckResults: []runtime.CheckResult{result}}
 			}
-			if !e.IsLoaded("catalog_id") {
-				result := runtime.CheckResult{RuleID: "invalid_type", EntityType: "Entry", CanonicalLocation: runtime.Location().Property("catalog"), Message: "Mutation requires a fully loaded entity"}
+			if !e.IsLoaded(teaqlCatalogStorageKey) {
+				result := runtime.CheckResult{RuleID: "invalid_type", EntityType: "Entry", CanonicalLocation: runtime.Location().Property(teaqlCatalogModelKey), Message: "Mutation requires a fully loaded entity"}
 				return &runtime.RuntimeError{Type: "Check", CheckResults: []runtime.CheckResult{result}}
 			}
-			if !e.IsLoaded("name") {
-				result := runtime.CheckResult{RuleID: "invalid_type", EntityType: "Entry", CanonicalLocation: runtime.Location().Property("name"), Message: "Mutation requires a fully loaded entity"}
+			if !e.IsLoaded(teaqlNameStorageKey) {
+				result := runtime.CheckResult{RuleID: "invalid_type", EntityType: "Entry", CanonicalLocation: runtime.Location().Property(teaqlNameModelKey), Message: "Mutation requires a fully loaded entity"}
 				return &runtime.RuntimeError{Type: "Check", CheckResults: []runtime.CheckResult{result}}
 			}
-			if !e.IsLoaded("born_at") {
-				result := runtime.CheckResult{RuleID: "invalid_type", EntityType: "Entry", CanonicalLocation: runtime.Location().Property("born_at"), Message: "Mutation requires a fully loaded entity"}
+			if !e.IsLoaded(teaqlBornAtStorageKey) {
+				result := runtime.CheckResult{RuleID: "invalid_type", EntityType: "Entry", CanonicalLocation: runtime.Location().Property(teaqlBornAtModelKey), Message: "Mutation requires a fully loaded entity"}
 				return &runtime.RuntimeError{Type: "Check", CheckResults: []runtime.CheckResult{result}}
 			}
-			if !e.IsLoaded("touched_at") {
-				result := runtime.CheckResult{RuleID: "invalid_type", EntityType: "Entry", CanonicalLocation: runtime.Location().Property("touched_at"), Message: "Mutation requires a fully loaded entity"}
+			if !e.IsLoaded(teaqlTouchedAtStorageKey) {
+				result := runtime.CheckResult{RuleID: "invalid_type", EntityType: "Entry", CanonicalLocation: runtime.Location().Property(teaqlTouchedAtModelKey), Message: "Mutation requires a fully loaded entity"}
 				return &runtime.RuntimeError{Type: "Check", CheckResults: []runtime.CheckResult{result}}
 			}
-			if !e.IsLoaded("version") {
-				result := runtime.CheckResult{RuleID: "invalid_type", EntityType: "Entry", CanonicalLocation: runtime.Location().Property("version"), Message: "Mutation requires a fully loaded entity"}
+			if !e.IsLoaded(teaqlVersionStorageKey) {
+				result := runtime.CheckResult{RuleID: "invalid_type", EntityType: "Entry", CanonicalLocation: runtime.Location().Property(teaqlVersionModelKey), Message: "Mutation requires a fully loaded entity"}
 				return &runtime.RuntimeError{Type: "Check", CheckResults: []runtime.CheckResult{result}}
 			}
 		}
@@ -684,49 +699,49 @@ func (e *Entry) UpdateId(value uint64) *Entry {
 	oldKey := e.EntityKey()
 	e.base.Id = value
 	e.root.Rekey(oldKey, e.EntityKey())
-	e.loadState["id"] = true
+	e.loadState[teaqlIdStorageKey] = true
 	return e
 }
 
 func (e *Entry) Name() string {
-	val, _ := e.base.GetDynamic("name")
+	val, _ := e.base.GetDynamic(teaqlNameStorageKey)
 	res, _ := val.TryText()
 	return res}
 
 func (e *Entry) UpdateName(value string) *Entry {
 	e.teaqlEnsureState()
-	e.base.PutDynamic("name", core.ValText(value))
-	e.dirtyFields["name"] = true
-	e.root.Set(e.EntityKey(), "name", core.ValText(value))
-	e.loadState["name"] = true
+	e.base.PutDynamic(teaqlNameStorageKey, core.ValText(value))
+	e.dirtyFields[teaqlNameStorageKey] = true
+	e.root.Set(e.EntityKey(), teaqlNameModelKey, core.ValText(value))
+	e.loadState[teaqlNameStorageKey] = true
 	return e
 }
 
 func (e *Entry) BornAt() time.Time {
-	val, _ := e.base.GetDynamic("born_at")
+	val, _ := e.base.GetDynamic(teaqlBornAtStorageKey)
 	res, _ := val.TryTime()
 	return res}
 
 func (e *Entry) UpdateBornAt(value time.Time) *Entry {
 	e.teaqlEnsureState()
-	e.base.PutDynamic("born_at", core.ValTimestamp(value.UnixMilli()))
-	e.dirtyFields["born_at"] = true
-	e.root.Set(e.EntityKey(), "born_at", core.ValTimestamp(value.UnixMilli()))
-	e.loadState["born_at"] = true
+	e.base.PutDynamic(teaqlBornAtStorageKey, core.ValTimestamp(value.UnixMilli()))
+	e.dirtyFields[teaqlBornAtStorageKey] = true
+	e.root.Set(e.EntityKey(), teaqlBornAtModelKey, core.ValTimestamp(value.UnixMilli()))
+	e.loadState[teaqlBornAtStorageKey] = true
 	return e
 }
 
 func (e *Entry) TouchedAt() time.Time {
-	val, _ := e.base.GetDynamic("touched_at")
+	val, _ := e.base.GetDynamic(teaqlTouchedAtStorageKey)
 	res, _ := val.TryTime()
 	return res}
 
 func (e *Entry) UpdateTouchedAt(value time.Time) *Entry {
 	e.teaqlEnsureState()
-	e.base.PutDynamic("touched_at", core.ValTimestamp(value.UnixMilli()))
-	e.dirtyFields["touched_at"] = true
-	e.root.Set(e.EntityKey(), "touched_at", core.ValTimestamp(value.UnixMilli()))
-	e.loadState["touched_at"] = true
+	e.base.PutDynamic(teaqlTouchedAtStorageKey, core.ValTimestamp(value.UnixMilli()))
+	e.dirtyFields[teaqlTouchedAtStorageKey] = true
+	e.root.Set(e.EntityKey(), teaqlTouchedAtModelKey, core.ValTimestamp(value.UnixMilli()))
+	e.loadState[teaqlTouchedAtStorageKey] = true
 	return e
 }
 
@@ -737,26 +752,26 @@ func (e *Entry) Version() int64 {
 func (e *Entry) UpdateVersion(value int64) *Entry {
 	e.teaqlEnsureState()
 	e.base.Version = value
-	e.loadState["version"] = true
+	e.loadState[teaqlVersionStorageKey] = true
 	return e
 }
 func (e *Entry) CatalogId() uint64 {
-	val, _ := e.base.GetDynamic("catalog_id")
+	val, _ := e.base.GetDynamic(teaqlCatalogStorageKey)
 	res, _ := val.TryU64()
 	return res
 }
 
 func (e *Entry) UpdateCatalogId(value uint64) *Entry {
-	previous, present := e.base.GetDynamic("catalog_id")
-	e.base.PutDynamic("catalog_id", core.ValU64(value))
-	e.dirtyFields["catalog_id"] = true
-	current, _ := e.base.GetDynamic("catalog_id")
+	previous, present := e.base.GetDynamic(teaqlCatalogStorageKey)
+	e.base.PutDynamic(teaqlCatalogStorageKey, core.ValU64(value))
+	e.dirtyFields[teaqlCatalogStorageKey] = true
+	current, _ := e.base.GetDynamic(teaqlCatalogStorageKey)
 	if !present || !reflect.DeepEqual(previous, current) {
 		delete(e.relations, "catalogEntity")
 		delete(e.loadedRelations, "catalogEntity")
 	}
-	e.root.Set(e.EntityKey(), "catalog", core.ValU64(value))
-	e.loadState["catalog_id"] = true
+	e.root.Set(e.EntityKey(), teaqlCatalogModelKey, core.ValU64(value))
+	e.loadState[teaqlCatalogStorageKey] = true
 	return e
 }
 // DEBUG: constantObjectField is false

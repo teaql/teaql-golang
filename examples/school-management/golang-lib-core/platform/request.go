@@ -202,16 +202,16 @@ func (r *PlatformRequest) DeletedRowsOnly() *PlatformRequest {
 }
 
 func (r *PlatformRequest) SelectId() *PlatformRequest {
-	r.Query.Project("id")
+	r.Query.Project(teaqlIdStorageKey)
 	return r
 }
 
 func (r *PlatformRequest) WithIdIs(value uint64) *PlatformRequest {
-	r.Query.AndFilter(core.ExprEq("id", core.ValU64(value)))
+	r.Query.AndFilter(core.ExprEq(teaqlIdStorageKey, core.ValU64(value)))
 	return r
 }
 func (r *PlatformRequest) WithIdIsNot(value uint64) *PlatformRequest {
-	r.Query.AndFilter(core.ExprNe("id", core.ValU64(value)))
+	r.Query.AndFilter(core.ExprNe(teaqlIdStorageKey, core.ValU64(value)))
 	return r
 }
 func (r *PlatformRequest) WithIdIn(values []uint64) *PlatformRequest {
@@ -219,7 +219,7 @@ func (r *PlatformRequest) WithIdIn(values []uint64) *PlatformRequest {
 	for _, value := range values {
 		converted = append(converted, core.ValU64(value))
 	}
-	r.Query.AndFilter(core.ExprInList("id", converted))
+	r.Query.AndFilter(core.ExprInList(teaqlIdStorageKey, converted))
 	return r
 }
 func (r *PlatformRequest) WithIdNotIn(values []uint64) *PlatformRequest {
@@ -227,23 +227,23 @@ func (r *PlatformRequest) WithIdNotIn(values []uint64) *PlatformRequest {
 	for _, value := range values {
 		converted = append(converted, core.ValU64(value))
 	}
-	r.Query.AndFilter(core.ExprNotInList("id", converted))
+	r.Query.AndFilter(core.ExprNotInList(teaqlIdStorageKey, converted))
 	return r
 }
 func (r *PlatformRequest) WithIdGreaterThan(value uint64) *PlatformRequest {
-	r.Query.AndFilter(core.ExprGt("id", core.ValU64(value)))
+	r.Query.AndFilter(core.ExprGt(teaqlIdStorageKey, core.ValU64(value)))
 	return r
 }
 func (r *PlatformRequest) WithIdGreaterThanOrEqualTo(value uint64) *PlatformRequest {
-	r.Query.AndFilter(core.ExprGte("id", core.ValU64(value)))
+	r.Query.AndFilter(core.ExprGte(teaqlIdStorageKey, core.ValU64(value)))
 	return r
 }
 func (r *PlatformRequest) WithIdLessThan(value uint64) *PlatformRequest {
-	r.Query.AndFilter(core.ExprLt("id", core.ValU64(value)))
+	r.Query.AndFilter(core.ExprLt(teaqlIdStorageKey, core.ValU64(value)))
 	return r
 }
 func (r *PlatformRequest) WithIdLessThanOrEqualTo(value uint64) *PlatformRequest {
-	r.Query.AndFilter(core.ExprLte("id", core.ValU64(value)))
+	r.Query.AndFilter(core.ExprLte(teaqlIdStorageKey, core.ValU64(value)))
 	return r
 }
 func (r *PlatformRequest) WithIdBetween(lower uint64, upper uint64) *PlatformRequest {
@@ -251,36 +251,36 @@ func (r *PlatformRequest) WithIdBetween(lower uint64, upper uint64) *PlatformReq
 	from := core.ValU64(value)
 	value = upper
 	to := core.ValU64(value)
-	r.Query.AndFilter(core.ExprBetweenNode("id", from, to))
+	r.Query.AndFilter(core.ExprBetweenNode(teaqlIdStorageKey, from, to))
 	return r
 }
 func (r *PlatformRequest) WithIdIsKnown() *PlatformRequest {
-	r.Query.AndFilter(core.ExprIsNotNullNode("id"))
+	r.Query.AndFilter(core.ExprIsNotNullNode(teaqlIdStorageKey))
 	return r
 }
 func (r *PlatformRequest) WithIdIsUnknown() *PlatformRequest {
-	r.Query.AndFilter(core.ExprIsNullNode("id"))
+	r.Query.AndFilter(core.ExprIsNullNode(teaqlIdStorageKey))
 	return r
 }
 func (r *PlatformRequest) OrderByIdAsc() *PlatformRequest {
-	r.Query.OrderAsc("id")
+	r.Query.OrderAsc(teaqlIdStorageKey)
 	return r
 }
 func (r *PlatformRequest) OrderByIdDesc() *PlatformRequest {
-	r.Query.OrderDesc("id")
+	r.Query.OrderDesc(teaqlIdStorageKey)
 	return r
 }
 func (r *PlatformRequest) SelectName() *PlatformRequest {
-	r.Query.Project("name")
+	r.Query.Project(teaqlNameStorageKey)
 	return r
 }
 
 func (r *PlatformRequest) WithNameIs(value string) *PlatformRequest {
-	r.Query.AndFilter(core.ExprEq("name", core.ValText(value)))
+	r.Query.AndFilter(core.ExprEq(teaqlNameStorageKey, core.ValText(value)))
 	return r
 }
 func (r *PlatformRequest) WithNameIsNot(value string) *PlatformRequest {
-	r.Query.AndFilter(core.ExprNe("name", core.ValText(value)))
+	r.Query.AndFilter(core.ExprNe(teaqlNameStorageKey, core.ValText(value)))
 	return r
 }
 func (r *PlatformRequest) WithNameIn(values []string) *PlatformRequest {
@@ -288,7 +288,7 @@ func (r *PlatformRequest) WithNameIn(values []string) *PlatformRequest {
 	for _, value := range values {
 		converted = append(converted, core.ValText(value))
 	}
-	r.Query.AndFilter(core.ExprInList("name", converted))
+	r.Query.AndFilter(core.ExprInList(teaqlNameStorageKey, converted))
 	return r
 }
 func (r *PlatformRequest) WithNameNotIn(values []string) *PlatformRequest {
@@ -296,23 +296,23 @@ func (r *PlatformRequest) WithNameNotIn(values []string) *PlatformRequest {
 	for _, value := range values {
 		converted = append(converted, core.ValText(value))
 	}
-	r.Query.AndFilter(core.ExprNotInList("name", converted))
+	r.Query.AndFilter(core.ExprNotInList(teaqlNameStorageKey, converted))
 	return r
 }
 func (r *PlatformRequest) WithNameGreaterThan(value string) *PlatformRequest {
-	r.Query.AndFilter(core.ExprGt("name", core.ValText(value)))
+	r.Query.AndFilter(core.ExprGt(teaqlNameStorageKey, core.ValText(value)))
 	return r
 }
 func (r *PlatformRequest) WithNameGreaterThanOrEqualTo(value string) *PlatformRequest {
-	r.Query.AndFilter(core.ExprGte("name", core.ValText(value)))
+	r.Query.AndFilter(core.ExprGte(teaqlNameStorageKey, core.ValText(value)))
 	return r
 }
 func (r *PlatformRequest) WithNameLessThan(value string) *PlatformRequest {
-	r.Query.AndFilter(core.ExprLt("name", core.ValText(value)))
+	r.Query.AndFilter(core.ExprLt(teaqlNameStorageKey, core.ValText(value)))
 	return r
 }
 func (r *PlatformRequest) WithNameLessThanOrEqualTo(value string) *PlatformRequest {
-	r.Query.AndFilter(core.ExprLte("name", core.ValText(value)))
+	r.Query.AndFilter(core.ExprLte(teaqlNameStorageKey, core.ValText(value)))
 	return r
 }
 func (r *PlatformRequest) WithNameBetween(lower string, upper string) *PlatformRequest {
@@ -320,64 +320,64 @@ func (r *PlatformRequest) WithNameBetween(lower string, upper string) *PlatformR
 	from := core.ValText(value)
 	value = upper
 	to := core.ValText(value)
-	r.Query.AndFilter(core.ExprBetweenNode("name", from, to))
+	r.Query.AndFilter(core.ExprBetweenNode(teaqlNameStorageKey, from, to))
 	return r
 }
 func (r *PlatformRequest) WithNameIsKnown() *PlatformRequest {
-	r.Query.AndFilter(core.ExprIsNotNullNode("name"))
+	r.Query.AndFilter(core.ExprIsNotNullNode(teaqlNameStorageKey))
 	return r
 }
 func (r *PlatformRequest) WithNameIsUnknown() *PlatformRequest {
-	r.Query.AndFilter(core.ExprIsNullNode("name"))
+	r.Query.AndFilter(core.ExprIsNullNode(teaqlNameStorageKey))
 	return r
 }
 func (r *PlatformRequest) WithNameContaining(term string) *PlatformRequest {
-	r.Query.AndFilter(core.ExprContain("name", term))
+	r.Query.AndFilter(core.ExprContain(teaqlNameStorageKey, term))
 	return r
 }
 func (r *PlatformRequest) WithNameNotContaining(term string) *PlatformRequest {
-	r.Query.AndFilter(core.ExprNotContain("name", term))
+	r.Query.AndFilter(core.ExprNotContain(teaqlNameStorageKey, term))
 	return r
 }
 func (r *PlatformRequest) WithNameStartingWith(term string) *PlatformRequest {
-	r.Query.AndFilter(core.ExprBeginWith("name", term))
+	r.Query.AndFilter(core.ExprBeginWith(teaqlNameStorageKey, term))
 	return r
 }
 func (r *PlatformRequest) WithNameNotStartingWith(term string) *PlatformRequest {
-	r.Query.AndFilter(core.ExprNotBeginWith("name", term))
+	r.Query.AndFilter(core.ExprNotBeginWith(teaqlNameStorageKey, term))
 	return r
 }
 func (r *PlatformRequest) WithNameEndingWith(term string) *PlatformRequest {
-	r.Query.AndFilter(core.ExprEndWith("name", term))
+	r.Query.AndFilter(core.ExprEndWith(teaqlNameStorageKey, term))
 	return r
 }
 func (r *PlatformRequest) WithNameNotEndingWith(term string) *PlatformRequest {
-	r.Query.AndFilter(core.ExprNotEndWith("name", term))
+	r.Query.AndFilter(core.ExprNotEndWith(teaqlNameStorageKey, term))
 	return r
 }
 func (r *PlatformRequest) WithNameSoundingLike(term string) *PlatformRequest {
-	r.Query.AndFilter(core.ExprSoundLike("name", core.ValText(term)))
+	r.Query.AndFilter(core.ExprSoundLike(teaqlNameStorageKey, core.ValText(term)))
 	return r
 }
 func (r *PlatformRequest) OrderByNameAsc() *PlatformRequest {
-	r.Query.OrderAsc("name")
+	r.Query.OrderAsc(teaqlNameStorageKey)
 	return r
 }
 func (r *PlatformRequest) OrderByNameDesc() *PlatformRequest {
-	r.Query.OrderDesc("name")
+	r.Query.OrderDesc(teaqlNameStorageKey)
 	return r
 }
 func (r *PlatformRequest) SelectBaseUrl() *PlatformRequest {
-	r.Query.Project("base_url")
+	r.Query.Project(teaqlBaseUrlStorageKey)
 	return r
 }
 
 func (r *PlatformRequest) WithBaseUrlIs(value string) *PlatformRequest {
-	r.Query.AndFilter(core.ExprEq("base_url", core.ValText(value)))
+	r.Query.AndFilter(core.ExprEq(teaqlBaseUrlStorageKey, core.ValText(value)))
 	return r
 }
 func (r *PlatformRequest) WithBaseUrlIsNot(value string) *PlatformRequest {
-	r.Query.AndFilter(core.ExprNe("base_url", core.ValText(value)))
+	r.Query.AndFilter(core.ExprNe(teaqlBaseUrlStorageKey, core.ValText(value)))
 	return r
 }
 func (r *PlatformRequest) WithBaseUrlIn(values []string) *PlatformRequest {
@@ -385,7 +385,7 @@ func (r *PlatformRequest) WithBaseUrlIn(values []string) *PlatformRequest {
 	for _, value := range values {
 		converted = append(converted, core.ValText(value))
 	}
-	r.Query.AndFilter(core.ExprInList("base_url", converted))
+	r.Query.AndFilter(core.ExprInList(teaqlBaseUrlStorageKey, converted))
 	return r
 }
 func (r *PlatformRequest) WithBaseUrlNotIn(values []string) *PlatformRequest {
@@ -393,23 +393,23 @@ func (r *PlatformRequest) WithBaseUrlNotIn(values []string) *PlatformRequest {
 	for _, value := range values {
 		converted = append(converted, core.ValText(value))
 	}
-	r.Query.AndFilter(core.ExprNotInList("base_url", converted))
+	r.Query.AndFilter(core.ExprNotInList(teaqlBaseUrlStorageKey, converted))
 	return r
 }
 func (r *PlatformRequest) WithBaseUrlGreaterThan(value string) *PlatformRequest {
-	r.Query.AndFilter(core.ExprGt("base_url", core.ValText(value)))
+	r.Query.AndFilter(core.ExprGt(teaqlBaseUrlStorageKey, core.ValText(value)))
 	return r
 }
 func (r *PlatformRequest) WithBaseUrlGreaterThanOrEqualTo(value string) *PlatformRequest {
-	r.Query.AndFilter(core.ExprGte("base_url", core.ValText(value)))
+	r.Query.AndFilter(core.ExprGte(teaqlBaseUrlStorageKey, core.ValText(value)))
 	return r
 }
 func (r *PlatformRequest) WithBaseUrlLessThan(value string) *PlatformRequest {
-	r.Query.AndFilter(core.ExprLt("base_url", core.ValText(value)))
+	r.Query.AndFilter(core.ExprLt(teaqlBaseUrlStorageKey, core.ValText(value)))
 	return r
 }
 func (r *PlatformRequest) WithBaseUrlLessThanOrEqualTo(value string) *PlatformRequest {
-	r.Query.AndFilter(core.ExprLte("base_url", core.ValText(value)))
+	r.Query.AndFilter(core.ExprLte(teaqlBaseUrlStorageKey, core.ValText(value)))
 	return r
 }
 func (r *PlatformRequest) WithBaseUrlBetween(lower string, upper string) *PlatformRequest {
@@ -417,64 +417,64 @@ func (r *PlatformRequest) WithBaseUrlBetween(lower string, upper string) *Platfo
 	from := core.ValText(value)
 	value = upper
 	to := core.ValText(value)
-	r.Query.AndFilter(core.ExprBetweenNode("base_url", from, to))
+	r.Query.AndFilter(core.ExprBetweenNode(teaqlBaseUrlStorageKey, from, to))
 	return r
 }
 func (r *PlatformRequest) WithBaseUrlIsKnown() *PlatformRequest {
-	r.Query.AndFilter(core.ExprIsNotNullNode("base_url"))
+	r.Query.AndFilter(core.ExprIsNotNullNode(teaqlBaseUrlStorageKey))
 	return r
 }
 func (r *PlatformRequest) WithBaseUrlIsUnknown() *PlatformRequest {
-	r.Query.AndFilter(core.ExprIsNullNode("base_url"))
+	r.Query.AndFilter(core.ExprIsNullNode(teaqlBaseUrlStorageKey))
 	return r
 }
 func (r *PlatformRequest) WithBaseUrlContaining(term string) *PlatformRequest {
-	r.Query.AndFilter(core.ExprContain("base_url", term))
+	r.Query.AndFilter(core.ExprContain(teaqlBaseUrlStorageKey, term))
 	return r
 }
 func (r *PlatformRequest) WithBaseUrlNotContaining(term string) *PlatformRequest {
-	r.Query.AndFilter(core.ExprNotContain("base_url", term))
+	r.Query.AndFilter(core.ExprNotContain(teaqlBaseUrlStorageKey, term))
 	return r
 }
 func (r *PlatformRequest) WithBaseUrlStartingWith(term string) *PlatformRequest {
-	r.Query.AndFilter(core.ExprBeginWith("base_url", term))
+	r.Query.AndFilter(core.ExprBeginWith(teaqlBaseUrlStorageKey, term))
 	return r
 }
 func (r *PlatformRequest) WithBaseUrlNotStartingWith(term string) *PlatformRequest {
-	r.Query.AndFilter(core.ExprNotBeginWith("base_url", term))
+	r.Query.AndFilter(core.ExprNotBeginWith(teaqlBaseUrlStorageKey, term))
 	return r
 }
 func (r *PlatformRequest) WithBaseUrlEndingWith(term string) *PlatformRequest {
-	r.Query.AndFilter(core.ExprEndWith("base_url", term))
+	r.Query.AndFilter(core.ExprEndWith(teaqlBaseUrlStorageKey, term))
 	return r
 }
 func (r *PlatformRequest) WithBaseUrlNotEndingWith(term string) *PlatformRequest {
-	r.Query.AndFilter(core.ExprNotEndWith("base_url", term))
+	r.Query.AndFilter(core.ExprNotEndWith(teaqlBaseUrlStorageKey, term))
 	return r
 }
 func (r *PlatformRequest) WithBaseUrlSoundingLike(term string) *PlatformRequest {
-	r.Query.AndFilter(core.ExprSoundLike("base_url", core.ValText(term)))
+	r.Query.AndFilter(core.ExprSoundLike(teaqlBaseUrlStorageKey, core.ValText(term)))
 	return r
 }
 func (r *PlatformRequest) OrderByBaseUrlAsc() *PlatformRequest {
-	r.Query.OrderAsc("base_url")
+	r.Query.OrderAsc(teaqlBaseUrlStorageKey)
 	return r
 }
 func (r *PlatformRequest) OrderByBaseUrlDesc() *PlatformRequest {
-	r.Query.OrderDesc("base_url")
+	r.Query.OrderDesc(teaqlBaseUrlStorageKey)
 	return r
 }
 func (r *PlatformRequest) SelectCreateTime() *PlatformRequest {
-	r.Query.Project("create_time")
+	r.Query.Project(teaqlCreateTimeStorageKey)
 	return r
 }
 
 func (r *PlatformRequest) WithCreateTimeIs(value time.Time) *PlatformRequest {
-	r.Query.AndFilter(core.ExprEq("create_time", core.ValTimestamp(value.UnixMilli())))
+	r.Query.AndFilter(core.ExprEq(teaqlCreateTimeStorageKey, core.ValTimestamp(value.UnixMilli())))
 	return r
 }
 func (r *PlatformRequest) WithCreateTimeIsNot(value time.Time) *PlatformRequest {
-	r.Query.AndFilter(core.ExprNe("create_time", core.ValTimestamp(value.UnixMilli())))
+	r.Query.AndFilter(core.ExprNe(teaqlCreateTimeStorageKey, core.ValTimestamp(value.UnixMilli())))
 	return r
 }
 func (r *PlatformRequest) WithCreateTimeIn(values []time.Time) *PlatformRequest {
@@ -482,7 +482,7 @@ func (r *PlatformRequest) WithCreateTimeIn(values []time.Time) *PlatformRequest 
 	for _, value := range values {
 		converted = append(converted, core.ValTimestamp(value.UnixMilli()))
 	}
-	r.Query.AndFilter(core.ExprInList("create_time", converted))
+	r.Query.AndFilter(core.ExprInList(teaqlCreateTimeStorageKey, converted))
 	return r
 }
 func (r *PlatformRequest) WithCreateTimeNotIn(values []time.Time) *PlatformRequest {
@@ -490,23 +490,23 @@ func (r *PlatformRequest) WithCreateTimeNotIn(values []time.Time) *PlatformReque
 	for _, value := range values {
 		converted = append(converted, core.ValTimestamp(value.UnixMilli()))
 	}
-	r.Query.AndFilter(core.ExprNotInList("create_time", converted))
+	r.Query.AndFilter(core.ExprNotInList(teaqlCreateTimeStorageKey, converted))
 	return r
 }
 func (r *PlatformRequest) WithCreateTimeGreaterThan(value time.Time) *PlatformRequest {
-	r.Query.AndFilter(core.ExprGt("create_time", core.ValTimestamp(value.UnixMilli())))
+	r.Query.AndFilter(core.ExprGt(teaqlCreateTimeStorageKey, core.ValTimestamp(value.UnixMilli())))
 	return r
 }
 func (r *PlatformRequest) WithCreateTimeGreaterThanOrEqualTo(value time.Time) *PlatformRequest {
-	r.Query.AndFilter(core.ExprGte("create_time", core.ValTimestamp(value.UnixMilli())))
+	r.Query.AndFilter(core.ExprGte(teaqlCreateTimeStorageKey, core.ValTimestamp(value.UnixMilli())))
 	return r
 }
 func (r *PlatformRequest) WithCreateTimeLessThan(value time.Time) *PlatformRequest {
-	r.Query.AndFilter(core.ExprLt("create_time", core.ValTimestamp(value.UnixMilli())))
+	r.Query.AndFilter(core.ExprLt(teaqlCreateTimeStorageKey, core.ValTimestamp(value.UnixMilli())))
 	return r
 }
 func (r *PlatformRequest) WithCreateTimeLessThanOrEqualTo(value time.Time) *PlatformRequest {
-	r.Query.AndFilter(core.ExprLte("create_time", core.ValTimestamp(value.UnixMilli())))
+	r.Query.AndFilter(core.ExprLte(teaqlCreateTimeStorageKey, core.ValTimestamp(value.UnixMilli())))
 	return r
 }
 func (r *PlatformRequest) WithCreateTimeBetween(lower time.Time, upper time.Time) *PlatformRequest {
@@ -514,36 +514,36 @@ func (r *PlatformRequest) WithCreateTimeBetween(lower time.Time, upper time.Time
 	from := core.ValTimestamp(value.UnixMilli())
 	value = upper
 	to := core.ValTimestamp(value.UnixMilli())
-	r.Query.AndFilter(core.ExprBetweenNode("create_time", from, to))
+	r.Query.AndFilter(core.ExprBetweenNode(teaqlCreateTimeStorageKey, from, to))
 	return r
 }
 func (r *PlatformRequest) WithCreateTimeIsKnown() *PlatformRequest {
-	r.Query.AndFilter(core.ExprIsNotNullNode("create_time"))
+	r.Query.AndFilter(core.ExprIsNotNullNode(teaqlCreateTimeStorageKey))
 	return r
 }
 func (r *PlatformRequest) WithCreateTimeIsUnknown() *PlatformRequest {
-	r.Query.AndFilter(core.ExprIsNullNode("create_time"))
+	r.Query.AndFilter(core.ExprIsNullNode(teaqlCreateTimeStorageKey))
 	return r
 }
 func (r *PlatformRequest) OrderByCreateTimeAsc() *PlatformRequest {
-	r.Query.OrderAsc("create_time")
+	r.Query.OrderAsc(teaqlCreateTimeStorageKey)
 	return r
 }
 func (r *PlatformRequest) OrderByCreateTimeDesc() *PlatformRequest {
-	r.Query.OrderDesc("create_time")
+	r.Query.OrderDesc(teaqlCreateTimeStorageKey)
 	return r
 }
 func (r *PlatformRequest) SelectUpdateTime() *PlatformRequest {
-	r.Query.Project("update_time")
+	r.Query.Project(teaqlUpdateTimeStorageKey)
 	return r
 }
 
 func (r *PlatformRequest) WithUpdateTimeIs(value time.Time) *PlatformRequest {
-	r.Query.AndFilter(core.ExprEq("update_time", core.ValTimestamp(value.UnixMilli())))
+	r.Query.AndFilter(core.ExprEq(teaqlUpdateTimeStorageKey, core.ValTimestamp(value.UnixMilli())))
 	return r
 }
 func (r *PlatformRequest) WithUpdateTimeIsNot(value time.Time) *PlatformRequest {
-	r.Query.AndFilter(core.ExprNe("update_time", core.ValTimestamp(value.UnixMilli())))
+	r.Query.AndFilter(core.ExprNe(teaqlUpdateTimeStorageKey, core.ValTimestamp(value.UnixMilli())))
 	return r
 }
 func (r *PlatformRequest) WithUpdateTimeIn(values []time.Time) *PlatformRequest {
@@ -551,7 +551,7 @@ func (r *PlatformRequest) WithUpdateTimeIn(values []time.Time) *PlatformRequest 
 	for _, value := range values {
 		converted = append(converted, core.ValTimestamp(value.UnixMilli()))
 	}
-	r.Query.AndFilter(core.ExprInList("update_time", converted))
+	r.Query.AndFilter(core.ExprInList(teaqlUpdateTimeStorageKey, converted))
 	return r
 }
 func (r *PlatformRequest) WithUpdateTimeNotIn(values []time.Time) *PlatformRequest {
@@ -559,23 +559,23 @@ func (r *PlatformRequest) WithUpdateTimeNotIn(values []time.Time) *PlatformReque
 	for _, value := range values {
 		converted = append(converted, core.ValTimestamp(value.UnixMilli()))
 	}
-	r.Query.AndFilter(core.ExprNotInList("update_time", converted))
+	r.Query.AndFilter(core.ExprNotInList(teaqlUpdateTimeStorageKey, converted))
 	return r
 }
 func (r *PlatformRequest) WithUpdateTimeGreaterThan(value time.Time) *PlatformRequest {
-	r.Query.AndFilter(core.ExprGt("update_time", core.ValTimestamp(value.UnixMilli())))
+	r.Query.AndFilter(core.ExprGt(teaqlUpdateTimeStorageKey, core.ValTimestamp(value.UnixMilli())))
 	return r
 }
 func (r *PlatformRequest) WithUpdateTimeGreaterThanOrEqualTo(value time.Time) *PlatformRequest {
-	r.Query.AndFilter(core.ExprGte("update_time", core.ValTimestamp(value.UnixMilli())))
+	r.Query.AndFilter(core.ExprGte(teaqlUpdateTimeStorageKey, core.ValTimestamp(value.UnixMilli())))
 	return r
 }
 func (r *PlatformRequest) WithUpdateTimeLessThan(value time.Time) *PlatformRequest {
-	r.Query.AndFilter(core.ExprLt("update_time", core.ValTimestamp(value.UnixMilli())))
+	r.Query.AndFilter(core.ExprLt(teaqlUpdateTimeStorageKey, core.ValTimestamp(value.UnixMilli())))
 	return r
 }
 func (r *PlatformRequest) WithUpdateTimeLessThanOrEqualTo(value time.Time) *PlatformRequest {
-	r.Query.AndFilter(core.ExprLte("update_time", core.ValTimestamp(value.UnixMilli())))
+	r.Query.AndFilter(core.ExprLte(teaqlUpdateTimeStorageKey, core.ValTimestamp(value.UnixMilli())))
 	return r
 }
 func (r *PlatformRequest) WithUpdateTimeBetween(lower time.Time, upper time.Time) *PlatformRequest {
@@ -583,36 +583,36 @@ func (r *PlatformRequest) WithUpdateTimeBetween(lower time.Time, upper time.Time
 	from := core.ValTimestamp(value.UnixMilli())
 	value = upper
 	to := core.ValTimestamp(value.UnixMilli())
-	r.Query.AndFilter(core.ExprBetweenNode("update_time", from, to))
+	r.Query.AndFilter(core.ExprBetweenNode(teaqlUpdateTimeStorageKey, from, to))
 	return r
 }
 func (r *PlatformRequest) WithUpdateTimeIsKnown() *PlatformRequest {
-	r.Query.AndFilter(core.ExprIsNotNullNode("update_time"))
+	r.Query.AndFilter(core.ExprIsNotNullNode(teaqlUpdateTimeStorageKey))
 	return r
 }
 func (r *PlatformRequest) WithUpdateTimeIsUnknown() *PlatformRequest {
-	r.Query.AndFilter(core.ExprIsNullNode("update_time"))
+	r.Query.AndFilter(core.ExprIsNullNode(teaqlUpdateTimeStorageKey))
 	return r
 }
 func (r *PlatformRequest) OrderByUpdateTimeAsc() *PlatformRequest {
-	r.Query.OrderAsc("update_time")
+	r.Query.OrderAsc(teaqlUpdateTimeStorageKey)
 	return r
 }
 func (r *PlatformRequest) OrderByUpdateTimeDesc() *PlatformRequest {
-	r.Query.OrderDesc("update_time")
+	r.Query.OrderDesc(teaqlUpdateTimeStorageKey)
 	return r
 }
 func (r *PlatformRequest) SelectVersion() *PlatformRequest {
-	r.Query.Project("version")
+	r.Query.Project(teaqlVersionStorageKey)
 	return r
 }
 
 func (r *PlatformRequest) WithVersionIs(value int64) *PlatformRequest {
-	r.Query.AndFilter(core.ExprEq("version", core.ValI64(value)))
+	r.Query.AndFilter(core.ExprEq(teaqlVersionStorageKey, core.ValI64(value)))
 	return r
 }
 func (r *PlatformRequest) WithVersionIsNot(value int64) *PlatformRequest {
-	r.Query.AndFilter(core.ExprNe("version", core.ValI64(value)))
+	r.Query.AndFilter(core.ExprNe(teaqlVersionStorageKey, core.ValI64(value)))
 	return r
 }
 func (r *PlatformRequest) WithVersionIn(values []int64) *PlatformRequest {
@@ -620,7 +620,7 @@ func (r *PlatformRequest) WithVersionIn(values []int64) *PlatformRequest {
 	for _, value := range values {
 		converted = append(converted, core.ValI64(value))
 	}
-	r.Query.AndFilter(core.ExprInList("version", converted))
+	r.Query.AndFilter(core.ExprInList(teaqlVersionStorageKey, converted))
 	return r
 }
 func (r *PlatformRequest) WithVersionNotIn(values []int64) *PlatformRequest {
@@ -628,23 +628,23 @@ func (r *PlatformRequest) WithVersionNotIn(values []int64) *PlatformRequest {
 	for _, value := range values {
 		converted = append(converted, core.ValI64(value))
 	}
-	r.Query.AndFilter(core.ExprNotInList("version", converted))
+	r.Query.AndFilter(core.ExprNotInList(teaqlVersionStorageKey, converted))
 	return r
 }
 func (r *PlatformRequest) WithVersionGreaterThan(value int64) *PlatformRequest {
-	r.Query.AndFilter(core.ExprGt("version", core.ValI64(value)))
+	r.Query.AndFilter(core.ExprGt(teaqlVersionStorageKey, core.ValI64(value)))
 	return r
 }
 func (r *PlatformRequest) WithVersionGreaterThanOrEqualTo(value int64) *PlatformRequest {
-	r.Query.AndFilter(core.ExprGte("version", core.ValI64(value)))
+	r.Query.AndFilter(core.ExprGte(teaqlVersionStorageKey, core.ValI64(value)))
 	return r
 }
 func (r *PlatformRequest) WithVersionLessThan(value int64) *PlatformRequest {
-	r.Query.AndFilter(core.ExprLt("version", core.ValI64(value)))
+	r.Query.AndFilter(core.ExprLt(teaqlVersionStorageKey, core.ValI64(value)))
 	return r
 }
 func (r *PlatformRequest) WithVersionLessThanOrEqualTo(value int64) *PlatformRequest {
-	r.Query.AndFilter(core.ExprLte("version", core.ValI64(value)))
+	r.Query.AndFilter(core.ExprLte(teaqlVersionStorageKey, core.ValI64(value)))
 	return r
 }
 func (r *PlatformRequest) WithVersionBetween(lower int64, upper int64) *PlatformRequest {
@@ -652,23 +652,23 @@ func (r *PlatformRequest) WithVersionBetween(lower int64, upper int64) *Platform
 	from := core.ValI64(value)
 	value = upper
 	to := core.ValI64(value)
-	r.Query.AndFilter(core.ExprBetweenNode("version", from, to))
+	r.Query.AndFilter(core.ExprBetweenNode(teaqlVersionStorageKey, from, to))
 	return r
 }
 func (r *PlatformRequest) WithVersionIsKnown() *PlatformRequest {
-	r.Query.AndFilter(core.ExprIsNotNullNode("version"))
+	r.Query.AndFilter(core.ExprIsNotNullNode(teaqlVersionStorageKey))
 	return r
 }
 func (r *PlatformRequest) WithVersionIsUnknown() *PlatformRequest {
-	r.Query.AndFilter(core.ExprIsNullNode("version"))
+	r.Query.AndFilter(core.ExprIsNullNode(teaqlVersionStorageKey))
 	return r
 }
 func (r *PlatformRequest) OrderByVersionAsc() *PlatformRequest {
-	r.Query.OrderAsc("version")
+	r.Query.OrderAsc(teaqlVersionStorageKey)
 	return r
 }
 func (r *PlatformRequest) OrderByVersionDesc() *PlatformRequest {
-	r.Query.OrderDesc("version")
+	r.Query.OrderDesc(teaqlVersionStorageKey)
 	return r
 }
 
@@ -1162,62 +1162,62 @@ func (r *PlatformRequest) CountAs(alias string) *PlatformRequest {
 
 
 func (r *PlatformRequest) GroupById() *PlatformRequest {
-	r.Query.WithGroupBy("id")
+	r.Query.WithGroupBy(teaqlIdStorageKey)
 	return r
 }
 
 func (r *PlatformRequest) GroupByIdAs(alias string) *PlatformRequest {
-	r.Query.WithGroupBy("id")
-	r.Query.ProjectExpr(alias, core.ExprColumnNode("id"))
+	r.Query.WithGroupBy(teaqlIdStorageKey)
+	r.Query.ProjectExpr(alias, core.ExprColumnNode(teaqlIdStorageKey))
 	return r
 }
 func (r *PlatformRequest) GroupByName() *PlatformRequest {
-	r.Query.WithGroupBy("name")
+	r.Query.WithGroupBy(teaqlNameStorageKey)
 	return r
 }
 
 func (r *PlatformRequest) GroupByNameAs(alias string) *PlatformRequest {
-	r.Query.WithGroupBy("name")
-	r.Query.ProjectExpr(alias, core.ExprColumnNode("name"))
+	r.Query.WithGroupBy(teaqlNameStorageKey)
+	r.Query.ProjectExpr(alias, core.ExprColumnNode(teaqlNameStorageKey))
 	return r
 }
 func (r *PlatformRequest) GroupByBaseUrl() *PlatformRequest {
-	r.Query.WithGroupBy("base_url")
+	r.Query.WithGroupBy(teaqlBaseUrlStorageKey)
 	return r
 }
 
 func (r *PlatformRequest) GroupByBaseUrlAs(alias string) *PlatformRequest {
-	r.Query.WithGroupBy("base_url")
-	r.Query.ProjectExpr(alias, core.ExprColumnNode("base_url"))
+	r.Query.WithGroupBy(teaqlBaseUrlStorageKey)
+	r.Query.ProjectExpr(alias, core.ExprColumnNode(teaqlBaseUrlStorageKey))
 	return r
 }
 func (r *PlatformRequest) GroupByCreateTime() *PlatformRequest {
-	r.Query.WithGroupBy("create_time")
+	r.Query.WithGroupBy(teaqlCreateTimeStorageKey)
 	return r
 }
 
 func (r *PlatformRequest) GroupByCreateTimeAs(alias string) *PlatformRequest {
-	r.Query.WithGroupBy("create_time")
-	r.Query.ProjectExpr(alias, core.ExprColumnNode("create_time"))
+	r.Query.WithGroupBy(teaqlCreateTimeStorageKey)
+	r.Query.ProjectExpr(alias, core.ExprColumnNode(teaqlCreateTimeStorageKey))
 	return r
 }
 func (r *PlatformRequest) GroupByUpdateTime() *PlatformRequest {
-	r.Query.WithGroupBy("update_time")
+	r.Query.WithGroupBy(teaqlUpdateTimeStorageKey)
 	return r
 }
 
 func (r *PlatformRequest) GroupByUpdateTimeAs(alias string) *PlatformRequest {
-	r.Query.WithGroupBy("update_time")
-	r.Query.ProjectExpr(alias, core.ExprColumnNode("update_time"))
+	r.Query.WithGroupBy(teaqlUpdateTimeStorageKey)
+	r.Query.ProjectExpr(alias, core.ExprColumnNode(teaqlUpdateTimeStorageKey))
 	return r
 }
 func (r *PlatformRequest) GroupByVersion() *PlatformRequest {
-	r.Query.WithGroupBy("version")
+	r.Query.WithGroupBy(teaqlVersionStorageKey)
 	return r
 }
 
 func (r *PlatformRequest) GroupByVersionAs(alias string) *PlatformRequest {
-	r.Query.WithGroupBy("version")
-	r.Query.ProjectExpr(alias, core.ExprColumnNode("version"))
+	r.Query.WithGroupBy(teaqlVersionStorageKey)
+	r.Query.ProjectExpr(alias, core.ExprColumnNode(teaqlVersionStorageKey))
 	return r
 }

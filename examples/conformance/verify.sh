@@ -20,6 +20,8 @@ destination,*modules=map(pathlib.Path,sys.argv[1:])
 assert not destination.exists()
 destination.write_text('go 1.25.0\nuse (\n'+''.join(json.dumps(str(path.resolve()))+'\n' for path in modules)+')\n')
 CHECK
+# Keep the runtime log out of the source tree covered by fingerprint().
+export TEAQL_LOG_ENDPOINT="$evidence/runtime.log"
 fingerprint() {
  (cd "$example" && find golang-lib-core golang-app-console -type f ! -path '*/.local/*' -print0 | sort -z | xargs -0 sha256sum)
 }

@@ -23,6 +23,31 @@ var (
 	_ = errors.As
 )
 
+const (
+    teaqlIdStorageKey = "id"
+    teaqlIdModelKey = "id"
+    teaqlPlatformStorageKey = "platform_id"
+    teaqlPlatformModelKey = "platform"
+    teaqlSchoolTypeStorageKey = "school_type_id"
+    teaqlSchoolTypeModelKey = "school_type"
+    teaqlNameStorageKey = "name"
+    teaqlNameModelKey = "name"
+    teaqlAddressStorageKey = "address"
+    teaqlAddressModelKey = "address"
+    teaqlEstablishedDateStorageKey = "established_date"
+    teaqlEstablishedDateModelKey = "established_date"
+    teaqlStudentCapacityStorageKey = "student_capacity"
+    teaqlStudentCapacityModelKey = "student_capacity"
+    teaqlActiveStorageKey = "active"
+    teaqlActiveModelKey = "active"
+    teaqlCreateTimeStorageKey = "create_time"
+    teaqlCreateTimeModelKey = "create_time"
+    teaqlUpdateTimeStorageKey = "update_time"
+    teaqlUpdateTimeModelKey = "update_time"
+    teaqlVersionStorageKey = "version"
+    teaqlVersionModelKey = "version"
+)
+
 
 type School struct {
 	base        *core.BaseEntityData
@@ -178,8 +203,8 @@ func (e *School) teaqlFromRecord(record core.Record, captureLoaded bool) error {
 	if err != nil {
 		return err
 	}
-	if value, present := base.Dynamic["student_capacity"]; present && !value.IsNull() {
-		if err := core.ValidateInteger32("School", "student_capacity", value); err != nil { return err }
+	if value, present := base.Dynamic[teaqlStudentCapacityStorageKey]; present && !value.IsNull() {
+		if err := core.ValidateInteger32("School", teaqlStudentCapacityModelKey, value); err != nil { return err }
 	}
 
 
@@ -206,11 +231,11 @@ func (e *School) teaqlFromRecord(record core.Record, captureLoaded bool) error {
 }
 
 func (e *School) teaqlScalarSnapshot(record core.Record) core.LoadedScalarSnapshot {
-	return core.NewLoadedScalarSnapshot(record, "id", "platform_id", "school_type_id", "name", "address", "established_date", "student_capacity", "active", "create_time", "update_time", "version")
+	return core.NewLoadedScalarSnapshot(record, teaqlIdStorageKey, teaqlPlatformStorageKey, teaqlSchoolTypeStorageKey, teaqlNameStorageKey, teaqlAddressStorageKey, teaqlEstablishedDateStorageKey, teaqlStudentCapacityStorageKey, teaqlActiveStorageKey, teaqlCreateTimeStorageKey, teaqlUpdateTimeStorageKey, teaqlVersionStorageKey)
 }
 
 func (e *School) teaqlLoadedScalarSnapshot(record core.Record) core.LoadedScalarSnapshot {
-	return core.NewOwnedLoadedScalarSnapshot(e.EntityKey(), e.base.Version, record, "id", "platform_id", "school_type_id", "name", "address", "established_date", "student_capacity", "active", "create_time", "update_time", "version")
+	return core.NewOwnedLoadedScalarSnapshot(e.EntityKey(), e.base.Version, record, teaqlIdStorageKey, teaqlPlatformStorageKey, teaqlSchoolTypeStorageKey, teaqlNameStorageKey, teaqlAddressStorageKey, teaqlEstablishedDateStorageKey, teaqlStudentCapacityStorageKey, teaqlActiveStorageKey, teaqlCreateTimeStorageKey, teaqlUpdateTimeStorageKey, teaqlVersionStorageKey)
 }
 
 func (e *School) teaqlAcceptPersisted(context *runtime.UserContext, record core.Record) error {
@@ -315,17 +340,17 @@ func (e *School) JSONQueryProperties() core.Record { return e.base.QueryProperti
 func (e *School) LoadedJSONFields() core.Record {
 	all := e.IntoRecord()
 	selected := make(core.Record)
-	if e.IsLoaded("id") { if value, present := all["id"]; present { selected["id"] = value } }
-	if e.IsLoaded("platform_id") { if value, present := all["platform_id"]; present { selected["platform_id"] = value } }
-	if e.IsLoaded("school_type_id") { if value, present := all["school_type_id"]; present { selected["school_type_id"] = value } }
-	if e.IsLoaded("name") { if value, present := all["name"]; present { selected["name"] = value } }
-	if e.IsLoaded("address") { if value, present := all["address"]; present { selected["address"] = value } }
-	if e.IsLoaded("established_date") { if value, present := all["established_date"]; present { selected["established_date"] = value } }
-	if e.IsLoaded("student_capacity") { if value, present := all["student_capacity"]; present { selected["student_capacity"] = value } }
-	if e.IsLoaded("active") { if value, present := all["active"]; present { selected["active"] = value } }
-	if e.IsLoaded("create_time") { if value, present := all["create_time"]; present { selected["create_time"] = value } }
-	if e.IsLoaded("update_time") { if value, present := all["update_time"]; present { selected["update_time"] = value } }
-	if e.IsLoaded("version") { if value, present := all["version"]; present { selected["version"] = value } }
+	if e.IsLoaded(teaqlIdStorageKey) { if value, present := all[teaqlIdStorageKey]; present { selected[teaqlIdStorageKey] = value } }
+	if e.IsLoaded(teaqlPlatformStorageKey) { if value, present := all[teaqlPlatformStorageKey]; present { selected[teaqlPlatformStorageKey] = value } }
+	if e.IsLoaded(teaqlSchoolTypeStorageKey) { if value, present := all[teaqlSchoolTypeStorageKey]; present { selected[teaqlSchoolTypeStorageKey] = value } }
+	if e.IsLoaded(teaqlNameStorageKey) { if value, present := all[teaqlNameStorageKey]; present { selected[teaqlNameStorageKey] = value } }
+	if e.IsLoaded(teaqlAddressStorageKey) { if value, present := all[teaqlAddressStorageKey]; present { selected[teaqlAddressStorageKey] = value } }
+	if e.IsLoaded(teaqlEstablishedDateStorageKey) { if value, present := all[teaqlEstablishedDateStorageKey]; present { selected[teaqlEstablishedDateStorageKey] = value } }
+	if e.IsLoaded(teaqlStudentCapacityStorageKey) { if value, present := all[teaqlStudentCapacityStorageKey]; present { selected[teaqlStudentCapacityStorageKey] = value } }
+	if e.IsLoaded(teaqlActiveStorageKey) { if value, present := all[teaqlActiveStorageKey]; present { selected[teaqlActiveStorageKey] = value } }
+	if e.IsLoaded(teaqlCreateTimeStorageKey) { if value, present := all[teaqlCreateTimeStorageKey]; present { selected[teaqlCreateTimeStorageKey] = value } }
+	if e.IsLoaded(teaqlUpdateTimeStorageKey) { if value, present := all[teaqlUpdateTimeStorageKey]; present { selected[teaqlUpdateTimeStorageKey] = value } }
+	if e.IsLoaded(teaqlVersionStorageKey) { if value, present := all[teaqlVersionStorageKey]; present { selected[teaqlVersionStorageKey] = value } }
 	if e.isRelationLoaded("platformEntity") { if target, present := e.relations["platformEntity"]; present && target != nil { selected["platformEntity"] = core.Value{V: target} } }
 	if e.isRelationLoaded("schoolTypeEntity") { if target, present := e.relations["schoolTypeEntity"]; present && target != nil { selected["schoolTypeEntity"] = core.Value{V: target} } }
 	return selected
@@ -437,48 +462,48 @@ func (e *School) TeaqlPreflightWithinGraph(context *runtime.UserContext, intent 
 		operation := core.MutationUpdate
 		if e.isNew { operation = core.MutationInsert }
 		if operation == core.MutationUpdate {
-			if !e.IsLoaded("id") {
-				result := runtime.CheckResult{RuleID: "invalid_type", EntityType: "School", CanonicalLocation: runtime.Location().Property("id"), Message: "Mutation requires a fully loaded entity"}
+			if !e.IsLoaded(teaqlIdStorageKey) {
+				result := runtime.CheckResult{RuleID: "invalid_type", EntityType: "School", CanonicalLocation: runtime.Location().Property(teaqlIdModelKey), Message: "Mutation requires a fully loaded entity"}
 				return &runtime.RuntimeError{Type: "Check", CheckResults: []runtime.CheckResult{result}}
 			}
-			if !e.IsLoaded("platform_id") {
-				result := runtime.CheckResult{RuleID: "invalid_type", EntityType: "School", CanonicalLocation: runtime.Location().Property("platform"), Message: "Mutation requires a fully loaded entity"}
+			if !e.IsLoaded(teaqlPlatformStorageKey) {
+				result := runtime.CheckResult{RuleID: "invalid_type", EntityType: "School", CanonicalLocation: runtime.Location().Property(teaqlPlatformModelKey), Message: "Mutation requires a fully loaded entity"}
 				return &runtime.RuntimeError{Type: "Check", CheckResults: []runtime.CheckResult{result}}
 			}
-			if !e.IsLoaded("school_type_id") {
-				result := runtime.CheckResult{RuleID: "invalid_type", EntityType: "School", CanonicalLocation: runtime.Location().Property("school_type"), Message: "Mutation requires a fully loaded entity"}
+			if !e.IsLoaded(teaqlSchoolTypeStorageKey) {
+				result := runtime.CheckResult{RuleID: "invalid_type", EntityType: "School", CanonicalLocation: runtime.Location().Property(teaqlSchoolTypeModelKey), Message: "Mutation requires a fully loaded entity"}
 				return &runtime.RuntimeError{Type: "Check", CheckResults: []runtime.CheckResult{result}}
 			}
-			if !e.IsLoaded("name") {
-				result := runtime.CheckResult{RuleID: "invalid_type", EntityType: "School", CanonicalLocation: runtime.Location().Property("name"), Message: "Mutation requires a fully loaded entity"}
+			if !e.IsLoaded(teaqlNameStorageKey) {
+				result := runtime.CheckResult{RuleID: "invalid_type", EntityType: "School", CanonicalLocation: runtime.Location().Property(teaqlNameModelKey), Message: "Mutation requires a fully loaded entity"}
 				return &runtime.RuntimeError{Type: "Check", CheckResults: []runtime.CheckResult{result}}
 			}
-			if !e.IsLoaded("address") {
-				result := runtime.CheckResult{RuleID: "invalid_type", EntityType: "School", CanonicalLocation: runtime.Location().Property("address"), Message: "Mutation requires a fully loaded entity"}
+			if !e.IsLoaded(teaqlAddressStorageKey) {
+				result := runtime.CheckResult{RuleID: "invalid_type", EntityType: "School", CanonicalLocation: runtime.Location().Property(teaqlAddressModelKey), Message: "Mutation requires a fully loaded entity"}
 				return &runtime.RuntimeError{Type: "Check", CheckResults: []runtime.CheckResult{result}}
 			}
-			if !e.IsLoaded("established_date") {
-				result := runtime.CheckResult{RuleID: "invalid_type", EntityType: "School", CanonicalLocation: runtime.Location().Property("established_date"), Message: "Mutation requires a fully loaded entity"}
+			if !e.IsLoaded(teaqlEstablishedDateStorageKey) {
+				result := runtime.CheckResult{RuleID: "invalid_type", EntityType: "School", CanonicalLocation: runtime.Location().Property(teaqlEstablishedDateModelKey), Message: "Mutation requires a fully loaded entity"}
 				return &runtime.RuntimeError{Type: "Check", CheckResults: []runtime.CheckResult{result}}
 			}
-			if !e.IsLoaded("student_capacity") {
-				result := runtime.CheckResult{RuleID: "invalid_type", EntityType: "School", CanonicalLocation: runtime.Location().Property("student_capacity"), Message: "Mutation requires a fully loaded entity"}
+			if !e.IsLoaded(teaqlStudentCapacityStorageKey) {
+				result := runtime.CheckResult{RuleID: "invalid_type", EntityType: "School", CanonicalLocation: runtime.Location().Property(teaqlStudentCapacityModelKey), Message: "Mutation requires a fully loaded entity"}
 				return &runtime.RuntimeError{Type: "Check", CheckResults: []runtime.CheckResult{result}}
 			}
-			if !e.IsLoaded("active") {
-				result := runtime.CheckResult{RuleID: "invalid_type", EntityType: "School", CanonicalLocation: runtime.Location().Property("active"), Message: "Mutation requires a fully loaded entity"}
+			if !e.IsLoaded(teaqlActiveStorageKey) {
+				result := runtime.CheckResult{RuleID: "invalid_type", EntityType: "School", CanonicalLocation: runtime.Location().Property(teaqlActiveModelKey), Message: "Mutation requires a fully loaded entity"}
 				return &runtime.RuntimeError{Type: "Check", CheckResults: []runtime.CheckResult{result}}
 			}
-			if !e.IsLoaded("create_time") {
-				result := runtime.CheckResult{RuleID: "invalid_type", EntityType: "School", CanonicalLocation: runtime.Location().Property("create_time"), Message: "Mutation requires a fully loaded entity"}
+			if !e.IsLoaded(teaqlCreateTimeStorageKey) {
+				result := runtime.CheckResult{RuleID: "invalid_type", EntityType: "School", CanonicalLocation: runtime.Location().Property(teaqlCreateTimeModelKey), Message: "Mutation requires a fully loaded entity"}
 				return &runtime.RuntimeError{Type: "Check", CheckResults: []runtime.CheckResult{result}}
 			}
-			if !e.IsLoaded("update_time") {
-				result := runtime.CheckResult{RuleID: "invalid_type", EntityType: "School", CanonicalLocation: runtime.Location().Property("update_time"), Message: "Mutation requires a fully loaded entity"}
+			if !e.IsLoaded(teaqlUpdateTimeStorageKey) {
+				result := runtime.CheckResult{RuleID: "invalid_type", EntityType: "School", CanonicalLocation: runtime.Location().Property(teaqlUpdateTimeModelKey), Message: "Mutation requires a fully loaded entity"}
 				return &runtime.RuntimeError{Type: "Check", CheckResults: []runtime.CheckResult{result}}
 			}
-			if !e.IsLoaded("version") {
-				result := runtime.CheckResult{RuleID: "invalid_type", EntityType: "School", CanonicalLocation: runtime.Location().Property("version"), Message: "Mutation requires a fully loaded entity"}
+			if !e.IsLoaded(teaqlVersionStorageKey) {
+				result := runtime.CheckResult{RuleID: "invalid_type", EntityType: "School", CanonicalLocation: runtime.Location().Property(teaqlVersionModelKey), Message: "Mutation requires a fully loaded entity"}
 				return &runtime.RuntimeError{Type: "Check", CheckResults: []runtime.CheckResult{result}}
 			}
 		}
@@ -731,105 +756,105 @@ func (e *School) UpdateId(value uint64) *School {
 	oldKey := e.EntityKey()
 	e.base.Id = value
 	e.root.Rekey(oldKey, e.EntityKey())
-	e.loadState["id"] = true
+	e.loadState[teaqlIdStorageKey] = true
 	return e
 }
 
 func (e *School) Name() string {
-	val, _ := e.base.GetDynamic("name")
+	val, _ := e.base.GetDynamic(teaqlNameStorageKey)
 	res, _ := val.TryText()
 	return res}
 
 func (e *School) UpdateName(value string) *School {
 	e.teaqlEnsureState()
-	e.base.PutDynamic("name", core.ValText(value))
-	e.dirtyFields["name"] = true
-	e.root.Set(e.EntityKey(), "name", core.ValText(value))
-	e.loadState["name"] = true
+	e.base.PutDynamic(teaqlNameStorageKey, core.ValText(value))
+	e.dirtyFields[teaqlNameStorageKey] = true
+	e.root.Set(e.EntityKey(), teaqlNameModelKey, core.ValText(value))
+	e.loadState[teaqlNameStorageKey] = true
 	return e
 }
 
 func (e *School) Address() string {
-	val, _ := e.base.GetDynamic("address")
+	val, _ := e.base.GetDynamic(teaqlAddressStorageKey)
 	res, _ := val.TryText()
 	return res}
 
 func (e *School) UpdateAddress(value string) *School {
 	e.teaqlEnsureState()
-	e.base.PutDynamic("address", core.ValText(value))
-	e.dirtyFields["address"] = true
-	e.root.Set(e.EntityKey(), "address", core.ValText(value))
-	e.loadState["address"] = true
+	e.base.PutDynamic(teaqlAddressStorageKey, core.ValText(value))
+	e.dirtyFields[teaqlAddressStorageKey] = true
+	e.root.Set(e.EntityKey(), teaqlAddressModelKey, core.ValText(value))
+	e.loadState[teaqlAddressStorageKey] = true
 	return e
 }
 
 func (e *School) EstablishedDate() time.Time {
-	val, _ := e.base.GetDynamic("established_date")
+	val, _ := e.base.GetDynamic(teaqlEstablishedDateStorageKey)
 	res, _ := val.TryDate()
 	return res}
 
 func (e *School) UpdateEstablishedDate(value time.Time) *School {
 	e.teaqlEnsureState()
-	e.base.PutDynamic("established_date", core.ValDate(value))
-	e.dirtyFields["established_date"] = true
-	e.root.Set(e.EntityKey(), "established_date", core.ValDate(value))
-	e.loadState["established_date"] = true
+	e.base.PutDynamic(teaqlEstablishedDateStorageKey, core.ValDate(value))
+	e.dirtyFields[teaqlEstablishedDateStorageKey] = true
+	e.root.Set(e.EntityKey(), teaqlEstablishedDateModelKey, core.ValDate(value))
+	e.loadState[teaqlEstablishedDateStorageKey] = true
 	return e
 }
 
 func (e *School) StudentCapacity() int64 {
-	val, _ := e.base.GetDynamic("student_capacity")
+	val, _ := e.base.GetDynamic(teaqlStudentCapacityStorageKey)
 	res, _ := val.TryI64()
 	return res}
 
 func (e *School) UpdateStudentCapacity(value int64) *School {
 	e.teaqlEnsureState()
-	e.base.PutDynamic("student_capacity", core.ValI64(value))
-	e.dirtyFields["student_capacity"] = true
-	e.root.Set(e.EntityKey(), "student_capacity", core.ValI64(value))
-	e.loadState["student_capacity"] = true
+	e.base.PutDynamic(teaqlStudentCapacityStorageKey, core.ValI64(value))
+	e.dirtyFields[teaqlStudentCapacityStorageKey] = true
+	e.root.Set(e.EntityKey(), teaqlStudentCapacityModelKey, core.ValI64(value))
+	e.loadState[teaqlStudentCapacityStorageKey] = true
 	return e
 }
 
 func (e *School) Active() bool {
-	val, _ := e.base.GetDynamic("active")
+	val, _ := e.base.GetDynamic(teaqlActiveStorageKey)
 	res, _ := val.TryBool()
 	return res}
 
 func (e *School) UpdateActive(value bool) *School {
 	e.teaqlEnsureState()
-	e.base.PutDynamic("active", core.ValBool(value))
-	e.dirtyFields["active"] = true
-	e.root.Set(e.EntityKey(), "active", core.ValBool(value))
-	e.loadState["active"] = true
+	e.base.PutDynamic(teaqlActiveStorageKey, core.ValBool(value))
+	e.dirtyFields[teaqlActiveStorageKey] = true
+	e.root.Set(e.EntityKey(), teaqlActiveModelKey, core.ValBool(value))
+	e.loadState[teaqlActiveStorageKey] = true
 	return e
 }
 
 func (e *School) CreateTime() time.Time {
-	val, _ := e.base.GetDynamic("create_time")
+	val, _ := e.base.GetDynamic(teaqlCreateTimeStorageKey)
 	res, _ := val.TryTime()
 	return res}
 
 func (e *School) UpdateCreateTime(value time.Time) *School {
 	e.teaqlEnsureState()
-	e.base.PutDynamic("create_time", core.ValTimestamp(value.UnixMilli()))
-	e.dirtyFields["create_time"] = true
-	e.root.Set(e.EntityKey(), "create_time", core.ValTimestamp(value.UnixMilli()))
-	e.loadState["create_time"] = true
+	e.base.PutDynamic(teaqlCreateTimeStorageKey, core.ValTimestamp(value.UnixMilli()))
+	e.dirtyFields[teaqlCreateTimeStorageKey] = true
+	e.root.Set(e.EntityKey(), teaqlCreateTimeModelKey, core.ValTimestamp(value.UnixMilli()))
+	e.loadState[teaqlCreateTimeStorageKey] = true
 	return e
 }
 
 func (e *School) UpdateTime() time.Time {
-	val, _ := e.base.GetDynamic("update_time")
+	val, _ := e.base.GetDynamic(teaqlUpdateTimeStorageKey)
 	res, _ := val.TryTime()
 	return res}
 
 func (e *School) UpdateUpdateTime(value time.Time) *School {
 	e.teaqlEnsureState()
-	e.base.PutDynamic("update_time", core.ValTimestamp(value.UnixMilli()))
-	e.dirtyFields["update_time"] = true
-	e.root.Set(e.EntityKey(), "update_time", core.ValTimestamp(value.UnixMilli()))
-	e.loadState["update_time"] = true
+	e.base.PutDynamic(teaqlUpdateTimeStorageKey, core.ValTimestamp(value.UnixMilli()))
+	e.dirtyFields[teaqlUpdateTimeStorageKey] = true
+	e.root.Set(e.EntityKey(), teaqlUpdateTimeModelKey, core.ValTimestamp(value.UnixMilli()))
+	e.loadState[teaqlUpdateTimeStorageKey] = true
 	return e
 }
 
@@ -840,48 +865,48 @@ func (e *School) Version() int64 {
 func (e *School) UpdateVersion(value int64) *School {
 	e.teaqlEnsureState()
 	e.base.Version = value
-	e.loadState["version"] = true
+	e.loadState[teaqlVersionStorageKey] = true
 	return e
 }
 func (e *School) PlatformId() uint64 {
-	val, _ := e.base.GetDynamic("platform_id")
+	val, _ := e.base.GetDynamic(teaqlPlatformStorageKey)
 	res, _ := val.TryU64()
 	return res
 }
 
 func (e *School) UpdatePlatformId(value uint64) *School {
-	previous, present := e.base.GetDynamic("platform_id")
-	e.base.PutDynamic("platform_id", core.ValU64(value))
-	e.dirtyFields["platform_id"] = true
-	current, _ := e.base.GetDynamic("platform_id")
+	previous, present := e.base.GetDynamic(teaqlPlatformStorageKey)
+	e.base.PutDynamic(teaqlPlatformStorageKey, core.ValU64(value))
+	e.dirtyFields[teaqlPlatformStorageKey] = true
+	current, _ := e.base.GetDynamic(teaqlPlatformStorageKey)
 	if !present || !reflect.DeepEqual(previous, current) {
 		delete(e.relations, "platformEntity")
 		delete(e.loadedRelations, "platformEntity")
 	}
-	e.root.Set(e.EntityKey(), "platform", core.ValU64(value))
-	e.loadState["platform_id"] = true
+	e.root.Set(e.EntityKey(), teaqlPlatformModelKey, core.ValU64(value))
+	e.loadState[teaqlPlatformStorageKey] = true
 	return e
 }
 // DEBUG: constantObjectField is false
 
 
 func (e *School) SchoolTypeId() uint64 {
-	val, _ := e.base.GetDynamic("school_type_id")
+	val, _ := e.base.GetDynamic(teaqlSchoolTypeStorageKey)
 	res, _ := val.TryU64()
 	return res
 }
 
 func (e *School) UpdateSchoolTypeId(value uint64) *School {
-	previous, present := e.base.GetDynamic("school_type_id")
-	e.base.PutDynamic("school_type_id", core.ValU64(value))
-	e.dirtyFields["school_type_id"] = true
-	current, _ := e.base.GetDynamic("school_type_id")
+	previous, present := e.base.GetDynamic(teaqlSchoolTypeStorageKey)
+	e.base.PutDynamic(teaqlSchoolTypeStorageKey, core.ValU64(value))
+	e.dirtyFields[teaqlSchoolTypeStorageKey] = true
+	current, _ := e.base.GetDynamic(teaqlSchoolTypeStorageKey)
 	if !present || !reflect.DeepEqual(previous, current) {
 		delete(e.relations, "schoolTypeEntity")
 		delete(e.loadedRelations, "schoolTypeEntity")
 	}
-	e.root.Set(e.EntityKey(), "school_type", core.ValU64(value))
-	e.loadState["school_type_id"] = true
+	e.root.Set(e.EntityKey(), teaqlSchoolTypeModelKey, core.ValU64(value))
+	e.loadState[teaqlSchoolTypeStorageKey] = true
 	return e
 }
 // DEBUG: constantObjectField is true

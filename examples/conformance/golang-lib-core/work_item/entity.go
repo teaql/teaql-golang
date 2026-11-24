@@ -23,6 +23,19 @@ var (
 	_ = errors.As
 )
 
+const (
+    teaqlIdStorageKey = "id"
+    teaqlIdModelKey = "id"
+    teaqlTitleStorageKey = "title"
+    teaqlTitleModelKey = "title"
+    teaqlDescriptionStorageKey = "description"
+    teaqlDescriptionModelKey = "description"
+    teaqlPlatformStorageKey = "platform_id"
+    teaqlPlatformModelKey = "platform"
+    teaqlVersionStorageKey = "version"
+    teaqlVersionModelKey = "version"
+)
+
 
 type WorkItem struct {
 	base        *core.BaseEntityData
@@ -193,11 +206,11 @@ func (e *WorkItem) teaqlFromRecord(record core.Record, captureLoaded bool) error
 }
 
 func (e *WorkItem) teaqlScalarSnapshot(record core.Record) core.LoadedScalarSnapshot {
-	return core.NewLoadedScalarSnapshot(record, "id", "title", "description", "platform_id", "version")
+	return core.NewLoadedScalarSnapshot(record, teaqlIdStorageKey, teaqlTitleStorageKey, teaqlDescriptionStorageKey, teaqlPlatformStorageKey, teaqlVersionStorageKey)
 }
 
 func (e *WorkItem) teaqlLoadedScalarSnapshot(record core.Record) core.LoadedScalarSnapshot {
-	return core.NewOwnedLoadedScalarSnapshot(e.EntityKey(), e.base.Version, record, "id", "title", "description", "platform_id", "version")
+	return core.NewOwnedLoadedScalarSnapshot(e.EntityKey(), e.base.Version, record, teaqlIdStorageKey, teaqlTitleStorageKey, teaqlDescriptionStorageKey, teaqlPlatformStorageKey, teaqlVersionStorageKey)
 }
 
 func (e *WorkItem) teaqlAcceptPersisted(context *runtime.UserContext, record core.Record) error {
@@ -302,11 +315,11 @@ func (e *WorkItem) JSONQueryProperties() core.Record { return e.base.QueryProper
 func (e *WorkItem) LoadedJSONFields() core.Record {
 	all := e.IntoRecord()
 	selected := make(core.Record)
-	if e.IsLoaded("id") { if value, present := all["id"]; present { selected["id"] = value } }
-	if e.IsLoaded("title") { if value, present := all["title"]; present { selected["title"] = value } }
-	if e.IsLoaded("description") { if value, present := all["description"]; present { selected["description"] = value } }
-	if e.IsLoaded("platform_id") { if value, present := all["platform_id"]; present { selected["platform_id"] = value } }
-	if e.IsLoaded("version") { if value, present := all["version"]; present { selected["version"] = value } }
+	if e.IsLoaded(teaqlIdStorageKey) { if value, present := all[teaqlIdStorageKey]; present { selected[teaqlIdStorageKey] = value } }
+	if e.IsLoaded(teaqlTitleStorageKey) { if value, present := all[teaqlTitleStorageKey]; present { selected[teaqlTitleStorageKey] = value } }
+	if e.IsLoaded(teaqlDescriptionStorageKey) { if value, present := all[teaqlDescriptionStorageKey]; present { selected[teaqlDescriptionStorageKey] = value } }
+	if e.IsLoaded(teaqlPlatformStorageKey) { if value, present := all[teaqlPlatformStorageKey]; present { selected[teaqlPlatformStorageKey] = value } }
+	if e.IsLoaded(teaqlVersionStorageKey) { if value, present := all[teaqlVersionStorageKey]; present { selected[teaqlVersionStorageKey] = value } }
 	if e.isRelationLoaded("platformEntity") { if target, present := e.relations["platformEntity"]; present && target != nil { selected["platformEntity"] = core.Value{V: target} } }
 	return selected
 }
@@ -409,24 +422,24 @@ func (e *WorkItem) TeaqlPreflightWithinGraph(context *runtime.UserContext, inten
 		operation := core.MutationUpdate
 		if e.isNew { operation = core.MutationInsert }
 		if operation == core.MutationUpdate {
-			if !e.IsLoaded("id") {
-				result := runtime.CheckResult{RuleID: "invalid_type", EntityType: "WorkItem", CanonicalLocation: runtime.Location().Property("id"), Message: "Mutation requires a fully loaded entity"}
+			if !e.IsLoaded(teaqlIdStorageKey) {
+				result := runtime.CheckResult{RuleID: "invalid_type", EntityType: "WorkItem", CanonicalLocation: runtime.Location().Property(teaqlIdModelKey), Message: "Mutation requires a fully loaded entity"}
 				return &runtime.RuntimeError{Type: "Check", CheckResults: []runtime.CheckResult{result}}
 			}
-			if !e.IsLoaded("title") {
-				result := runtime.CheckResult{RuleID: "invalid_type", EntityType: "WorkItem", CanonicalLocation: runtime.Location().Property("title"), Message: "Mutation requires a fully loaded entity"}
+			if !e.IsLoaded(teaqlTitleStorageKey) {
+				result := runtime.CheckResult{RuleID: "invalid_type", EntityType: "WorkItem", CanonicalLocation: runtime.Location().Property(teaqlTitleModelKey), Message: "Mutation requires a fully loaded entity"}
 				return &runtime.RuntimeError{Type: "Check", CheckResults: []runtime.CheckResult{result}}
 			}
-			if !e.IsLoaded("description") {
-				result := runtime.CheckResult{RuleID: "invalid_type", EntityType: "WorkItem", CanonicalLocation: runtime.Location().Property("description"), Message: "Mutation requires a fully loaded entity"}
+			if !e.IsLoaded(teaqlDescriptionStorageKey) {
+				result := runtime.CheckResult{RuleID: "invalid_type", EntityType: "WorkItem", CanonicalLocation: runtime.Location().Property(teaqlDescriptionModelKey), Message: "Mutation requires a fully loaded entity"}
 				return &runtime.RuntimeError{Type: "Check", CheckResults: []runtime.CheckResult{result}}
 			}
-			if !e.IsLoaded("platform_id") {
-				result := runtime.CheckResult{RuleID: "invalid_type", EntityType: "WorkItem", CanonicalLocation: runtime.Location().Property("platform"), Message: "Mutation requires a fully loaded entity"}
+			if !e.IsLoaded(teaqlPlatformStorageKey) {
+				result := runtime.CheckResult{RuleID: "invalid_type", EntityType: "WorkItem", CanonicalLocation: runtime.Location().Property(teaqlPlatformModelKey), Message: "Mutation requires a fully loaded entity"}
 				return &runtime.RuntimeError{Type: "Check", CheckResults: []runtime.CheckResult{result}}
 			}
-			if !e.IsLoaded("version") {
-				result := runtime.CheckResult{RuleID: "invalid_type", EntityType: "WorkItem", CanonicalLocation: runtime.Location().Property("version"), Message: "Mutation requires a fully loaded entity"}
+			if !e.IsLoaded(teaqlVersionStorageKey) {
+				result := runtime.CheckResult{RuleID: "invalid_type", EntityType: "WorkItem", CanonicalLocation: runtime.Location().Property(teaqlVersionModelKey), Message: "Mutation requires a fully loaded entity"}
 				return &runtime.RuntimeError{Type: "Check", CheckResults: []runtime.CheckResult{result}}
 			}
 		}
@@ -679,36 +692,36 @@ func (e *WorkItem) UpdateId(value uint64) *WorkItem {
 	oldKey := e.EntityKey()
 	e.base.Id = value
 	e.root.Rekey(oldKey, e.EntityKey())
-	e.loadState["id"] = true
+	e.loadState[teaqlIdStorageKey] = true
 	return e
 }
 
 func (e *WorkItem) Title() string {
-	val, _ := e.base.GetDynamic("title")
+	val, _ := e.base.GetDynamic(teaqlTitleStorageKey)
 	res, _ := val.TryText()
 	return res}
 
 func (e *WorkItem) UpdateTitle(value string) *WorkItem {
 	e.teaqlEnsureState()
-	e.base.PutDynamic("title", core.ValText(value))
-	e.dirtyFields["title"] = true
-	e.root.Set(e.EntityKey(), "title", core.ValText(value))
-	e.loadState["title"] = true
+	e.base.PutDynamic(teaqlTitleStorageKey, core.ValText(value))
+	e.dirtyFields[teaqlTitleStorageKey] = true
+	e.root.Set(e.EntityKey(), teaqlTitleModelKey, core.ValText(value))
+	e.loadState[teaqlTitleStorageKey] = true
 	return e
 }
 
 func (e *WorkItem) Description() *string {
-	val, _ := e.base.GetDynamic("description")
+	val, _ := e.base.GetDynamic(teaqlDescriptionStorageKey)
 	if val.IsNull() { return nil }
 	res, _ := val.TryText()
 	return &res}
 
 func (e *WorkItem) UpdateDescription(value *string) *WorkItem {
 	e.teaqlEnsureState()
-	e.base.PutDynamic("description", func() core.Value { if value == nil { return core.ValNull() }; return core.ValText((*value)) }())
-	e.dirtyFields["description"] = true
-	e.root.Set(e.EntityKey(), "description", func() core.Value { if value == nil { return core.ValNull() }; return core.ValText((*value)) }())
-	e.loadState["description"] = true
+	e.base.PutDynamic(teaqlDescriptionStorageKey, func() core.Value { if value == nil { return core.ValNull() }; return core.ValText((*value)) }())
+	e.dirtyFields[teaqlDescriptionStorageKey] = true
+	e.root.Set(e.EntityKey(), teaqlDescriptionModelKey, func() core.Value { if value == nil { return core.ValNull() }; return core.ValText((*value)) }())
+	e.loadState[teaqlDescriptionStorageKey] = true
 	return e
 }
 
@@ -719,26 +732,26 @@ func (e *WorkItem) Version() int64 {
 func (e *WorkItem) UpdateVersion(value int64) *WorkItem {
 	e.teaqlEnsureState()
 	e.base.Version = value
-	e.loadState["version"] = true
+	e.loadState[teaqlVersionStorageKey] = true
 	return e
 }
 func (e *WorkItem) PlatformId() uint64 {
-	val, _ := e.base.GetDynamic("platform_id")
+	val, _ := e.base.GetDynamic(teaqlPlatformStorageKey)
 	res, _ := val.TryU64()
 	return res
 }
 
 func (e *WorkItem) UpdatePlatformId(value uint64) *WorkItem {
-	previous, present := e.base.GetDynamic("platform_id")
-	e.base.PutDynamic("platform_id", core.ValU64(value))
-	e.dirtyFields["platform_id"] = true
-	current, _ := e.base.GetDynamic("platform_id")
+	previous, present := e.base.GetDynamic(teaqlPlatformStorageKey)
+	e.base.PutDynamic(teaqlPlatformStorageKey, core.ValU64(value))
+	e.dirtyFields[teaqlPlatformStorageKey] = true
+	current, _ := e.base.GetDynamic(teaqlPlatformStorageKey)
 	if !present || !reflect.DeepEqual(previous, current) {
 		delete(e.relations, "platformEntity")
 		delete(e.loadedRelations, "platformEntity")
 	}
-	e.root.Set(e.EntityKey(), "platform", core.ValU64(value))
-	e.loadState["platform_id"] = true
+	e.root.Set(e.EntityKey(), teaqlPlatformModelKey, core.ValU64(value))
+	e.loadState[teaqlPlatformStorageKey] = true
 	return e
 }
 // DEBUG: constantObjectField is false

@@ -182,16 +182,16 @@ func (r *WorkItemRequest) DeletedRowsOnly() *WorkItemRequest {
 }
 
 func (r *WorkItemRequest) SelectId() *WorkItemRequest {
-	r.Query.Project("id")
+	r.Query.Project(teaqlIdStorageKey)
 	return r
 }
 
 func (r *WorkItemRequest) WithIdIs(value uint64) *WorkItemRequest {
-	r.Query.AndFilter(core.ExprEq("id", core.ValU64(value)))
+	r.Query.AndFilter(core.ExprEq(teaqlIdStorageKey, core.ValU64(value)))
 	return r
 }
 func (r *WorkItemRequest) WithIdIsNot(value uint64) *WorkItemRequest {
-	r.Query.AndFilter(core.ExprNe("id", core.ValU64(value)))
+	r.Query.AndFilter(core.ExprNe(teaqlIdStorageKey, core.ValU64(value)))
 	return r
 }
 func (r *WorkItemRequest) WithIdIn(values []uint64) *WorkItemRequest {
@@ -199,7 +199,7 @@ func (r *WorkItemRequest) WithIdIn(values []uint64) *WorkItemRequest {
 	for _, value := range values {
 		converted = append(converted, core.ValU64(value))
 	}
-	r.Query.AndFilter(core.ExprInList("id", converted))
+	r.Query.AndFilter(core.ExprInList(teaqlIdStorageKey, converted))
 	return r
 }
 func (r *WorkItemRequest) WithIdNotIn(values []uint64) *WorkItemRequest {
@@ -207,23 +207,23 @@ func (r *WorkItemRequest) WithIdNotIn(values []uint64) *WorkItemRequest {
 	for _, value := range values {
 		converted = append(converted, core.ValU64(value))
 	}
-	r.Query.AndFilter(core.ExprNotInList("id", converted))
+	r.Query.AndFilter(core.ExprNotInList(teaqlIdStorageKey, converted))
 	return r
 }
 func (r *WorkItemRequest) WithIdGreaterThan(value uint64) *WorkItemRequest {
-	r.Query.AndFilter(core.ExprGt("id", core.ValU64(value)))
+	r.Query.AndFilter(core.ExprGt(teaqlIdStorageKey, core.ValU64(value)))
 	return r
 }
 func (r *WorkItemRequest) WithIdGreaterThanOrEqualTo(value uint64) *WorkItemRequest {
-	r.Query.AndFilter(core.ExprGte("id", core.ValU64(value)))
+	r.Query.AndFilter(core.ExprGte(teaqlIdStorageKey, core.ValU64(value)))
 	return r
 }
 func (r *WorkItemRequest) WithIdLessThan(value uint64) *WorkItemRequest {
-	r.Query.AndFilter(core.ExprLt("id", core.ValU64(value)))
+	r.Query.AndFilter(core.ExprLt(teaqlIdStorageKey, core.ValU64(value)))
 	return r
 }
 func (r *WorkItemRequest) WithIdLessThanOrEqualTo(value uint64) *WorkItemRequest {
-	r.Query.AndFilter(core.ExprLte("id", core.ValU64(value)))
+	r.Query.AndFilter(core.ExprLte(teaqlIdStorageKey, core.ValU64(value)))
 	return r
 }
 func (r *WorkItemRequest) WithIdBetween(lower uint64, upper uint64) *WorkItemRequest {
@@ -231,36 +231,36 @@ func (r *WorkItemRequest) WithIdBetween(lower uint64, upper uint64) *WorkItemReq
 	from := core.ValU64(value)
 	value = upper
 	to := core.ValU64(value)
-	r.Query.AndFilter(core.ExprBetweenNode("id", from, to))
+	r.Query.AndFilter(core.ExprBetweenNode(teaqlIdStorageKey, from, to))
 	return r
 }
 func (r *WorkItemRequest) WithIdIsKnown() *WorkItemRequest {
-	r.Query.AndFilter(core.ExprIsNotNullNode("id"))
+	r.Query.AndFilter(core.ExprIsNotNullNode(teaqlIdStorageKey))
 	return r
 }
 func (r *WorkItemRequest) WithIdIsUnknown() *WorkItemRequest {
-	r.Query.AndFilter(core.ExprIsNullNode("id"))
+	r.Query.AndFilter(core.ExprIsNullNode(teaqlIdStorageKey))
 	return r
 }
 func (r *WorkItemRequest) OrderByIdAsc() *WorkItemRequest {
-	r.Query.OrderAsc("id")
+	r.Query.OrderAsc(teaqlIdStorageKey)
 	return r
 }
 func (r *WorkItemRequest) OrderByIdDesc() *WorkItemRequest {
-	r.Query.OrderDesc("id")
+	r.Query.OrderDesc(teaqlIdStorageKey)
 	return r
 }
 func (r *WorkItemRequest) SelectTitle() *WorkItemRequest {
-	r.Query.Project("title")
+	r.Query.Project(teaqlTitleStorageKey)
 	return r
 }
 
 func (r *WorkItemRequest) WithTitleIs(value string) *WorkItemRequest {
-	r.Query.AndFilter(core.ExprEq("title", core.ValText(value)))
+	r.Query.AndFilter(core.ExprEq(teaqlTitleStorageKey, core.ValText(value)))
 	return r
 }
 func (r *WorkItemRequest) WithTitleIsNot(value string) *WorkItemRequest {
-	r.Query.AndFilter(core.ExprNe("title", core.ValText(value)))
+	r.Query.AndFilter(core.ExprNe(teaqlTitleStorageKey, core.ValText(value)))
 	return r
 }
 func (r *WorkItemRequest) WithTitleIn(values []string) *WorkItemRequest {
@@ -268,7 +268,7 @@ func (r *WorkItemRequest) WithTitleIn(values []string) *WorkItemRequest {
 	for _, value := range values {
 		converted = append(converted, core.ValText(value))
 	}
-	r.Query.AndFilter(core.ExprInList("title", converted))
+	r.Query.AndFilter(core.ExprInList(teaqlTitleStorageKey, converted))
 	return r
 }
 func (r *WorkItemRequest) WithTitleNotIn(values []string) *WorkItemRequest {
@@ -276,23 +276,23 @@ func (r *WorkItemRequest) WithTitleNotIn(values []string) *WorkItemRequest {
 	for _, value := range values {
 		converted = append(converted, core.ValText(value))
 	}
-	r.Query.AndFilter(core.ExprNotInList("title", converted))
+	r.Query.AndFilter(core.ExprNotInList(teaqlTitleStorageKey, converted))
 	return r
 }
 func (r *WorkItemRequest) WithTitleGreaterThan(value string) *WorkItemRequest {
-	r.Query.AndFilter(core.ExprGt("title", core.ValText(value)))
+	r.Query.AndFilter(core.ExprGt(teaqlTitleStorageKey, core.ValText(value)))
 	return r
 }
 func (r *WorkItemRequest) WithTitleGreaterThanOrEqualTo(value string) *WorkItemRequest {
-	r.Query.AndFilter(core.ExprGte("title", core.ValText(value)))
+	r.Query.AndFilter(core.ExprGte(teaqlTitleStorageKey, core.ValText(value)))
 	return r
 }
 func (r *WorkItemRequest) WithTitleLessThan(value string) *WorkItemRequest {
-	r.Query.AndFilter(core.ExprLt("title", core.ValText(value)))
+	r.Query.AndFilter(core.ExprLt(teaqlTitleStorageKey, core.ValText(value)))
 	return r
 }
 func (r *WorkItemRequest) WithTitleLessThanOrEqualTo(value string) *WorkItemRequest {
-	r.Query.AndFilter(core.ExprLte("title", core.ValText(value)))
+	r.Query.AndFilter(core.ExprLte(teaqlTitleStorageKey, core.ValText(value)))
 	return r
 }
 func (r *WorkItemRequest) WithTitleBetween(lower string, upper string) *WorkItemRequest {
@@ -300,64 +300,64 @@ func (r *WorkItemRequest) WithTitleBetween(lower string, upper string) *WorkItem
 	from := core.ValText(value)
 	value = upper
 	to := core.ValText(value)
-	r.Query.AndFilter(core.ExprBetweenNode("title", from, to))
+	r.Query.AndFilter(core.ExprBetweenNode(teaqlTitleStorageKey, from, to))
 	return r
 }
 func (r *WorkItemRequest) WithTitleIsKnown() *WorkItemRequest {
-	r.Query.AndFilter(core.ExprIsNotNullNode("title"))
+	r.Query.AndFilter(core.ExprIsNotNullNode(teaqlTitleStorageKey))
 	return r
 }
 func (r *WorkItemRequest) WithTitleIsUnknown() *WorkItemRequest {
-	r.Query.AndFilter(core.ExprIsNullNode("title"))
+	r.Query.AndFilter(core.ExprIsNullNode(teaqlTitleStorageKey))
 	return r
 }
 func (r *WorkItemRequest) WithTitleContaining(term string) *WorkItemRequest {
-	r.Query.AndFilter(core.ExprContain("title", term))
+	r.Query.AndFilter(core.ExprContain(teaqlTitleStorageKey, term))
 	return r
 }
 func (r *WorkItemRequest) WithTitleNotContaining(term string) *WorkItemRequest {
-	r.Query.AndFilter(core.ExprNotContain("title", term))
+	r.Query.AndFilter(core.ExprNotContain(teaqlTitleStorageKey, term))
 	return r
 }
 func (r *WorkItemRequest) WithTitleStartingWith(term string) *WorkItemRequest {
-	r.Query.AndFilter(core.ExprBeginWith("title", term))
+	r.Query.AndFilter(core.ExprBeginWith(teaqlTitleStorageKey, term))
 	return r
 }
 func (r *WorkItemRequest) WithTitleNotStartingWith(term string) *WorkItemRequest {
-	r.Query.AndFilter(core.ExprNotBeginWith("title", term))
+	r.Query.AndFilter(core.ExprNotBeginWith(teaqlTitleStorageKey, term))
 	return r
 }
 func (r *WorkItemRequest) WithTitleEndingWith(term string) *WorkItemRequest {
-	r.Query.AndFilter(core.ExprEndWith("title", term))
+	r.Query.AndFilter(core.ExprEndWith(teaqlTitleStorageKey, term))
 	return r
 }
 func (r *WorkItemRequest) WithTitleNotEndingWith(term string) *WorkItemRequest {
-	r.Query.AndFilter(core.ExprNotEndWith("title", term))
+	r.Query.AndFilter(core.ExprNotEndWith(teaqlTitleStorageKey, term))
 	return r
 }
 func (r *WorkItemRequest) WithTitleSoundingLike(term string) *WorkItemRequest {
-	r.Query.AndFilter(core.ExprSoundLike("title", core.ValText(term)))
+	r.Query.AndFilter(core.ExprSoundLike(teaqlTitleStorageKey, core.ValText(term)))
 	return r
 }
 func (r *WorkItemRequest) OrderByTitleAsc() *WorkItemRequest {
-	r.Query.OrderAsc("title")
+	r.Query.OrderAsc(teaqlTitleStorageKey)
 	return r
 }
 func (r *WorkItemRequest) OrderByTitleDesc() *WorkItemRequest {
-	r.Query.OrderDesc("title")
+	r.Query.OrderDesc(teaqlTitleStorageKey)
 	return r
 }
 func (r *WorkItemRequest) SelectDescription() *WorkItemRequest {
-	r.Query.Project("description")
+	r.Query.Project(teaqlDescriptionStorageKey)
 	return r
 }
 
 func (r *WorkItemRequest) WithDescriptionIs(value *string) *WorkItemRequest {
-	r.Query.AndFilter(core.ExprEq("description", func() core.Value { if value == nil { return core.ValNull() }; return core.ValText((*value)) }()))
+	r.Query.AndFilter(core.ExprEq(teaqlDescriptionStorageKey, func() core.Value { if value == nil { return core.ValNull() }; return core.ValText((*value)) }()))
 	return r
 }
 func (r *WorkItemRequest) WithDescriptionIsNot(value *string) *WorkItemRequest {
-	r.Query.AndFilter(core.ExprNe("description", func() core.Value { if value == nil { return core.ValNull() }; return core.ValText((*value)) }()))
+	r.Query.AndFilter(core.ExprNe(teaqlDescriptionStorageKey, func() core.Value { if value == nil { return core.ValNull() }; return core.ValText((*value)) }()))
 	return r
 }
 func (r *WorkItemRequest) WithDescriptionIn(values []*string) *WorkItemRequest {
@@ -365,7 +365,7 @@ func (r *WorkItemRequest) WithDescriptionIn(values []*string) *WorkItemRequest {
 	for _, value := range values {
 		converted = append(converted, func() core.Value { if value == nil { return core.ValNull() }; return core.ValText((*value)) }())
 	}
-	r.Query.AndFilter(core.ExprInList("description", converted))
+	r.Query.AndFilter(core.ExprInList(teaqlDescriptionStorageKey, converted))
 	return r
 }
 func (r *WorkItemRequest) WithDescriptionNotIn(values []*string) *WorkItemRequest {
@@ -373,23 +373,23 @@ func (r *WorkItemRequest) WithDescriptionNotIn(values []*string) *WorkItemReques
 	for _, value := range values {
 		converted = append(converted, func() core.Value { if value == nil { return core.ValNull() }; return core.ValText((*value)) }())
 	}
-	r.Query.AndFilter(core.ExprNotInList("description", converted))
+	r.Query.AndFilter(core.ExprNotInList(teaqlDescriptionStorageKey, converted))
 	return r
 }
 func (r *WorkItemRequest) WithDescriptionGreaterThan(value *string) *WorkItemRequest {
-	r.Query.AndFilter(core.ExprGt("description", func() core.Value { if value == nil { return core.ValNull() }; return core.ValText((*value)) }()))
+	r.Query.AndFilter(core.ExprGt(teaqlDescriptionStorageKey, func() core.Value { if value == nil { return core.ValNull() }; return core.ValText((*value)) }()))
 	return r
 }
 func (r *WorkItemRequest) WithDescriptionGreaterThanOrEqualTo(value *string) *WorkItemRequest {
-	r.Query.AndFilter(core.ExprGte("description", func() core.Value { if value == nil { return core.ValNull() }; return core.ValText((*value)) }()))
+	r.Query.AndFilter(core.ExprGte(teaqlDescriptionStorageKey, func() core.Value { if value == nil { return core.ValNull() }; return core.ValText((*value)) }()))
 	return r
 }
 func (r *WorkItemRequest) WithDescriptionLessThan(value *string) *WorkItemRequest {
-	r.Query.AndFilter(core.ExprLt("description", func() core.Value { if value == nil { return core.ValNull() }; return core.ValText((*value)) }()))
+	r.Query.AndFilter(core.ExprLt(teaqlDescriptionStorageKey, func() core.Value { if value == nil { return core.ValNull() }; return core.ValText((*value)) }()))
 	return r
 }
 func (r *WorkItemRequest) WithDescriptionLessThanOrEqualTo(value *string) *WorkItemRequest {
-	r.Query.AndFilter(core.ExprLte("description", func() core.Value { if value == nil { return core.ValNull() }; return core.ValText((*value)) }()))
+	r.Query.AndFilter(core.ExprLte(teaqlDescriptionStorageKey, func() core.Value { if value == nil { return core.ValNull() }; return core.ValText((*value)) }()))
 	return r
 }
 func (r *WorkItemRequest) WithDescriptionBetween(lower *string, upper *string) *WorkItemRequest {
@@ -397,64 +397,64 @@ func (r *WorkItemRequest) WithDescriptionBetween(lower *string, upper *string) *
 	from := func() core.Value { if value == nil { return core.ValNull() }; return core.ValText((*value)) }()
 	value = upper
 	to := func() core.Value { if value == nil { return core.ValNull() }; return core.ValText((*value)) }()
-	r.Query.AndFilter(core.ExprBetweenNode("description", from, to))
+	r.Query.AndFilter(core.ExprBetweenNode(teaqlDescriptionStorageKey, from, to))
 	return r
 }
 func (r *WorkItemRequest) WithDescriptionIsKnown() *WorkItemRequest {
-	r.Query.AndFilter(core.ExprIsNotNullNode("description"))
+	r.Query.AndFilter(core.ExprIsNotNullNode(teaqlDescriptionStorageKey))
 	return r
 }
 func (r *WorkItemRequest) WithDescriptionIsUnknown() *WorkItemRequest {
-	r.Query.AndFilter(core.ExprIsNullNode("description"))
+	r.Query.AndFilter(core.ExprIsNullNode(teaqlDescriptionStorageKey))
 	return r
 }
 func (r *WorkItemRequest) WithDescriptionContaining(term string) *WorkItemRequest {
-	r.Query.AndFilter(core.ExprContain("description", term))
+	r.Query.AndFilter(core.ExprContain(teaqlDescriptionStorageKey, term))
 	return r
 }
 func (r *WorkItemRequest) WithDescriptionNotContaining(term string) *WorkItemRequest {
-	r.Query.AndFilter(core.ExprNotContain("description", term))
+	r.Query.AndFilter(core.ExprNotContain(teaqlDescriptionStorageKey, term))
 	return r
 }
 func (r *WorkItemRequest) WithDescriptionStartingWith(term string) *WorkItemRequest {
-	r.Query.AndFilter(core.ExprBeginWith("description", term))
+	r.Query.AndFilter(core.ExprBeginWith(teaqlDescriptionStorageKey, term))
 	return r
 }
 func (r *WorkItemRequest) WithDescriptionNotStartingWith(term string) *WorkItemRequest {
-	r.Query.AndFilter(core.ExprNotBeginWith("description", term))
+	r.Query.AndFilter(core.ExprNotBeginWith(teaqlDescriptionStorageKey, term))
 	return r
 }
 func (r *WorkItemRequest) WithDescriptionEndingWith(term string) *WorkItemRequest {
-	r.Query.AndFilter(core.ExprEndWith("description", term))
+	r.Query.AndFilter(core.ExprEndWith(teaqlDescriptionStorageKey, term))
 	return r
 }
 func (r *WorkItemRequest) WithDescriptionNotEndingWith(term string) *WorkItemRequest {
-	r.Query.AndFilter(core.ExprNotEndWith("description", term))
+	r.Query.AndFilter(core.ExprNotEndWith(teaqlDescriptionStorageKey, term))
 	return r
 }
 func (r *WorkItemRequest) WithDescriptionSoundingLike(term string) *WorkItemRequest {
-	r.Query.AndFilter(core.ExprSoundLike("description", core.ValText(term)))
+	r.Query.AndFilter(core.ExprSoundLike(teaqlDescriptionStorageKey, core.ValText(term)))
 	return r
 }
 func (r *WorkItemRequest) OrderByDescriptionAsc() *WorkItemRequest {
-	r.Query.OrderAsc("description")
+	r.Query.OrderAsc(teaqlDescriptionStorageKey)
 	return r
 }
 func (r *WorkItemRequest) OrderByDescriptionDesc() *WorkItemRequest {
-	r.Query.OrderDesc("description")
+	r.Query.OrderDesc(teaqlDescriptionStorageKey)
 	return r
 }
 func (r *WorkItemRequest) SelectPlatform() *WorkItemRequest {
-	r.Query.Project("platform_id")
+	r.Query.Project(teaqlPlatformStorageKey)
 	return r
 }
 
 func (r *WorkItemRequest) WithPlatformIs(value uint64) *WorkItemRequest {
-	r.Query.AndFilter(core.ExprEq("platform_id", core.ValU64(value)))
+	r.Query.AndFilter(core.ExprEq(teaqlPlatformStorageKey, core.ValU64(value)))
 	return r
 }
 func (r *WorkItemRequest) WithPlatformIsNot(value uint64) *WorkItemRequest {
-	r.Query.AndFilter(core.ExprNe("platform_id", core.ValU64(value)))
+	r.Query.AndFilter(core.ExprNe(teaqlPlatformStorageKey, core.ValU64(value)))
 	return r
 }
 func (r *WorkItemRequest) WithPlatformIn(values []uint64) *WorkItemRequest {
@@ -462,7 +462,7 @@ func (r *WorkItemRequest) WithPlatformIn(values []uint64) *WorkItemRequest {
 	for _, value := range values {
 		converted = append(converted, core.ValU64(value))
 	}
-	r.Query.AndFilter(core.ExprInList("platform_id", converted))
+	r.Query.AndFilter(core.ExprInList(teaqlPlatformStorageKey, converted))
 	return r
 }
 func (r *WorkItemRequest) WithPlatformNotIn(values []uint64) *WorkItemRequest {
@@ -470,23 +470,23 @@ func (r *WorkItemRequest) WithPlatformNotIn(values []uint64) *WorkItemRequest {
 	for _, value := range values {
 		converted = append(converted, core.ValU64(value))
 	}
-	r.Query.AndFilter(core.ExprNotInList("platform_id", converted))
+	r.Query.AndFilter(core.ExprNotInList(teaqlPlatformStorageKey, converted))
 	return r
 }
 func (r *WorkItemRequest) WithPlatformGreaterThan(value uint64) *WorkItemRequest {
-	r.Query.AndFilter(core.ExprGt("platform_id", core.ValU64(value)))
+	r.Query.AndFilter(core.ExprGt(teaqlPlatformStorageKey, core.ValU64(value)))
 	return r
 }
 func (r *WorkItemRequest) WithPlatformGreaterThanOrEqualTo(value uint64) *WorkItemRequest {
-	r.Query.AndFilter(core.ExprGte("platform_id", core.ValU64(value)))
+	r.Query.AndFilter(core.ExprGte(teaqlPlatformStorageKey, core.ValU64(value)))
 	return r
 }
 func (r *WorkItemRequest) WithPlatformLessThan(value uint64) *WorkItemRequest {
-	r.Query.AndFilter(core.ExprLt("platform_id", core.ValU64(value)))
+	r.Query.AndFilter(core.ExprLt(teaqlPlatformStorageKey, core.ValU64(value)))
 	return r
 }
 func (r *WorkItemRequest) WithPlatformLessThanOrEqualTo(value uint64) *WorkItemRequest {
-	r.Query.AndFilter(core.ExprLte("platform_id", core.ValU64(value)))
+	r.Query.AndFilter(core.ExprLte(teaqlPlatformStorageKey, core.ValU64(value)))
 	return r
 }
 func (r *WorkItemRequest) WithPlatformBetween(lower uint64, upper uint64) *WorkItemRequest {
@@ -494,15 +494,15 @@ func (r *WorkItemRequest) WithPlatformBetween(lower uint64, upper uint64) *WorkI
 	from := core.ValU64(value)
 	value = upper
 	to := core.ValU64(value)
-	r.Query.AndFilter(core.ExprBetweenNode("platform_id", from, to))
+	r.Query.AndFilter(core.ExprBetweenNode(teaqlPlatformStorageKey, from, to))
 	return r
 }
 func (r *WorkItemRequest) WithPlatformIsKnown() *WorkItemRequest {
-	r.Query.AndFilter(core.ExprIsNotNullNode("platform_id"))
+	r.Query.AndFilter(core.ExprIsNotNullNode(teaqlPlatformStorageKey))
 	return r
 }
 func (r *WorkItemRequest) WithPlatformIsUnknown() *WorkItemRequest {
-	r.Query.AndFilter(core.ExprIsNullNode("platform_id"))
+	r.Query.AndFilter(core.ExprIsNullNode(teaqlPlatformStorageKey))
 	return r
 }
 func (r *WorkItemRequest) FacetByPlatformAs(
@@ -512,30 +512,30 @@ func (r *WorkItemRequest) FacetByPlatformAs(
 ) *WorkItemRequest {
 	includeAll := true
 	if len(includeAllFacets) > 0 { includeAll = includeAllFacets[0] }
-	facet := core.NewFacetRequest(name, "platform_id", core.QuerySelectionFor(nestedReq), includeAll)
+	facet := core.NewFacetRequest(name, teaqlPlatformStorageKey, core.QuerySelectionFor(nestedReq), includeAll)
 	facet.Operation = &core.QueryOperation{Kind: "facet", Method: "FacetByPlatformAs", Alias: &name, Relation: "platform"}
 	r.queryOptions.Facets = append(r.queryOptions.Facets, facet)
 	return r
 }
 func (r *WorkItemRequest) OrderByPlatformAsc() *WorkItemRequest {
-	r.Query.OrderAsc("platform_id")
+	r.Query.OrderAsc(teaqlPlatformStorageKey)
 	return r
 }
 func (r *WorkItemRequest) OrderByPlatformDesc() *WorkItemRequest {
-	r.Query.OrderDesc("platform_id")
+	r.Query.OrderDesc(teaqlPlatformStorageKey)
 	return r
 }
 func (r *WorkItemRequest) SelectVersion() *WorkItemRequest {
-	r.Query.Project("version")
+	r.Query.Project(teaqlVersionStorageKey)
 	return r
 }
 
 func (r *WorkItemRequest) WithVersionIs(value int64) *WorkItemRequest {
-	r.Query.AndFilter(core.ExprEq("version", core.ValI64(value)))
+	r.Query.AndFilter(core.ExprEq(teaqlVersionStorageKey, core.ValI64(value)))
 	return r
 }
 func (r *WorkItemRequest) WithVersionIsNot(value int64) *WorkItemRequest {
-	r.Query.AndFilter(core.ExprNe("version", core.ValI64(value)))
+	r.Query.AndFilter(core.ExprNe(teaqlVersionStorageKey, core.ValI64(value)))
 	return r
 }
 func (r *WorkItemRequest) WithVersionIn(values []int64) *WorkItemRequest {
@@ -543,7 +543,7 @@ func (r *WorkItemRequest) WithVersionIn(values []int64) *WorkItemRequest {
 	for _, value := range values {
 		converted = append(converted, core.ValI64(value))
 	}
-	r.Query.AndFilter(core.ExprInList("version", converted))
+	r.Query.AndFilter(core.ExprInList(teaqlVersionStorageKey, converted))
 	return r
 }
 func (r *WorkItemRequest) WithVersionNotIn(values []int64) *WorkItemRequest {
@@ -551,23 +551,23 @@ func (r *WorkItemRequest) WithVersionNotIn(values []int64) *WorkItemRequest {
 	for _, value := range values {
 		converted = append(converted, core.ValI64(value))
 	}
-	r.Query.AndFilter(core.ExprNotInList("version", converted))
+	r.Query.AndFilter(core.ExprNotInList(teaqlVersionStorageKey, converted))
 	return r
 }
 func (r *WorkItemRequest) WithVersionGreaterThan(value int64) *WorkItemRequest {
-	r.Query.AndFilter(core.ExprGt("version", core.ValI64(value)))
+	r.Query.AndFilter(core.ExprGt(teaqlVersionStorageKey, core.ValI64(value)))
 	return r
 }
 func (r *WorkItemRequest) WithVersionGreaterThanOrEqualTo(value int64) *WorkItemRequest {
-	r.Query.AndFilter(core.ExprGte("version", core.ValI64(value)))
+	r.Query.AndFilter(core.ExprGte(teaqlVersionStorageKey, core.ValI64(value)))
 	return r
 }
 func (r *WorkItemRequest) WithVersionLessThan(value int64) *WorkItemRequest {
-	r.Query.AndFilter(core.ExprLt("version", core.ValI64(value)))
+	r.Query.AndFilter(core.ExprLt(teaqlVersionStorageKey, core.ValI64(value)))
 	return r
 }
 func (r *WorkItemRequest) WithVersionLessThanOrEqualTo(value int64) *WorkItemRequest {
-	r.Query.AndFilter(core.ExprLte("version", core.ValI64(value)))
+	r.Query.AndFilter(core.ExprLte(teaqlVersionStorageKey, core.ValI64(value)))
 	return r
 }
 func (r *WorkItemRequest) WithVersionBetween(lower int64, upper int64) *WorkItemRequest {
@@ -575,23 +575,23 @@ func (r *WorkItemRequest) WithVersionBetween(lower int64, upper int64) *WorkItem
 	from := core.ValI64(value)
 	value = upper
 	to := core.ValI64(value)
-	r.Query.AndFilter(core.ExprBetweenNode("version", from, to))
+	r.Query.AndFilter(core.ExprBetweenNode(teaqlVersionStorageKey, from, to))
 	return r
 }
 func (r *WorkItemRequest) WithVersionIsKnown() *WorkItemRequest {
-	r.Query.AndFilter(core.ExprIsNotNullNode("version"))
+	r.Query.AndFilter(core.ExprIsNotNullNode(teaqlVersionStorageKey))
 	return r
 }
 func (r *WorkItemRequest) WithVersionIsUnknown() *WorkItemRequest {
-	r.Query.AndFilter(core.ExprIsNullNode("version"))
+	r.Query.AndFilter(core.ExprIsNullNode(teaqlVersionStorageKey))
 	return r
 }
 func (r *WorkItemRequest) OrderByVersionAsc() *WorkItemRequest {
-	r.Query.OrderAsc("version")
+	r.Query.OrderAsc(teaqlVersionStorageKey)
 	return r
 }
 func (r *WorkItemRequest) OrderByVersionDesc() *WorkItemRequest {
-	r.Query.OrderDesc("version")
+	r.Query.OrderDesc(teaqlVersionStorageKey)
 	return r
 }
 
@@ -599,7 +599,7 @@ func (r *WorkItemRequest) SelectPlatformWith(child interface {
 	GetQuery() *core.SelectQuery
 	NewRelationEntity() core.Entity
 }) *WorkItemRequest {
-	runtime.EnsureRelationProjection(r.Query, "platform_id")
+	runtime.EnsureRelationProjection(r.Query, teaqlPlatformStorageKey)
 	r.Query.RelationQuerySelection("platformEntity", core.QuerySelectionFor(child))
 	r.Query.Relations[len(r.Query.Relations)-1].Operation = &core.QueryOperation{Kind: "relation", Method: "SelectPlatformWith", Relation: "platformEntity"}
 	r.relationFactories["platformEntity"] = func(record core.Record) (core.Entity, error) {
@@ -617,7 +617,7 @@ func (r *WorkItemRequest) WithPlatformMatching(child interface {
 	GetQuery() *core.SelectQuery
 	GetEntityDescriptor() *core.EntityDescriptor
 }) *WorkItemRequest {
-	r.Query.AndFilter(core.ExprInSubQuery("platform_id", child.GetEntityDescriptor(), child.GetQuery(), "id"))
+	r.Query.AndFilter(core.ExprInSubQuery(teaqlPlatformStorageKey, child.GetEntityDescriptor(), child.GetQuery(), "id"))
 	return r
 }
 
@@ -625,7 +625,7 @@ func (r *WorkItemRequest) WithoutPlatformMatching(child interface {
 	GetQuery() *core.SelectQuery
 	GetEntityDescriptor() *core.EntityDescriptor
 }) *WorkItemRequest {
-	r.Query.AndFilter(core.ExprNotInSubQuery("platform_id", child.GetEntityDescriptor(), child.GetQuery(), "id"))
+	r.Query.AndFilter(core.ExprNotInSubQuery(teaqlPlatformStorageKey, child.GetEntityDescriptor(), child.GetQuery(), "id"))
 	return r
 }
 
@@ -761,52 +761,52 @@ func (r *WorkItemRequest) CountAs(alias string) *WorkItemRequest {
 
 
 func (r *WorkItemRequest) GroupById() *WorkItemRequest {
-	r.Query.WithGroupBy("id")
+	r.Query.WithGroupBy(teaqlIdStorageKey)
 	return r
 }
 
 func (r *WorkItemRequest) GroupByIdAs(alias string) *WorkItemRequest {
-	r.Query.WithGroupBy("id")
-	r.Query.ProjectExpr(alias, core.ExprColumnNode("id"))
+	r.Query.WithGroupBy(teaqlIdStorageKey)
+	r.Query.ProjectExpr(alias, core.ExprColumnNode(teaqlIdStorageKey))
 	return r
 }
 func (r *WorkItemRequest) GroupByTitle() *WorkItemRequest {
-	r.Query.WithGroupBy("title")
+	r.Query.WithGroupBy(teaqlTitleStorageKey)
 	return r
 }
 
 func (r *WorkItemRequest) GroupByTitleAs(alias string) *WorkItemRequest {
-	r.Query.WithGroupBy("title")
-	r.Query.ProjectExpr(alias, core.ExprColumnNode("title"))
+	r.Query.WithGroupBy(teaqlTitleStorageKey)
+	r.Query.ProjectExpr(alias, core.ExprColumnNode(teaqlTitleStorageKey))
 	return r
 }
 func (r *WorkItemRequest) GroupByDescription() *WorkItemRequest {
-	r.Query.WithGroupBy("description")
+	r.Query.WithGroupBy(teaqlDescriptionStorageKey)
 	return r
 }
 
 func (r *WorkItemRequest) GroupByDescriptionAs(alias string) *WorkItemRequest {
-	r.Query.WithGroupBy("description")
-	r.Query.ProjectExpr(alias, core.ExprColumnNode("description"))
+	r.Query.WithGroupBy(teaqlDescriptionStorageKey)
+	r.Query.ProjectExpr(alias, core.ExprColumnNode(teaqlDescriptionStorageKey))
 	return r
 }
 func (r *WorkItemRequest) GroupByPlatform() *WorkItemRequest {
-	r.Query.WithGroupBy("platform_id")
+	r.Query.WithGroupBy(teaqlPlatformStorageKey)
 	return r
 }
 
 func (r *WorkItemRequest) GroupByPlatformAs(alias string) *WorkItemRequest {
-	r.Query.WithGroupBy("platform_id")
-	r.Query.ProjectExpr(alias, core.ExprColumnNode("platform_id"))
+	r.Query.WithGroupBy(teaqlPlatformStorageKey)
+	r.Query.ProjectExpr(alias, core.ExprColumnNode(teaqlPlatformStorageKey))
 	return r
 }
 func (r *WorkItemRequest) GroupByVersion() *WorkItemRequest {
-	r.Query.WithGroupBy("version")
+	r.Query.WithGroupBy(teaqlVersionStorageKey)
 	return r
 }
 
 func (r *WorkItemRequest) GroupByVersionAs(alias string) *WorkItemRequest {
-	r.Query.WithGroupBy("version")
-	r.Query.ProjectExpr(alias, core.ExprColumnNode("version"))
+	r.Query.WithGroupBy(teaqlVersionStorageKey)
+	r.Query.ProjectExpr(alias, core.ExprColumnNode(teaqlVersionStorageKey))
 	return r
 }

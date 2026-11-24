@@ -182,16 +182,16 @@ func (r *TaskExecutionLogRequest) DeletedRowsOnly() *TaskExecutionLogRequest {
 }
 
 func (r *TaskExecutionLogRequest) SelectId() *TaskExecutionLogRequest {
-	r.Query.Project("id")
+	r.Query.Project(teaqlIdStorageKey)
 	return r
 }
 
 func (r *TaskExecutionLogRequest) WithIdIs(value uint64) *TaskExecutionLogRequest {
-	r.Query.AndFilter(core.ExprEq("id", core.ValU64(value)))
+	r.Query.AndFilter(core.ExprEq(teaqlIdStorageKey, core.ValU64(value)))
 	return r
 }
 func (r *TaskExecutionLogRequest) WithIdIsNot(value uint64) *TaskExecutionLogRequest {
-	r.Query.AndFilter(core.ExprNe("id", core.ValU64(value)))
+	r.Query.AndFilter(core.ExprNe(teaqlIdStorageKey, core.ValU64(value)))
 	return r
 }
 func (r *TaskExecutionLogRequest) WithIdIn(values []uint64) *TaskExecutionLogRequest {
@@ -199,7 +199,7 @@ func (r *TaskExecutionLogRequest) WithIdIn(values []uint64) *TaskExecutionLogReq
 	for _, value := range values {
 		converted = append(converted, core.ValU64(value))
 	}
-	r.Query.AndFilter(core.ExprInList("id", converted))
+	r.Query.AndFilter(core.ExprInList(teaqlIdStorageKey, converted))
 	return r
 }
 func (r *TaskExecutionLogRequest) WithIdNotIn(values []uint64) *TaskExecutionLogRequest {
@@ -207,23 +207,23 @@ func (r *TaskExecutionLogRequest) WithIdNotIn(values []uint64) *TaskExecutionLog
 	for _, value := range values {
 		converted = append(converted, core.ValU64(value))
 	}
-	r.Query.AndFilter(core.ExprNotInList("id", converted))
+	r.Query.AndFilter(core.ExprNotInList(teaqlIdStorageKey, converted))
 	return r
 }
 func (r *TaskExecutionLogRequest) WithIdGreaterThan(value uint64) *TaskExecutionLogRequest {
-	r.Query.AndFilter(core.ExprGt("id", core.ValU64(value)))
+	r.Query.AndFilter(core.ExprGt(teaqlIdStorageKey, core.ValU64(value)))
 	return r
 }
 func (r *TaskExecutionLogRequest) WithIdGreaterThanOrEqualTo(value uint64) *TaskExecutionLogRequest {
-	r.Query.AndFilter(core.ExprGte("id", core.ValU64(value)))
+	r.Query.AndFilter(core.ExprGte(teaqlIdStorageKey, core.ValU64(value)))
 	return r
 }
 func (r *TaskExecutionLogRequest) WithIdLessThan(value uint64) *TaskExecutionLogRequest {
-	r.Query.AndFilter(core.ExprLt("id", core.ValU64(value)))
+	r.Query.AndFilter(core.ExprLt(teaqlIdStorageKey, core.ValU64(value)))
 	return r
 }
 func (r *TaskExecutionLogRequest) WithIdLessThanOrEqualTo(value uint64) *TaskExecutionLogRequest {
-	r.Query.AndFilter(core.ExprLte("id", core.ValU64(value)))
+	r.Query.AndFilter(core.ExprLte(teaqlIdStorageKey, core.ValU64(value)))
 	return r
 }
 func (r *TaskExecutionLogRequest) WithIdBetween(lower uint64, upper uint64) *TaskExecutionLogRequest {
@@ -231,36 +231,36 @@ func (r *TaskExecutionLogRequest) WithIdBetween(lower uint64, upper uint64) *Tas
 	from := core.ValU64(value)
 	value = upper
 	to := core.ValU64(value)
-	r.Query.AndFilter(core.ExprBetweenNode("id", from, to))
+	r.Query.AndFilter(core.ExprBetweenNode(teaqlIdStorageKey, from, to))
 	return r
 }
 func (r *TaskExecutionLogRequest) WithIdIsKnown() *TaskExecutionLogRequest {
-	r.Query.AndFilter(core.ExprIsNotNullNode("id"))
+	r.Query.AndFilter(core.ExprIsNotNullNode(teaqlIdStorageKey))
 	return r
 }
 func (r *TaskExecutionLogRequest) WithIdIsUnknown() *TaskExecutionLogRequest {
-	r.Query.AndFilter(core.ExprIsNullNode("id"))
+	r.Query.AndFilter(core.ExprIsNullNode(teaqlIdStorageKey))
 	return r
 }
 func (r *TaskExecutionLogRequest) OrderByIdAsc() *TaskExecutionLogRequest {
-	r.Query.OrderAsc("id")
+	r.Query.OrderAsc(teaqlIdStorageKey)
 	return r
 }
 func (r *TaskExecutionLogRequest) OrderByIdDesc() *TaskExecutionLogRequest {
-	r.Query.OrderDesc("id")
+	r.Query.OrderDesc(teaqlIdStorageKey)
 	return r
 }
 func (r *TaskExecutionLogRequest) SelectTask() *TaskExecutionLogRequest {
-	r.Query.Project("task_id")
+	r.Query.Project(teaqlTaskStorageKey)
 	return r
 }
 
 func (r *TaskExecutionLogRequest) WithTaskIs(value uint64) *TaskExecutionLogRequest {
-	r.Query.AndFilter(core.ExprEq("task_id", core.ValU64(value)))
+	r.Query.AndFilter(core.ExprEq(teaqlTaskStorageKey, core.ValU64(value)))
 	return r
 }
 func (r *TaskExecutionLogRequest) WithTaskIsNot(value uint64) *TaskExecutionLogRequest {
-	r.Query.AndFilter(core.ExprNe("task_id", core.ValU64(value)))
+	r.Query.AndFilter(core.ExprNe(teaqlTaskStorageKey, core.ValU64(value)))
 	return r
 }
 func (r *TaskExecutionLogRequest) WithTaskIn(values []uint64) *TaskExecutionLogRequest {
@@ -268,7 +268,7 @@ func (r *TaskExecutionLogRequest) WithTaskIn(values []uint64) *TaskExecutionLogR
 	for _, value := range values {
 		converted = append(converted, core.ValU64(value))
 	}
-	r.Query.AndFilter(core.ExprInList("task_id", converted))
+	r.Query.AndFilter(core.ExprInList(teaqlTaskStorageKey, converted))
 	return r
 }
 func (r *TaskExecutionLogRequest) WithTaskNotIn(values []uint64) *TaskExecutionLogRequest {
@@ -276,23 +276,23 @@ func (r *TaskExecutionLogRequest) WithTaskNotIn(values []uint64) *TaskExecutionL
 	for _, value := range values {
 		converted = append(converted, core.ValU64(value))
 	}
-	r.Query.AndFilter(core.ExprNotInList("task_id", converted))
+	r.Query.AndFilter(core.ExprNotInList(teaqlTaskStorageKey, converted))
 	return r
 }
 func (r *TaskExecutionLogRequest) WithTaskGreaterThan(value uint64) *TaskExecutionLogRequest {
-	r.Query.AndFilter(core.ExprGt("task_id", core.ValU64(value)))
+	r.Query.AndFilter(core.ExprGt(teaqlTaskStorageKey, core.ValU64(value)))
 	return r
 }
 func (r *TaskExecutionLogRequest) WithTaskGreaterThanOrEqualTo(value uint64) *TaskExecutionLogRequest {
-	r.Query.AndFilter(core.ExprGte("task_id", core.ValU64(value)))
+	r.Query.AndFilter(core.ExprGte(teaqlTaskStorageKey, core.ValU64(value)))
 	return r
 }
 func (r *TaskExecutionLogRequest) WithTaskLessThan(value uint64) *TaskExecutionLogRequest {
-	r.Query.AndFilter(core.ExprLt("task_id", core.ValU64(value)))
+	r.Query.AndFilter(core.ExprLt(teaqlTaskStorageKey, core.ValU64(value)))
 	return r
 }
 func (r *TaskExecutionLogRequest) WithTaskLessThanOrEqualTo(value uint64) *TaskExecutionLogRequest {
-	r.Query.AndFilter(core.ExprLte("task_id", core.ValU64(value)))
+	r.Query.AndFilter(core.ExprLte(teaqlTaskStorageKey, core.ValU64(value)))
 	return r
 }
 func (r *TaskExecutionLogRequest) WithTaskBetween(lower uint64, upper uint64) *TaskExecutionLogRequest {
@@ -300,15 +300,15 @@ func (r *TaskExecutionLogRequest) WithTaskBetween(lower uint64, upper uint64) *T
 	from := core.ValU64(value)
 	value = upper
 	to := core.ValU64(value)
-	r.Query.AndFilter(core.ExprBetweenNode("task_id", from, to))
+	r.Query.AndFilter(core.ExprBetweenNode(teaqlTaskStorageKey, from, to))
 	return r
 }
 func (r *TaskExecutionLogRequest) WithTaskIsKnown() *TaskExecutionLogRequest {
-	r.Query.AndFilter(core.ExprIsNotNullNode("task_id"))
+	r.Query.AndFilter(core.ExprIsNotNullNode(teaqlTaskStorageKey))
 	return r
 }
 func (r *TaskExecutionLogRequest) WithTaskIsUnknown() *TaskExecutionLogRequest {
-	r.Query.AndFilter(core.ExprIsNullNode("task_id"))
+	r.Query.AndFilter(core.ExprIsNullNode(teaqlTaskStorageKey))
 	return r
 }
 func (r *TaskExecutionLogRequest) FacetByTaskAs(
@@ -318,30 +318,30 @@ func (r *TaskExecutionLogRequest) FacetByTaskAs(
 ) *TaskExecutionLogRequest {
 	includeAll := true
 	if len(includeAllFacets) > 0 { includeAll = includeAllFacets[0] }
-	facet := core.NewFacetRequest(name, "task_id", core.QuerySelectionFor(nestedReq), includeAll)
+	facet := core.NewFacetRequest(name, teaqlTaskStorageKey, core.QuerySelectionFor(nestedReq), includeAll)
 	facet.Operation = &core.QueryOperation{Kind: "facet", Method: "FacetByTaskAs", Alias: &name, Relation: "task"}
 	r.queryOptions.Facets = append(r.queryOptions.Facets, facet)
 	return r
 }
 func (r *TaskExecutionLogRequest) OrderByTaskAsc() *TaskExecutionLogRequest {
-	r.Query.OrderAsc("task_id")
+	r.Query.OrderAsc(teaqlTaskStorageKey)
 	return r
 }
 func (r *TaskExecutionLogRequest) OrderByTaskDesc() *TaskExecutionLogRequest {
-	r.Query.OrderDesc("task_id")
+	r.Query.OrderDesc(teaqlTaskStorageKey)
 	return r
 }
 func (r *TaskExecutionLogRequest) SelectAction() *TaskExecutionLogRequest {
-	r.Query.Project("action")
+	r.Query.Project(teaqlActionStorageKey)
 	return r
 }
 
 func (r *TaskExecutionLogRequest) WithActionIs(value string) *TaskExecutionLogRequest {
-	r.Query.AndFilter(core.ExprEq("action", core.ValText(value)))
+	r.Query.AndFilter(core.ExprEq(teaqlActionStorageKey, core.ValText(value)))
 	return r
 }
 func (r *TaskExecutionLogRequest) WithActionIsNot(value string) *TaskExecutionLogRequest {
-	r.Query.AndFilter(core.ExprNe("action", core.ValText(value)))
+	r.Query.AndFilter(core.ExprNe(teaqlActionStorageKey, core.ValText(value)))
 	return r
 }
 func (r *TaskExecutionLogRequest) WithActionIn(values []string) *TaskExecutionLogRequest {
@@ -349,7 +349,7 @@ func (r *TaskExecutionLogRequest) WithActionIn(values []string) *TaskExecutionLo
 	for _, value := range values {
 		converted = append(converted, core.ValText(value))
 	}
-	r.Query.AndFilter(core.ExprInList("action", converted))
+	r.Query.AndFilter(core.ExprInList(teaqlActionStorageKey, converted))
 	return r
 }
 func (r *TaskExecutionLogRequest) WithActionNotIn(values []string) *TaskExecutionLogRequest {
@@ -357,23 +357,23 @@ func (r *TaskExecutionLogRequest) WithActionNotIn(values []string) *TaskExecutio
 	for _, value := range values {
 		converted = append(converted, core.ValText(value))
 	}
-	r.Query.AndFilter(core.ExprNotInList("action", converted))
+	r.Query.AndFilter(core.ExprNotInList(teaqlActionStorageKey, converted))
 	return r
 }
 func (r *TaskExecutionLogRequest) WithActionGreaterThan(value string) *TaskExecutionLogRequest {
-	r.Query.AndFilter(core.ExprGt("action", core.ValText(value)))
+	r.Query.AndFilter(core.ExprGt(teaqlActionStorageKey, core.ValText(value)))
 	return r
 }
 func (r *TaskExecutionLogRequest) WithActionGreaterThanOrEqualTo(value string) *TaskExecutionLogRequest {
-	r.Query.AndFilter(core.ExprGte("action", core.ValText(value)))
+	r.Query.AndFilter(core.ExprGte(teaqlActionStorageKey, core.ValText(value)))
 	return r
 }
 func (r *TaskExecutionLogRequest) WithActionLessThan(value string) *TaskExecutionLogRequest {
-	r.Query.AndFilter(core.ExprLt("action", core.ValText(value)))
+	r.Query.AndFilter(core.ExprLt(teaqlActionStorageKey, core.ValText(value)))
 	return r
 }
 func (r *TaskExecutionLogRequest) WithActionLessThanOrEqualTo(value string) *TaskExecutionLogRequest {
-	r.Query.AndFilter(core.ExprLte("action", core.ValText(value)))
+	r.Query.AndFilter(core.ExprLte(teaqlActionStorageKey, core.ValText(value)))
 	return r
 }
 func (r *TaskExecutionLogRequest) WithActionBetween(lower string, upper string) *TaskExecutionLogRequest {
@@ -381,64 +381,64 @@ func (r *TaskExecutionLogRequest) WithActionBetween(lower string, upper string) 
 	from := core.ValText(value)
 	value = upper
 	to := core.ValText(value)
-	r.Query.AndFilter(core.ExprBetweenNode("action", from, to))
+	r.Query.AndFilter(core.ExprBetweenNode(teaqlActionStorageKey, from, to))
 	return r
 }
 func (r *TaskExecutionLogRequest) WithActionIsKnown() *TaskExecutionLogRequest {
-	r.Query.AndFilter(core.ExprIsNotNullNode("action"))
+	r.Query.AndFilter(core.ExprIsNotNullNode(teaqlActionStorageKey))
 	return r
 }
 func (r *TaskExecutionLogRequest) WithActionIsUnknown() *TaskExecutionLogRequest {
-	r.Query.AndFilter(core.ExprIsNullNode("action"))
+	r.Query.AndFilter(core.ExprIsNullNode(teaqlActionStorageKey))
 	return r
 }
 func (r *TaskExecutionLogRequest) WithActionContaining(term string) *TaskExecutionLogRequest {
-	r.Query.AndFilter(core.ExprContain("action", term))
+	r.Query.AndFilter(core.ExprContain(teaqlActionStorageKey, term))
 	return r
 }
 func (r *TaskExecutionLogRequest) WithActionNotContaining(term string) *TaskExecutionLogRequest {
-	r.Query.AndFilter(core.ExprNotContain("action", term))
+	r.Query.AndFilter(core.ExprNotContain(teaqlActionStorageKey, term))
 	return r
 }
 func (r *TaskExecutionLogRequest) WithActionStartingWith(term string) *TaskExecutionLogRequest {
-	r.Query.AndFilter(core.ExprBeginWith("action", term))
+	r.Query.AndFilter(core.ExprBeginWith(teaqlActionStorageKey, term))
 	return r
 }
 func (r *TaskExecutionLogRequest) WithActionNotStartingWith(term string) *TaskExecutionLogRequest {
-	r.Query.AndFilter(core.ExprNotBeginWith("action", term))
+	r.Query.AndFilter(core.ExprNotBeginWith(teaqlActionStorageKey, term))
 	return r
 }
 func (r *TaskExecutionLogRequest) WithActionEndingWith(term string) *TaskExecutionLogRequest {
-	r.Query.AndFilter(core.ExprEndWith("action", term))
+	r.Query.AndFilter(core.ExprEndWith(teaqlActionStorageKey, term))
 	return r
 }
 func (r *TaskExecutionLogRequest) WithActionNotEndingWith(term string) *TaskExecutionLogRequest {
-	r.Query.AndFilter(core.ExprNotEndWith("action", term))
+	r.Query.AndFilter(core.ExprNotEndWith(teaqlActionStorageKey, term))
 	return r
 }
 func (r *TaskExecutionLogRequest) WithActionSoundingLike(term string) *TaskExecutionLogRequest {
-	r.Query.AndFilter(core.ExprSoundLike("action", core.ValText(term)))
+	r.Query.AndFilter(core.ExprSoundLike(teaqlActionStorageKey, core.ValText(term)))
 	return r
 }
 func (r *TaskExecutionLogRequest) OrderByActionAsc() *TaskExecutionLogRequest {
-	r.Query.OrderAsc("action")
+	r.Query.OrderAsc(teaqlActionStorageKey)
 	return r
 }
 func (r *TaskExecutionLogRequest) OrderByActionDesc() *TaskExecutionLogRequest {
-	r.Query.OrderDesc("action")
+	r.Query.OrderDesc(teaqlActionStorageKey)
 	return r
 }
 func (r *TaskExecutionLogRequest) SelectDetail() *TaskExecutionLogRequest {
-	r.Query.Project("detail")
+	r.Query.Project(teaqlDetailStorageKey)
 	return r
 }
 
 func (r *TaskExecutionLogRequest) WithDetailIs(value string) *TaskExecutionLogRequest {
-	r.Query.AndFilter(core.ExprEq("detail", core.ValText(value)))
+	r.Query.AndFilter(core.ExprEq(teaqlDetailStorageKey, core.ValText(value)))
 	return r
 }
 func (r *TaskExecutionLogRequest) WithDetailIsNot(value string) *TaskExecutionLogRequest {
-	r.Query.AndFilter(core.ExprNe("detail", core.ValText(value)))
+	r.Query.AndFilter(core.ExprNe(teaqlDetailStorageKey, core.ValText(value)))
 	return r
 }
 func (r *TaskExecutionLogRequest) WithDetailIn(values []string) *TaskExecutionLogRequest {
@@ -446,7 +446,7 @@ func (r *TaskExecutionLogRequest) WithDetailIn(values []string) *TaskExecutionLo
 	for _, value := range values {
 		converted = append(converted, core.ValText(value))
 	}
-	r.Query.AndFilter(core.ExprInList("detail", converted))
+	r.Query.AndFilter(core.ExprInList(teaqlDetailStorageKey, converted))
 	return r
 }
 func (r *TaskExecutionLogRequest) WithDetailNotIn(values []string) *TaskExecutionLogRequest {
@@ -454,23 +454,23 @@ func (r *TaskExecutionLogRequest) WithDetailNotIn(values []string) *TaskExecutio
 	for _, value := range values {
 		converted = append(converted, core.ValText(value))
 	}
-	r.Query.AndFilter(core.ExprNotInList("detail", converted))
+	r.Query.AndFilter(core.ExprNotInList(teaqlDetailStorageKey, converted))
 	return r
 }
 func (r *TaskExecutionLogRequest) WithDetailGreaterThan(value string) *TaskExecutionLogRequest {
-	r.Query.AndFilter(core.ExprGt("detail", core.ValText(value)))
+	r.Query.AndFilter(core.ExprGt(teaqlDetailStorageKey, core.ValText(value)))
 	return r
 }
 func (r *TaskExecutionLogRequest) WithDetailGreaterThanOrEqualTo(value string) *TaskExecutionLogRequest {
-	r.Query.AndFilter(core.ExprGte("detail", core.ValText(value)))
+	r.Query.AndFilter(core.ExprGte(teaqlDetailStorageKey, core.ValText(value)))
 	return r
 }
 func (r *TaskExecutionLogRequest) WithDetailLessThan(value string) *TaskExecutionLogRequest {
-	r.Query.AndFilter(core.ExprLt("detail", core.ValText(value)))
+	r.Query.AndFilter(core.ExprLt(teaqlDetailStorageKey, core.ValText(value)))
 	return r
 }
 func (r *TaskExecutionLogRequest) WithDetailLessThanOrEqualTo(value string) *TaskExecutionLogRequest {
-	r.Query.AndFilter(core.ExprLte("detail", core.ValText(value)))
+	r.Query.AndFilter(core.ExprLte(teaqlDetailStorageKey, core.ValText(value)))
 	return r
 }
 func (r *TaskExecutionLogRequest) WithDetailBetween(lower string, upper string) *TaskExecutionLogRequest {
@@ -478,64 +478,64 @@ func (r *TaskExecutionLogRequest) WithDetailBetween(lower string, upper string) 
 	from := core.ValText(value)
 	value = upper
 	to := core.ValText(value)
-	r.Query.AndFilter(core.ExprBetweenNode("detail", from, to))
+	r.Query.AndFilter(core.ExprBetweenNode(teaqlDetailStorageKey, from, to))
 	return r
 }
 func (r *TaskExecutionLogRequest) WithDetailIsKnown() *TaskExecutionLogRequest {
-	r.Query.AndFilter(core.ExprIsNotNullNode("detail"))
+	r.Query.AndFilter(core.ExprIsNotNullNode(teaqlDetailStorageKey))
 	return r
 }
 func (r *TaskExecutionLogRequest) WithDetailIsUnknown() *TaskExecutionLogRequest {
-	r.Query.AndFilter(core.ExprIsNullNode("detail"))
+	r.Query.AndFilter(core.ExprIsNullNode(teaqlDetailStorageKey))
 	return r
 }
 func (r *TaskExecutionLogRequest) WithDetailContaining(term string) *TaskExecutionLogRequest {
-	r.Query.AndFilter(core.ExprContain("detail", term))
+	r.Query.AndFilter(core.ExprContain(teaqlDetailStorageKey, term))
 	return r
 }
 func (r *TaskExecutionLogRequest) WithDetailNotContaining(term string) *TaskExecutionLogRequest {
-	r.Query.AndFilter(core.ExprNotContain("detail", term))
+	r.Query.AndFilter(core.ExprNotContain(teaqlDetailStorageKey, term))
 	return r
 }
 func (r *TaskExecutionLogRequest) WithDetailStartingWith(term string) *TaskExecutionLogRequest {
-	r.Query.AndFilter(core.ExprBeginWith("detail", term))
+	r.Query.AndFilter(core.ExprBeginWith(teaqlDetailStorageKey, term))
 	return r
 }
 func (r *TaskExecutionLogRequest) WithDetailNotStartingWith(term string) *TaskExecutionLogRequest {
-	r.Query.AndFilter(core.ExprNotBeginWith("detail", term))
+	r.Query.AndFilter(core.ExprNotBeginWith(teaqlDetailStorageKey, term))
 	return r
 }
 func (r *TaskExecutionLogRequest) WithDetailEndingWith(term string) *TaskExecutionLogRequest {
-	r.Query.AndFilter(core.ExprEndWith("detail", term))
+	r.Query.AndFilter(core.ExprEndWith(teaqlDetailStorageKey, term))
 	return r
 }
 func (r *TaskExecutionLogRequest) WithDetailNotEndingWith(term string) *TaskExecutionLogRequest {
-	r.Query.AndFilter(core.ExprNotEndWith("detail", term))
+	r.Query.AndFilter(core.ExprNotEndWith(teaqlDetailStorageKey, term))
 	return r
 }
 func (r *TaskExecutionLogRequest) WithDetailSoundingLike(term string) *TaskExecutionLogRequest {
-	r.Query.AndFilter(core.ExprSoundLike("detail", core.ValText(term)))
+	r.Query.AndFilter(core.ExprSoundLike(teaqlDetailStorageKey, core.ValText(term)))
 	return r
 }
 func (r *TaskExecutionLogRequest) OrderByDetailAsc() *TaskExecutionLogRequest {
-	r.Query.OrderAsc("detail")
+	r.Query.OrderAsc(teaqlDetailStorageKey)
 	return r
 }
 func (r *TaskExecutionLogRequest) OrderByDetailDesc() *TaskExecutionLogRequest {
-	r.Query.OrderDesc("detail")
+	r.Query.OrderDesc(teaqlDetailStorageKey)
 	return r
 }
 func (r *TaskExecutionLogRequest) SelectVersion() *TaskExecutionLogRequest {
-	r.Query.Project("version")
+	r.Query.Project(teaqlVersionStorageKey)
 	return r
 }
 
 func (r *TaskExecutionLogRequest) WithVersionIs(value int64) *TaskExecutionLogRequest {
-	r.Query.AndFilter(core.ExprEq("version", core.ValI64(value)))
+	r.Query.AndFilter(core.ExprEq(teaqlVersionStorageKey, core.ValI64(value)))
 	return r
 }
 func (r *TaskExecutionLogRequest) WithVersionIsNot(value int64) *TaskExecutionLogRequest {
-	r.Query.AndFilter(core.ExprNe("version", core.ValI64(value)))
+	r.Query.AndFilter(core.ExprNe(teaqlVersionStorageKey, core.ValI64(value)))
 	return r
 }
 func (r *TaskExecutionLogRequest) WithVersionIn(values []int64) *TaskExecutionLogRequest {
@@ -543,7 +543,7 @@ func (r *TaskExecutionLogRequest) WithVersionIn(values []int64) *TaskExecutionLo
 	for _, value := range values {
 		converted = append(converted, core.ValI64(value))
 	}
-	r.Query.AndFilter(core.ExprInList("version", converted))
+	r.Query.AndFilter(core.ExprInList(teaqlVersionStorageKey, converted))
 	return r
 }
 func (r *TaskExecutionLogRequest) WithVersionNotIn(values []int64) *TaskExecutionLogRequest {
@@ -551,23 +551,23 @@ func (r *TaskExecutionLogRequest) WithVersionNotIn(values []int64) *TaskExecutio
 	for _, value := range values {
 		converted = append(converted, core.ValI64(value))
 	}
-	r.Query.AndFilter(core.ExprNotInList("version", converted))
+	r.Query.AndFilter(core.ExprNotInList(teaqlVersionStorageKey, converted))
 	return r
 }
 func (r *TaskExecutionLogRequest) WithVersionGreaterThan(value int64) *TaskExecutionLogRequest {
-	r.Query.AndFilter(core.ExprGt("version", core.ValI64(value)))
+	r.Query.AndFilter(core.ExprGt(teaqlVersionStorageKey, core.ValI64(value)))
 	return r
 }
 func (r *TaskExecutionLogRequest) WithVersionGreaterThanOrEqualTo(value int64) *TaskExecutionLogRequest {
-	r.Query.AndFilter(core.ExprGte("version", core.ValI64(value)))
+	r.Query.AndFilter(core.ExprGte(teaqlVersionStorageKey, core.ValI64(value)))
 	return r
 }
 func (r *TaskExecutionLogRequest) WithVersionLessThan(value int64) *TaskExecutionLogRequest {
-	r.Query.AndFilter(core.ExprLt("version", core.ValI64(value)))
+	r.Query.AndFilter(core.ExprLt(teaqlVersionStorageKey, core.ValI64(value)))
 	return r
 }
 func (r *TaskExecutionLogRequest) WithVersionLessThanOrEqualTo(value int64) *TaskExecutionLogRequest {
-	r.Query.AndFilter(core.ExprLte("version", core.ValI64(value)))
+	r.Query.AndFilter(core.ExprLte(teaqlVersionStorageKey, core.ValI64(value)))
 	return r
 }
 func (r *TaskExecutionLogRequest) WithVersionBetween(lower int64, upper int64) *TaskExecutionLogRequest {
@@ -575,23 +575,23 @@ func (r *TaskExecutionLogRequest) WithVersionBetween(lower int64, upper int64) *
 	from := core.ValI64(value)
 	value = upper
 	to := core.ValI64(value)
-	r.Query.AndFilter(core.ExprBetweenNode("version", from, to))
+	r.Query.AndFilter(core.ExprBetweenNode(teaqlVersionStorageKey, from, to))
 	return r
 }
 func (r *TaskExecutionLogRequest) WithVersionIsKnown() *TaskExecutionLogRequest {
-	r.Query.AndFilter(core.ExprIsNotNullNode("version"))
+	r.Query.AndFilter(core.ExprIsNotNullNode(teaqlVersionStorageKey))
 	return r
 }
 func (r *TaskExecutionLogRequest) WithVersionIsUnknown() *TaskExecutionLogRequest {
-	r.Query.AndFilter(core.ExprIsNullNode("version"))
+	r.Query.AndFilter(core.ExprIsNullNode(teaqlVersionStorageKey))
 	return r
 }
 func (r *TaskExecutionLogRequest) OrderByVersionAsc() *TaskExecutionLogRequest {
-	r.Query.OrderAsc("version")
+	r.Query.OrderAsc(teaqlVersionStorageKey)
 	return r
 }
 func (r *TaskExecutionLogRequest) OrderByVersionDesc() *TaskExecutionLogRequest {
-	r.Query.OrderDesc("version")
+	r.Query.OrderDesc(teaqlVersionStorageKey)
 	return r
 }
 
@@ -599,7 +599,7 @@ func (r *TaskExecutionLogRequest) SelectTaskWith(child interface {
 	GetQuery() *core.SelectQuery
 	NewRelationEntity() core.Entity
 }) *TaskExecutionLogRequest {
-	runtime.EnsureRelationProjection(r.Query, "task_id")
+	runtime.EnsureRelationProjection(r.Query, teaqlTaskStorageKey)
 	r.Query.RelationQuerySelection("taskEntity", core.QuerySelectionFor(child))
 	r.Query.Relations[len(r.Query.Relations)-1].Operation = &core.QueryOperation{Kind: "relation", Method: "SelectTaskWith", Relation: "taskEntity"}
 	r.relationFactories["taskEntity"] = func(record core.Record) (core.Entity, error) {
@@ -617,7 +617,7 @@ func (r *TaskExecutionLogRequest) WithTaskMatching(child interface {
 	GetQuery() *core.SelectQuery
 	GetEntityDescriptor() *core.EntityDescriptor
 }) *TaskExecutionLogRequest {
-	r.Query.AndFilter(core.ExprInSubQuery("task_id", child.GetEntityDescriptor(), child.GetQuery(), "id"))
+	r.Query.AndFilter(core.ExprInSubQuery(teaqlTaskStorageKey, child.GetEntityDescriptor(), child.GetQuery(), "id"))
 	return r
 }
 
@@ -625,7 +625,7 @@ func (r *TaskExecutionLogRequest) WithoutTaskMatching(child interface {
 	GetQuery() *core.SelectQuery
 	GetEntityDescriptor() *core.EntityDescriptor
 }) *TaskExecutionLogRequest {
-	r.Query.AndFilter(core.ExprNotInSubQuery("task_id", child.GetEntityDescriptor(), child.GetQuery(), "id"))
+	r.Query.AndFilter(core.ExprNotInSubQuery(teaqlTaskStorageKey, child.GetEntityDescriptor(), child.GetQuery(), "id"))
 	return r
 }
 
@@ -761,52 +761,52 @@ func (r *TaskExecutionLogRequest) CountAs(alias string) *TaskExecutionLogRequest
 
 
 func (r *TaskExecutionLogRequest) GroupById() *TaskExecutionLogRequest {
-	r.Query.WithGroupBy("id")
+	r.Query.WithGroupBy(teaqlIdStorageKey)
 	return r
 }
 
 func (r *TaskExecutionLogRequest) GroupByIdAs(alias string) *TaskExecutionLogRequest {
-	r.Query.WithGroupBy("id")
-	r.Query.ProjectExpr(alias, core.ExprColumnNode("id"))
+	r.Query.WithGroupBy(teaqlIdStorageKey)
+	r.Query.ProjectExpr(alias, core.ExprColumnNode(teaqlIdStorageKey))
 	return r
 }
 func (r *TaskExecutionLogRequest) GroupByTask() *TaskExecutionLogRequest {
-	r.Query.WithGroupBy("task_id")
+	r.Query.WithGroupBy(teaqlTaskStorageKey)
 	return r
 }
 
 func (r *TaskExecutionLogRequest) GroupByTaskAs(alias string) *TaskExecutionLogRequest {
-	r.Query.WithGroupBy("task_id")
-	r.Query.ProjectExpr(alias, core.ExprColumnNode("task_id"))
+	r.Query.WithGroupBy(teaqlTaskStorageKey)
+	r.Query.ProjectExpr(alias, core.ExprColumnNode(teaqlTaskStorageKey))
 	return r
 }
 func (r *TaskExecutionLogRequest) GroupByAction() *TaskExecutionLogRequest {
-	r.Query.WithGroupBy("action")
+	r.Query.WithGroupBy(teaqlActionStorageKey)
 	return r
 }
 
 func (r *TaskExecutionLogRequest) GroupByActionAs(alias string) *TaskExecutionLogRequest {
-	r.Query.WithGroupBy("action")
-	r.Query.ProjectExpr(alias, core.ExprColumnNode("action"))
+	r.Query.WithGroupBy(teaqlActionStorageKey)
+	r.Query.ProjectExpr(alias, core.ExprColumnNode(teaqlActionStorageKey))
 	return r
 }
 func (r *TaskExecutionLogRequest) GroupByDetail() *TaskExecutionLogRequest {
-	r.Query.WithGroupBy("detail")
+	r.Query.WithGroupBy(teaqlDetailStorageKey)
 	return r
 }
 
 func (r *TaskExecutionLogRequest) GroupByDetailAs(alias string) *TaskExecutionLogRequest {
-	r.Query.WithGroupBy("detail")
-	r.Query.ProjectExpr(alias, core.ExprColumnNode("detail"))
+	r.Query.WithGroupBy(teaqlDetailStorageKey)
+	r.Query.ProjectExpr(alias, core.ExprColumnNode(teaqlDetailStorageKey))
 	return r
 }
 func (r *TaskExecutionLogRequest) GroupByVersion() *TaskExecutionLogRequest {
-	r.Query.WithGroupBy("version")
+	r.Query.WithGroupBy(teaqlVersionStorageKey)
 	return r
 }
 
 func (r *TaskExecutionLogRequest) GroupByVersionAs(alias string) *TaskExecutionLogRequest {
-	r.Query.WithGroupBy("version")
-	r.Query.ProjectExpr(alias, core.ExprColumnNode("version"))
+	r.Query.WithGroupBy(teaqlVersionStorageKey)
+	r.Query.ProjectExpr(alias, core.ExprColumnNode(teaqlVersionStorageKey))
 	return r
 }

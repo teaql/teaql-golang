@@ -24,6 +24,17 @@ var (
 	_ = errors.As
 )
 
+const (
+    teaqlIdStorageKey = "id"
+    teaqlIdModelKey = "id"
+    teaqlMerchantStorageKey = "merchant_id"
+    teaqlMerchantModelKey = "merchant"
+    teaqlEmailStorageKey = "email"
+    teaqlEmailModelKey = "email"
+    teaqlVersionStorageKey = "version"
+    teaqlVersionModelKey = "version"
+)
+
 
 type CustomerProfile struct {
 	base        *core.BaseEntityData
@@ -235,11 +246,11 @@ func (e *CustomerProfile) teaqlFromRecord(record core.Record, captureLoaded bool
 }
 
 func (e *CustomerProfile) teaqlScalarSnapshot(record core.Record) core.LoadedScalarSnapshot {
-	return core.NewLoadedScalarSnapshot(record, "id", "merchant_id", "email", "version")
+	return core.NewLoadedScalarSnapshot(record, teaqlIdStorageKey, teaqlMerchantStorageKey, teaqlEmailStorageKey, teaqlVersionStorageKey)
 }
 
 func (e *CustomerProfile) teaqlLoadedScalarSnapshot(record core.Record) core.LoadedScalarSnapshot {
-	return core.NewOwnedLoadedScalarSnapshot(e.EntityKey(), e.base.Version, record, "id", "merchant_id", "email", "version")
+	return core.NewOwnedLoadedScalarSnapshot(e.EntityKey(), e.base.Version, record, teaqlIdStorageKey, teaqlMerchantStorageKey, teaqlEmailStorageKey, teaqlVersionStorageKey)
 }
 
 func (e *CustomerProfile) teaqlAcceptPersisted(context *runtime.UserContext, record core.Record) error {
@@ -347,10 +358,10 @@ func (e *CustomerProfile) JSONQueryProperties() core.Record { return e.base.Quer
 func (e *CustomerProfile) LoadedJSONFields() core.Record {
 	all := e.IntoRecord()
 	selected := make(core.Record)
-	if e.IsLoaded("id") { if value, present := all["id"]; present { selected["id"] = value } }
-	if e.IsLoaded("merchant_id") { if value, present := all["merchant_id"]; present { selected["merchant_id"] = value } }
-	if e.IsLoaded("email") { if value, present := all["email"]; present { selected["email"] = value } }
-	if e.IsLoaded("version") { if value, present := all["version"]; present { selected["version"] = value } }
+	if e.IsLoaded(teaqlIdStorageKey) { if value, present := all[teaqlIdStorageKey]; present { selected[teaqlIdStorageKey] = value } }
+	if e.IsLoaded(teaqlMerchantStorageKey) { if value, present := all[teaqlMerchantStorageKey]; present { selected[teaqlMerchantStorageKey] = value } }
+	if e.IsLoaded(teaqlEmailStorageKey) { if value, present := all[teaqlEmailStorageKey]; present { selected[teaqlEmailStorageKey] = value } }
+	if e.IsLoaded(teaqlVersionStorageKey) { if value, present := all[teaqlVersionStorageKey]; present { selected[teaqlVersionStorageKey] = value } }
 	if e.isRelationLoaded("merchantEntity") { if target, present := e.relations["merchantEntity"]; present && target != nil { selected["merchantEntity"] = core.Value{V: target} } }
 	includeCustomerOrderList := e.CustomerOrderList().IsLoaded()
 	for _, child := range e.CustomerOrderList().Items() { if child.IsNew() || child.IsMarkedAsDelete() || len(child.EntityRoot().Change(child.EntityKey())) > 0 { includeCustomerOrderList = true } }
@@ -520,20 +531,20 @@ func (e *CustomerProfile) TeaqlPreflightWithinGraph(context *runtime.UserContext
 		operation := core.MutationUpdate
 		if e.isNew { operation = core.MutationInsert }
 		if operation == core.MutationUpdate {
-			if !e.IsLoaded("id") {
-				result := runtime.CheckResult{RuleID: "invalid_type", EntityType: "CustomerProfile", CanonicalLocation: runtime.Location().Property("id"), Message: "Mutation requires a fully loaded entity"}
+			if !e.IsLoaded(teaqlIdStorageKey) {
+				result := runtime.CheckResult{RuleID: "invalid_type", EntityType: "CustomerProfile", CanonicalLocation: runtime.Location().Property(teaqlIdModelKey), Message: "Mutation requires a fully loaded entity"}
 				return &runtime.RuntimeError{Type: "Check", CheckResults: []runtime.CheckResult{result}}
 			}
-			if !e.IsLoaded("merchant_id") {
-				result := runtime.CheckResult{RuleID: "invalid_type", EntityType: "CustomerProfile", CanonicalLocation: runtime.Location().Property("merchant"), Message: "Mutation requires a fully loaded entity"}
+			if !e.IsLoaded(teaqlMerchantStorageKey) {
+				result := runtime.CheckResult{RuleID: "invalid_type", EntityType: "CustomerProfile", CanonicalLocation: runtime.Location().Property(teaqlMerchantModelKey), Message: "Mutation requires a fully loaded entity"}
 				return &runtime.RuntimeError{Type: "Check", CheckResults: []runtime.CheckResult{result}}
 			}
-			if !e.IsLoaded("email") {
-				result := runtime.CheckResult{RuleID: "invalid_type", EntityType: "CustomerProfile", CanonicalLocation: runtime.Location().Property("email"), Message: "Mutation requires a fully loaded entity"}
+			if !e.IsLoaded(teaqlEmailStorageKey) {
+				result := runtime.CheckResult{RuleID: "invalid_type", EntityType: "CustomerProfile", CanonicalLocation: runtime.Location().Property(teaqlEmailModelKey), Message: "Mutation requires a fully loaded entity"}
 				return &runtime.RuntimeError{Type: "Check", CheckResults: []runtime.CheckResult{result}}
 			}
-			if !e.IsLoaded("version") {
-				result := runtime.CheckResult{RuleID: "invalid_type", EntityType: "CustomerProfile", CanonicalLocation: runtime.Location().Property("version"), Message: "Mutation requires a fully loaded entity"}
+			if !e.IsLoaded(teaqlVersionStorageKey) {
+				result := runtime.CheckResult{RuleID: "invalid_type", EntityType: "CustomerProfile", CanonicalLocation: runtime.Location().Property(teaqlVersionModelKey), Message: "Mutation requires a fully loaded entity"}
 				return &runtime.RuntimeError{Type: "Check", CheckResults: []runtime.CheckResult{result}}
 			}
 		}
@@ -821,21 +832,21 @@ func (e *CustomerProfile) UpdateId(value uint64) *CustomerProfile {
 	oldKey := e.EntityKey()
 	e.base.Id = value
 	e.root.Rekey(oldKey, e.EntityKey())
-	e.loadState["id"] = true
+	e.loadState[teaqlIdStorageKey] = true
 	return e
 }
 
 func (e *CustomerProfile) Email() string {
-	val, _ := e.base.GetDynamic("email")
+	val, _ := e.base.GetDynamic(teaqlEmailStorageKey)
 	res, _ := val.TryText()
 	return res}
 
 func (e *CustomerProfile) UpdateEmail(value string) *CustomerProfile {
 	e.teaqlEnsureState()
-	e.base.PutDynamic("email", core.ValText(value))
-	e.dirtyFields["email"] = true
-	e.root.Set(e.EntityKey(), "email", core.ValText(value))
-	e.loadState["email"] = true
+	e.base.PutDynamic(teaqlEmailStorageKey, core.ValText(value))
+	e.dirtyFields[teaqlEmailStorageKey] = true
+	e.root.Set(e.EntityKey(), teaqlEmailModelKey, core.ValText(value))
+	e.loadState[teaqlEmailStorageKey] = true
 	return e
 }
 
@@ -846,26 +857,26 @@ func (e *CustomerProfile) Version() int64 {
 func (e *CustomerProfile) UpdateVersion(value int64) *CustomerProfile {
 	e.teaqlEnsureState()
 	e.base.Version = value
-	e.loadState["version"] = true
+	e.loadState[teaqlVersionStorageKey] = true
 	return e
 }
 func (e *CustomerProfile) MerchantId() uint64 {
-	val, _ := e.base.GetDynamic("merchant_id")
+	val, _ := e.base.GetDynamic(teaqlMerchantStorageKey)
 	res, _ := val.TryU64()
 	return res
 }
 
 func (e *CustomerProfile) UpdateMerchantId(value uint64) *CustomerProfile {
-	previous, present := e.base.GetDynamic("merchant_id")
-	e.base.PutDynamic("merchant_id", core.ValU64(value))
-	e.dirtyFields["merchant_id"] = true
-	current, _ := e.base.GetDynamic("merchant_id")
+	previous, present := e.base.GetDynamic(teaqlMerchantStorageKey)
+	e.base.PutDynamic(teaqlMerchantStorageKey, core.ValU64(value))
+	e.dirtyFields[teaqlMerchantStorageKey] = true
+	current, _ := e.base.GetDynamic(teaqlMerchantStorageKey)
 	if !present || !reflect.DeepEqual(previous, current) {
 		delete(e.relations, "merchantEntity")
 		delete(e.loadedRelations, "merchantEntity")
 	}
-	e.root.Set(e.EntityKey(), "merchant", core.ValU64(value))
-	e.loadState["merchant_id"] = true
+	e.root.Set(e.EntityKey(), teaqlMerchantModelKey, core.ValU64(value))
+	e.loadState[teaqlMerchantStorageKey] = true
 	return e
 }
 // DEBUG: constantObjectField is false

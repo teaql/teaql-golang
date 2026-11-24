@@ -182,16 +182,16 @@ func (r *CustomerContactRequest) DeletedRowsOnly() *CustomerContactRequest {
 }
 
 func (r *CustomerContactRequest) SelectId() *CustomerContactRequest {
-	r.Query.Project("id")
+	r.Query.Project(teaqlIdStorageKey)
 	return r
 }
 
 func (r *CustomerContactRequest) WithIdIs(value uint64) *CustomerContactRequest {
-	r.Query.AndFilter(core.ExprEq("id", core.ValU64(value)))
+	r.Query.AndFilter(core.ExprEq(teaqlIdStorageKey, core.ValU64(value)))
 	return r
 }
 func (r *CustomerContactRequest) WithIdIsNot(value uint64) *CustomerContactRequest {
-	r.Query.AndFilter(core.ExprNe("id", core.ValU64(value)))
+	r.Query.AndFilter(core.ExprNe(teaqlIdStorageKey, core.ValU64(value)))
 	return r
 }
 func (r *CustomerContactRequest) WithIdIn(values []uint64) *CustomerContactRequest {
@@ -199,7 +199,7 @@ func (r *CustomerContactRequest) WithIdIn(values []uint64) *CustomerContactReque
 	for _, value := range values {
 		converted = append(converted, core.ValU64(value))
 	}
-	r.Query.AndFilter(core.ExprInList("id", converted))
+	r.Query.AndFilter(core.ExprInList(teaqlIdStorageKey, converted))
 	return r
 }
 func (r *CustomerContactRequest) WithIdNotIn(values []uint64) *CustomerContactRequest {
@@ -207,23 +207,23 @@ func (r *CustomerContactRequest) WithIdNotIn(values []uint64) *CustomerContactRe
 	for _, value := range values {
 		converted = append(converted, core.ValU64(value))
 	}
-	r.Query.AndFilter(core.ExprNotInList("id", converted))
+	r.Query.AndFilter(core.ExprNotInList(teaqlIdStorageKey, converted))
 	return r
 }
 func (r *CustomerContactRequest) WithIdGreaterThan(value uint64) *CustomerContactRequest {
-	r.Query.AndFilter(core.ExprGt("id", core.ValU64(value)))
+	r.Query.AndFilter(core.ExprGt(teaqlIdStorageKey, core.ValU64(value)))
 	return r
 }
 func (r *CustomerContactRequest) WithIdGreaterThanOrEqualTo(value uint64) *CustomerContactRequest {
-	r.Query.AndFilter(core.ExprGte("id", core.ValU64(value)))
+	r.Query.AndFilter(core.ExprGte(teaqlIdStorageKey, core.ValU64(value)))
 	return r
 }
 func (r *CustomerContactRequest) WithIdLessThan(value uint64) *CustomerContactRequest {
-	r.Query.AndFilter(core.ExprLt("id", core.ValU64(value)))
+	r.Query.AndFilter(core.ExprLt(teaqlIdStorageKey, core.ValU64(value)))
 	return r
 }
 func (r *CustomerContactRequest) WithIdLessThanOrEqualTo(value uint64) *CustomerContactRequest {
-	r.Query.AndFilter(core.ExprLte("id", core.ValU64(value)))
+	r.Query.AndFilter(core.ExprLte(teaqlIdStorageKey, core.ValU64(value)))
 	return r
 }
 func (r *CustomerContactRequest) WithIdBetween(lower uint64, upper uint64) *CustomerContactRequest {
@@ -231,36 +231,36 @@ func (r *CustomerContactRequest) WithIdBetween(lower uint64, upper uint64) *Cust
 	from := core.ValU64(value)
 	value = upper
 	to := core.ValU64(value)
-	r.Query.AndFilter(core.ExprBetweenNode("id", from, to))
+	r.Query.AndFilter(core.ExprBetweenNode(teaqlIdStorageKey, from, to))
 	return r
 }
 func (r *CustomerContactRequest) WithIdIsKnown() *CustomerContactRequest {
-	r.Query.AndFilter(core.ExprIsNotNullNode("id"))
+	r.Query.AndFilter(core.ExprIsNotNullNode(teaqlIdStorageKey))
 	return r
 }
 func (r *CustomerContactRequest) WithIdIsUnknown() *CustomerContactRequest {
-	r.Query.AndFilter(core.ExprIsNullNode("id"))
+	r.Query.AndFilter(core.ExprIsNullNode(teaqlIdStorageKey))
 	return r
 }
 func (r *CustomerContactRequest) OrderByIdAsc() *CustomerContactRequest {
-	r.Query.OrderAsc("id")
+	r.Query.OrderAsc(teaqlIdStorageKey)
 	return r
 }
 func (r *CustomerContactRequest) OrderByIdDesc() *CustomerContactRequest {
-	r.Query.OrderDesc("id")
+	r.Query.OrderDesc(teaqlIdStorageKey)
 	return r
 }
 func (r *CustomerContactRequest) SelectCustomer() *CustomerContactRequest {
-	r.Query.Project("customer_id")
+	r.Query.Project(teaqlCustomerStorageKey)
 	return r
 }
 
 func (r *CustomerContactRequest) WithCustomerIs(value uint64) *CustomerContactRequest {
-	r.Query.AndFilter(core.ExprEq("customer_id", core.ValU64(value)))
+	r.Query.AndFilter(core.ExprEq(teaqlCustomerStorageKey, core.ValU64(value)))
 	return r
 }
 func (r *CustomerContactRequest) WithCustomerIsNot(value uint64) *CustomerContactRequest {
-	r.Query.AndFilter(core.ExprNe("customer_id", core.ValU64(value)))
+	r.Query.AndFilter(core.ExprNe(teaqlCustomerStorageKey, core.ValU64(value)))
 	return r
 }
 func (r *CustomerContactRequest) WithCustomerIn(values []uint64) *CustomerContactRequest {
@@ -268,7 +268,7 @@ func (r *CustomerContactRequest) WithCustomerIn(values []uint64) *CustomerContac
 	for _, value := range values {
 		converted = append(converted, core.ValU64(value))
 	}
-	r.Query.AndFilter(core.ExprInList("customer_id", converted))
+	r.Query.AndFilter(core.ExprInList(teaqlCustomerStorageKey, converted))
 	return r
 }
 func (r *CustomerContactRequest) WithCustomerNotIn(values []uint64) *CustomerContactRequest {
@@ -276,23 +276,23 @@ func (r *CustomerContactRequest) WithCustomerNotIn(values []uint64) *CustomerCon
 	for _, value := range values {
 		converted = append(converted, core.ValU64(value))
 	}
-	r.Query.AndFilter(core.ExprNotInList("customer_id", converted))
+	r.Query.AndFilter(core.ExprNotInList(teaqlCustomerStorageKey, converted))
 	return r
 }
 func (r *CustomerContactRequest) WithCustomerGreaterThan(value uint64) *CustomerContactRequest {
-	r.Query.AndFilter(core.ExprGt("customer_id", core.ValU64(value)))
+	r.Query.AndFilter(core.ExprGt(teaqlCustomerStorageKey, core.ValU64(value)))
 	return r
 }
 func (r *CustomerContactRequest) WithCustomerGreaterThanOrEqualTo(value uint64) *CustomerContactRequest {
-	r.Query.AndFilter(core.ExprGte("customer_id", core.ValU64(value)))
+	r.Query.AndFilter(core.ExprGte(teaqlCustomerStorageKey, core.ValU64(value)))
 	return r
 }
 func (r *CustomerContactRequest) WithCustomerLessThan(value uint64) *CustomerContactRequest {
-	r.Query.AndFilter(core.ExprLt("customer_id", core.ValU64(value)))
+	r.Query.AndFilter(core.ExprLt(teaqlCustomerStorageKey, core.ValU64(value)))
 	return r
 }
 func (r *CustomerContactRequest) WithCustomerLessThanOrEqualTo(value uint64) *CustomerContactRequest {
-	r.Query.AndFilter(core.ExprLte("customer_id", core.ValU64(value)))
+	r.Query.AndFilter(core.ExprLte(teaqlCustomerStorageKey, core.ValU64(value)))
 	return r
 }
 func (r *CustomerContactRequest) WithCustomerBetween(lower uint64, upper uint64) *CustomerContactRequest {
@@ -300,15 +300,15 @@ func (r *CustomerContactRequest) WithCustomerBetween(lower uint64, upper uint64)
 	from := core.ValU64(value)
 	value = upper
 	to := core.ValU64(value)
-	r.Query.AndFilter(core.ExprBetweenNode("customer_id", from, to))
+	r.Query.AndFilter(core.ExprBetweenNode(teaqlCustomerStorageKey, from, to))
 	return r
 }
 func (r *CustomerContactRequest) WithCustomerIsKnown() *CustomerContactRequest {
-	r.Query.AndFilter(core.ExprIsNotNullNode("customer_id"))
+	r.Query.AndFilter(core.ExprIsNotNullNode(teaqlCustomerStorageKey))
 	return r
 }
 func (r *CustomerContactRequest) WithCustomerIsUnknown() *CustomerContactRequest {
-	r.Query.AndFilter(core.ExprIsNullNode("customer_id"))
+	r.Query.AndFilter(core.ExprIsNullNode(teaqlCustomerStorageKey))
 	return r
 }
 func (r *CustomerContactRequest) FacetByCustomerAs(
@@ -318,30 +318,30 @@ func (r *CustomerContactRequest) FacetByCustomerAs(
 ) *CustomerContactRequest {
 	includeAll := true
 	if len(includeAllFacets) > 0 { includeAll = includeAllFacets[0] }
-	facet := core.NewFacetRequest(name, "customer_id", core.QuerySelectionFor(nestedReq), includeAll)
+	facet := core.NewFacetRequest(name, teaqlCustomerStorageKey, core.QuerySelectionFor(nestedReq), includeAll)
 	facet.Operation = &core.QueryOperation{Kind: "facet", Method: "FacetByCustomerAs", Alias: &name, Relation: "customer"}
 	r.queryOptions.Facets = append(r.queryOptions.Facets, facet)
 	return r
 }
 func (r *CustomerContactRequest) OrderByCustomerAsc() *CustomerContactRequest {
-	r.Query.OrderAsc("customer_id")
+	r.Query.OrderAsc(teaqlCustomerStorageKey)
 	return r
 }
 func (r *CustomerContactRequest) OrderByCustomerDesc() *CustomerContactRequest {
-	r.Query.OrderDesc("customer_id")
+	r.Query.OrderDesc(teaqlCustomerStorageKey)
 	return r
 }
 func (r *CustomerContactRequest) SelectChannel() *CustomerContactRequest {
-	r.Query.Project("channel")
+	r.Query.Project(teaqlChannelStorageKey)
 	return r
 }
 
 func (r *CustomerContactRequest) WithChannelIs(value string) *CustomerContactRequest {
-	r.Query.AndFilter(core.ExprEq("channel", core.ValText(value)))
+	r.Query.AndFilter(core.ExprEq(teaqlChannelStorageKey, core.ValText(value)))
 	return r
 }
 func (r *CustomerContactRequest) WithChannelIsNot(value string) *CustomerContactRequest {
-	r.Query.AndFilter(core.ExprNe("channel", core.ValText(value)))
+	r.Query.AndFilter(core.ExprNe(teaqlChannelStorageKey, core.ValText(value)))
 	return r
 }
 func (r *CustomerContactRequest) WithChannelIn(values []string) *CustomerContactRequest {
@@ -349,7 +349,7 @@ func (r *CustomerContactRequest) WithChannelIn(values []string) *CustomerContact
 	for _, value := range values {
 		converted = append(converted, core.ValText(value))
 	}
-	r.Query.AndFilter(core.ExprInList("channel", converted))
+	r.Query.AndFilter(core.ExprInList(teaqlChannelStorageKey, converted))
 	return r
 }
 func (r *CustomerContactRequest) WithChannelNotIn(values []string) *CustomerContactRequest {
@@ -357,23 +357,23 @@ func (r *CustomerContactRequest) WithChannelNotIn(values []string) *CustomerCont
 	for _, value := range values {
 		converted = append(converted, core.ValText(value))
 	}
-	r.Query.AndFilter(core.ExprNotInList("channel", converted))
+	r.Query.AndFilter(core.ExprNotInList(teaqlChannelStorageKey, converted))
 	return r
 }
 func (r *CustomerContactRequest) WithChannelGreaterThan(value string) *CustomerContactRequest {
-	r.Query.AndFilter(core.ExprGt("channel", core.ValText(value)))
+	r.Query.AndFilter(core.ExprGt(teaqlChannelStorageKey, core.ValText(value)))
 	return r
 }
 func (r *CustomerContactRequest) WithChannelGreaterThanOrEqualTo(value string) *CustomerContactRequest {
-	r.Query.AndFilter(core.ExprGte("channel", core.ValText(value)))
+	r.Query.AndFilter(core.ExprGte(teaqlChannelStorageKey, core.ValText(value)))
 	return r
 }
 func (r *CustomerContactRequest) WithChannelLessThan(value string) *CustomerContactRequest {
-	r.Query.AndFilter(core.ExprLt("channel", core.ValText(value)))
+	r.Query.AndFilter(core.ExprLt(teaqlChannelStorageKey, core.ValText(value)))
 	return r
 }
 func (r *CustomerContactRequest) WithChannelLessThanOrEqualTo(value string) *CustomerContactRequest {
-	r.Query.AndFilter(core.ExprLte("channel", core.ValText(value)))
+	r.Query.AndFilter(core.ExprLte(teaqlChannelStorageKey, core.ValText(value)))
 	return r
 }
 func (r *CustomerContactRequest) WithChannelBetween(lower string, upper string) *CustomerContactRequest {
@@ -381,64 +381,64 @@ func (r *CustomerContactRequest) WithChannelBetween(lower string, upper string) 
 	from := core.ValText(value)
 	value = upper
 	to := core.ValText(value)
-	r.Query.AndFilter(core.ExprBetweenNode("channel", from, to))
+	r.Query.AndFilter(core.ExprBetweenNode(teaqlChannelStorageKey, from, to))
 	return r
 }
 func (r *CustomerContactRequest) WithChannelIsKnown() *CustomerContactRequest {
-	r.Query.AndFilter(core.ExprIsNotNullNode("channel"))
+	r.Query.AndFilter(core.ExprIsNotNullNode(teaqlChannelStorageKey))
 	return r
 }
 func (r *CustomerContactRequest) WithChannelIsUnknown() *CustomerContactRequest {
-	r.Query.AndFilter(core.ExprIsNullNode("channel"))
+	r.Query.AndFilter(core.ExprIsNullNode(teaqlChannelStorageKey))
 	return r
 }
 func (r *CustomerContactRequest) WithChannelContaining(term string) *CustomerContactRequest {
-	r.Query.AndFilter(core.ExprContain("channel", term))
+	r.Query.AndFilter(core.ExprContain(teaqlChannelStorageKey, term))
 	return r
 }
 func (r *CustomerContactRequest) WithChannelNotContaining(term string) *CustomerContactRequest {
-	r.Query.AndFilter(core.ExprNotContain("channel", term))
+	r.Query.AndFilter(core.ExprNotContain(teaqlChannelStorageKey, term))
 	return r
 }
 func (r *CustomerContactRequest) WithChannelStartingWith(term string) *CustomerContactRequest {
-	r.Query.AndFilter(core.ExprBeginWith("channel", term))
+	r.Query.AndFilter(core.ExprBeginWith(teaqlChannelStorageKey, term))
 	return r
 }
 func (r *CustomerContactRequest) WithChannelNotStartingWith(term string) *CustomerContactRequest {
-	r.Query.AndFilter(core.ExprNotBeginWith("channel", term))
+	r.Query.AndFilter(core.ExprNotBeginWith(teaqlChannelStorageKey, term))
 	return r
 }
 func (r *CustomerContactRequest) WithChannelEndingWith(term string) *CustomerContactRequest {
-	r.Query.AndFilter(core.ExprEndWith("channel", term))
+	r.Query.AndFilter(core.ExprEndWith(teaqlChannelStorageKey, term))
 	return r
 }
 func (r *CustomerContactRequest) WithChannelNotEndingWith(term string) *CustomerContactRequest {
-	r.Query.AndFilter(core.ExprNotEndWith("channel", term))
+	r.Query.AndFilter(core.ExprNotEndWith(teaqlChannelStorageKey, term))
 	return r
 }
 func (r *CustomerContactRequest) WithChannelSoundingLike(term string) *CustomerContactRequest {
-	r.Query.AndFilter(core.ExprSoundLike("channel", core.ValText(term)))
+	r.Query.AndFilter(core.ExprSoundLike(teaqlChannelStorageKey, core.ValText(term)))
 	return r
 }
 func (r *CustomerContactRequest) OrderByChannelAsc() *CustomerContactRequest {
-	r.Query.OrderAsc("channel")
+	r.Query.OrderAsc(teaqlChannelStorageKey)
 	return r
 }
 func (r *CustomerContactRequest) OrderByChannelDesc() *CustomerContactRequest {
-	r.Query.OrderDesc("channel")
+	r.Query.OrderDesc(teaqlChannelStorageKey)
 	return r
 }
 func (r *CustomerContactRequest) SelectVersion() *CustomerContactRequest {
-	r.Query.Project("version")
+	r.Query.Project(teaqlVersionStorageKey)
 	return r
 }
 
 func (r *CustomerContactRequest) WithVersionIs(value int64) *CustomerContactRequest {
-	r.Query.AndFilter(core.ExprEq("version", core.ValI64(value)))
+	r.Query.AndFilter(core.ExprEq(teaqlVersionStorageKey, core.ValI64(value)))
 	return r
 }
 func (r *CustomerContactRequest) WithVersionIsNot(value int64) *CustomerContactRequest {
-	r.Query.AndFilter(core.ExprNe("version", core.ValI64(value)))
+	r.Query.AndFilter(core.ExprNe(teaqlVersionStorageKey, core.ValI64(value)))
 	return r
 }
 func (r *CustomerContactRequest) WithVersionIn(values []int64) *CustomerContactRequest {
@@ -446,7 +446,7 @@ func (r *CustomerContactRequest) WithVersionIn(values []int64) *CustomerContactR
 	for _, value := range values {
 		converted = append(converted, core.ValI64(value))
 	}
-	r.Query.AndFilter(core.ExprInList("version", converted))
+	r.Query.AndFilter(core.ExprInList(teaqlVersionStorageKey, converted))
 	return r
 }
 func (r *CustomerContactRequest) WithVersionNotIn(values []int64) *CustomerContactRequest {
@@ -454,23 +454,23 @@ func (r *CustomerContactRequest) WithVersionNotIn(values []int64) *CustomerConta
 	for _, value := range values {
 		converted = append(converted, core.ValI64(value))
 	}
-	r.Query.AndFilter(core.ExprNotInList("version", converted))
+	r.Query.AndFilter(core.ExprNotInList(teaqlVersionStorageKey, converted))
 	return r
 }
 func (r *CustomerContactRequest) WithVersionGreaterThan(value int64) *CustomerContactRequest {
-	r.Query.AndFilter(core.ExprGt("version", core.ValI64(value)))
+	r.Query.AndFilter(core.ExprGt(teaqlVersionStorageKey, core.ValI64(value)))
 	return r
 }
 func (r *CustomerContactRequest) WithVersionGreaterThanOrEqualTo(value int64) *CustomerContactRequest {
-	r.Query.AndFilter(core.ExprGte("version", core.ValI64(value)))
+	r.Query.AndFilter(core.ExprGte(teaqlVersionStorageKey, core.ValI64(value)))
 	return r
 }
 func (r *CustomerContactRequest) WithVersionLessThan(value int64) *CustomerContactRequest {
-	r.Query.AndFilter(core.ExprLt("version", core.ValI64(value)))
+	r.Query.AndFilter(core.ExprLt(teaqlVersionStorageKey, core.ValI64(value)))
 	return r
 }
 func (r *CustomerContactRequest) WithVersionLessThanOrEqualTo(value int64) *CustomerContactRequest {
-	r.Query.AndFilter(core.ExprLte("version", core.ValI64(value)))
+	r.Query.AndFilter(core.ExprLte(teaqlVersionStorageKey, core.ValI64(value)))
 	return r
 }
 func (r *CustomerContactRequest) WithVersionBetween(lower int64, upper int64) *CustomerContactRequest {
@@ -478,23 +478,23 @@ func (r *CustomerContactRequest) WithVersionBetween(lower int64, upper int64) *C
 	from := core.ValI64(value)
 	value = upper
 	to := core.ValI64(value)
-	r.Query.AndFilter(core.ExprBetweenNode("version", from, to))
+	r.Query.AndFilter(core.ExprBetweenNode(teaqlVersionStorageKey, from, to))
 	return r
 }
 func (r *CustomerContactRequest) WithVersionIsKnown() *CustomerContactRequest {
-	r.Query.AndFilter(core.ExprIsNotNullNode("version"))
+	r.Query.AndFilter(core.ExprIsNotNullNode(teaqlVersionStorageKey))
 	return r
 }
 func (r *CustomerContactRequest) WithVersionIsUnknown() *CustomerContactRequest {
-	r.Query.AndFilter(core.ExprIsNullNode("version"))
+	r.Query.AndFilter(core.ExprIsNullNode(teaqlVersionStorageKey))
 	return r
 }
 func (r *CustomerContactRequest) OrderByVersionAsc() *CustomerContactRequest {
-	r.Query.OrderAsc("version")
+	r.Query.OrderAsc(teaqlVersionStorageKey)
 	return r
 }
 func (r *CustomerContactRequest) OrderByVersionDesc() *CustomerContactRequest {
-	r.Query.OrderDesc("version")
+	r.Query.OrderDesc(teaqlVersionStorageKey)
 	return r
 }
 
@@ -502,7 +502,7 @@ func (r *CustomerContactRequest) SelectCustomerWith(child interface {
 	GetQuery() *core.SelectQuery
 	NewRelationEntity() core.Entity
 }) *CustomerContactRequest {
-	runtime.EnsureRelationProjection(r.Query, "customer_id")
+	runtime.EnsureRelationProjection(r.Query, teaqlCustomerStorageKey)
 	r.Query.RelationQuerySelection("customerEntity", core.QuerySelectionFor(child))
 	r.Query.Relations[len(r.Query.Relations)-1].Operation = &core.QueryOperation{Kind: "relation", Method: "SelectCustomerWith", Relation: "customerEntity"}
 	r.relationFactories["customerEntity"] = func(record core.Record) (core.Entity, error) {
@@ -520,7 +520,7 @@ func (r *CustomerContactRequest) WithCustomerMatching(child interface {
 	GetQuery() *core.SelectQuery
 	GetEntityDescriptor() *core.EntityDescriptor
 }) *CustomerContactRequest {
-	r.Query.AndFilter(core.ExprInSubQuery("customer_id", child.GetEntityDescriptor(), child.GetQuery(), "id"))
+	r.Query.AndFilter(core.ExprInSubQuery(teaqlCustomerStorageKey, child.GetEntityDescriptor(), child.GetQuery(), "id"))
 	return r
 }
 
@@ -528,7 +528,7 @@ func (r *CustomerContactRequest) WithoutCustomerMatching(child interface {
 	GetQuery() *core.SelectQuery
 	GetEntityDescriptor() *core.EntityDescriptor
 }) *CustomerContactRequest {
-	r.Query.AndFilter(core.ExprNotInSubQuery("customer_id", child.GetEntityDescriptor(), child.GetQuery(), "id"))
+	r.Query.AndFilter(core.ExprNotInSubQuery(teaqlCustomerStorageKey, child.GetEntityDescriptor(), child.GetQuery(), "id"))
 	return r
 }
 
@@ -664,42 +664,42 @@ func (r *CustomerContactRequest) CountAs(alias string) *CustomerContactRequest {
 
 
 func (r *CustomerContactRequest) GroupById() *CustomerContactRequest {
-	r.Query.WithGroupBy("id")
+	r.Query.WithGroupBy(teaqlIdStorageKey)
 	return r
 }
 
 func (r *CustomerContactRequest) GroupByIdAs(alias string) *CustomerContactRequest {
-	r.Query.WithGroupBy("id")
-	r.Query.ProjectExpr(alias, core.ExprColumnNode("id"))
+	r.Query.WithGroupBy(teaqlIdStorageKey)
+	r.Query.ProjectExpr(alias, core.ExprColumnNode(teaqlIdStorageKey))
 	return r
 }
 func (r *CustomerContactRequest) GroupByCustomer() *CustomerContactRequest {
-	r.Query.WithGroupBy("customer_id")
+	r.Query.WithGroupBy(teaqlCustomerStorageKey)
 	return r
 }
 
 func (r *CustomerContactRequest) GroupByCustomerAs(alias string) *CustomerContactRequest {
-	r.Query.WithGroupBy("customer_id")
-	r.Query.ProjectExpr(alias, core.ExprColumnNode("customer_id"))
+	r.Query.WithGroupBy(teaqlCustomerStorageKey)
+	r.Query.ProjectExpr(alias, core.ExprColumnNode(teaqlCustomerStorageKey))
 	return r
 }
 func (r *CustomerContactRequest) GroupByChannel() *CustomerContactRequest {
-	r.Query.WithGroupBy("channel")
+	r.Query.WithGroupBy(teaqlChannelStorageKey)
 	return r
 }
 
 func (r *CustomerContactRequest) GroupByChannelAs(alias string) *CustomerContactRequest {
-	r.Query.WithGroupBy("channel")
-	r.Query.ProjectExpr(alias, core.ExprColumnNode("channel"))
+	r.Query.WithGroupBy(teaqlChannelStorageKey)
+	r.Query.ProjectExpr(alias, core.ExprColumnNode(teaqlChannelStorageKey))
 	return r
 }
 func (r *CustomerContactRequest) GroupByVersion() *CustomerContactRequest {
-	r.Query.WithGroupBy("version")
+	r.Query.WithGroupBy(teaqlVersionStorageKey)
 	return r
 }
 
 func (r *CustomerContactRequest) GroupByVersionAs(alias string) *CustomerContactRequest {
-	r.Query.WithGroupBy("version")
-	r.Query.ProjectExpr(alias, core.ExprColumnNode("version"))
+	r.Query.WithGroupBy(teaqlVersionStorageKey)
+	r.Query.ProjectExpr(alias, core.ExprColumnNode(teaqlVersionStorageKey))
 	return r
 }

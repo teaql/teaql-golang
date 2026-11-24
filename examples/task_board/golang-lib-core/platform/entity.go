@@ -25,6 +25,19 @@ var (
 	_ = errors.As
 )
 
+const (
+    teaqlIdStorageKey = "id"
+    teaqlIdModelKey = "id"
+    teaqlNameStorageKey = "name"
+    teaqlNameModelKey = "name"
+    teaqlFoundedStorageKey = "founded"
+    teaqlFoundedModelKey = "founded"
+    teaqlUserEmailStorageKey = "user_email"
+    teaqlUserEmailModelKey = "user_email"
+    teaqlVersionStorageKey = "version"
+    teaqlVersionModelKey = "version"
+)
+
 
 type Platform struct {
 	base        *core.BaseEntityData
@@ -275,11 +288,11 @@ func (e *Platform) teaqlFromRecord(record core.Record, captureLoaded bool) error
 }
 
 func (e *Platform) teaqlScalarSnapshot(record core.Record) core.LoadedScalarSnapshot {
-	return core.NewLoadedScalarSnapshot(record, "id", "name", "founded", "user_email", "version")
+	return core.NewLoadedScalarSnapshot(record, teaqlIdStorageKey, teaqlNameStorageKey, teaqlFoundedStorageKey, teaqlUserEmailStorageKey, teaqlVersionStorageKey)
 }
 
 func (e *Platform) teaqlLoadedScalarSnapshot(record core.Record) core.LoadedScalarSnapshot {
-	return core.NewOwnedLoadedScalarSnapshot(e.EntityKey(), e.base.Version, record, "id", "name", "founded", "user_email", "version")
+	return core.NewOwnedLoadedScalarSnapshot(e.EntityKey(), e.base.Version, record, teaqlIdStorageKey, teaqlNameStorageKey, teaqlFoundedStorageKey, teaqlUserEmailStorageKey, teaqlVersionStorageKey)
 }
 
 func (e *Platform) teaqlAcceptPersisted(context *runtime.UserContext, record core.Record) error {
@@ -390,11 +403,11 @@ func (e *Platform) JSONQueryProperties() core.Record { return e.base.QueryProper
 func (e *Platform) LoadedJSONFields() core.Record {
 	all := e.IntoRecord()
 	selected := make(core.Record)
-	if e.IsLoaded("id") { if value, present := all["id"]; present { selected["id"] = value } }
-	if e.IsLoaded("name") { if value, present := all["name"]; present { selected["name"] = value } }
-	if e.IsLoaded("founded") { if value, present := all["founded"]; present { selected["founded"] = value } }
-	if e.IsLoaded("user_email") { if value, present := all["user_email"]; present { selected["user_email"] = value } }
-	if e.IsLoaded("version") { if value, present := all["version"]; present { selected["version"] = value } }
+	if e.IsLoaded(teaqlIdStorageKey) { if value, present := all[teaqlIdStorageKey]; present { selected[teaqlIdStorageKey] = value } }
+	if e.IsLoaded(teaqlNameStorageKey) { if value, present := all[teaqlNameStorageKey]; present { selected[teaqlNameStorageKey] = value } }
+	if e.IsLoaded(teaqlFoundedStorageKey) { if value, present := all[teaqlFoundedStorageKey]; present { selected[teaqlFoundedStorageKey] = value } }
+	if e.IsLoaded(teaqlUserEmailStorageKey) { if value, present := all[teaqlUserEmailStorageKey]; present { selected[teaqlUserEmailStorageKey] = value } }
+	if e.IsLoaded(teaqlVersionStorageKey) { if value, present := all[teaqlVersionStorageKey]; present { selected[teaqlVersionStorageKey] = value } }
 	includeTaskStatusList := e.TaskStatusList().IsLoaded()
 	for _, child := range e.TaskStatusList().Items() { if child.IsNew() || child.IsMarkedAsDelete() || len(child.EntityRoot().Change(child.EntityKey())) > 0 { includeTaskStatusList = true } }
 	if includeTaskStatusList {
@@ -622,24 +635,24 @@ func (e *Platform) TeaqlPreflightWithinGraph(context *runtime.UserContext, inten
 		operation := core.MutationUpdate
 		if e.isNew { operation = core.MutationInsert }
 		if operation == core.MutationUpdate {
-			if !e.IsLoaded("id") {
-				result := runtime.CheckResult{RuleID: "invalid_type", EntityType: "Platform", CanonicalLocation: runtime.Location().Property("id"), Message: "Mutation requires a fully loaded entity"}
+			if !e.IsLoaded(teaqlIdStorageKey) {
+				result := runtime.CheckResult{RuleID: "invalid_type", EntityType: "Platform", CanonicalLocation: runtime.Location().Property(teaqlIdModelKey), Message: "Mutation requires a fully loaded entity"}
 				return &runtime.RuntimeError{Type: "Check", CheckResults: []runtime.CheckResult{result}}
 			}
-			if !e.IsLoaded("name") {
-				result := runtime.CheckResult{RuleID: "invalid_type", EntityType: "Platform", CanonicalLocation: runtime.Location().Property("name"), Message: "Mutation requires a fully loaded entity"}
+			if !e.IsLoaded(teaqlNameStorageKey) {
+				result := runtime.CheckResult{RuleID: "invalid_type", EntityType: "Platform", CanonicalLocation: runtime.Location().Property(teaqlNameModelKey), Message: "Mutation requires a fully loaded entity"}
 				return &runtime.RuntimeError{Type: "Check", CheckResults: []runtime.CheckResult{result}}
 			}
-			if !e.IsLoaded("founded") {
-				result := runtime.CheckResult{RuleID: "invalid_type", EntityType: "Platform", CanonicalLocation: runtime.Location().Property("founded"), Message: "Mutation requires a fully loaded entity"}
+			if !e.IsLoaded(teaqlFoundedStorageKey) {
+				result := runtime.CheckResult{RuleID: "invalid_type", EntityType: "Platform", CanonicalLocation: runtime.Location().Property(teaqlFoundedModelKey), Message: "Mutation requires a fully loaded entity"}
 				return &runtime.RuntimeError{Type: "Check", CheckResults: []runtime.CheckResult{result}}
 			}
-			if !e.IsLoaded("user_email") {
-				result := runtime.CheckResult{RuleID: "invalid_type", EntityType: "Platform", CanonicalLocation: runtime.Location().Property("user_email"), Message: "Mutation requires a fully loaded entity"}
+			if !e.IsLoaded(teaqlUserEmailStorageKey) {
+				result := runtime.CheckResult{RuleID: "invalid_type", EntityType: "Platform", CanonicalLocation: runtime.Location().Property(teaqlUserEmailModelKey), Message: "Mutation requires a fully loaded entity"}
 				return &runtime.RuntimeError{Type: "Check", CheckResults: []runtime.CheckResult{result}}
 			}
-			if !e.IsLoaded("version") {
-				result := runtime.CheckResult{RuleID: "invalid_type", EntityType: "Platform", CanonicalLocation: runtime.Location().Property("version"), Message: "Mutation requires a fully loaded entity"}
+			if !e.IsLoaded(teaqlVersionStorageKey) {
+				result := runtime.CheckResult{RuleID: "invalid_type", EntityType: "Platform", CanonicalLocation: runtime.Location().Property(teaqlVersionModelKey), Message: "Mutation requires a fully loaded entity"}
 				return &runtime.RuntimeError{Type: "Check", CheckResults: []runtime.CheckResult{result}}
 			}
 		}
@@ -962,49 +975,49 @@ func (e *Platform) UpdateId(value uint64) *Platform {
 	oldKey := e.EntityKey()
 	e.base.Id = value
 	e.root.Rekey(oldKey, e.EntityKey())
-	e.loadState["id"] = true
+	e.loadState[teaqlIdStorageKey] = true
 	return e
 }
 
 func (e *Platform) Name() string {
-	val, _ := e.base.GetDynamic("name")
+	val, _ := e.base.GetDynamic(teaqlNameStorageKey)
 	res, _ := val.TryText()
 	return res}
 
 func (e *Platform) UpdateName(value string) *Platform {
 	e.teaqlEnsureState()
-	e.base.PutDynamic("name", core.ValText(value))
-	e.dirtyFields["name"] = true
-	e.root.Set(e.EntityKey(), "name", core.ValText(value))
-	e.loadState["name"] = true
+	e.base.PutDynamic(teaqlNameStorageKey, core.ValText(value))
+	e.dirtyFields[teaqlNameStorageKey] = true
+	e.root.Set(e.EntityKey(), teaqlNameModelKey, core.ValText(value))
+	e.loadState[teaqlNameStorageKey] = true
 	return e
 }
 
 func (e *Platform) Founded() time.Time {
-	val, _ := e.base.GetDynamic("founded")
+	val, _ := e.base.GetDynamic(teaqlFoundedStorageKey)
 	res, _ := val.TryTime()
 	return res}
 
 func (e *Platform) UpdateFounded(value time.Time) *Platform {
 	e.teaqlEnsureState()
-	e.base.PutDynamic("founded", core.ValTimestamp(value.UnixMilli()))
-	e.dirtyFields["founded"] = true
-	e.root.Set(e.EntityKey(), "founded", core.ValTimestamp(value.UnixMilli()))
-	e.loadState["founded"] = true
+	e.base.PutDynamic(teaqlFoundedStorageKey, core.ValTimestamp(value.UnixMilli()))
+	e.dirtyFields[teaqlFoundedStorageKey] = true
+	e.root.Set(e.EntityKey(), teaqlFoundedModelKey, core.ValTimestamp(value.UnixMilli()))
+	e.loadState[teaqlFoundedStorageKey] = true
 	return e
 }
 
 func (e *Platform) UserEmail() string {
-	val, _ := e.base.GetDynamic("user_email")
+	val, _ := e.base.GetDynamic(teaqlUserEmailStorageKey)
 	res, _ := val.TryText()
 	return res}
 
 func (e *Platform) UpdateUserEmail(value string) *Platform {
 	e.teaqlEnsureState()
-	e.base.PutDynamic("user_email", core.ValText(value))
-	e.dirtyFields["user_email"] = true
-	e.root.Set(e.EntityKey(), "user_email", core.ValText(value))
-	e.loadState["user_email"] = true
+	e.base.PutDynamic(teaqlUserEmailStorageKey, core.ValText(value))
+	e.dirtyFields[teaqlUserEmailStorageKey] = true
+	e.root.Set(e.EntityKey(), teaqlUserEmailModelKey, core.ValText(value))
+	e.loadState[teaqlUserEmailStorageKey] = true
 	return e
 }
 
@@ -1015,7 +1028,7 @@ func (e *Platform) Version() int64 {
 func (e *Platform) UpdateVersion(value int64) *Platform {
 	e.teaqlEnsureState()
 	e.base.Version = value
-	e.loadState["version"] = true
+	e.loadState[teaqlVersionStorageKey] = true
 	return e
 }
 func (e *Platform) TaskStatusList() *TaskStatusList {

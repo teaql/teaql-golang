@@ -187,16 +187,16 @@ func (r *DistributionCenterRequest) DeletedRowsOnly() *DistributionCenterRequest
 }
 
 func (r *DistributionCenterRequest) SelectId() *DistributionCenterRequest {
-	r.Query.Project("id")
+	r.Query.Project(teaqlIdStorageKey)
 	return r
 }
 
 func (r *DistributionCenterRequest) WithIdIs(value uint64) *DistributionCenterRequest {
-	r.Query.AndFilter(core.ExprEq("id", core.ValU64(value)))
+	r.Query.AndFilter(core.ExprEq(teaqlIdStorageKey, core.ValU64(value)))
 	return r
 }
 func (r *DistributionCenterRequest) WithIdIsNot(value uint64) *DistributionCenterRequest {
-	r.Query.AndFilter(core.ExprNe("id", core.ValU64(value)))
+	r.Query.AndFilter(core.ExprNe(teaqlIdStorageKey, core.ValU64(value)))
 	return r
 }
 func (r *DistributionCenterRequest) WithIdIn(values []uint64) *DistributionCenterRequest {
@@ -204,7 +204,7 @@ func (r *DistributionCenterRequest) WithIdIn(values []uint64) *DistributionCente
 	for _, value := range values {
 		converted = append(converted, core.ValU64(value))
 	}
-	r.Query.AndFilter(core.ExprInList("id", converted))
+	r.Query.AndFilter(core.ExprInList(teaqlIdStorageKey, converted))
 	return r
 }
 func (r *DistributionCenterRequest) WithIdNotIn(values []uint64) *DistributionCenterRequest {
@@ -212,23 +212,23 @@ func (r *DistributionCenterRequest) WithIdNotIn(values []uint64) *DistributionCe
 	for _, value := range values {
 		converted = append(converted, core.ValU64(value))
 	}
-	r.Query.AndFilter(core.ExprNotInList("id", converted))
+	r.Query.AndFilter(core.ExprNotInList(teaqlIdStorageKey, converted))
 	return r
 }
 func (r *DistributionCenterRequest) WithIdGreaterThan(value uint64) *DistributionCenterRequest {
-	r.Query.AndFilter(core.ExprGt("id", core.ValU64(value)))
+	r.Query.AndFilter(core.ExprGt(teaqlIdStorageKey, core.ValU64(value)))
 	return r
 }
 func (r *DistributionCenterRequest) WithIdGreaterThanOrEqualTo(value uint64) *DistributionCenterRequest {
-	r.Query.AndFilter(core.ExprGte("id", core.ValU64(value)))
+	r.Query.AndFilter(core.ExprGte(teaqlIdStorageKey, core.ValU64(value)))
 	return r
 }
 func (r *DistributionCenterRequest) WithIdLessThan(value uint64) *DistributionCenterRequest {
-	r.Query.AndFilter(core.ExprLt("id", core.ValU64(value)))
+	r.Query.AndFilter(core.ExprLt(teaqlIdStorageKey, core.ValU64(value)))
 	return r
 }
 func (r *DistributionCenterRequest) WithIdLessThanOrEqualTo(value uint64) *DistributionCenterRequest {
-	r.Query.AndFilter(core.ExprLte("id", core.ValU64(value)))
+	r.Query.AndFilter(core.ExprLte(teaqlIdStorageKey, core.ValU64(value)))
 	return r
 }
 func (r *DistributionCenterRequest) WithIdBetween(lower uint64, upper uint64) *DistributionCenterRequest {
@@ -236,36 +236,36 @@ func (r *DistributionCenterRequest) WithIdBetween(lower uint64, upper uint64) *D
 	from := core.ValU64(value)
 	value = upper
 	to := core.ValU64(value)
-	r.Query.AndFilter(core.ExprBetweenNode("id", from, to))
+	r.Query.AndFilter(core.ExprBetweenNode(teaqlIdStorageKey, from, to))
 	return r
 }
 func (r *DistributionCenterRequest) WithIdIsKnown() *DistributionCenterRequest {
-	r.Query.AndFilter(core.ExprIsNotNullNode("id"))
+	r.Query.AndFilter(core.ExprIsNotNullNode(teaqlIdStorageKey))
 	return r
 }
 func (r *DistributionCenterRequest) WithIdIsUnknown() *DistributionCenterRequest {
-	r.Query.AndFilter(core.ExprIsNullNode("id"))
+	r.Query.AndFilter(core.ExprIsNullNode(teaqlIdStorageKey))
 	return r
 }
 func (r *DistributionCenterRequest) OrderByIdAsc() *DistributionCenterRequest {
-	r.Query.OrderAsc("id")
+	r.Query.OrderAsc(teaqlIdStorageKey)
 	return r
 }
 func (r *DistributionCenterRequest) OrderByIdDesc() *DistributionCenterRequest {
-	r.Query.OrderDesc("id")
+	r.Query.OrderDesc(teaqlIdStorageKey)
 	return r
 }
 func (r *DistributionCenterRequest) SelectDockName() *DistributionCenterRequest {
-	r.Query.Project("dock_name")
+	r.Query.Project(teaqlDockNameStorageKey)
 	return r
 }
 
 func (r *DistributionCenterRequest) WithDockNameIs(value string) *DistributionCenterRequest {
-	r.Query.AndFilter(core.ExprEq("dock_name", core.ValText(value)))
+	r.Query.AndFilter(core.ExprEq(teaqlDockNameStorageKey, core.ValText(value)))
 	return r
 }
 func (r *DistributionCenterRequest) WithDockNameIsNot(value string) *DistributionCenterRequest {
-	r.Query.AndFilter(core.ExprNe("dock_name", core.ValText(value)))
+	r.Query.AndFilter(core.ExprNe(teaqlDockNameStorageKey, core.ValText(value)))
 	return r
 }
 func (r *DistributionCenterRequest) WithDockNameIn(values []string) *DistributionCenterRequest {
@@ -273,7 +273,7 @@ func (r *DistributionCenterRequest) WithDockNameIn(values []string) *Distributio
 	for _, value := range values {
 		converted = append(converted, core.ValText(value))
 	}
-	r.Query.AndFilter(core.ExprInList("dock_name", converted))
+	r.Query.AndFilter(core.ExprInList(teaqlDockNameStorageKey, converted))
 	return r
 }
 func (r *DistributionCenterRequest) WithDockNameNotIn(values []string) *DistributionCenterRequest {
@@ -281,23 +281,23 @@ func (r *DistributionCenterRequest) WithDockNameNotIn(values []string) *Distribu
 	for _, value := range values {
 		converted = append(converted, core.ValText(value))
 	}
-	r.Query.AndFilter(core.ExprNotInList("dock_name", converted))
+	r.Query.AndFilter(core.ExprNotInList(teaqlDockNameStorageKey, converted))
 	return r
 }
 func (r *DistributionCenterRequest) WithDockNameGreaterThan(value string) *DistributionCenterRequest {
-	r.Query.AndFilter(core.ExprGt("dock_name", core.ValText(value)))
+	r.Query.AndFilter(core.ExprGt(teaqlDockNameStorageKey, core.ValText(value)))
 	return r
 }
 func (r *DistributionCenterRequest) WithDockNameGreaterThanOrEqualTo(value string) *DistributionCenterRequest {
-	r.Query.AndFilter(core.ExprGte("dock_name", core.ValText(value)))
+	r.Query.AndFilter(core.ExprGte(teaqlDockNameStorageKey, core.ValText(value)))
 	return r
 }
 func (r *DistributionCenterRequest) WithDockNameLessThan(value string) *DistributionCenterRequest {
-	r.Query.AndFilter(core.ExprLt("dock_name", core.ValText(value)))
+	r.Query.AndFilter(core.ExprLt(teaqlDockNameStorageKey, core.ValText(value)))
 	return r
 }
 func (r *DistributionCenterRequest) WithDockNameLessThanOrEqualTo(value string) *DistributionCenterRequest {
-	r.Query.AndFilter(core.ExprLte("dock_name", core.ValText(value)))
+	r.Query.AndFilter(core.ExprLte(teaqlDockNameStorageKey, core.ValText(value)))
 	return r
 }
 func (r *DistributionCenterRequest) WithDockNameBetween(lower string, upper string) *DistributionCenterRequest {
@@ -305,64 +305,64 @@ func (r *DistributionCenterRequest) WithDockNameBetween(lower string, upper stri
 	from := core.ValText(value)
 	value = upper
 	to := core.ValText(value)
-	r.Query.AndFilter(core.ExprBetweenNode("dock_name", from, to))
+	r.Query.AndFilter(core.ExprBetweenNode(teaqlDockNameStorageKey, from, to))
 	return r
 }
 func (r *DistributionCenterRequest) WithDockNameIsKnown() *DistributionCenterRequest {
-	r.Query.AndFilter(core.ExprIsNotNullNode("dock_name"))
+	r.Query.AndFilter(core.ExprIsNotNullNode(teaqlDockNameStorageKey))
 	return r
 }
 func (r *DistributionCenterRequest) WithDockNameIsUnknown() *DistributionCenterRequest {
-	r.Query.AndFilter(core.ExprIsNullNode("dock_name"))
+	r.Query.AndFilter(core.ExprIsNullNode(teaqlDockNameStorageKey))
 	return r
 }
 func (r *DistributionCenterRequest) WithDockNameContaining(term string) *DistributionCenterRequest {
-	r.Query.AndFilter(core.ExprContain("dock_name", term))
+	r.Query.AndFilter(core.ExprContain(teaqlDockNameStorageKey, term))
 	return r
 }
 func (r *DistributionCenterRequest) WithDockNameNotContaining(term string) *DistributionCenterRequest {
-	r.Query.AndFilter(core.ExprNotContain("dock_name", term))
+	r.Query.AndFilter(core.ExprNotContain(teaqlDockNameStorageKey, term))
 	return r
 }
 func (r *DistributionCenterRequest) WithDockNameStartingWith(term string) *DistributionCenterRequest {
-	r.Query.AndFilter(core.ExprBeginWith("dock_name", term))
+	r.Query.AndFilter(core.ExprBeginWith(teaqlDockNameStorageKey, term))
 	return r
 }
 func (r *DistributionCenterRequest) WithDockNameNotStartingWith(term string) *DistributionCenterRequest {
-	r.Query.AndFilter(core.ExprNotBeginWith("dock_name", term))
+	r.Query.AndFilter(core.ExprNotBeginWith(teaqlDockNameStorageKey, term))
 	return r
 }
 func (r *DistributionCenterRequest) WithDockNameEndingWith(term string) *DistributionCenterRequest {
-	r.Query.AndFilter(core.ExprEndWith("dock_name", term))
+	r.Query.AndFilter(core.ExprEndWith(teaqlDockNameStorageKey, term))
 	return r
 }
 func (r *DistributionCenterRequest) WithDockNameNotEndingWith(term string) *DistributionCenterRequest {
-	r.Query.AndFilter(core.ExprNotEndWith("dock_name", term))
+	r.Query.AndFilter(core.ExprNotEndWith(teaqlDockNameStorageKey, term))
 	return r
 }
 func (r *DistributionCenterRequest) WithDockNameSoundingLike(term string) *DistributionCenterRequest {
-	r.Query.AndFilter(core.ExprSoundLike("dock_name", core.ValText(term)))
+	r.Query.AndFilter(core.ExprSoundLike(teaqlDockNameStorageKey, core.ValText(term)))
 	return r
 }
 func (r *DistributionCenterRequest) OrderByDockNameAsc() *DistributionCenterRequest {
-	r.Query.OrderAsc("dock_name")
+	r.Query.OrderAsc(teaqlDockNameStorageKey)
 	return r
 }
 func (r *DistributionCenterRequest) OrderByDockNameDesc() *DistributionCenterRequest {
-	r.Query.OrderDesc("dock_name")
+	r.Query.OrderDesc(teaqlDockNameStorageKey)
 	return r
 }
 func (r *DistributionCenterRequest) SelectVersion() *DistributionCenterRequest {
-	r.Query.Project("version")
+	r.Query.Project(teaqlVersionStorageKey)
 	return r
 }
 
 func (r *DistributionCenterRequest) WithVersionIs(value int64) *DistributionCenterRequest {
-	r.Query.AndFilter(core.ExprEq("version", core.ValI64(value)))
+	r.Query.AndFilter(core.ExprEq(teaqlVersionStorageKey, core.ValI64(value)))
 	return r
 }
 func (r *DistributionCenterRequest) WithVersionIsNot(value int64) *DistributionCenterRequest {
-	r.Query.AndFilter(core.ExprNe("version", core.ValI64(value)))
+	r.Query.AndFilter(core.ExprNe(teaqlVersionStorageKey, core.ValI64(value)))
 	return r
 }
 func (r *DistributionCenterRequest) WithVersionIn(values []int64) *DistributionCenterRequest {
@@ -370,7 +370,7 @@ func (r *DistributionCenterRequest) WithVersionIn(values []int64) *DistributionC
 	for _, value := range values {
 		converted = append(converted, core.ValI64(value))
 	}
-	r.Query.AndFilter(core.ExprInList("version", converted))
+	r.Query.AndFilter(core.ExprInList(teaqlVersionStorageKey, converted))
 	return r
 }
 func (r *DistributionCenterRequest) WithVersionNotIn(values []int64) *DistributionCenterRequest {
@@ -378,23 +378,23 @@ func (r *DistributionCenterRequest) WithVersionNotIn(values []int64) *Distributi
 	for _, value := range values {
 		converted = append(converted, core.ValI64(value))
 	}
-	r.Query.AndFilter(core.ExprNotInList("version", converted))
+	r.Query.AndFilter(core.ExprNotInList(teaqlVersionStorageKey, converted))
 	return r
 }
 func (r *DistributionCenterRequest) WithVersionGreaterThan(value int64) *DistributionCenterRequest {
-	r.Query.AndFilter(core.ExprGt("version", core.ValI64(value)))
+	r.Query.AndFilter(core.ExprGt(teaqlVersionStorageKey, core.ValI64(value)))
 	return r
 }
 func (r *DistributionCenterRequest) WithVersionGreaterThanOrEqualTo(value int64) *DistributionCenterRequest {
-	r.Query.AndFilter(core.ExprGte("version", core.ValI64(value)))
+	r.Query.AndFilter(core.ExprGte(teaqlVersionStorageKey, core.ValI64(value)))
 	return r
 }
 func (r *DistributionCenterRequest) WithVersionLessThan(value int64) *DistributionCenterRequest {
-	r.Query.AndFilter(core.ExprLt("version", core.ValI64(value)))
+	r.Query.AndFilter(core.ExprLt(teaqlVersionStorageKey, core.ValI64(value)))
 	return r
 }
 func (r *DistributionCenterRequest) WithVersionLessThanOrEqualTo(value int64) *DistributionCenterRequest {
-	r.Query.AndFilter(core.ExprLte("version", core.ValI64(value)))
+	r.Query.AndFilter(core.ExprLte(teaqlVersionStorageKey, core.ValI64(value)))
 	return r
 }
 func (r *DistributionCenterRequest) WithVersionBetween(lower int64, upper int64) *DistributionCenterRequest {
@@ -402,23 +402,23 @@ func (r *DistributionCenterRequest) WithVersionBetween(lower int64, upper int64)
 	from := core.ValI64(value)
 	value = upper
 	to := core.ValI64(value)
-	r.Query.AndFilter(core.ExprBetweenNode("version", from, to))
+	r.Query.AndFilter(core.ExprBetweenNode(teaqlVersionStorageKey, from, to))
 	return r
 }
 func (r *DistributionCenterRequest) WithVersionIsKnown() *DistributionCenterRequest {
-	r.Query.AndFilter(core.ExprIsNotNullNode("version"))
+	r.Query.AndFilter(core.ExprIsNotNullNode(teaqlVersionStorageKey))
 	return r
 }
 func (r *DistributionCenterRequest) WithVersionIsUnknown() *DistributionCenterRequest {
-	r.Query.AndFilter(core.ExprIsNullNode("version"))
+	r.Query.AndFilter(core.ExprIsNullNode(teaqlVersionStorageKey))
 	return r
 }
 func (r *DistributionCenterRequest) OrderByVersionAsc() *DistributionCenterRequest {
-	r.Query.OrderAsc("version")
+	r.Query.OrderAsc(teaqlVersionStorageKey)
 	return r
 }
 func (r *DistributionCenterRequest) OrderByVersionDesc() *DistributionCenterRequest {
-	r.Query.OrderDesc("version")
+	r.Query.OrderDesc(teaqlVersionStorageKey)
 	return r
 }
 
@@ -603,32 +603,32 @@ func (r *DistributionCenterRequest) CountAs(alias string) *DistributionCenterReq
 
 
 func (r *DistributionCenterRequest) GroupById() *DistributionCenterRequest {
-	r.Query.WithGroupBy("id")
+	r.Query.WithGroupBy(teaqlIdStorageKey)
 	return r
 }
 
 func (r *DistributionCenterRequest) GroupByIdAs(alias string) *DistributionCenterRequest {
-	r.Query.WithGroupBy("id")
-	r.Query.ProjectExpr(alias, core.ExprColumnNode("id"))
+	r.Query.WithGroupBy(teaqlIdStorageKey)
+	r.Query.ProjectExpr(alias, core.ExprColumnNode(teaqlIdStorageKey))
 	return r
 }
 func (r *DistributionCenterRequest) GroupByDockName() *DistributionCenterRequest {
-	r.Query.WithGroupBy("dock_name")
+	r.Query.WithGroupBy(teaqlDockNameStorageKey)
 	return r
 }
 
 func (r *DistributionCenterRequest) GroupByDockNameAs(alias string) *DistributionCenterRequest {
-	r.Query.WithGroupBy("dock_name")
-	r.Query.ProjectExpr(alias, core.ExprColumnNode("dock_name"))
+	r.Query.WithGroupBy(teaqlDockNameStorageKey)
+	r.Query.ProjectExpr(alias, core.ExprColumnNode(teaqlDockNameStorageKey))
 	return r
 }
 func (r *DistributionCenterRequest) GroupByVersion() *DistributionCenterRequest {
-	r.Query.WithGroupBy("version")
+	r.Query.WithGroupBy(teaqlVersionStorageKey)
 	return r
 }
 
 func (r *DistributionCenterRequest) GroupByVersionAs(alias string) *DistributionCenterRequest {
-	r.Query.WithGroupBy("version")
-	r.Query.ProjectExpr(alias, core.ExprColumnNode("version"))
+	r.Query.WithGroupBy(teaqlVersionStorageKey)
+	r.Query.ProjectExpr(alias, core.ExprColumnNode(teaqlVersionStorageKey))
 	return r
 }

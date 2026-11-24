@@ -23,6 +23,25 @@ var (
 	_ = errors.As
 )
 
+const (
+    teaqlIdStorageKey = "id"
+    teaqlIdModelKey = "id"
+    teaqlCustomerOrderStorageKey = "customer_order_id"
+    teaqlCustomerOrderModelKey = "customer_order"
+    teaqlFileNameStorageKey = "file_name"
+    teaqlFileNameModelKey = "file_name"
+    teaqlContentTypeStorageKey = "content_type"
+    teaqlContentTypeModelKey = "content_type"
+    teaqlContentLengthStorageKey = "content_length"
+    teaqlContentLengthModelKey = "content_length"
+    teaqlContentSha256StorageKey = "content_sha256"
+    teaqlContentSha256ModelKey = "content_sha256"
+    teaqlObjectKeyStorageKey = "object_key"
+    teaqlObjectKeyModelKey = "object_key"
+    teaqlVersionStorageKey = "version"
+    teaqlVersionModelKey = "version"
+)
+
 
 type OrderAttachment struct {
 	base        *core.BaseEntityData
@@ -173,8 +192,8 @@ func (e *OrderAttachment) teaqlFromRecord(record core.Record, captureLoaded bool
 	if err != nil {
 		return err
 	}
-	if value, present := base.Dynamic["content_length"]; present && !value.IsNull() {
-		if err := core.ValidateInteger32("order_attachment", "content_length", value); err != nil { return err }
+	if value, present := base.Dynamic[teaqlContentLengthStorageKey]; present && !value.IsNull() {
+		if err := core.ValidateInteger32("order_attachment", teaqlContentLengthModelKey, value); err != nil { return err }
 	}
 
 
@@ -200,11 +219,11 @@ func (e *OrderAttachment) teaqlFromRecord(record core.Record, captureLoaded bool
 }
 
 func (e *OrderAttachment) teaqlScalarSnapshot(record core.Record) core.LoadedScalarSnapshot {
-	return core.NewLoadedScalarSnapshot(record, "id", "customer_order_id", "file_name", "content_type", "content_length", "content_sha256", "object_key", "version")
+	return core.NewLoadedScalarSnapshot(record, teaqlIdStorageKey, teaqlCustomerOrderStorageKey, teaqlFileNameStorageKey, teaqlContentTypeStorageKey, teaqlContentLengthStorageKey, teaqlContentSha256StorageKey, teaqlObjectKeyStorageKey, teaqlVersionStorageKey)
 }
 
 func (e *OrderAttachment) teaqlLoadedScalarSnapshot(record core.Record) core.LoadedScalarSnapshot {
-	return core.NewOwnedLoadedScalarSnapshot(e.EntityKey(), e.base.Version, record, "id", "customer_order_id", "file_name", "content_type", "content_length", "content_sha256", "object_key", "version")
+	return core.NewOwnedLoadedScalarSnapshot(e.EntityKey(), e.base.Version, record, teaqlIdStorageKey, teaqlCustomerOrderStorageKey, teaqlFileNameStorageKey, teaqlContentTypeStorageKey, teaqlContentLengthStorageKey, teaqlContentSha256StorageKey, teaqlObjectKeyStorageKey, teaqlVersionStorageKey)
 }
 
 func (e *OrderAttachment) teaqlAcceptPersisted(context *runtime.UserContext, record core.Record) error {
@@ -309,14 +328,14 @@ func (e *OrderAttachment) JSONQueryProperties() core.Record { return e.base.Quer
 func (e *OrderAttachment) LoadedJSONFields() core.Record {
 	all := e.IntoRecord()
 	selected := make(core.Record)
-	if e.IsLoaded("id") { if value, present := all["id"]; present { selected["id"] = value } }
-	if e.IsLoaded("customer_order_id") { if value, present := all["customer_order_id"]; present { selected["customer_order_id"] = value } }
-	if e.IsLoaded("file_name") { if value, present := all["file_name"]; present { selected["file_name"] = value } }
-	if e.IsLoaded("content_type") { if value, present := all["content_type"]; present { selected["content_type"] = value } }
-	if e.IsLoaded("content_length") { if value, present := all["content_length"]; present { selected["content_length"] = value } }
-	if e.IsLoaded("content_sha256") { if value, present := all["content_sha256"]; present { selected["content_sha256"] = value } }
-	if e.IsLoaded("object_key") { if value, present := all["object_key"]; present { selected["object_key"] = value } }
-	if e.IsLoaded("version") { if value, present := all["version"]; present { selected["version"] = value } }
+	if e.IsLoaded(teaqlIdStorageKey) { if value, present := all[teaqlIdStorageKey]; present { selected[teaqlIdStorageKey] = value } }
+	if e.IsLoaded(teaqlCustomerOrderStorageKey) { if value, present := all[teaqlCustomerOrderStorageKey]; present { selected[teaqlCustomerOrderStorageKey] = value } }
+	if e.IsLoaded(teaqlFileNameStorageKey) { if value, present := all[teaqlFileNameStorageKey]; present { selected[teaqlFileNameStorageKey] = value } }
+	if e.IsLoaded(teaqlContentTypeStorageKey) { if value, present := all[teaqlContentTypeStorageKey]; present { selected[teaqlContentTypeStorageKey] = value } }
+	if e.IsLoaded(teaqlContentLengthStorageKey) { if value, present := all[teaqlContentLengthStorageKey]; present { selected[teaqlContentLengthStorageKey] = value } }
+	if e.IsLoaded(teaqlContentSha256StorageKey) { if value, present := all[teaqlContentSha256StorageKey]; present { selected[teaqlContentSha256StorageKey] = value } }
+	if e.IsLoaded(teaqlObjectKeyStorageKey) { if value, present := all[teaqlObjectKeyStorageKey]; present { selected[teaqlObjectKeyStorageKey] = value } }
+	if e.IsLoaded(teaqlVersionStorageKey) { if value, present := all[teaqlVersionStorageKey]; present { selected[teaqlVersionStorageKey] = value } }
 	if e.isRelationLoaded("customerOrderEntity") { if target, present := e.relations["customerOrderEntity"]; present && target != nil { selected["customerOrderEntity"] = core.Value{V: target} } }
 	return selected
 }
@@ -419,36 +438,36 @@ func (e *OrderAttachment) TeaqlPreflightWithinGraph(context *runtime.UserContext
 		operation := core.MutationUpdate
 		if e.isNew { operation = core.MutationInsert }
 		if operation == core.MutationUpdate {
-			if !e.IsLoaded("id") {
-				result := runtime.CheckResult{RuleID: "invalid_type", EntityType: "OrderAttachment", CanonicalLocation: runtime.Location().Property("id"), Message: "Mutation requires a fully loaded entity"}
+			if !e.IsLoaded(teaqlIdStorageKey) {
+				result := runtime.CheckResult{RuleID: "invalid_type", EntityType: "OrderAttachment", CanonicalLocation: runtime.Location().Property(teaqlIdModelKey), Message: "Mutation requires a fully loaded entity"}
 				return &runtime.RuntimeError{Type: "Check", CheckResults: []runtime.CheckResult{result}}
 			}
-			if !e.IsLoaded("customer_order_id") {
-				result := runtime.CheckResult{RuleID: "invalid_type", EntityType: "OrderAttachment", CanonicalLocation: runtime.Location().Property("customer_order"), Message: "Mutation requires a fully loaded entity"}
+			if !e.IsLoaded(teaqlCustomerOrderStorageKey) {
+				result := runtime.CheckResult{RuleID: "invalid_type", EntityType: "OrderAttachment", CanonicalLocation: runtime.Location().Property(teaqlCustomerOrderModelKey), Message: "Mutation requires a fully loaded entity"}
 				return &runtime.RuntimeError{Type: "Check", CheckResults: []runtime.CheckResult{result}}
 			}
-			if !e.IsLoaded("file_name") {
-				result := runtime.CheckResult{RuleID: "invalid_type", EntityType: "OrderAttachment", CanonicalLocation: runtime.Location().Property("file_name"), Message: "Mutation requires a fully loaded entity"}
+			if !e.IsLoaded(teaqlFileNameStorageKey) {
+				result := runtime.CheckResult{RuleID: "invalid_type", EntityType: "OrderAttachment", CanonicalLocation: runtime.Location().Property(teaqlFileNameModelKey), Message: "Mutation requires a fully loaded entity"}
 				return &runtime.RuntimeError{Type: "Check", CheckResults: []runtime.CheckResult{result}}
 			}
-			if !e.IsLoaded("content_type") {
-				result := runtime.CheckResult{RuleID: "invalid_type", EntityType: "OrderAttachment", CanonicalLocation: runtime.Location().Property("content_type"), Message: "Mutation requires a fully loaded entity"}
+			if !e.IsLoaded(teaqlContentTypeStorageKey) {
+				result := runtime.CheckResult{RuleID: "invalid_type", EntityType: "OrderAttachment", CanonicalLocation: runtime.Location().Property(teaqlContentTypeModelKey), Message: "Mutation requires a fully loaded entity"}
 				return &runtime.RuntimeError{Type: "Check", CheckResults: []runtime.CheckResult{result}}
 			}
-			if !e.IsLoaded("content_length") {
-				result := runtime.CheckResult{RuleID: "invalid_type", EntityType: "OrderAttachment", CanonicalLocation: runtime.Location().Property("content_length"), Message: "Mutation requires a fully loaded entity"}
+			if !e.IsLoaded(teaqlContentLengthStorageKey) {
+				result := runtime.CheckResult{RuleID: "invalid_type", EntityType: "OrderAttachment", CanonicalLocation: runtime.Location().Property(teaqlContentLengthModelKey), Message: "Mutation requires a fully loaded entity"}
 				return &runtime.RuntimeError{Type: "Check", CheckResults: []runtime.CheckResult{result}}
 			}
-			if !e.IsLoaded("content_sha256") {
-				result := runtime.CheckResult{RuleID: "invalid_type", EntityType: "OrderAttachment", CanonicalLocation: runtime.Location().Property("content_sha256"), Message: "Mutation requires a fully loaded entity"}
+			if !e.IsLoaded(teaqlContentSha256StorageKey) {
+				result := runtime.CheckResult{RuleID: "invalid_type", EntityType: "OrderAttachment", CanonicalLocation: runtime.Location().Property(teaqlContentSha256ModelKey), Message: "Mutation requires a fully loaded entity"}
 				return &runtime.RuntimeError{Type: "Check", CheckResults: []runtime.CheckResult{result}}
 			}
-			if !e.IsLoaded("object_key") {
-				result := runtime.CheckResult{RuleID: "invalid_type", EntityType: "OrderAttachment", CanonicalLocation: runtime.Location().Property("object_key"), Message: "Mutation requires a fully loaded entity"}
+			if !e.IsLoaded(teaqlObjectKeyStorageKey) {
+				result := runtime.CheckResult{RuleID: "invalid_type", EntityType: "OrderAttachment", CanonicalLocation: runtime.Location().Property(teaqlObjectKeyModelKey), Message: "Mutation requires a fully loaded entity"}
 				return &runtime.RuntimeError{Type: "Check", CheckResults: []runtime.CheckResult{result}}
 			}
-			if !e.IsLoaded("version") {
-				result := runtime.CheckResult{RuleID: "invalid_type", EntityType: "OrderAttachment", CanonicalLocation: runtime.Location().Property("version"), Message: "Mutation requires a fully loaded entity"}
+			if !e.IsLoaded(teaqlVersionStorageKey) {
+				result := runtime.CheckResult{RuleID: "invalid_type", EntityType: "OrderAttachment", CanonicalLocation: runtime.Location().Property(teaqlVersionModelKey), Message: "Mutation requires a fully loaded entity"}
 				return &runtime.RuntimeError{Type: "Check", CheckResults: []runtime.CheckResult{result}}
 			}
 		}
@@ -701,77 +720,77 @@ func (e *OrderAttachment) UpdateId(value uint64) *OrderAttachment {
 	oldKey := e.EntityKey()
 	e.base.Id = value
 	e.root.Rekey(oldKey, e.EntityKey())
-	e.loadState["id"] = true
+	e.loadState[teaqlIdStorageKey] = true
 	return e
 }
 
 func (e *OrderAttachment) FileName() string {
-	val, _ := e.base.GetDynamic("file_name")
+	val, _ := e.base.GetDynamic(teaqlFileNameStorageKey)
 	res, _ := val.TryText()
 	return res}
 
 func (e *OrderAttachment) UpdateFileName(value string) *OrderAttachment {
 	e.teaqlEnsureState()
-	e.base.PutDynamic("file_name", core.ValText(value))
-	e.dirtyFields["file_name"] = true
-	e.root.Set(e.EntityKey(), "file_name", core.ValText(value))
-	e.loadState["file_name"] = true
+	e.base.PutDynamic(teaqlFileNameStorageKey, core.ValText(value))
+	e.dirtyFields[teaqlFileNameStorageKey] = true
+	e.root.Set(e.EntityKey(), teaqlFileNameModelKey, core.ValText(value))
+	e.loadState[teaqlFileNameStorageKey] = true
 	return e
 }
 
 func (e *OrderAttachment) ContentType() string {
-	val, _ := e.base.GetDynamic("content_type")
+	val, _ := e.base.GetDynamic(teaqlContentTypeStorageKey)
 	res, _ := val.TryText()
 	return res}
 
 func (e *OrderAttachment) UpdateContentType(value string) *OrderAttachment {
 	e.teaqlEnsureState()
-	e.base.PutDynamic("content_type", core.ValText(value))
-	e.dirtyFields["content_type"] = true
-	e.root.Set(e.EntityKey(), "content_type", core.ValText(value))
-	e.loadState["content_type"] = true
+	e.base.PutDynamic(teaqlContentTypeStorageKey, core.ValText(value))
+	e.dirtyFields[teaqlContentTypeStorageKey] = true
+	e.root.Set(e.EntityKey(), teaqlContentTypeModelKey, core.ValText(value))
+	e.loadState[teaqlContentTypeStorageKey] = true
 	return e
 }
 
 func (e *OrderAttachment) ContentLength() int64 {
-	val, _ := e.base.GetDynamic("content_length")
+	val, _ := e.base.GetDynamic(teaqlContentLengthStorageKey)
 	res, _ := val.TryI64()
 	return res}
 
 func (e *OrderAttachment) UpdateContentLength(value int64) *OrderAttachment {
 	e.teaqlEnsureState()
-	e.base.PutDynamic("content_length", core.ValI64(value))
-	e.dirtyFields["content_length"] = true
-	e.root.Set(e.EntityKey(), "content_length", core.ValI64(value))
-	e.loadState["content_length"] = true
+	e.base.PutDynamic(teaqlContentLengthStorageKey, core.ValI64(value))
+	e.dirtyFields[teaqlContentLengthStorageKey] = true
+	e.root.Set(e.EntityKey(), teaqlContentLengthModelKey, core.ValI64(value))
+	e.loadState[teaqlContentLengthStorageKey] = true
 	return e
 }
 
 func (e *OrderAttachment) ContentSha256() string {
-	val, _ := e.base.GetDynamic("content_sha256")
+	val, _ := e.base.GetDynamic(teaqlContentSha256StorageKey)
 	res, _ := val.TryText()
 	return res}
 
 func (e *OrderAttachment) UpdateContentSha256(value string) *OrderAttachment {
 	e.teaqlEnsureState()
-	e.base.PutDynamic("content_sha256", core.ValText(value))
-	e.dirtyFields["content_sha256"] = true
-	e.root.Set(e.EntityKey(), "content_sha256", core.ValText(value))
-	e.loadState["content_sha256"] = true
+	e.base.PutDynamic(teaqlContentSha256StorageKey, core.ValText(value))
+	e.dirtyFields[teaqlContentSha256StorageKey] = true
+	e.root.Set(e.EntityKey(), teaqlContentSha256ModelKey, core.ValText(value))
+	e.loadState[teaqlContentSha256StorageKey] = true
 	return e
 }
 
 func (e *OrderAttachment) ObjectKey() string {
-	val, _ := e.base.GetDynamic("object_key")
+	val, _ := e.base.GetDynamic(teaqlObjectKeyStorageKey)
 	res, _ := val.TryText()
 	return res}
 
 func (e *OrderAttachment) UpdateObjectKey(value string) *OrderAttachment {
 	e.teaqlEnsureState()
-	e.base.PutDynamic("object_key", core.ValText(value))
-	e.dirtyFields["object_key"] = true
-	e.root.Set(e.EntityKey(), "object_key", core.ValText(value))
-	e.loadState["object_key"] = true
+	e.base.PutDynamic(teaqlObjectKeyStorageKey, core.ValText(value))
+	e.dirtyFields[teaqlObjectKeyStorageKey] = true
+	e.root.Set(e.EntityKey(), teaqlObjectKeyModelKey, core.ValText(value))
+	e.loadState[teaqlObjectKeyStorageKey] = true
 	return e
 }
 
@@ -782,26 +801,26 @@ func (e *OrderAttachment) Version() int64 {
 func (e *OrderAttachment) UpdateVersion(value int64) *OrderAttachment {
 	e.teaqlEnsureState()
 	e.base.Version = value
-	e.loadState["version"] = true
+	e.loadState[teaqlVersionStorageKey] = true
 	return e
 }
 func (e *OrderAttachment) CustomerOrderId() uint64 {
-	val, _ := e.base.GetDynamic("customer_order_id")
+	val, _ := e.base.GetDynamic(teaqlCustomerOrderStorageKey)
 	res, _ := val.TryU64()
 	return res
 }
 
 func (e *OrderAttachment) UpdateCustomerOrderId(value uint64) *OrderAttachment {
-	previous, present := e.base.GetDynamic("customer_order_id")
-	e.base.PutDynamic("customer_order_id", core.ValU64(value))
-	e.dirtyFields["customer_order_id"] = true
-	current, _ := e.base.GetDynamic("customer_order_id")
+	previous, present := e.base.GetDynamic(teaqlCustomerOrderStorageKey)
+	e.base.PutDynamic(teaqlCustomerOrderStorageKey, core.ValU64(value))
+	e.dirtyFields[teaqlCustomerOrderStorageKey] = true
+	current, _ := e.base.GetDynamic(teaqlCustomerOrderStorageKey)
 	if !present || !reflect.DeepEqual(previous, current) {
 		delete(e.relations, "customerOrderEntity")
 		delete(e.loadedRelations, "customerOrderEntity")
 	}
-	e.root.Set(e.EntityKey(), "customer_order", core.ValU64(value))
-	e.loadState["customer_order_id"] = true
+	e.root.Set(e.EntityKey(), teaqlCustomerOrderModelKey, core.ValU64(value))
+	e.loadState[teaqlCustomerOrderStorageKey] = true
 	return e
 }
 // DEBUG: constantObjectField is false

@@ -182,16 +182,16 @@ func (r *ShipmentRequest) DeletedRowsOnly() *ShipmentRequest {
 }
 
 func (r *ShipmentRequest) SelectId() *ShipmentRequest {
-	r.Query.Project("id")
+	r.Query.Project(teaqlIdStorageKey)
 	return r
 }
 
 func (r *ShipmentRequest) WithIdIs(value uint64) *ShipmentRequest {
-	r.Query.AndFilter(core.ExprEq("id", core.ValU64(value)))
+	r.Query.AndFilter(core.ExprEq(teaqlIdStorageKey, core.ValU64(value)))
 	return r
 }
 func (r *ShipmentRequest) WithIdIsNot(value uint64) *ShipmentRequest {
-	r.Query.AndFilter(core.ExprNe("id", core.ValU64(value)))
+	r.Query.AndFilter(core.ExprNe(teaqlIdStorageKey, core.ValU64(value)))
 	return r
 }
 func (r *ShipmentRequest) WithIdIn(values []uint64) *ShipmentRequest {
@@ -199,7 +199,7 @@ func (r *ShipmentRequest) WithIdIn(values []uint64) *ShipmentRequest {
 	for _, value := range values {
 		converted = append(converted, core.ValU64(value))
 	}
-	r.Query.AndFilter(core.ExprInList("id", converted))
+	r.Query.AndFilter(core.ExprInList(teaqlIdStorageKey, converted))
 	return r
 }
 func (r *ShipmentRequest) WithIdNotIn(values []uint64) *ShipmentRequest {
@@ -207,23 +207,23 @@ func (r *ShipmentRequest) WithIdNotIn(values []uint64) *ShipmentRequest {
 	for _, value := range values {
 		converted = append(converted, core.ValU64(value))
 	}
-	r.Query.AndFilter(core.ExprNotInList("id", converted))
+	r.Query.AndFilter(core.ExprNotInList(teaqlIdStorageKey, converted))
 	return r
 }
 func (r *ShipmentRequest) WithIdGreaterThan(value uint64) *ShipmentRequest {
-	r.Query.AndFilter(core.ExprGt("id", core.ValU64(value)))
+	r.Query.AndFilter(core.ExprGt(teaqlIdStorageKey, core.ValU64(value)))
 	return r
 }
 func (r *ShipmentRequest) WithIdGreaterThanOrEqualTo(value uint64) *ShipmentRequest {
-	r.Query.AndFilter(core.ExprGte("id", core.ValU64(value)))
+	r.Query.AndFilter(core.ExprGte(teaqlIdStorageKey, core.ValU64(value)))
 	return r
 }
 func (r *ShipmentRequest) WithIdLessThan(value uint64) *ShipmentRequest {
-	r.Query.AndFilter(core.ExprLt("id", core.ValU64(value)))
+	r.Query.AndFilter(core.ExprLt(teaqlIdStorageKey, core.ValU64(value)))
 	return r
 }
 func (r *ShipmentRequest) WithIdLessThanOrEqualTo(value uint64) *ShipmentRequest {
-	r.Query.AndFilter(core.ExprLte("id", core.ValU64(value)))
+	r.Query.AndFilter(core.ExprLte(teaqlIdStorageKey, core.ValU64(value)))
 	return r
 }
 func (r *ShipmentRequest) WithIdBetween(lower uint64, upper uint64) *ShipmentRequest {
@@ -231,36 +231,36 @@ func (r *ShipmentRequest) WithIdBetween(lower uint64, upper uint64) *ShipmentReq
 	from := core.ValU64(value)
 	value = upper
 	to := core.ValU64(value)
-	r.Query.AndFilter(core.ExprBetweenNode("id", from, to))
+	r.Query.AndFilter(core.ExprBetweenNode(teaqlIdStorageKey, from, to))
 	return r
 }
 func (r *ShipmentRequest) WithIdIsKnown() *ShipmentRequest {
-	r.Query.AndFilter(core.ExprIsNotNullNode("id"))
+	r.Query.AndFilter(core.ExprIsNotNullNode(teaqlIdStorageKey))
 	return r
 }
 func (r *ShipmentRequest) WithIdIsUnknown() *ShipmentRequest {
-	r.Query.AndFilter(core.ExprIsNullNode("id"))
+	r.Query.AndFilter(core.ExprIsNullNode(teaqlIdStorageKey))
 	return r
 }
 func (r *ShipmentRequest) OrderByIdAsc() *ShipmentRequest {
-	r.Query.OrderAsc("id")
+	r.Query.OrderAsc(teaqlIdStorageKey)
 	return r
 }
 func (r *ShipmentRequest) OrderByIdDesc() *ShipmentRequest {
-	r.Query.OrderDesc("id")
+	r.Query.OrderDesc(teaqlIdStorageKey)
 	return r
 }
 func (r *ShipmentRequest) SelectCustomerOrder() *ShipmentRequest {
-	r.Query.Project("customer_order_id")
+	r.Query.Project(teaqlCustomerOrderStorageKey)
 	return r
 }
 
 func (r *ShipmentRequest) WithCustomerOrderIs(value uint64) *ShipmentRequest {
-	r.Query.AndFilter(core.ExprEq("customer_order_id", core.ValU64(value)))
+	r.Query.AndFilter(core.ExprEq(teaqlCustomerOrderStorageKey, core.ValU64(value)))
 	return r
 }
 func (r *ShipmentRequest) WithCustomerOrderIsNot(value uint64) *ShipmentRequest {
-	r.Query.AndFilter(core.ExprNe("customer_order_id", core.ValU64(value)))
+	r.Query.AndFilter(core.ExprNe(teaqlCustomerOrderStorageKey, core.ValU64(value)))
 	return r
 }
 func (r *ShipmentRequest) WithCustomerOrderIn(values []uint64) *ShipmentRequest {
@@ -268,7 +268,7 @@ func (r *ShipmentRequest) WithCustomerOrderIn(values []uint64) *ShipmentRequest 
 	for _, value := range values {
 		converted = append(converted, core.ValU64(value))
 	}
-	r.Query.AndFilter(core.ExprInList("customer_order_id", converted))
+	r.Query.AndFilter(core.ExprInList(teaqlCustomerOrderStorageKey, converted))
 	return r
 }
 func (r *ShipmentRequest) WithCustomerOrderNotIn(values []uint64) *ShipmentRequest {
@@ -276,23 +276,23 @@ func (r *ShipmentRequest) WithCustomerOrderNotIn(values []uint64) *ShipmentReque
 	for _, value := range values {
 		converted = append(converted, core.ValU64(value))
 	}
-	r.Query.AndFilter(core.ExprNotInList("customer_order_id", converted))
+	r.Query.AndFilter(core.ExprNotInList(teaqlCustomerOrderStorageKey, converted))
 	return r
 }
 func (r *ShipmentRequest) WithCustomerOrderGreaterThan(value uint64) *ShipmentRequest {
-	r.Query.AndFilter(core.ExprGt("customer_order_id", core.ValU64(value)))
+	r.Query.AndFilter(core.ExprGt(teaqlCustomerOrderStorageKey, core.ValU64(value)))
 	return r
 }
 func (r *ShipmentRequest) WithCustomerOrderGreaterThanOrEqualTo(value uint64) *ShipmentRequest {
-	r.Query.AndFilter(core.ExprGte("customer_order_id", core.ValU64(value)))
+	r.Query.AndFilter(core.ExprGte(teaqlCustomerOrderStorageKey, core.ValU64(value)))
 	return r
 }
 func (r *ShipmentRequest) WithCustomerOrderLessThan(value uint64) *ShipmentRequest {
-	r.Query.AndFilter(core.ExprLt("customer_order_id", core.ValU64(value)))
+	r.Query.AndFilter(core.ExprLt(teaqlCustomerOrderStorageKey, core.ValU64(value)))
 	return r
 }
 func (r *ShipmentRequest) WithCustomerOrderLessThanOrEqualTo(value uint64) *ShipmentRequest {
-	r.Query.AndFilter(core.ExprLte("customer_order_id", core.ValU64(value)))
+	r.Query.AndFilter(core.ExprLte(teaqlCustomerOrderStorageKey, core.ValU64(value)))
 	return r
 }
 func (r *ShipmentRequest) WithCustomerOrderBetween(lower uint64, upper uint64) *ShipmentRequest {
@@ -300,15 +300,15 @@ func (r *ShipmentRequest) WithCustomerOrderBetween(lower uint64, upper uint64) *
 	from := core.ValU64(value)
 	value = upper
 	to := core.ValU64(value)
-	r.Query.AndFilter(core.ExprBetweenNode("customer_order_id", from, to))
+	r.Query.AndFilter(core.ExprBetweenNode(teaqlCustomerOrderStorageKey, from, to))
 	return r
 }
 func (r *ShipmentRequest) WithCustomerOrderIsKnown() *ShipmentRequest {
-	r.Query.AndFilter(core.ExprIsNotNullNode("customer_order_id"))
+	r.Query.AndFilter(core.ExprIsNotNullNode(teaqlCustomerOrderStorageKey))
 	return r
 }
 func (r *ShipmentRequest) WithCustomerOrderIsUnknown() *ShipmentRequest {
-	r.Query.AndFilter(core.ExprIsNullNode("customer_order_id"))
+	r.Query.AndFilter(core.ExprIsNullNode(teaqlCustomerOrderStorageKey))
 	return r
 }
 func (r *ShipmentRequest) FacetByCustomerOrderAs(
@@ -318,30 +318,30 @@ func (r *ShipmentRequest) FacetByCustomerOrderAs(
 ) *ShipmentRequest {
 	includeAll := true
 	if len(includeAllFacets) > 0 { includeAll = includeAllFacets[0] }
-	facet := core.NewFacetRequest(name, "customer_order_id", core.QuerySelectionFor(nestedReq), includeAll)
+	facet := core.NewFacetRequest(name, teaqlCustomerOrderStorageKey, core.QuerySelectionFor(nestedReq), includeAll)
 	facet.Operation = &core.QueryOperation{Kind: "facet", Method: "FacetByCustomerOrderAs", Alias: &name, Relation: "customerOrder"}
 	r.queryOptions.Facets = append(r.queryOptions.Facets, facet)
 	return r
 }
 func (r *ShipmentRequest) OrderByCustomerOrderAsc() *ShipmentRequest {
-	r.Query.OrderAsc("customer_order_id")
+	r.Query.OrderAsc(teaqlCustomerOrderStorageKey)
 	return r
 }
 func (r *ShipmentRequest) OrderByCustomerOrderDesc() *ShipmentRequest {
-	r.Query.OrderDesc("customer_order_id")
+	r.Query.OrderDesc(teaqlCustomerOrderStorageKey)
 	return r
 }
 func (r *ShipmentRequest) SelectReferenceCode() *ShipmentRequest {
-	r.Query.Project("reference_code")
+	r.Query.Project(teaqlReferenceCodeStorageKey)
 	return r
 }
 
 func (r *ShipmentRequest) WithReferenceCodeIs(value string) *ShipmentRequest {
-	r.Query.AndFilter(core.ExprEq("reference_code", core.ValText(value)))
+	r.Query.AndFilter(core.ExprEq(teaqlReferenceCodeStorageKey, core.ValText(value)))
 	return r
 }
 func (r *ShipmentRequest) WithReferenceCodeIsNot(value string) *ShipmentRequest {
-	r.Query.AndFilter(core.ExprNe("reference_code", core.ValText(value)))
+	r.Query.AndFilter(core.ExprNe(teaqlReferenceCodeStorageKey, core.ValText(value)))
 	return r
 }
 func (r *ShipmentRequest) WithReferenceCodeIn(values []string) *ShipmentRequest {
@@ -349,7 +349,7 @@ func (r *ShipmentRequest) WithReferenceCodeIn(values []string) *ShipmentRequest 
 	for _, value := range values {
 		converted = append(converted, core.ValText(value))
 	}
-	r.Query.AndFilter(core.ExprInList("reference_code", converted))
+	r.Query.AndFilter(core.ExprInList(teaqlReferenceCodeStorageKey, converted))
 	return r
 }
 func (r *ShipmentRequest) WithReferenceCodeNotIn(values []string) *ShipmentRequest {
@@ -357,23 +357,23 @@ func (r *ShipmentRequest) WithReferenceCodeNotIn(values []string) *ShipmentReque
 	for _, value := range values {
 		converted = append(converted, core.ValText(value))
 	}
-	r.Query.AndFilter(core.ExprNotInList("reference_code", converted))
+	r.Query.AndFilter(core.ExprNotInList(teaqlReferenceCodeStorageKey, converted))
 	return r
 }
 func (r *ShipmentRequest) WithReferenceCodeGreaterThan(value string) *ShipmentRequest {
-	r.Query.AndFilter(core.ExprGt("reference_code", core.ValText(value)))
+	r.Query.AndFilter(core.ExprGt(teaqlReferenceCodeStorageKey, core.ValText(value)))
 	return r
 }
 func (r *ShipmentRequest) WithReferenceCodeGreaterThanOrEqualTo(value string) *ShipmentRequest {
-	r.Query.AndFilter(core.ExprGte("reference_code", core.ValText(value)))
+	r.Query.AndFilter(core.ExprGte(teaqlReferenceCodeStorageKey, core.ValText(value)))
 	return r
 }
 func (r *ShipmentRequest) WithReferenceCodeLessThan(value string) *ShipmentRequest {
-	r.Query.AndFilter(core.ExprLt("reference_code", core.ValText(value)))
+	r.Query.AndFilter(core.ExprLt(teaqlReferenceCodeStorageKey, core.ValText(value)))
 	return r
 }
 func (r *ShipmentRequest) WithReferenceCodeLessThanOrEqualTo(value string) *ShipmentRequest {
-	r.Query.AndFilter(core.ExprLte("reference_code", core.ValText(value)))
+	r.Query.AndFilter(core.ExprLte(teaqlReferenceCodeStorageKey, core.ValText(value)))
 	return r
 }
 func (r *ShipmentRequest) WithReferenceCodeBetween(lower string, upper string) *ShipmentRequest {
@@ -381,64 +381,64 @@ func (r *ShipmentRequest) WithReferenceCodeBetween(lower string, upper string) *
 	from := core.ValText(value)
 	value = upper
 	to := core.ValText(value)
-	r.Query.AndFilter(core.ExprBetweenNode("reference_code", from, to))
+	r.Query.AndFilter(core.ExprBetweenNode(teaqlReferenceCodeStorageKey, from, to))
 	return r
 }
 func (r *ShipmentRequest) WithReferenceCodeIsKnown() *ShipmentRequest {
-	r.Query.AndFilter(core.ExprIsNotNullNode("reference_code"))
+	r.Query.AndFilter(core.ExprIsNotNullNode(teaqlReferenceCodeStorageKey))
 	return r
 }
 func (r *ShipmentRequest) WithReferenceCodeIsUnknown() *ShipmentRequest {
-	r.Query.AndFilter(core.ExprIsNullNode("reference_code"))
+	r.Query.AndFilter(core.ExprIsNullNode(teaqlReferenceCodeStorageKey))
 	return r
 }
 func (r *ShipmentRequest) WithReferenceCodeContaining(term string) *ShipmentRequest {
-	r.Query.AndFilter(core.ExprContain("reference_code", term))
+	r.Query.AndFilter(core.ExprContain(teaqlReferenceCodeStorageKey, term))
 	return r
 }
 func (r *ShipmentRequest) WithReferenceCodeNotContaining(term string) *ShipmentRequest {
-	r.Query.AndFilter(core.ExprNotContain("reference_code", term))
+	r.Query.AndFilter(core.ExprNotContain(teaqlReferenceCodeStorageKey, term))
 	return r
 }
 func (r *ShipmentRequest) WithReferenceCodeStartingWith(term string) *ShipmentRequest {
-	r.Query.AndFilter(core.ExprBeginWith("reference_code", term))
+	r.Query.AndFilter(core.ExprBeginWith(teaqlReferenceCodeStorageKey, term))
 	return r
 }
 func (r *ShipmentRequest) WithReferenceCodeNotStartingWith(term string) *ShipmentRequest {
-	r.Query.AndFilter(core.ExprNotBeginWith("reference_code", term))
+	r.Query.AndFilter(core.ExprNotBeginWith(teaqlReferenceCodeStorageKey, term))
 	return r
 }
 func (r *ShipmentRequest) WithReferenceCodeEndingWith(term string) *ShipmentRequest {
-	r.Query.AndFilter(core.ExprEndWith("reference_code", term))
+	r.Query.AndFilter(core.ExprEndWith(teaqlReferenceCodeStorageKey, term))
 	return r
 }
 func (r *ShipmentRequest) WithReferenceCodeNotEndingWith(term string) *ShipmentRequest {
-	r.Query.AndFilter(core.ExprNotEndWith("reference_code", term))
+	r.Query.AndFilter(core.ExprNotEndWith(teaqlReferenceCodeStorageKey, term))
 	return r
 }
 func (r *ShipmentRequest) WithReferenceCodeSoundingLike(term string) *ShipmentRequest {
-	r.Query.AndFilter(core.ExprSoundLike("reference_code", core.ValText(term)))
+	r.Query.AndFilter(core.ExprSoundLike(teaqlReferenceCodeStorageKey, core.ValText(term)))
 	return r
 }
 func (r *ShipmentRequest) OrderByReferenceCodeAsc() *ShipmentRequest {
-	r.Query.OrderAsc("reference_code")
+	r.Query.OrderAsc(teaqlReferenceCodeStorageKey)
 	return r
 }
 func (r *ShipmentRequest) OrderByReferenceCodeDesc() *ShipmentRequest {
-	r.Query.OrderDesc("reference_code")
+	r.Query.OrderDesc(teaqlReferenceCodeStorageKey)
 	return r
 }
 func (r *ShipmentRequest) SelectVersion() *ShipmentRequest {
-	r.Query.Project("version")
+	r.Query.Project(teaqlVersionStorageKey)
 	return r
 }
 
 func (r *ShipmentRequest) WithVersionIs(value int64) *ShipmentRequest {
-	r.Query.AndFilter(core.ExprEq("version", core.ValI64(value)))
+	r.Query.AndFilter(core.ExprEq(teaqlVersionStorageKey, core.ValI64(value)))
 	return r
 }
 func (r *ShipmentRequest) WithVersionIsNot(value int64) *ShipmentRequest {
-	r.Query.AndFilter(core.ExprNe("version", core.ValI64(value)))
+	r.Query.AndFilter(core.ExprNe(teaqlVersionStorageKey, core.ValI64(value)))
 	return r
 }
 func (r *ShipmentRequest) WithVersionIn(values []int64) *ShipmentRequest {
@@ -446,7 +446,7 @@ func (r *ShipmentRequest) WithVersionIn(values []int64) *ShipmentRequest {
 	for _, value := range values {
 		converted = append(converted, core.ValI64(value))
 	}
-	r.Query.AndFilter(core.ExprInList("version", converted))
+	r.Query.AndFilter(core.ExprInList(teaqlVersionStorageKey, converted))
 	return r
 }
 func (r *ShipmentRequest) WithVersionNotIn(values []int64) *ShipmentRequest {
@@ -454,23 +454,23 @@ func (r *ShipmentRequest) WithVersionNotIn(values []int64) *ShipmentRequest {
 	for _, value := range values {
 		converted = append(converted, core.ValI64(value))
 	}
-	r.Query.AndFilter(core.ExprNotInList("version", converted))
+	r.Query.AndFilter(core.ExprNotInList(teaqlVersionStorageKey, converted))
 	return r
 }
 func (r *ShipmentRequest) WithVersionGreaterThan(value int64) *ShipmentRequest {
-	r.Query.AndFilter(core.ExprGt("version", core.ValI64(value)))
+	r.Query.AndFilter(core.ExprGt(teaqlVersionStorageKey, core.ValI64(value)))
 	return r
 }
 func (r *ShipmentRequest) WithVersionGreaterThanOrEqualTo(value int64) *ShipmentRequest {
-	r.Query.AndFilter(core.ExprGte("version", core.ValI64(value)))
+	r.Query.AndFilter(core.ExprGte(teaqlVersionStorageKey, core.ValI64(value)))
 	return r
 }
 func (r *ShipmentRequest) WithVersionLessThan(value int64) *ShipmentRequest {
-	r.Query.AndFilter(core.ExprLt("version", core.ValI64(value)))
+	r.Query.AndFilter(core.ExprLt(teaqlVersionStorageKey, core.ValI64(value)))
 	return r
 }
 func (r *ShipmentRequest) WithVersionLessThanOrEqualTo(value int64) *ShipmentRequest {
-	r.Query.AndFilter(core.ExprLte("version", core.ValI64(value)))
+	r.Query.AndFilter(core.ExprLte(teaqlVersionStorageKey, core.ValI64(value)))
 	return r
 }
 func (r *ShipmentRequest) WithVersionBetween(lower int64, upper int64) *ShipmentRequest {
@@ -478,23 +478,23 @@ func (r *ShipmentRequest) WithVersionBetween(lower int64, upper int64) *Shipment
 	from := core.ValI64(value)
 	value = upper
 	to := core.ValI64(value)
-	r.Query.AndFilter(core.ExprBetweenNode("version", from, to))
+	r.Query.AndFilter(core.ExprBetweenNode(teaqlVersionStorageKey, from, to))
 	return r
 }
 func (r *ShipmentRequest) WithVersionIsKnown() *ShipmentRequest {
-	r.Query.AndFilter(core.ExprIsNotNullNode("version"))
+	r.Query.AndFilter(core.ExprIsNotNullNode(teaqlVersionStorageKey))
 	return r
 }
 func (r *ShipmentRequest) WithVersionIsUnknown() *ShipmentRequest {
-	r.Query.AndFilter(core.ExprIsNullNode("version"))
+	r.Query.AndFilter(core.ExprIsNullNode(teaqlVersionStorageKey))
 	return r
 }
 func (r *ShipmentRequest) OrderByVersionAsc() *ShipmentRequest {
-	r.Query.OrderAsc("version")
+	r.Query.OrderAsc(teaqlVersionStorageKey)
 	return r
 }
 func (r *ShipmentRequest) OrderByVersionDesc() *ShipmentRequest {
-	r.Query.OrderDesc("version")
+	r.Query.OrderDesc(teaqlVersionStorageKey)
 	return r
 }
 
@@ -502,7 +502,7 @@ func (r *ShipmentRequest) SelectCustomerOrderWith(child interface {
 	GetQuery() *core.SelectQuery
 	NewRelationEntity() core.Entity
 }) *ShipmentRequest {
-	runtime.EnsureRelationProjection(r.Query, "customer_order_id")
+	runtime.EnsureRelationProjection(r.Query, teaqlCustomerOrderStorageKey)
 	r.Query.RelationQuerySelection("customerOrderEntity", core.QuerySelectionFor(child))
 	r.Query.Relations[len(r.Query.Relations)-1].Operation = &core.QueryOperation{Kind: "relation", Method: "SelectCustomerOrderWith", Relation: "customerOrderEntity"}
 	r.relationFactories["customerOrderEntity"] = func(record core.Record) (core.Entity, error) {
@@ -520,7 +520,7 @@ func (r *ShipmentRequest) WithCustomerOrderMatching(child interface {
 	GetQuery() *core.SelectQuery
 	GetEntityDescriptor() *core.EntityDescriptor
 }) *ShipmentRequest {
-	r.Query.AndFilter(core.ExprInSubQuery("customer_order_id", child.GetEntityDescriptor(), child.GetQuery(), "id"))
+	r.Query.AndFilter(core.ExprInSubQuery(teaqlCustomerOrderStorageKey, child.GetEntityDescriptor(), child.GetQuery(), "id"))
 	return r
 }
 
@@ -528,7 +528,7 @@ func (r *ShipmentRequest) WithoutCustomerOrderMatching(child interface {
 	GetQuery() *core.SelectQuery
 	GetEntityDescriptor() *core.EntityDescriptor
 }) *ShipmentRequest {
-	r.Query.AndFilter(core.ExprNotInSubQuery("customer_order_id", child.GetEntityDescriptor(), child.GetQuery(), "id"))
+	r.Query.AndFilter(core.ExprNotInSubQuery(teaqlCustomerOrderStorageKey, child.GetEntityDescriptor(), child.GetQuery(), "id"))
 	return r
 }
 
@@ -664,42 +664,42 @@ func (r *ShipmentRequest) CountAs(alias string) *ShipmentRequest {
 
 
 func (r *ShipmentRequest) GroupById() *ShipmentRequest {
-	r.Query.WithGroupBy("id")
+	r.Query.WithGroupBy(teaqlIdStorageKey)
 	return r
 }
 
 func (r *ShipmentRequest) GroupByIdAs(alias string) *ShipmentRequest {
-	r.Query.WithGroupBy("id")
-	r.Query.ProjectExpr(alias, core.ExprColumnNode("id"))
+	r.Query.WithGroupBy(teaqlIdStorageKey)
+	r.Query.ProjectExpr(alias, core.ExprColumnNode(teaqlIdStorageKey))
 	return r
 }
 func (r *ShipmentRequest) GroupByCustomerOrder() *ShipmentRequest {
-	r.Query.WithGroupBy("customer_order_id")
+	r.Query.WithGroupBy(teaqlCustomerOrderStorageKey)
 	return r
 }
 
 func (r *ShipmentRequest) GroupByCustomerOrderAs(alias string) *ShipmentRequest {
-	r.Query.WithGroupBy("customer_order_id")
-	r.Query.ProjectExpr(alias, core.ExprColumnNode("customer_order_id"))
+	r.Query.WithGroupBy(teaqlCustomerOrderStorageKey)
+	r.Query.ProjectExpr(alias, core.ExprColumnNode(teaqlCustomerOrderStorageKey))
 	return r
 }
 func (r *ShipmentRequest) GroupByReferenceCode() *ShipmentRequest {
-	r.Query.WithGroupBy("reference_code")
+	r.Query.WithGroupBy(teaqlReferenceCodeStorageKey)
 	return r
 }
 
 func (r *ShipmentRequest) GroupByReferenceCodeAs(alias string) *ShipmentRequest {
-	r.Query.WithGroupBy("reference_code")
-	r.Query.ProjectExpr(alias, core.ExprColumnNode("reference_code"))
+	r.Query.WithGroupBy(teaqlReferenceCodeStorageKey)
+	r.Query.ProjectExpr(alias, core.ExprColumnNode(teaqlReferenceCodeStorageKey))
 	return r
 }
 func (r *ShipmentRequest) GroupByVersion() *ShipmentRequest {
-	r.Query.WithGroupBy("version")
+	r.Query.WithGroupBy(teaqlVersionStorageKey)
 	return r
 }
 
 func (r *ShipmentRequest) GroupByVersionAs(alias string) *ShipmentRequest {
-	r.Query.WithGroupBy("version")
-	r.Query.ProjectExpr(alias, core.ExprColumnNode("version"))
+	r.Query.WithGroupBy(teaqlVersionStorageKey)
+	r.Query.ProjectExpr(alias, core.ExprColumnNode(teaqlVersionStorageKey))
 	return r
 }

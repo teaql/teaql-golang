@@ -9,6 +9,8 @@ if [[ -n "${TEAQL_ORDER_EVIDENCE_DIR:-}" ]]; then
 else
   evidence="$(mktemp -d -t teaql-go-order-evidence.XXXXXXXX)"
 fi
+evidence="$(cd "$evidence" && pwd)"
+export TEAQL_LOG_ENDPOINT="$evidence/runtime.log"
 scratch="$(mktemp -d -t teaql-go-order-build.XXXXXXXX)"
 trap 'status=$?; trap - EXIT; rm -rf -- "$scratch"; exit "$status"' EXIT
 if [[ -z "${GOCACHE:-}" ]]; then export GOCACHE="$scratch/cache"; fi

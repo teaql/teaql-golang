@@ -227,16 +227,16 @@ func (r *CustomerOrderRequest) DeletedRowsOnly() *CustomerOrderRequest {
 }
 
 func (r *CustomerOrderRequest) SelectId() *CustomerOrderRequest {
-	r.Query.Project("id")
+	r.Query.Project(teaqlIdStorageKey)
 	return r
 }
 
 func (r *CustomerOrderRequest) WithIdIs(value uint64) *CustomerOrderRequest {
-	r.Query.AndFilter(core.ExprEq("id", core.ValU64(value)))
+	r.Query.AndFilter(core.ExprEq(teaqlIdStorageKey, core.ValU64(value)))
 	return r
 }
 func (r *CustomerOrderRequest) WithIdIsNot(value uint64) *CustomerOrderRequest {
-	r.Query.AndFilter(core.ExprNe("id", core.ValU64(value)))
+	r.Query.AndFilter(core.ExprNe(teaqlIdStorageKey, core.ValU64(value)))
 	return r
 }
 func (r *CustomerOrderRequest) WithIdIn(values []uint64) *CustomerOrderRequest {
@@ -244,7 +244,7 @@ func (r *CustomerOrderRequest) WithIdIn(values []uint64) *CustomerOrderRequest {
 	for _, value := range values {
 		converted = append(converted, core.ValU64(value))
 	}
-	r.Query.AndFilter(core.ExprInList("id", converted))
+	r.Query.AndFilter(core.ExprInList(teaqlIdStorageKey, converted))
 	return r
 }
 func (r *CustomerOrderRequest) WithIdNotIn(values []uint64) *CustomerOrderRequest {
@@ -252,23 +252,23 @@ func (r *CustomerOrderRequest) WithIdNotIn(values []uint64) *CustomerOrderReques
 	for _, value := range values {
 		converted = append(converted, core.ValU64(value))
 	}
-	r.Query.AndFilter(core.ExprNotInList("id", converted))
+	r.Query.AndFilter(core.ExprNotInList(teaqlIdStorageKey, converted))
 	return r
 }
 func (r *CustomerOrderRequest) WithIdGreaterThan(value uint64) *CustomerOrderRequest {
-	r.Query.AndFilter(core.ExprGt("id", core.ValU64(value)))
+	r.Query.AndFilter(core.ExprGt(teaqlIdStorageKey, core.ValU64(value)))
 	return r
 }
 func (r *CustomerOrderRequest) WithIdGreaterThanOrEqualTo(value uint64) *CustomerOrderRequest {
-	r.Query.AndFilter(core.ExprGte("id", core.ValU64(value)))
+	r.Query.AndFilter(core.ExprGte(teaqlIdStorageKey, core.ValU64(value)))
 	return r
 }
 func (r *CustomerOrderRequest) WithIdLessThan(value uint64) *CustomerOrderRequest {
-	r.Query.AndFilter(core.ExprLt("id", core.ValU64(value)))
+	r.Query.AndFilter(core.ExprLt(teaqlIdStorageKey, core.ValU64(value)))
 	return r
 }
 func (r *CustomerOrderRequest) WithIdLessThanOrEqualTo(value uint64) *CustomerOrderRequest {
-	r.Query.AndFilter(core.ExprLte("id", core.ValU64(value)))
+	r.Query.AndFilter(core.ExprLte(teaqlIdStorageKey, core.ValU64(value)))
 	return r
 }
 func (r *CustomerOrderRequest) WithIdBetween(lower uint64, upper uint64) *CustomerOrderRequest {
@@ -276,36 +276,36 @@ func (r *CustomerOrderRequest) WithIdBetween(lower uint64, upper uint64) *Custom
 	from := core.ValU64(value)
 	value = upper
 	to := core.ValU64(value)
-	r.Query.AndFilter(core.ExprBetweenNode("id", from, to))
+	r.Query.AndFilter(core.ExprBetweenNode(teaqlIdStorageKey, from, to))
 	return r
 }
 func (r *CustomerOrderRequest) WithIdIsKnown() *CustomerOrderRequest {
-	r.Query.AndFilter(core.ExprIsNotNullNode("id"))
+	r.Query.AndFilter(core.ExprIsNotNullNode(teaqlIdStorageKey))
 	return r
 }
 func (r *CustomerOrderRequest) WithIdIsUnknown() *CustomerOrderRequest {
-	r.Query.AndFilter(core.ExprIsNullNode("id"))
+	r.Query.AndFilter(core.ExprIsNullNode(teaqlIdStorageKey))
 	return r
 }
 func (r *CustomerOrderRequest) OrderByIdAsc() *CustomerOrderRequest {
-	r.Query.OrderAsc("id")
+	r.Query.OrderAsc(teaqlIdStorageKey)
 	return r
 }
 func (r *CustomerOrderRequest) OrderByIdDesc() *CustomerOrderRequest {
-	r.Query.OrderDesc("id")
+	r.Query.OrderDesc(teaqlIdStorageKey)
 	return r
 }
 func (r *CustomerOrderRequest) SelectPlatform() *CustomerOrderRequest {
-	r.Query.Project("platform_id")
+	r.Query.Project(teaqlPlatformStorageKey)
 	return r
 }
 
 func (r *CustomerOrderRequest) WithPlatformIs(value uint64) *CustomerOrderRequest {
-	r.Query.AndFilter(core.ExprEq("platform_id", core.ValU64(value)))
+	r.Query.AndFilter(core.ExprEq(teaqlPlatformStorageKey, core.ValU64(value)))
 	return r
 }
 func (r *CustomerOrderRequest) WithPlatformIsNot(value uint64) *CustomerOrderRequest {
-	r.Query.AndFilter(core.ExprNe("platform_id", core.ValU64(value)))
+	r.Query.AndFilter(core.ExprNe(teaqlPlatformStorageKey, core.ValU64(value)))
 	return r
 }
 func (r *CustomerOrderRequest) WithPlatformIn(values []uint64) *CustomerOrderRequest {
@@ -313,7 +313,7 @@ func (r *CustomerOrderRequest) WithPlatformIn(values []uint64) *CustomerOrderReq
 	for _, value := range values {
 		converted = append(converted, core.ValU64(value))
 	}
-	r.Query.AndFilter(core.ExprInList("platform_id", converted))
+	r.Query.AndFilter(core.ExprInList(teaqlPlatformStorageKey, converted))
 	return r
 }
 func (r *CustomerOrderRequest) WithPlatformNotIn(values []uint64) *CustomerOrderRequest {
@@ -321,23 +321,23 @@ func (r *CustomerOrderRequest) WithPlatformNotIn(values []uint64) *CustomerOrder
 	for _, value := range values {
 		converted = append(converted, core.ValU64(value))
 	}
-	r.Query.AndFilter(core.ExprNotInList("platform_id", converted))
+	r.Query.AndFilter(core.ExprNotInList(teaqlPlatformStorageKey, converted))
 	return r
 }
 func (r *CustomerOrderRequest) WithPlatformGreaterThan(value uint64) *CustomerOrderRequest {
-	r.Query.AndFilter(core.ExprGt("platform_id", core.ValU64(value)))
+	r.Query.AndFilter(core.ExprGt(teaqlPlatformStorageKey, core.ValU64(value)))
 	return r
 }
 func (r *CustomerOrderRequest) WithPlatformGreaterThanOrEqualTo(value uint64) *CustomerOrderRequest {
-	r.Query.AndFilter(core.ExprGte("platform_id", core.ValU64(value)))
+	r.Query.AndFilter(core.ExprGte(teaqlPlatformStorageKey, core.ValU64(value)))
 	return r
 }
 func (r *CustomerOrderRequest) WithPlatformLessThan(value uint64) *CustomerOrderRequest {
-	r.Query.AndFilter(core.ExprLt("platform_id", core.ValU64(value)))
+	r.Query.AndFilter(core.ExprLt(teaqlPlatformStorageKey, core.ValU64(value)))
 	return r
 }
 func (r *CustomerOrderRequest) WithPlatformLessThanOrEqualTo(value uint64) *CustomerOrderRequest {
-	r.Query.AndFilter(core.ExprLte("platform_id", core.ValU64(value)))
+	r.Query.AndFilter(core.ExprLte(teaqlPlatformStorageKey, core.ValU64(value)))
 	return r
 }
 func (r *CustomerOrderRequest) WithPlatformBetween(lower uint64, upper uint64) *CustomerOrderRequest {
@@ -345,15 +345,15 @@ func (r *CustomerOrderRequest) WithPlatformBetween(lower uint64, upper uint64) *
 	from := core.ValU64(value)
 	value = upper
 	to := core.ValU64(value)
-	r.Query.AndFilter(core.ExprBetweenNode("platform_id", from, to))
+	r.Query.AndFilter(core.ExprBetweenNode(teaqlPlatformStorageKey, from, to))
 	return r
 }
 func (r *CustomerOrderRequest) WithPlatformIsKnown() *CustomerOrderRequest {
-	r.Query.AndFilter(core.ExprIsNotNullNode("platform_id"))
+	r.Query.AndFilter(core.ExprIsNotNullNode(teaqlPlatformStorageKey))
 	return r
 }
 func (r *CustomerOrderRequest) WithPlatformIsUnknown() *CustomerOrderRequest {
-	r.Query.AndFilter(core.ExprIsNullNode("platform_id"))
+	r.Query.AndFilter(core.ExprIsNullNode(teaqlPlatformStorageKey))
 	return r
 }
 func (r *CustomerOrderRequest) FacetByPlatformAs(
@@ -363,30 +363,30 @@ func (r *CustomerOrderRequest) FacetByPlatformAs(
 ) *CustomerOrderRequest {
 	includeAll := true
 	if len(includeAllFacets) > 0 { includeAll = includeAllFacets[0] }
-	facet := core.NewFacetRequest(name, "platform_id", core.QuerySelectionFor(nestedReq), includeAll)
+	facet := core.NewFacetRequest(name, teaqlPlatformStorageKey, core.QuerySelectionFor(nestedReq), includeAll)
 	facet.Operation = &core.QueryOperation{Kind: "facet", Method: "FacetByPlatformAs", Alias: &name, Relation: "platform"}
 	r.queryOptions.Facets = append(r.queryOptions.Facets, facet)
 	return r
 }
 func (r *CustomerOrderRequest) OrderByPlatformAsc() *CustomerOrderRequest {
-	r.Query.OrderAsc("platform_id")
+	r.Query.OrderAsc(teaqlPlatformStorageKey)
 	return r
 }
 func (r *CustomerOrderRequest) OrderByPlatformDesc() *CustomerOrderRequest {
-	r.Query.OrderDesc("platform_id")
+	r.Query.OrderDesc(teaqlPlatformStorageKey)
 	return r
 }
 func (r *CustomerOrderRequest) SelectOrderNumber() *CustomerOrderRequest {
-	r.Query.Project("order_number")
+	r.Query.Project(teaqlOrderNumberStorageKey)
 	return r
 }
 
 func (r *CustomerOrderRequest) WithOrderNumberIs(value string) *CustomerOrderRequest {
-	r.Query.AndFilter(core.ExprEq("order_number", core.ValText(value)))
+	r.Query.AndFilter(core.ExprEq(teaqlOrderNumberStorageKey, core.ValText(value)))
 	return r
 }
 func (r *CustomerOrderRequest) WithOrderNumberIsNot(value string) *CustomerOrderRequest {
-	r.Query.AndFilter(core.ExprNe("order_number", core.ValText(value)))
+	r.Query.AndFilter(core.ExprNe(teaqlOrderNumberStorageKey, core.ValText(value)))
 	return r
 }
 func (r *CustomerOrderRequest) WithOrderNumberIn(values []string) *CustomerOrderRequest {
@@ -394,7 +394,7 @@ func (r *CustomerOrderRequest) WithOrderNumberIn(values []string) *CustomerOrder
 	for _, value := range values {
 		converted = append(converted, core.ValText(value))
 	}
-	r.Query.AndFilter(core.ExprInList("order_number", converted))
+	r.Query.AndFilter(core.ExprInList(teaqlOrderNumberStorageKey, converted))
 	return r
 }
 func (r *CustomerOrderRequest) WithOrderNumberNotIn(values []string) *CustomerOrderRequest {
@@ -402,23 +402,23 @@ func (r *CustomerOrderRequest) WithOrderNumberNotIn(values []string) *CustomerOr
 	for _, value := range values {
 		converted = append(converted, core.ValText(value))
 	}
-	r.Query.AndFilter(core.ExprNotInList("order_number", converted))
+	r.Query.AndFilter(core.ExprNotInList(teaqlOrderNumberStorageKey, converted))
 	return r
 }
 func (r *CustomerOrderRequest) WithOrderNumberGreaterThan(value string) *CustomerOrderRequest {
-	r.Query.AndFilter(core.ExprGt("order_number", core.ValText(value)))
+	r.Query.AndFilter(core.ExprGt(teaqlOrderNumberStorageKey, core.ValText(value)))
 	return r
 }
 func (r *CustomerOrderRequest) WithOrderNumberGreaterThanOrEqualTo(value string) *CustomerOrderRequest {
-	r.Query.AndFilter(core.ExprGte("order_number", core.ValText(value)))
+	r.Query.AndFilter(core.ExprGte(teaqlOrderNumberStorageKey, core.ValText(value)))
 	return r
 }
 func (r *CustomerOrderRequest) WithOrderNumberLessThan(value string) *CustomerOrderRequest {
-	r.Query.AndFilter(core.ExprLt("order_number", core.ValText(value)))
+	r.Query.AndFilter(core.ExprLt(teaqlOrderNumberStorageKey, core.ValText(value)))
 	return r
 }
 func (r *CustomerOrderRequest) WithOrderNumberLessThanOrEqualTo(value string) *CustomerOrderRequest {
-	r.Query.AndFilter(core.ExprLte("order_number", core.ValText(value)))
+	r.Query.AndFilter(core.ExprLte(teaqlOrderNumberStorageKey, core.ValText(value)))
 	return r
 }
 func (r *CustomerOrderRequest) WithOrderNumberBetween(lower string, upper string) *CustomerOrderRequest {
@@ -426,64 +426,64 @@ func (r *CustomerOrderRequest) WithOrderNumberBetween(lower string, upper string
 	from := core.ValText(value)
 	value = upper
 	to := core.ValText(value)
-	r.Query.AndFilter(core.ExprBetweenNode("order_number", from, to))
+	r.Query.AndFilter(core.ExprBetweenNode(teaqlOrderNumberStorageKey, from, to))
 	return r
 }
 func (r *CustomerOrderRequest) WithOrderNumberIsKnown() *CustomerOrderRequest {
-	r.Query.AndFilter(core.ExprIsNotNullNode("order_number"))
+	r.Query.AndFilter(core.ExprIsNotNullNode(teaqlOrderNumberStorageKey))
 	return r
 }
 func (r *CustomerOrderRequest) WithOrderNumberIsUnknown() *CustomerOrderRequest {
-	r.Query.AndFilter(core.ExprIsNullNode("order_number"))
+	r.Query.AndFilter(core.ExprIsNullNode(teaqlOrderNumberStorageKey))
 	return r
 }
 func (r *CustomerOrderRequest) WithOrderNumberContaining(term string) *CustomerOrderRequest {
-	r.Query.AndFilter(core.ExprContain("order_number", term))
+	r.Query.AndFilter(core.ExprContain(teaqlOrderNumberStorageKey, term))
 	return r
 }
 func (r *CustomerOrderRequest) WithOrderNumberNotContaining(term string) *CustomerOrderRequest {
-	r.Query.AndFilter(core.ExprNotContain("order_number", term))
+	r.Query.AndFilter(core.ExprNotContain(teaqlOrderNumberStorageKey, term))
 	return r
 }
 func (r *CustomerOrderRequest) WithOrderNumberStartingWith(term string) *CustomerOrderRequest {
-	r.Query.AndFilter(core.ExprBeginWith("order_number", term))
+	r.Query.AndFilter(core.ExprBeginWith(teaqlOrderNumberStorageKey, term))
 	return r
 }
 func (r *CustomerOrderRequest) WithOrderNumberNotStartingWith(term string) *CustomerOrderRequest {
-	r.Query.AndFilter(core.ExprNotBeginWith("order_number", term))
+	r.Query.AndFilter(core.ExprNotBeginWith(teaqlOrderNumberStorageKey, term))
 	return r
 }
 func (r *CustomerOrderRequest) WithOrderNumberEndingWith(term string) *CustomerOrderRequest {
-	r.Query.AndFilter(core.ExprEndWith("order_number", term))
+	r.Query.AndFilter(core.ExprEndWith(teaqlOrderNumberStorageKey, term))
 	return r
 }
 func (r *CustomerOrderRequest) WithOrderNumberNotEndingWith(term string) *CustomerOrderRequest {
-	r.Query.AndFilter(core.ExprNotEndWith("order_number", term))
+	r.Query.AndFilter(core.ExprNotEndWith(teaqlOrderNumberStorageKey, term))
 	return r
 }
 func (r *CustomerOrderRequest) WithOrderNumberSoundingLike(term string) *CustomerOrderRequest {
-	r.Query.AndFilter(core.ExprSoundLike("order_number", core.ValText(term)))
+	r.Query.AndFilter(core.ExprSoundLike(teaqlOrderNumberStorageKey, core.ValText(term)))
 	return r
 }
 func (r *CustomerOrderRequest) OrderByOrderNumberAsc() *CustomerOrderRequest {
-	r.Query.OrderAsc("order_number")
+	r.Query.OrderAsc(teaqlOrderNumberStorageKey)
 	return r
 }
 func (r *CustomerOrderRequest) OrderByOrderNumberDesc() *CustomerOrderRequest {
-	r.Query.OrderDesc("order_number")
+	r.Query.OrderDesc(teaqlOrderNumberStorageKey)
 	return r
 }
 func (r *CustomerOrderRequest) SelectDescription() *CustomerOrderRequest {
-	r.Query.Project("description")
+	r.Query.Project(teaqlDescriptionStorageKey)
 	return r
 }
 
 func (r *CustomerOrderRequest) WithDescriptionIs(value string) *CustomerOrderRequest {
-	r.Query.AndFilter(core.ExprEq("description", core.ValText(value)))
+	r.Query.AndFilter(core.ExprEq(teaqlDescriptionStorageKey, core.ValText(value)))
 	return r
 }
 func (r *CustomerOrderRequest) WithDescriptionIsNot(value string) *CustomerOrderRequest {
-	r.Query.AndFilter(core.ExprNe("description", core.ValText(value)))
+	r.Query.AndFilter(core.ExprNe(teaqlDescriptionStorageKey, core.ValText(value)))
 	return r
 }
 func (r *CustomerOrderRequest) WithDescriptionIn(values []string) *CustomerOrderRequest {
@@ -491,7 +491,7 @@ func (r *CustomerOrderRequest) WithDescriptionIn(values []string) *CustomerOrder
 	for _, value := range values {
 		converted = append(converted, core.ValText(value))
 	}
-	r.Query.AndFilter(core.ExprInList("description", converted))
+	r.Query.AndFilter(core.ExprInList(teaqlDescriptionStorageKey, converted))
 	return r
 }
 func (r *CustomerOrderRequest) WithDescriptionNotIn(values []string) *CustomerOrderRequest {
@@ -499,23 +499,23 @@ func (r *CustomerOrderRequest) WithDescriptionNotIn(values []string) *CustomerOr
 	for _, value := range values {
 		converted = append(converted, core.ValText(value))
 	}
-	r.Query.AndFilter(core.ExprNotInList("description", converted))
+	r.Query.AndFilter(core.ExprNotInList(teaqlDescriptionStorageKey, converted))
 	return r
 }
 func (r *CustomerOrderRequest) WithDescriptionGreaterThan(value string) *CustomerOrderRequest {
-	r.Query.AndFilter(core.ExprGt("description", core.ValText(value)))
+	r.Query.AndFilter(core.ExprGt(teaqlDescriptionStorageKey, core.ValText(value)))
 	return r
 }
 func (r *CustomerOrderRequest) WithDescriptionGreaterThanOrEqualTo(value string) *CustomerOrderRequest {
-	r.Query.AndFilter(core.ExprGte("description", core.ValText(value)))
+	r.Query.AndFilter(core.ExprGte(teaqlDescriptionStorageKey, core.ValText(value)))
 	return r
 }
 func (r *CustomerOrderRequest) WithDescriptionLessThan(value string) *CustomerOrderRequest {
-	r.Query.AndFilter(core.ExprLt("description", core.ValText(value)))
+	r.Query.AndFilter(core.ExprLt(teaqlDescriptionStorageKey, core.ValText(value)))
 	return r
 }
 func (r *CustomerOrderRequest) WithDescriptionLessThanOrEqualTo(value string) *CustomerOrderRequest {
-	r.Query.AndFilter(core.ExprLte("description", core.ValText(value)))
+	r.Query.AndFilter(core.ExprLte(teaqlDescriptionStorageKey, core.ValText(value)))
 	return r
 }
 func (r *CustomerOrderRequest) WithDescriptionBetween(lower string, upper string) *CustomerOrderRequest {
@@ -523,64 +523,64 @@ func (r *CustomerOrderRequest) WithDescriptionBetween(lower string, upper string
 	from := core.ValText(value)
 	value = upper
 	to := core.ValText(value)
-	r.Query.AndFilter(core.ExprBetweenNode("description", from, to))
+	r.Query.AndFilter(core.ExprBetweenNode(teaqlDescriptionStorageKey, from, to))
 	return r
 }
 func (r *CustomerOrderRequest) WithDescriptionIsKnown() *CustomerOrderRequest {
-	r.Query.AndFilter(core.ExprIsNotNullNode("description"))
+	r.Query.AndFilter(core.ExprIsNotNullNode(teaqlDescriptionStorageKey))
 	return r
 }
 func (r *CustomerOrderRequest) WithDescriptionIsUnknown() *CustomerOrderRequest {
-	r.Query.AndFilter(core.ExprIsNullNode("description"))
+	r.Query.AndFilter(core.ExprIsNullNode(teaqlDescriptionStorageKey))
 	return r
 }
 func (r *CustomerOrderRequest) WithDescriptionContaining(term string) *CustomerOrderRequest {
-	r.Query.AndFilter(core.ExprContain("description", term))
+	r.Query.AndFilter(core.ExprContain(teaqlDescriptionStorageKey, term))
 	return r
 }
 func (r *CustomerOrderRequest) WithDescriptionNotContaining(term string) *CustomerOrderRequest {
-	r.Query.AndFilter(core.ExprNotContain("description", term))
+	r.Query.AndFilter(core.ExprNotContain(teaqlDescriptionStorageKey, term))
 	return r
 }
 func (r *CustomerOrderRequest) WithDescriptionStartingWith(term string) *CustomerOrderRequest {
-	r.Query.AndFilter(core.ExprBeginWith("description", term))
+	r.Query.AndFilter(core.ExprBeginWith(teaqlDescriptionStorageKey, term))
 	return r
 }
 func (r *CustomerOrderRequest) WithDescriptionNotStartingWith(term string) *CustomerOrderRequest {
-	r.Query.AndFilter(core.ExprNotBeginWith("description", term))
+	r.Query.AndFilter(core.ExprNotBeginWith(teaqlDescriptionStorageKey, term))
 	return r
 }
 func (r *CustomerOrderRequest) WithDescriptionEndingWith(term string) *CustomerOrderRequest {
-	r.Query.AndFilter(core.ExprEndWith("description", term))
+	r.Query.AndFilter(core.ExprEndWith(teaqlDescriptionStorageKey, term))
 	return r
 }
 func (r *CustomerOrderRequest) WithDescriptionNotEndingWith(term string) *CustomerOrderRequest {
-	r.Query.AndFilter(core.ExprNotEndWith("description", term))
+	r.Query.AndFilter(core.ExprNotEndWith(teaqlDescriptionStorageKey, term))
 	return r
 }
 func (r *CustomerOrderRequest) WithDescriptionSoundingLike(term string) *CustomerOrderRequest {
-	r.Query.AndFilter(core.ExprSoundLike("description", core.ValText(term)))
+	r.Query.AndFilter(core.ExprSoundLike(teaqlDescriptionStorageKey, core.ValText(term)))
 	return r
 }
 func (r *CustomerOrderRequest) OrderByDescriptionAsc() *CustomerOrderRequest {
-	r.Query.OrderAsc("description")
+	r.Query.OrderAsc(teaqlDescriptionStorageKey)
 	return r
 }
 func (r *CustomerOrderRequest) OrderByDescriptionDesc() *CustomerOrderRequest {
-	r.Query.OrderDesc("description")
+	r.Query.OrderDesc(teaqlDescriptionStorageKey)
 	return r
 }
 func (r *CustomerOrderRequest) SelectVersion() *CustomerOrderRequest {
-	r.Query.Project("version")
+	r.Query.Project(teaqlVersionStorageKey)
 	return r
 }
 
 func (r *CustomerOrderRequest) WithVersionIs(value int64) *CustomerOrderRequest {
-	r.Query.AndFilter(core.ExprEq("version", core.ValI64(value)))
+	r.Query.AndFilter(core.ExprEq(teaqlVersionStorageKey, core.ValI64(value)))
 	return r
 }
 func (r *CustomerOrderRequest) WithVersionIsNot(value int64) *CustomerOrderRequest {
-	r.Query.AndFilter(core.ExprNe("version", core.ValI64(value)))
+	r.Query.AndFilter(core.ExprNe(teaqlVersionStorageKey, core.ValI64(value)))
 	return r
 }
 func (r *CustomerOrderRequest) WithVersionIn(values []int64) *CustomerOrderRequest {
@@ -588,7 +588,7 @@ func (r *CustomerOrderRequest) WithVersionIn(values []int64) *CustomerOrderReque
 	for _, value := range values {
 		converted = append(converted, core.ValI64(value))
 	}
-	r.Query.AndFilter(core.ExprInList("version", converted))
+	r.Query.AndFilter(core.ExprInList(teaqlVersionStorageKey, converted))
 	return r
 }
 func (r *CustomerOrderRequest) WithVersionNotIn(values []int64) *CustomerOrderRequest {
@@ -596,23 +596,23 @@ func (r *CustomerOrderRequest) WithVersionNotIn(values []int64) *CustomerOrderRe
 	for _, value := range values {
 		converted = append(converted, core.ValI64(value))
 	}
-	r.Query.AndFilter(core.ExprNotInList("version", converted))
+	r.Query.AndFilter(core.ExprNotInList(teaqlVersionStorageKey, converted))
 	return r
 }
 func (r *CustomerOrderRequest) WithVersionGreaterThan(value int64) *CustomerOrderRequest {
-	r.Query.AndFilter(core.ExprGt("version", core.ValI64(value)))
+	r.Query.AndFilter(core.ExprGt(teaqlVersionStorageKey, core.ValI64(value)))
 	return r
 }
 func (r *CustomerOrderRequest) WithVersionGreaterThanOrEqualTo(value int64) *CustomerOrderRequest {
-	r.Query.AndFilter(core.ExprGte("version", core.ValI64(value)))
+	r.Query.AndFilter(core.ExprGte(teaqlVersionStorageKey, core.ValI64(value)))
 	return r
 }
 func (r *CustomerOrderRequest) WithVersionLessThan(value int64) *CustomerOrderRequest {
-	r.Query.AndFilter(core.ExprLt("version", core.ValI64(value)))
+	r.Query.AndFilter(core.ExprLt(teaqlVersionStorageKey, core.ValI64(value)))
 	return r
 }
 func (r *CustomerOrderRequest) WithVersionLessThanOrEqualTo(value int64) *CustomerOrderRequest {
-	r.Query.AndFilter(core.ExprLte("version", core.ValI64(value)))
+	r.Query.AndFilter(core.ExprLte(teaqlVersionStorageKey, core.ValI64(value)))
 	return r
 }
 func (r *CustomerOrderRequest) WithVersionBetween(lower int64, upper int64) *CustomerOrderRequest {
@@ -620,23 +620,23 @@ func (r *CustomerOrderRequest) WithVersionBetween(lower int64, upper int64) *Cus
 	from := core.ValI64(value)
 	value = upper
 	to := core.ValI64(value)
-	r.Query.AndFilter(core.ExprBetweenNode("version", from, to))
+	r.Query.AndFilter(core.ExprBetweenNode(teaqlVersionStorageKey, from, to))
 	return r
 }
 func (r *CustomerOrderRequest) WithVersionIsKnown() *CustomerOrderRequest {
-	r.Query.AndFilter(core.ExprIsNotNullNode("version"))
+	r.Query.AndFilter(core.ExprIsNotNullNode(teaqlVersionStorageKey))
 	return r
 }
 func (r *CustomerOrderRequest) WithVersionIsUnknown() *CustomerOrderRequest {
-	r.Query.AndFilter(core.ExprIsNullNode("version"))
+	r.Query.AndFilter(core.ExprIsNullNode(teaqlVersionStorageKey))
 	return r
 }
 func (r *CustomerOrderRequest) OrderByVersionAsc() *CustomerOrderRequest {
-	r.Query.OrderAsc("version")
+	r.Query.OrderAsc(teaqlVersionStorageKey)
 	return r
 }
 func (r *CustomerOrderRequest) OrderByVersionDesc() *CustomerOrderRequest {
-	r.Query.OrderDesc("version")
+	r.Query.OrderDesc(teaqlVersionStorageKey)
 	return r
 }
 
@@ -644,7 +644,7 @@ func (r *CustomerOrderRequest) SelectPlatformWith(child interface {
 	GetQuery() *core.SelectQuery
 	NewRelationEntity() core.Entity
 }) *CustomerOrderRequest {
-	runtime.EnsureRelationProjection(r.Query, "platform_id")
+	runtime.EnsureRelationProjection(r.Query, teaqlPlatformStorageKey)
 	r.Query.RelationQuerySelection("platformEntity", core.QuerySelectionFor(child))
 	r.Query.Relations[len(r.Query.Relations)-1].Operation = &core.QueryOperation{Kind: "relation", Method: "SelectPlatformWith", Relation: "platformEntity"}
 	r.relationFactories["platformEntity"] = func(record core.Record) (core.Entity, error) {
@@ -662,7 +662,7 @@ func (r *CustomerOrderRequest) WithPlatformMatching(child interface {
 	GetQuery() *core.SelectQuery
 	GetEntityDescriptor() *core.EntityDescriptor
 }) *CustomerOrderRequest {
-	r.Query.AndFilter(core.ExprInSubQuery("platform_id", child.GetEntityDescriptor(), child.GetQuery(), "id"))
+	r.Query.AndFilter(core.ExprInSubQuery(teaqlPlatformStorageKey, child.GetEntityDescriptor(), child.GetQuery(), "id"))
 	return r
 }
 
@@ -670,7 +670,7 @@ func (r *CustomerOrderRequest) WithoutPlatformMatching(child interface {
 	GetQuery() *core.SelectQuery
 	GetEntityDescriptor() *core.EntityDescriptor
 }) *CustomerOrderRequest {
-	r.Query.AndFilter(core.ExprNotInSubQuery("platform_id", child.GetEntityDescriptor(), child.GetQuery(), "id"))
+	r.Query.AndFilter(core.ExprNotInSubQuery(teaqlPlatformStorageKey, child.GetEntityDescriptor(), child.GetQuery(), "id"))
 	return r
 }
 
@@ -947,52 +947,52 @@ func (r *CustomerOrderRequest) CountAs(alias string) *CustomerOrderRequest {
 
 
 func (r *CustomerOrderRequest) GroupById() *CustomerOrderRequest {
-	r.Query.WithGroupBy("id")
+	r.Query.WithGroupBy(teaqlIdStorageKey)
 	return r
 }
 
 func (r *CustomerOrderRequest) GroupByIdAs(alias string) *CustomerOrderRequest {
-	r.Query.WithGroupBy("id")
-	r.Query.ProjectExpr(alias, core.ExprColumnNode("id"))
+	r.Query.WithGroupBy(teaqlIdStorageKey)
+	r.Query.ProjectExpr(alias, core.ExprColumnNode(teaqlIdStorageKey))
 	return r
 }
 func (r *CustomerOrderRequest) GroupByPlatform() *CustomerOrderRequest {
-	r.Query.WithGroupBy("platform_id")
+	r.Query.WithGroupBy(teaqlPlatformStorageKey)
 	return r
 }
 
 func (r *CustomerOrderRequest) GroupByPlatformAs(alias string) *CustomerOrderRequest {
-	r.Query.WithGroupBy("platform_id")
-	r.Query.ProjectExpr(alias, core.ExprColumnNode("platform_id"))
+	r.Query.WithGroupBy(teaqlPlatformStorageKey)
+	r.Query.ProjectExpr(alias, core.ExprColumnNode(teaqlPlatformStorageKey))
 	return r
 }
 func (r *CustomerOrderRequest) GroupByOrderNumber() *CustomerOrderRequest {
-	r.Query.WithGroupBy("order_number")
+	r.Query.WithGroupBy(teaqlOrderNumberStorageKey)
 	return r
 }
 
 func (r *CustomerOrderRequest) GroupByOrderNumberAs(alias string) *CustomerOrderRequest {
-	r.Query.WithGroupBy("order_number")
-	r.Query.ProjectExpr(alias, core.ExprColumnNode("order_number"))
+	r.Query.WithGroupBy(teaqlOrderNumberStorageKey)
+	r.Query.ProjectExpr(alias, core.ExprColumnNode(teaqlOrderNumberStorageKey))
 	return r
 }
 func (r *CustomerOrderRequest) GroupByDescription() *CustomerOrderRequest {
-	r.Query.WithGroupBy("description")
+	r.Query.WithGroupBy(teaqlDescriptionStorageKey)
 	return r
 }
 
 func (r *CustomerOrderRequest) GroupByDescriptionAs(alias string) *CustomerOrderRequest {
-	r.Query.WithGroupBy("description")
-	r.Query.ProjectExpr(alias, core.ExprColumnNode("description"))
+	r.Query.WithGroupBy(teaqlDescriptionStorageKey)
+	r.Query.ProjectExpr(alias, core.ExprColumnNode(teaqlDescriptionStorageKey))
 	return r
 }
 func (r *CustomerOrderRequest) GroupByVersion() *CustomerOrderRequest {
-	r.Query.WithGroupBy("version")
+	r.Query.WithGroupBy(teaqlVersionStorageKey)
 	return r
 }
 
 func (r *CustomerOrderRequest) GroupByVersionAs(alias string) *CustomerOrderRequest {
-	r.Query.WithGroupBy("version")
-	r.Query.ProjectExpr(alias, core.ExprColumnNode("version"))
+	r.Query.WithGroupBy(teaqlVersionStorageKey)
+	r.Query.ProjectExpr(alias, core.ExprColumnNode(teaqlVersionStorageKey))
 	return r
 }

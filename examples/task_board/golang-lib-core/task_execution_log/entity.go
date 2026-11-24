@@ -23,6 +23,19 @@ var (
 	_ = errors.As
 )
 
+const (
+    teaqlIdStorageKey = "id"
+    teaqlIdModelKey = "id"
+    teaqlTaskStorageKey = "task_id"
+    teaqlTaskModelKey = "task"
+    teaqlActionStorageKey = "action"
+    teaqlActionModelKey = "action"
+    teaqlDetailStorageKey = "detail"
+    teaqlDetailModelKey = "detail"
+    teaqlVersionStorageKey = "version"
+    teaqlVersionModelKey = "version"
+)
+
 
 type TaskExecutionLog struct {
 	base        *core.BaseEntityData
@@ -193,11 +206,11 @@ func (e *TaskExecutionLog) teaqlFromRecord(record core.Record, captureLoaded boo
 }
 
 func (e *TaskExecutionLog) teaqlScalarSnapshot(record core.Record) core.LoadedScalarSnapshot {
-	return core.NewLoadedScalarSnapshot(record, "id", "task_id", "action", "detail", "version")
+	return core.NewLoadedScalarSnapshot(record, teaqlIdStorageKey, teaqlTaskStorageKey, teaqlActionStorageKey, teaqlDetailStorageKey, teaqlVersionStorageKey)
 }
 
 func (e *TaskExecutionLog) teaqlLoadedScalarSnapshot(record core.Record) core.LoadedScalarSnapshot {
-	return core.NewOwnedLoadedScalarSnapshot(e.EntityKey(), e.base.Version, record, "id", "task_id", "action", "detail", "version")
+	return core.NewOwnedLoadedScalarSnapshot(e.EntityKey(), e.base.Version, record, teaqlIdStorageKey, teaqlTaskStorageKey, teaqlActionStorageKey, teaqlDetailStorageKey, teaqlVersionStorageKey)
 }
 
 func (e *TaskExecutionLog) teaqlAcceptPersisted(context *runtime.UserContext, record core.Record) error {
@@ -302,11 +315,11 @@ func (e *TaskExecutionLog) JSONQueryProperties() core.Record { return e.base.Que
 func (e *TaskExecutionLog) LoadedJSONFields() core.Record {
 	all := e.IntoRecord()
 	selected := make(core.Record)
-	if e.IsLoaded("id") { if value, present := all["id"]; present { selected["id"] = value } }
-	if e.IsLoaded("task_id") { if value, present := all["task_id"]; present { selected["task_id"] = value } }
-	if e.IsLoaded("action") { if value, present := all["action"]; present { selected["action"] = value } }
-	if e.IsLoaded("detail") { if value, present := all["detail"]; present { selected["detail"] = value } }
-	if e.IsLoaded("version") { if value, present := all["version"]; present { selected["version"] = value } }
+	if e.IsLoaded(teaqlIdStorageKey) { if value, present := all[teaqlIdStorageKey]; present { selected[teaqlIdStorageKey] = value } }
+	if e.IsLoaded(teaqlTaskStorageKey) { if value, present := all[teaqlTaskStorageKey]; present { selected[teaqlTaskStorageKey] = value } }
+	if e.IsLoaded(teaqlActionStorageKey) { if value, present := all[teaqlActionStorageKey]; present { selected[teaqlActionStorageKey] = value } }
+	if e.IsLoaded(teaqlDetailStorageKey) { if value, present := all[teaqlDetailStorageKey]; present { selected[teaqlDetailStorageKey] = value } }
+	if e.IsLoaded(teaqlVersionStorageKey) { if value, present := all[teaqlVersionStorageKey]; present { selected[teaqlVersionStorageKey] = value } }
 	if e.isRelationLoaded("taskEntity") { if target, present := e.relations["taskEntity"]; present && target != nil { selected["taskEntity"] = core.Value{V: target} } }
 	return selected
 }
@@ -409,24 +422,24 @@ func (e *TaskExecutionLog) TeaqlPreflightWithinGraph(context *runtime.UserContex
 		operation := core.MutationUpdate
 		if e.isNew { operation = core.MutationInsert }
 		if operation == core.MutationUpdate {
-			if !e.IsLoaded("id") {
-				result := runtime.CheckResult{RuleID: "invalid_type", EntityType: "TaskExecutionLog", CanonicalLocation: runtime.Location().Property("id"), Message: "Mutation requires a fully loaded entity"}
+			if !e.IsLoaded(teaqlIdStorageKey) {
+				result := runtime.CheckResult{RuleID: "invalid_type", EntityType: "TaskExecutionLog", CanonicalLocation: runtime.Location().Property(teaqlIdModelKey), Message: "Mutation requires a fully loaded entity"}
 				return &runtime.RuntimeError{Type: "Check", CheckResults: []runtime.CheckResult{result}}
 			}
-			if !e.IsLoaded("task_id") {
-				result := runtime.CheckResult{RuleID: "invalid_type", EntityType: "TaskExecutionLog", CanonicalLocation: runtime.Location().Property("task"), Message: "Mutation requires a fully loaded entity"}
+			if !e.IsLoaded(teaqlTaskStorageKey) {
+				result := runtime.CheckResult{RuleID: "invalid_type", EntityType: "TaskExecutionLog", CanonicalLocation: runtime.Location().Property(teaqlTaskModelKey), Message: "Mutation requires a fully loaded entity"}
 				return &runtime.RuntimeError{Type: "Check", CheckResults: []runtime.CheckResult{result}}
 			}
-			if !e.IsLoaded("action") {
-				result := runtime.CheckResult{RuleID: "invalid_type", EntityType: "TaskExecutionLog", CanonicalLocation: runtime.Location().Property("action"), Message: "Mutation requires a fully loaded entity"}
+			if !e.IsLoaded(teaqlActionStorageKey) {
+				result := runtime.CheckResult{RuleID: "invalid_type", EntityType: "TaskExecutionLog", CanonicalLocation: runtime.Location().Property(teaqlActionModelKey), Message: "Mutation requires a fully loaded entity"}
 				return &runtime.RuntimeError{Type: "Check", CheckResults: []runtime.CheckResult{result}}
 			}
-			if !e.IsLoaded("detail") {
-				result := runtime.CheckResult{RuleID: "invalid_type", EntityType: "TaskExecutionLog", CanonicalLocation: runtime.Location().Property("detail"), Message: "Mutation requires a fully loaded entity"}
+			if !e.IsLoaded(teaqlDetailStorageKey) {
+				result := runtime.CheckResult{RuleID: "invalid_type", EntityType: "TaskExecutionLog", CanonicalLocation: runtime.Location().Property(teaqlDetailModelKey), Message: "Mutation requires a fully loaded entity"}
 				return &runtime.RuntimeError{Type: "Check", CheckResults: []runtime.CheckResult{result}}
 			}
-			if !e.IsLoaded("version") {
-				result := runtime.CheckResult{RuleID: "invalid_type", EntityType: "TaskExecutionLog", CanonicalLocation: runtime.Location().Property("version"), Message: "Mutation requires a fully loaded entity"}
+			if !e.IsLoaded(teaqlVersionStorageKey) {
+				result := runtime.CheckResult{RuleID: "invalid_type", EntityType: "TaskExecutionLog", CanonicalLocation: runtime.Location().Property(teaqlVersionModelKey), Message: "Mutation requires a fully loaded entity"}
 				return &runtime.RuntimeError{Type: "Check", CheckResults: []runtime.CheckResult{result}}
 			}
 		}
@@ -679,35 +692,35 @@ func (e *TaskExecutionLog) UpdateId(value uint64) *TaskExecutionLog {
 	oldKey := e.EntityKey()
 	e.base.Id = value
 	e.root.Rekey(oldKey, e.EntityKey())
-	e.loadState["id"] = true
+	e.loadState[teaqlIdStorageKey] = true
 	return e
 }
 
 func (e *TaskExecutionLog) Action() string {
-	val, _ := e.base.GetDynamic("action")
+	val, _ := e.base.GetDynamic(teaqlActionStorageKey)
 	res, _ := val.TryText()
 	return res}
 
 func (e *TaskExecutionLog) UpdateAction(value string) *TaskExecutionLog {
 	e.teaqlEnsureState()
-	e.base.PutDynamic("action", core.ValText(value))
-	e.dirtyFields["action"] = true
-	e.root.Set(e.EntityKey(), "action", core.ValText(value))
-	e.loadState["action"] = true
+	e.base.PutDynamic(teaqlActionStorageKey, core.ValText(value))
+	e.dirtyFields[teaqlActionStorageKey] = true
+	e.root.Set(e.EntityKey(), teaqlActionModelKey, core.ValText(value))
+	e.loadState[teaqlActionStorageKey] = true
 	return e
 }
 
 func (e *TaskExecutionLog) Detail() string {
-	val, _ := e.base.GetDynamic("detail")
+	val, _ := e.base.GetDynamic(teaqlDetailStorageKey)
 	res, _ := val.TryText()
 	return res}
 
 func (e *TaskExecutionLog) UpdateDetail(value string) *TaskExecutionLog {
 	e.teaqlEnsureState()
-	e.base.PutDynamic("detail", core.ValText(value))
-	e.dirtyFields["detail"] = true
-	e.root.Set(e.EntityKey(), "detail", core.ValText(value))
-	e.loadState["detail"] = true
+	e.base.PutDynamic(teaqlDetailStorageKey, core.ValText(value))
+	e.dirtyFields[teaqlDetailStorageKey] = true
+	e.root.Set(e.EntityKey(), teaqlDetailModelKey, core.ValText(value))
+	e.loadState[teaqlDetailStorageKey] = true
 	return e
 }
 
@@ -718,26 +731,26 @@ func (e *TaskExecutionLog) Version() int64 {
 func (e *TaskExecutionLog) UpdateVersion(value int64) *TaskExecutionLog {
 	e.teaqlEnsureState()
 	e.base.Version = value
-	e.loadState["version"] = true
+	e.loadState[teaqlVersionStorageKey] = true
 	return e
 }
 func (e *TaskExecutionLog) TaskId() uint64 {
-	val, _ := e.base.GetDynamic("task_id")
+	val, _ := e.base.GetDynamic(teaqlTaskStorageKey)
 	res, _ := val.TryU64()
 	return res
 }
 
 func (e *TaskExecutionLog) UpdateTaskId(value uint64) *TaskExecutionLog {
-	previous, present := e.base.GetDynamic("task_id")
-	e.base.PutDynamic("task_id", core.ValU64(value))
-	e.dirtyFields["task_id"] = true
-	current, _ := e.base.GetDynamic("task_id")
+	previous, present := e.base.GetDynamic(teaqlTaskStorageKey)
+	e.base.PutDynamic(teaqlTaskStorageKey, core.ValU64(value))
+	e.dirtyFields[teaqlTaskStorageKey] = true
+	current, _ := e.base.GetDynamic(teaqlTaskStorageKey)
 	if !present || !reflect.DeepEqual(previous, current) {
 		delete(e.relations, "taskEntity")
 		delete(e.loadedRelations, "taskEntity")
 	}
-	e.root.Set(e.EntityKey(), "task", core.ValU64(value))
-	e.loadState["task_id"] = true
+	e.root.Set(e.EntityKey(), teaqlTaskModelKey, core.ValU64(value))
+	e.loadState[teaqlTaskStorageKey] = true
 	return e
 }
 // DEBUG: constantObjectField is false

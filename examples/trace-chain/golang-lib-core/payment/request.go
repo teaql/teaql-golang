@@ -197,16 +197,16 @@ func (r *PaymentRequest) DeletedRowsOnly() *PaymentRequest {
 }
 
 func (r *PaymentRequest) SelectId() *PaymentRequest {
-	r.Query.Project("id")
+	r.Query.Project(teaqlIdStorageKey)
 	return r
 }
 
 func (r *PaymentRequest) WithIdIs(value uint64) *PaymentRequest {
-	r.Query.AndFilter(core.ExprEq("id", core.ValU64(value)))
+	r.Query.AndFilter(core.ExprEq(teaqlIdStorageKey, core.ValU64(value)))
 	return r
 }
 func (r *PaymentRequest) WithIdIsNot(value uint64) *PaymentRequest {
-	r.Query.AndFilter(core.ExprNe("id", core.ValU64(value)))
+	r.Query.AndFilter(core.ExprNe(teaqlIdStorageKey, core.ValU64(value)))
 	return r
 }
 func (r *PaymentRequest) WithIdIn(values []uint64) *PaymentRequest {
@@ -214,7 +214,7 @@ func (r *PaymentRequest) WithIdIn(values []uint64) *PaymentRequest {
 	for _, value := range values {
 		converted = append(converted, core.ValU64(value))
 	}
-	r.Query.AndFilter(core.ExprInList("id", converted))
+	r.Query.AndFilter(core.ExprInList(teaqlIdStorageKey, converted))
 	return r
 }
 func (r *PaymentRequest) WithIdNotIn(values []uint64) *PaymentRequest {
@@ -222,23 +222,23 @@ func (r *PaymentRequest) WithIdNotIn(values []uint64) *PaymentRequest {
 	for _, value := range values {
 		converted = append(converted, core.ValU64(value))
 	}
-	r.Query.AndFilter(core.ExprNotInList("id", converted))
+	r.Query.AndFilter(core.ExprNotInList(teaqlIdStorageKey, converted))
 	return r
 }
 func (r *PaymentRequest) WithIdGreaterThan(value uint64) *PaymentRequest {
-	r.Query.AndFilter(core.ExprGt("id", core.ValU64(value)))
+	r.Query.AndFilter(core.ExprGt(teaqlIdStorageKey, core.ValU64(value)))
 	return r
 }
 func (r *PaymentRequest) WithIdGreaterThanOrEqualTo(value uint64) *PaymentRequest {
-	r.Query.AndFilter(core.ExprGte("id", core.ValU64(value)))
+	r.Query.AndFilter(core.ExprGte(teaqlIdStorageKey, core.ValU64(value)))
 	return r
 }
 func (r *PaymentRequest) WithIdLessThan(value uint64) *PaymentRequest {
-	r.Query.AndFilter(core.ExprLt("id", core.ValU64(value)))
+	r.Query.AndFilter(core.ExprLt(teaqlIdStorageKey, core.ValU64(value)))
 	return r
 }
 func (r *PaymentRequest) WithIdLessThanOrEqualTo(value uint64) *PaymentRequest {
-	r.Query.AndFilter(core.ExprLte("id", core.ValU64(value)))
+	r.Query.AndFilter(core.ExprLte(teaqlIdStorageKey, core.ValU64(value)))
 	return r
 }
 func (r *PaymentRequest) WithIdBetween(lower uint64, upper uint64) *PaymentRequest {
@@ -246,36 +246,36 @@ func (r *PaymentRequest) WithIdBetween(lower uint64, upper uint64) *PaymentReque
 	from := core.ValU64(value)
 	value = upper
 	to := core.ValU64(value)
-	r.Query.AndFilter(core.ExprBetweenNode("id", from, to))
+	r.Query.AndFilter(core.ExprBetweenNode(teaqlIdStorageKey, from, to))
 	return r
 }
 func (r *PaymentRequest) WithIdIsKnown() *PaymentRequest {
-	r.Query.AndFilter(core.ExprIsNotNullNode("id"))
+	r.Query.AndFilter(core.ExprIsNotNullNode(teaqlIdStorageKey))
 	return r
 }
 func (r *PaymentRequest) WithIdIsUnknown() *PaymentRequest {
-	r.Query.AndFilter(core.ExprIsNullNode("id"))
+	r.Query.AndFilter(core.ExprIsNullNode(teaqlIdStorageKey))
 	return r
 }
 func (r *PaymentRequest) OrderByIdAsc() *PaymentRequest {
-	r.Query.OrderAsc("id")
+	r.Query.OrderAsc(teaqlIdStorageKey)
 	return r
 }
 func (r *PaymentRequest) OrderByIdDesc() *PaymentRequest {
-	r.Query.OrderDesc("id")
+	r.Query.OrderDesc(teaqlIdStorageKey)
 	return r
 }
 func (r *PaymentRequest) SelectCustomerOrder() *PaymentRequest {
-	r.Query.Project("customer_order_id")
+	r.Query.Project(teaqlCustomerOrderStorageKey)
 	return r
 }
 
 func (r *PaymentRequest) WithCustomerOrderIs(value uint64) *PaymentRequest {
-	r.Query.AndFilter(core.ExprEq("customer_order_id", core.ValU64(value)))
+	r.Query.AndFilter(core.ExprEq(teaqlCustomerOrderStorageKey, core.ValU64(value)))
 	return r
 }
 func (r *PaymentRequest) WithCustomerOrderIsNot(value uint64) *PaymentRequest {
-	r.Query.AndFilter(core.ExprNe("customer_order_id", core.ValU64(value)))
+	r.Query.AndFilter(core.ExprNe(teaqlCustomerOrderStorageKey, core.ValU64(value)))
 	return r
 }
 func (r *PaymentRequest) WithCustomerOrderIn(values []uint64) *PaymentRequest {
@@ -283,7 +283,7 @@ func (r *PaymentRequest) WithCustomerOrderIn(values []uint64) *PaymentRequest {
 	for _, value := range values {
 		converted = append(converted, core.ValU64(value))
 	}
-	r.Query.AndFilter(core.ExprInList("customer_order_id", converted))
+	r.Query.AndFilter(core.ExprInList(teaqlCustomerOrderStorageKey, converted))
 	return r
 }
 func (r *PaymentRequest) WithCustomerOrderNotIn(values []uint64) *PaymentRequest {
@@ -291,23 +291,23 @@ func (r *PaymentRequest) WithCustomerOrderNotIn(values []uint64) *PaymentRequest
 	for _, value := range values {
 		converted = append(converted, core.ValU64(value))
 	}
-	r.Query.AndFilter(core.ExprNotInList("customer_order_id", converted))
+	r.Query.AndFilter(core.ExprNotInList(teaqlCustomerOrderStorageKey, converted))
 	return r
 }
 func (r *PaymentRequest) WithCustomerOrderGreaterThan(value uint64) *PaymentRequest {
-	r.Query.AndFilter(core.ExprGt("customer_order_id", core.ValU64(value)))
+	r.Query.AndFilter(core.ExprGt(teaqlCustomerOrderStorageKey, core.ValU64(value)))
 	return r
 }
 func (r *PaymentRequest) WithCustomerOrderGreaterThanOrEqualTo(value uint64) *PaymentRequest {
-	r.Query.AndFilter(core.ExprGte("customer_order_id", core.ValU64(value)))
+	r.Query.AndFilter(core.ExprGte(teaqlCustomerOrderStorageKey, core.ValU64(value)))
 	return r
 }
 func (r *PaymentRequest) WithCustomerOrderLessThan(value uint64) *PaymentRequest {
-	r.Query.AndFilter(core.ExprLt("customer_order_id", core.ValU64(value)))
+	r.Query.AndFilter(core.ExprLt(teaqlCustomerOrderStorageKey, core.ValU64(value)))
 	return r
 }
 func (r *PaymentRequest) WithCustomerOrderLessThanOrEqualTo(value uint64) *PaymentRequest {
-	r.Query.AndFilter(core.ExprLte("customer_order_id", core.ValU64(value)))
+	r.Query.AndFilter(core.ExprLte(teaqlCustomerOrderStorageKey, core.ValU64(value)))
 	return r
 }
 func (r *PaymentRequest) WithCustomerOrderBetween(lower uint64, upper uint64) *PaymentRequest {
@@ -315,15 +315,15 @@ func (r *PaymentRequest) WithCustomerOrderBetween(lower uint64, upper uint64) *P
 	from := core.ValU64(value)
 	value = upper
 	to := core.ValU64(value)
-	r.Query.AndFilter(core.ExprBetweenNode("customer_order_id", from, to))
+	r.Query.AndFilter(core.ExprBetweenNode(teaqlCustomerOrderStorageKey, from, to))
 	return r
 }
 func (r *PaymentRequest) WithCustomerOrderIsKnown() *PaymentRequest {
-	r.Query.AndFilter(core.ExprIsNotNullNode("customer_order_id"))
+	r.Query.AndFilter(core.ExprIsNotNullNode(teaqlCustomerOrderStorageKey))
 	return r
 }
 func (r *PaymentRequest) WithCustomerOrderIsUnknown() *PaymentRequest {
-	r.Query.AndFilter(core.ExprIsNullNode("customer_order_id"))
+	r.Query.AndFilter(core.ExprIsNullNode(teaqlCustomerOrderStorageKey))
 	return r
 }
 func (r *PaymentRequest) FacetByCustomerOrderAs(
@@ -333,30 +333,30 @@ func (r *PaymentRequest) FacetByCustomerOrderAs(
 ) *PaymentRequest {
 	includeAll := true
 	if len(includeAllFacets) > 0 { includeAll = includeAllFacets[0] }
-	facet := core.NewFacetRequest(name, "customer_order_id", core.QuerySelectionFor(nestedReq), includeAll)
+	facet := core.NewFacetRequest(name, teaqlCustomerOrderStorageKey, core.QuerySelectionFor(nestedReq), includeAll)
 	facet.Operation = &core.QueryOperation{Kind: "facet", Method: "FacetByCustomerOrderAs", Alias: &name, Relation: "customerOrder"}
 	r.queryOptions.Facets = append(r.queryOptions.Facets, facet)
 	return r
 }
 func (r *PaymentRequest) OrderByCustomerOrderAsc() *PaymentRequest {
-	r.Query.OrderAsc("customer_order_id")
+	r.Query.OrderAsc(teaqlCustomerOrderStorageKey)
 	return r
 }
 func (r *PaymentRequest) OrderByCustomerOrderDesc() *PaymentRequest {
-	r.Query.OrderDesc("customer_order_id")
+	r.Query.OrderDesc(teaqlCustomerOrderStorageKey)
 	return r
 }
 func (r *PaymentRequest) SelectReferenceCode() *PaymentRequest {
-	r.Query.Project("reference_code")
+	r.Query.Project(teaqlReferenceCodeStorageKey)
 	return r
 }
 
 func (r *PaymentRequest) WithReferenceCodeIs(value string) *PaymentRequest {
-	r.Query.AndFilter(core.ExprEq("reference_code", core.ValText(value)))
+	r.Query.AndFilter(core.ExprEq(teaqlReferenceCodeStorageKey, core.ValText(value)))
 	return r
 }
 func (r *PaymentRequest) WithReferenceCodeIsNot(value string) *PaymentRequest {
-	r.Query.AndFilter(core.ExprNe("reference_code", core.ValText(value)))
+	r.Query.AndFilter(core.ExprNe(teaqlReferenceCodeStorageKey, core.ValText(value)))
 	return r
 }
 func (r *PaymentRequest) WithReferenceCodeIn(values []string) *PaymentRequest {
@@ -364,7 +364,7 @@ func (r *PaymentRequest) WithReferenceCodeIn(values []string) *PaymentRequest {
 	for _, value := range values {
 		converted = append(converted, core.ValText(value))
 	}
-	r.Query.AndFilter(core.ExprInList("reference_code", converted))
+	r.Query.AndFilter(core.ExprInList(teaqlReferenceCodeStorageKey, converted))
 	return r
 }
 func (r *PaymentRequest) WithReferenceCodeNotIn(values []string) *PaymentRequest {
@@ -372,23 +372,23 @@ func (r *PaymentRequest) WithReferenceCodeNotIn(values []string) *PaymentRequest
 	for _, value := range values {
 		converted = append(converted, core.ValText(value))
 	}
-	r.Query.AndFilter(core.ExprNotInList("reference_code", converted))
+	r.Query.AndFilter(core.ExprNotInList(teaqlReferenceCodeStorageKey, converted))
 	return r
 }
 func (r *PaymentRequest) WithReferenceCodeGreaterThan(value string) *PaymentRequest {
-	r.Query.AndFilter(core.ExprGt("reference_code", core.ValText(value)))
+	r.Query.AndFilter(core.ExprGt(teaqlReferenceCodeStorageKey, core.ValText(value)))
 	return r
 }
 func (r *PaymentRequest) WithReferenceCodeGreaterThanOrEqualTo(value string) *PaymentRequest {
-	r.Query.AndFilter(core.ExprGte("reference_code", core.ValText(value)))
+	r.Query.AndFilter(core.ExprGte(teaqlReferenceCodeStorageKey, core.ValText(value)))
 	return r
 }
 func (r *PaymentRequest) WithReferenceCodeLessThan(value string) *PaymentRequest {
-	r.Query.AndFilter(core.ExprLt("reference_code", core.ValText(value)))
+	r.Query.AndFilter(core.ExprLt(teaqlReferenceCodeStorageKey, core.ValText(value)))
 	return r
 }
 func (r *PaymentRequest) WithReferenceCodeLessThanOrEqualTo(value string) *PaymentRequest {
-	r.Query.AndFilter(core.ExprLte("reference_code", core.ValText(value)))
+	r.Query.AndFilter(core.ExprLte(teaqlReferenceCodeStorageKey, core.ValText(value)))
 	return r
 }
 func (r *PaymentRequest) WithReferenceCodeBetween(lower string, upper string) *PaymentRequest {
@@ -396,64 +396,64 @@ func (r *PaymentRequest) WithReferenceCodeBetween(lower string, upper string) *P
 	from := core.ValText(value)
 	value = upper
 	to := core.ValText(value)
-	r.Query.AndFilter(core.ExprBetweenNode("reference_code", from, to))
+	r.Query.AndFilter(core.ExprBetweenNode(teaqlReferenceCodeStorageKey, from, to))
 	return r
 }
 func (r *PaymentRequest) WithReferenceCodeIsKnown() *PaymentRequest {
-	r.Query.AndFilter(core.ExprIsNotNullNode("reference_code"))
+	r.Query.AndFilter(core.ExprIsNotNullNode(teaqlReferenceCodeStorageKey))
 	return r
 }
 func (r *PaymentRequest) WithReferenceCodeIsUnknown() *PaymentRequest {
-	r.Query.AndFilter(core.ExprIsNullNode("reference_code"))
+	r.Query.AndFilter(core.ExprIsNullNode(teaqlReferenceCodeStorageKey))
 	return r
 }
 func (r *PaymentRequest) WithReferenceCodeContaining(term string) *PaymentRequest {
-	r.Query.AndFilter(core.ExprContain("reference_code", term))
+	r.Query.AndFilter(core.ExprContain(teaqlReferenceCodeStorageKey, term))
 	return r
 }
 func (r *PaymentRequest) WithReferenceCodeNotContaining(term string) *PaymentRequest {
-	r.Query.AndFilter(core.ExprNotContain("reference_code", term))
+	r.Query.AndFilter(core.ExprNotContain(teaqlReferenceCodeStorageKey, term))
 	return r
 }
 func (r *PaymentRequest) WithReferenceCodeStartingWith(term string) *PaymentRequest {
-	r.Query.AndFilter(core.ExprBeginWith("reference_code", term))
+	r.Query.AndFilter(core.ExprBeginWith(teaqlReferenceCodeStorageKey, term))
 	return r
 }
 func (r *PaymentRequest) WithReferenceCodeNotStartingWith(term string) *PaymentRequest {
-	r.Query.AndFilter(core.ExprNotBeginWith("reference_code", term))
+	r.Query.AndFilter(core.ExprNotBeginWith(teaqlReferenceCodeStorageKey, term))
 	return r
 }
 func (r *PaymentRequest) WithReferenceCodeEndingWith(term string) *PaymentRequest {
-	r.Query.AndFilter(core.ExprEndWith("reference_code", term))
+	r.Query.AndFilter(core.ExprEndWith(teaqlReferenceCodeStorageKey, term))
 	return r
 }
 func (r *PaymentRequest) WithReferenceCodeNotEndingWith(term string) *PaymentRequest {
-	r.Query.AndFilter(core.ExprNotEndWith("reference_code", term))
+	r.Query.AndFilter(core.ExprNotEndWith(teaqlReferenceCodeStorageKey, term))
 	return r
 }
 func (r *PaymentRequest) WithReferenceCodeSoundingLike(term string) *PaymentRequest {
-	r.Query.AndFilter(core.ExprSoundLike("reference_code", core.ValText(term)))
+	r.Query.AndFilter(core.ExprSoundLike(teaqlReferenceCodeStorageKey, core.ValText(term)))
 	return r
 }
 func (r *PaymentRequest) OrderByReferenceCodeAsc() *PaymentRequest {
-	r.Query.OrderAsc("reference_code")
+	r.Query.OrderAsc(teaqlReferenceCodeStorageKey)
 	return r
 }
 func (r *PaymentRequest) OrderByReferenceCodeDesc() *PaymentRequest {
-	r.Query.OrderDesc("reference_code")
+	r.Query.OrderDesc(teaqlReferenceCodeStorageKey)
 	return r
 }
 func (r *PaymentRequest) SelectVersion() *PaymentRequest {
-	r.Query.Project("version")
+	r.Query.Project(teaqlVersionStorageKey)
 	return r
 }
 
 func (r *PaymentRequest) WithVersionIs(value int64) *PaymentRequest {
-	r.Query.AndFilter(core.ExprEq("version", core.ValI64(value)))
+	r.Query.AndFilter(core.ExprEq(teaqlVersionStorageKey, core.ValI64(value)))
 	return r
 }
 func (r *PaymentRequest) WithVersionIsNot(value int64) *PaymentRequest {
-	r.Query.AndFilter(core.ExprNe("version", core.ValI64(value)))
+	r.Query.AndFilter(core.ExprNe(teaqlVersionStorageKey, core.ValI64(value)))
 	return r
 }
 func (r *PaymentRequest) WithVersionIn(values []int64) *PaymentRequest {
@@ -461,7 +461,7 @@ func (r *PaymentRequest) WithVersionIn(values []int64) *PaymentRequest {
 	for _, value := range values {
 		converted = append(converted, core.ValI64(value))
 	}
-	r.Query.AndFilter(core.ExprInList("version", converted))
+	r.Query.AndFilter(core.ExprInList(teaqlVersionStorageKey, converted))
 	return r
 }
 func (r *PaymentRequest) WithVersionNotIn(values []int64) *PaymentRequest {
@@ -469,23 +469,23 @@ func (r *PaymentRequest) WithVersionNotIn(values []int64) *PaymentRequest {
 	for _, value := range values {
 		converted = append(converted, core.ValI64(value))
 	}
-	r.Query.AndFilter(core.ExprNotInList("version", converted))
+	r.Query.AndFilter(core.ExprNotInList(teaqlVersionStorageKey, converted))
 	return r
 }
 func (r *PaymentRequest) WithVersionGreaterThan(value int64) *PaymentRequest {
-	r.Query.AndFilter(core.ExprGt("version", core.ValI64(value)))
+	r.Query.AndFilter(core.ExprGt(teaqlVersionStorageKey, core.ValI64(value)))
 	return r
 }
 func (r *PaymentRequest) WithVersionGreaterThanOrEqualTo(value int64) *PaymentRequest {
-	r.Query.AndFilter(core.ExprGte("version", core.ValI64(value)))
+	r.Query.AndFilter(core.ExprGte(teaqlVersionStorageKey, core.ValI64(value)))
 	return r
 }
 func (r *PaymentRequest) WithVersionLessThan(value int64) *PaymentRequest {
-	r.Query.AndFilter(core.ExprLt("version", core.ValI64(value)))
+	r.Query.AndFilter(core.ExprLt(teaqlVersionStorageKey, core.ValI64(value)))
 	return r
 }
 func (r *PaymentRequest) WithVersionLessThanOrEqualTo(value int64) *PaymentRequest {
-	r.Query.AndFilter(core.ExprLte("version", core.ValI64(value)))
+	r.Query.AndFilter(core.ExprLte(teaqlVersionStorageKey, core.ValI64(value)))
 	return r
 }
 func (r *PaymentRequest) WithVersionBetween(lower int64, upper int64) *PaymentRequest {
@@ -493,23 +493,23 @@ func (r *PaymentRequest) WithVersionBetween(lower int64, upper int64) *PaymentRe
 	from := core.ValI64(value)
 	value = upper
 	to := core.ValI64(value)
-	r.Query.AndFilter(core.ExprBetweenNode("version", from, to))
+	r.Query.AndFilter(core.ExprBetweenNode(teaqlVersionStorageKey, from, to))
 	return r
 }
 func (r *PaymentRequest) WithVersionIsKnown() *PaymentRequest {
-	r.Query.AndFilter(core.ExprIsNotNullNode("version"))
+	r.Query.AndFilter(core.ExprIsNotNullNode(teaqlVersionStorageKey))
 	return r
 }
 func (r *PaymentRequest) WithVersionIsUnknown() *PaymentRequest {
-	r.Query.AndFilter(core.ExprIsNullNode("version"))
+	r.Query.AndFilter(core.ExprIsNullNode(teaqlVersionStorageKey))
 	return r
 }
 func (r *PaymentRequest) OrderByVersionAsc() *PaymentRequest {
-	r.Query.OrderAsc("version")
+	r.Query.OrderAsc(teaqlVersionStorageKey)
 	return r
 }
 func (r *PaymentRequest) OrderByVersionDesc() *PaymentRequest {
-	r.Query.OrderDesc("version")
+	r.Query.OrderDesc(teaqlVersionStorageKey)
 	return r
 }
 
@@ -517,7 +517,7 @@ func (r *PaymentRequest) SelectCustomerOrderWith(child interface {
 	GetQuery() *core.SelectQuery
 	NewRelationEntity() core.Entity
 }) *PaymentRequest {
-	runtime.EnsureRelationProjection(r.Query, "customer_order_id")
+	runtime.EnsureRelationProjection(r.Query, teaqlCustomerOrderStorageKey)
 	r.Query.RelationQuerySelection("customerOrderEntity", core.QuerySelectionFor(child))
 	r.Query.Relations[len(r.Query.Relations)-1].Operation = &core.QueryOperation{Kind: "relation", Method: "SelectCustomerOrderWith", Relation: "customerOrderEntity"}
 	r.relationFactories["customerOrderEntity"] = func(record core.Record) (core.Entity, error) {
@@ -535,7 +535,7 @@ func (r *PaymentRequest) WithCustomerOrderMatching(child interface {
 	GetQuery() *core.SelectQuery
 	GetEntityDescriptor() *core.EntityDescriptor
 }) *PaymentRequest {
-	r.Query.AndFilter(core.ExprInSubQuery("customer_order_id", child.GetEntityDescriptor(), child.GetQuery(), "id"))
+	r.Query.AndFilter(core.ExprInSubQuery(teaqlCustomerOrderStorageKey, child.GetEntityDescriptor(), child.GetQuery(), "id"))
 	return r
 }
 
@@ -543,7 +543,7 @@ func (r *PaymentRequest) WithoutCustomerOrderMatching(child interface {
 	GetQuery() *core.SelectQuery
 	GetEntityDescriptor() *core.EntityDescriptor
 }) *PaymentRequest {
-	r.Query.AndFilter(core.ExprNotInSubQuery("customer_order_id", child.GetEntityDescriptor(), child.GetQuery(), "id"))
+	r.Query.AndFilter(core.ExprNotInSubQuery(teaqlCustomerOrderStorageKey, child.GetEntityDescriptor(), child.GetQuery(), "id"))
 	return r
 }
 
@@ -726,42 +726,42 @@ func (r *PaymentRequest) CountAs(alias string) *PaymentRequest {
 
 
 func (r *PaymentRequest) GroupById() *PaymentRequest {
-	r.Query.WithGroupBy("id")
+	r.Query.WithGroupBy(teaqlIdStorageKey)
 	return r
 }
 
 func (r *PaymentRequest) GroupByIdAs(alias string) *PaymentRequest {
-	r.Query.WithGroupBy("id")
-	r.Query.ProjectExpr(alias, core.ExprColumnNode("id"))
+	r.Query.WithGroupBy(teaqlIdStorageKey)
+	r.Query.ProjectExpr(alias, core.ExprColumnNode(teaqlIdStorageKey))
 	return r
 }
 func (r *PaymentRequest) GroupByCustomerOrder() *PaymentRequest {
-	r.Query.WithGroupBy("customer_order_id")
+	r.Query.WithGroupBy(teaqlCustomerOrderStorageKey)
 	return r
 }
 
 func (r *PaymentRequest) GroupByCustomerOrderAs(alias string) *PaymentRequest {
-	r.Query.WithGroupBy("customer_order_id")
-	r.Query.ProjectExpr(alias, core.ExprColumnNode("customer_order_id"))
+	r.Query.WithGroupBy(teaqlCustomerOrderStorageKey)
+	r.Query.ProjectExpr(alias, core.ExprColumnNode(teaqlCustomerOrderStorageKey))
 	return r
 }
 func (r *PaymentRequest) GroupByReferenceCode() *PaymentRequest {
-	r.Query.WithGroupBy("reference_code")
+	r.Query.WithGroupBy(teaqlReferenceCodeStorageKey)
 	return r
 }
 
 func (r *PaymentRequest) GroupByReferenceCodeAs(alias string) *PaymentRequest {
-	r.Query.WithGroupBy("reference_code")
-	r.Query.ProjectExpr(alias, core.ExprColumnNode("reference_code"))
+	r.Query.WithGroupBy(teaqlReferenceCodeStorageKey)
+	r.Query.ProjectExpr(alias, core.ExprColumnNode(teaqlReferenceCodeStorageKey))
 	return r
 }
 func (r *PaymentRequest) GroupByVersion() *PaymentRequest {
-	r.Query.WithGroupBy("version")
+	r.Query.WithGroupBy(teaqlVersionStorageKey)
 	return r
 }
 
 func (r *PaymentRequest) GroupByVersionAs(alias string) *PaymentRequest {
-	r.Query.WithGroupBy("version")
-	r.Query.ProjectExpr(alias, core.ExprColumnNode("version"))
+	r.Query.WithGroupBy(teaqlVersionStorageKey)
+	r.Query.ProjectExpr(alias, core.ExprColumnNode(teaqlVersionStorageKey))
 	return r
 }

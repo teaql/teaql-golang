@@ -182,16 +182,16 @@ func (r *DispatchOrderRequest) DeletedRowsOnly() *DispatchOrderRequest {
 }
 
 func (r *DispatchOrderRequest) SelectId() *DispatchOrderRequest {
-	r.Query.Project("id")
+	r.Query.Project(teaqlIdStorageKey)
 	return r
 }
 
 func (r *DispatchOrderRequest) WithIdIs(value uint64) *DispatchOrderRequest {
-	r.Query.AndFilter(core.ExprEq("id", core.ValU64(value)))
+	r.Query.AndFilter(core.ExprEq(teaqlIdStorageKey, core.ValU64(value)))
 	return r
 }
 func (r *DispatchOrderRequest) WithIdIsNot(value uint64) *DispatchOrderRequest {
-	r.Query.AndFilter(core.ExprNe("id", core.ValU64(value)))
+	r.Query.AndFilter(core.ExprNe(teaqlIdStorageKey, core.ValU64(value)))
 	return r
 }
 func (r *DispatchOrderRequest) WithIdIn(values []uint64) *DispatchOrderRequest {
@@ -199,7 +199,7 @@ func (r *DispatchOrderRequest) WithIdIn(values []uint64) *DispatchOrderRequest {
 	for _, value := range values {
 		converted = append(converted, core.ValU64(value))
 	}
-	r.Query.AndFilter(core.ExprInList("id", converted))
+	r.Query.AndFilter(core.ExprInList(teaqlIdStorageKey, converted))
 	return r
 }
 func (r *DispatchOrderRequest) WithIdNotIn(values []uint64) *DispatchOrderRequest {
@@ -207,23 +207,23 @@ func (r *DispatchOrderRequest) WithIdNotIn(values []uint64) *DispatchOrderReques
 	for _, value := range values {
 		converted = append(converted, core.ValU64(value))
 	}
-	r.Query.AndFilter(core.ExprNotInList("id", converted))
+	r.Query.AndFilter(core.ExprNotInList(teaqlIdStorageKey, converted))
 	return r
 }
 func (r *DispatchOrderRequest) WithIdGreaterThan(value uint64) *DispatchOrderRequest {
-	r.Query.AndFilter(core.ExprGt("id", core.ValU64(value)))
+	r.Query.AndFilter(core.ExprGt(teaqlIdStorageKey, core.ValU64(value)))
 	return r
 }
 func (r *DispatchOrderRequest) WithIdGreaterThanOrEqualTo(value uint64) *DispatchOrderRequest {
-	r.Query.AndFilter(core.ExprGte("id", core.ValU64(value)))
+	r.Query.AndFilter(core.ExprGte(teaqlIdStorageKey, core.ValU64(value)))
 	return r
 }
 func (r *DispatchOrderRequest) WithIdLessThan(value uint64) *DispatchOrderRequest {
-	r.Query.AndFilter(core.ExprLt("id", core.ValU64(value)))
+	r.Query.AndFilter(core.ExprLt(teaqlIdStorageKey, core.ValU64(value)))
 	return r
 }
 func (r *DispatchOrderRequest) WithIdLessThanOrEqualTo(value uint64) *DispatchOrderRequest {
-	r.Query.AndFilter(core.ExprLte("id", core.ValU64(value)))
+	r.Query.AndFilter(core.ExprLte(teaqlIdStorageKey, core.ValU64(value)))
 	return r
 }
 func (r *DispatchOrderRequest) WithIdBetween(lower uint64, upper uint64) *DispatchOrderRequest {
@@ -231,36 +231,36 @@ func (r *DispatchOrderRequest) WithIdBetween(lower uint64, upper uint64) *Dispat
 	from := core.ValU64(value)
 	value = upper
 	to := core.ValU64(value)
-	r.Query.AndFilter(core.ExprBetweenNode("id", from, to))
+	r.Query.AndFilter(core.ExprBetweenNode(teaqlIdStorageKey, from, to))
 	return r
 }
 func (r *DispatchOrderRequest) WithIdIsKnown() *DispatchOrderRequest {
-	r.Query.AndFilter(core.ExprIsNotNullNode("id"))
+	r.Query.AndFilter(core.ExprIsNotNullNode(teaqlIdStorageKey))
 	return r
 }
 func (r *DispatchOrderRequest) WithIdIsUnknown() *DispatchOrderRequest {
-	r.Query.AndFilter(core.ExprIsNullNode("id"))
+	r.Query.AndFilter(core.ExprIsNullNode(teaqlIdStorageKey))
 	return r
 }
 func (r *DispatchOrderRequest) OrderByIdAsc() *DispatchOrderRequest {
-	r.Query.OrderAsc("id")
+	r.Query.OrderAsc(teaqlIdStorageKey)
 	return r
 }
 func (r *DispatchOrderRequest) OrderByIdDesc() *DispatchOrderRequest {
-	r.Query.OrderDesc("id")
+	r.Query.OrderDesc(teaqlIdStorageKey)
 	return r
 }
 func (r *DispatchOrderRequest) SelectDistributionCenter() *DispatchOrderRequest {
-	r.Query.Project("distribution_center_id")
+	r.Query.Project(teaqlDistributionCenterStorageKey)
 	return r
 }
 
 func (r *DispatchOrderRequest) WithDistributionCenterIs(value uint64) *DispatchOrderRequest {
-	r.Query.AndFilter(core.ExprEq("distribution_center_id", core.ValU64(value)))
+	r.Query.AndFilter(core.ExprEq(teaqlDistributionCenterStorageKey, core.ValU64(value)))
 	return r
 }
 func (r *DispatchOrderRequest) WithDistributionCenterIsNot(value uint64) *DispatchOrderRequest {
-	r.Query.AndFilter(core.ExprNe("distribution_center_id", core.ValU64(value)))
+	r.Query.AndFilter(core.ExprNe(teaqlDistributionCenterStorageKey, core.ValU64(value)))
 	return r
 }
 func (r *DispatchOrderRequest) WithDistributionCenterIn(values []uint64) *DispatchOrderRequest {
@@ -268,7 +268,7 @@ func (r *DispatchOrderRequest) WithDistributionCenterIn(values []uint64) *Dispat
 	for _, value := range values {
 		converted = append(converted, core.ValU64(value))
 	}
-	r.Query.AndFilter(core.ExprInList("distribution_center_id", converted))
+	r.Query.AndFilter(core.ExprInList(teaqlDistributionCenterStorageKey, converted))
 	return r
 }
 func (r *DispatchOrderRequest) WithDistributionCenterNotIn(values []uint64) *DispatchOrderRequest {
@@ -276,23 +276,23 @@ func (r *DispatchOrderRequest) WithDistributionCenterNotIn(values []uint64) *Dis
 	for _, value := range values {
 		converted = append(converted, core.ValU64(value))
 	}
-	r.Query.AndFilter(core.ExprNotInList("distribution_center_id", converted))
+	r.Query.AndFilter(core.ExprNotInList(teaqlDistributionCenterStorageKey, converted))
 	return r
 }
 func (r *DispatchOrderRequest) WithDistributionCenterGreaterThan(value uint64) *DispatchOrderRequest {
-	r.Query.AndFilter(core.ExprGt("distribution_center_id", core.ValU64(value)))
+	r.Query.AndFilter(core.ExprGt(teaqlDistributionCenterStorageKey, core.ValU64(value)))
 	return r
 }
 func (r *DispatchOrderRequest) WithDistributionCenterGreaterThanOrEqualTo(value uint64) *DispatchOrderRequest {
-	r.Query.AndFilter(core.ExprGte("distribution_center_id", core.ValU64(value)))
+	r.Query.AndFilter(core.ExprGte(teaqlDistributionCenterStorageKey, core.ValU64(value)))
 	return r
 }
 func (r *DispatchOrderRequest) WithDistributionCenterLessThan(value uint64) *DispatchOrderRequest {
-	r.Query.AndFilter(core.ExprLt("distribution_center_id", core.ValU64(value)))
+	r.Query.AndFilter(core.ExprLt(teaqlDistributionCenterStorageKey, core.ValU64(value)))
 	return r
 }
 func (r *DispatchOrderRequest) WithDistributionCenterLessThanOrEqualTo(value uint64) *DispatchOrderRequest {
-	r.Query.AndFilter(core.ExprLte("distribution_center_id", core.ValU64(value)))
+	r.Query.AndFilter(core.ExprLte(teaqlDistributionCenterStorageKey, core.ValU64(value)))
 	return r
 }
 func (r *DispatchOrderRequest) WithDistributionCenterBetween(lower uint64, upper uint64) *DispatchOrderRequest {
@@ -300,15 +300,15 @@ func (r *DispatchOrderRequest) WithDistributionCenterBetween(lower uint64, upper
 	from := core.ValU64(value)
 	value = upper
 	to := core.ValU64(value)
-	r.Query.AndFilter(core.ExprBetweenNode("distribution_center_id", from, to))
+	r.Query.AndFilter(core.ExprBetweenNode(teaqlDistributionCenterStorageKey, from, to))
 	return r
 }
 func (r *DispatchOrderRequest) WithDistributionCenterIsKnown() *DispatchOrderRequest {
-	r.Query.AndFilter(core.ExprIsNotNullNode("distribution_center_id"))
+	r.Query.AndFilter(core.ExprIsNotNullNode(teaqlDistributionCenterStorageKey))
 	return r
 }
 func (r *DispatchOrderRequest) WithDistributionCenterIsUnknown() *DispatchOrderRequest {
-	r.Query.AndFilter(core.ExprIsNullNode("distribution_center_id"))
+	r.Query.AndFilter(core.ExprIsNullNode(teaqlDistributionCenterStorageKey))
 	return r
 }
 func (r *DispatchOrderRequest) FacetByDistributionCenterAs(
@@ -318,30 +318,30 @@ func (r *DispatchOrderRequest) FacetByDistributionCenterAs(
 ) *DispatchOrderRequest {
 	includeAll := true
 	if len(includeAllFacets) > 0 { includeAll = includeAllFacets[0] }
-	facet := core.NewFacetRequest(name, "distribution_center_id", core.QuerySelectionFor(nestedReq), includeAll)
+	facet := core.NewFacetRequest(name, teaqlDistributionCenterStorageKey, core.QuerySelectionFor(nestedReq), includeAll)
 	facet.Operation = &core.QueryOperation{Kind: "facet", Method: "FacetByDistributionCenterAs", Alias: &name, Relation: "distributionCenter"}
 	r.queryOptions.Facets = append(r.queryOptions.Facets, facet)
 	return r
 }
 func (r *DispatchOrderRequest) OrderByDistributionCenterAsc() *DispatchOrderRequest {
-	r.Query.OrderAsc("distribution_center_id")
+	r.Query.OrderAsc(teaqlDistributionCenterStorageKey)
 	return r
 }
 func (r *DispatchOrderRequest) OrderByDistributionCenterDesc() *DispatchOrderRequest {
-	r.Query.OrderDesc("distribution_center_id")
+	r.Query.OrderDesc(teaqlDistributionCenterStorageKey)
 	return r
 }
 func (r *DispatchOrderRequest) SelectOrderReference() *DispatchOrderRequest {
-	r.Query.Project("order_reference")
+	r.Query.Project(teaqlOrderReferenceStorageKey)
 	return r
 }
 
 func (r *DispatchOrderRequest) WithOrderReferenceIs(value string) *DispatchOrderRequest {
-	r.Query.AndFilter(core.ExprEq("order_reference", core.ValText(value)))
+	r.Query.AndFilter(core.ExprEq(teaqlOrderReferenceStorageKey, core.ValText(value)))
 	return r
 }
 func (r *DispatchOrderRequest) WithOrderReferenceIsNot(value string) *DispatchOrderRequest {
-	r.Query.AndFilter(core.ExprNe("order_reference", core.ValText(value)))
+	r.Query.AndFilter(core.ExprNe(teaqlOrderReferenceStorageKey, core.ValText(value)))
 	return r
 }
 func (r *DispatchOrderRequest) WithOrderReferenceIn(values []string) *DispatchOrderRequest {
@@ -349,7 +349,7 @@ func (r *DispatchOrderRequest) WithOrderReferenceIn(values []string) *DispatchOr
 	for _, value := range values {
 		converted = append(converted, core.ValText(value))
 	}
-	r.Query.AndFilter(core.ExprInList("order_reference", converted))
+	r.Query.AndFilter(core.ExprInList(teaqlOrderReferenceStorageKey, converted))
 	return r
 }
 func (r *DispatchOrderRequest) WithOrderReferenceNotIn(values []string) *DispatchOrderRequest {
@@ -357,23 +357,23 @@ func (r *DispatchOrderRequest) WithOrderReferenceNotIn(values []string) *Dispatc
 	for _, value := range values {
 		converted = append(converted, core.ValText(value))
 	}
-	r.Query.AndFilter(core.ExprNotInList("order_reference", converted))
+	r.Query.AndFilter(core.ExprNotInList(teaqlOrderReferenceStorageKey, converted))
 	return r
 }
 func (r *DispatchOrderRequest) WithOrderReferenceGreaterThan(value string) *DispatchOrderRequest {
-	r.Query.AndFilter(core.ExprGt("order_reference", core.ValText(value)))
+	r.Query.AndFilter(core.ExprGt(teaqlOrderReferenceStorageKey, core.ValText(value)))
 	return r
 }
 func (r *DispatchOrderRequest) WithOrderReferenceGreaterThanOrEqualTo(value string) *DispatchOrderRequest {
-	r.Query.AndFilter(core.ExprGte("order_reference", core.ValText(value)))
+	r.Query.AndFilter(core.ExprGte(teaqlOrderReferenceStorageKey, core.ValText(value)))
 	return r
 }
 func (r *DispatchOrderRequest) WithOrderReferenceLessThan(value string) *DispatchOrderRequest {
-	r.Query.AndFilter(core.ExprLt("order_reference", core.ValText(value)))
+	r.Query.AndFilter(core.ExprLt(teaqlOrderReferenceStorageKey, core.ValText(value)))
 	return r
 }
 func (r *DispatchOrderRequest) WithOrderReferenceLessThanOrEqualTo(value string) *DispatchOrderRequest {
-	r.Query.AndFilter(core.ExprLte("order_reference", core.ValText(value)))
+	r.Query.AndFilter(core.ExprLte(teaqlOrderReferenceStorageKey, core.ValText(value)))
 	return r
 }
 func (r *DispatchOrderRequest) WithOrderReferenceBetween(lower string, upper string) *DispatchOrderRequest {
@@ -381,64 +381,64 @@ func (r *DispatchOrderRequest) WithOrderReferenceBetween(lower string, upper str
 	from := core.ValText(value)
 	value = upper
 	to := core.ValText(value)
-	r.Query.AndFilter(core.ExprBetweenNode("order_reference", from, to))
+	r.Query.AndFilter(core.ExprBetweenNode(teaqlOrderReferenceStorageKey, from, to))
 	return r
 }
 func (r *DispatchOrderRequest) WithOrderReferenceIsKnown() *DispatchOrderRequest {
-	r.Query.AndFilter(core.ExprIsNotNullNode("order_reference"))
+	r.Query.AndFilter(core.ExprIsNotNullNode(teaqlOrderReferenceStorageKey))
 	return r
 }
 func (r *DispatchOrderRequest) WithOrderReferenceIsUnknown() *DispatchOrderRequest {
-	r.Query.AndFilter(core.ExprIsNullNode("order_reference"))
+	r.Query.AndFilter(core.ExprIsNullNode(teaqlOrderReferenceStorageKey))
 	return r
 }
 func (r *DispatchOrderRequest) WithOrderReferenceContaining(term string) *DispatchOrderRequest {
-	r.Query.AndFilter(core.ExprContain("order_reference", term))
+	r.Query.AndFilter(core.ExprContain(teaqlOrderReferenceStorageKey, term))
 	return r
 }
 func (r *DispatchOrderRequest) WithOrderReferenceNotContaining(term string) *DispatchOrderRequest {
-	r.Query.AndFilter(core.ExprNotContain("order_reference", term))
+	r.Query.AndFilter(core.ExprNotContain(teaqlOrderReferenceStorageKey, term))
 	return r
 }
 func (r *DispatchOrderRequest) WithOrderReferenceStartingWith(term string) *DispatchOrderRequest {
-	r.Query.AndFilter(core.ExprBeginWith("order_reference", term))
+	r.Query.AndFilter(core.ExprBeginWith(teaqlOrderReferenceStorageKey, term))
 	return r
 }
 func (r *DispatchOrderRequest) WithOrderReferenceNotStartingWith(term string) *DispatchOrderRequest {
-	r.Query.AndFilter(core.ExprNotBeginWith("order_reference", term))
+	r.Query.AndFilter(core.ExprNotBeginWith(teaqlOrderReferenceStorageKey, term))
 	return r
 }
 func (r *DispatchOrderRequest) WithOrderReferenceEndingWith(term string) *DispatchOrderRequest {
-	r.Query.AndFilter(core.ExprEndWith("order_reference", term))
+	r.Query.AndFilter(core.ExprEndWith(teaqlOrderReferenceStorageKey, term))
 	return r
 }
 func (r *DispatchOrderRequest) WithOrderReferenceNotEndingWith(term string) *DispatchOrderRequest {
-	r.Query.AndFilter(core.ExprNotEndWith("order_reference", term))
+	r.Query.AndFilter(core.ExprNotEndWith(teaqlOrderReferenceStorageKey, term))
 	return r
 }
 func (r *DispatchOrderRequest) WithOrderReferenceSoundingLike(term string) *DispatchOrderRequest {
-	r.Query.AndFilter(core.ExprSoundLike("order_reference", core.ValText(term)))
+	r.Query.AndFilter(core.ExprSoundLike(teaqlOrderReferenceStorageKey, core.ValText(term)))
 	return r
 }
 func (r *DispatchOrderRequest) OrderByOrderReferenceAsc() *DispatchOrderRequest {
-	r.Query.OrderAsc("order_reference")
+	r.Query.OrderAsc(teaqlOrderReferenceStorageKey)
 	return r
 }
 func (r *DispatchOrderRequest) OrderByOrderReferenceDesc() *DispatchOrderRequest {
-	r.Query.OrderDesc("order_reference")
+	r.Query.OrderDesc(teaqlOrderReferenceStorageKey)
 	return r
 }
 func (r *DispatchOrderRequest) SelectHandlingNote() *DispatchOrderRequest {
-	r.Query.Project("handling_note")
+	r.Query.Project(teaqlHandlingNoteStorageKey)
 	return r
 }
 
 func (r *DispatchOrderRequest) WithHandlingNoteIs(value string) *DispatchOrderRequest {
-	r.Query.AndFilter(core.ExprEq("handling_note", core.ValText(value)))
+	r.Query.AndFilter(core.ExprEq(teaqlHandlingNoteStorageKey, core.ValText(value)))
 	return r
 }
 func (r *DispatchOrderRequest) WithHandlingNoteIsNot(value string) *DispatchOrderRequest {
-	r.Query.AndFilter(core.ExprNe("handling_note", core.ValText(value)))
+	r.Query.AndFilter(core.ExprNe(teaqlHandlingNoteStorageKey, core.ValText(value)))
 	return r
 }
 func (r *DispatchOrderRequest) WithHandlingNoteIn(values []string) *DispatchOrderRequest {
@@ -446,7 +446,7 @@ func (r *DispatchOrderRequest) WithHandlingNoteIn(values []string) *DispatchOrde
 	for _, value := range values {
 		converted = append(converted, core.ValText(value))
 	}
-	r.Query.AndFilter(core.ExprInList("handling_note", converted))
+	r.Query.AndFilter(core.ExprInList(teaqlHandlingNoteStorageKey, converted))
 	return r
 }
 func (r *DispatchOrderRequest) WithHandlingNoteNotIn(values []string) *DispatchOrderRequest {
@@ -454,23 +454,23 @@ func (r *DispatchOrderRequest) WithHandlingNoteNotIn(values []string) *DispatchO
 	for _, value := range values {
 		converted = append(converted, core.ValText(value))
 	}
-	r.Query.AndFilter(core.ExprNotInList("handling_note", converted))
+	r.Query.AndFilter(core.ExprNotInList(teaqlHandlingNoteStorageKey, converted))
 	return r
 }
 func (r *DispatchOrderRequest) WithHandlingNoteGreaterThan(value string) *DispatchOrderRequest {
-	r.Query.AndFilter(core.ExprGt("handling_note", core.ValText(value)))
+	r.Query.AndFilter(core.ExprGt(teaqlHandlingNoteStorageKey, core.ValText(value)))
 	return r
 }
 func (r *DispatchOrderRequest) WithHandlingNoteGreaterThanOrEqualTo(value string) *DispatchOrderRequest {
-	r.Query.AndFilter(core.ExprGte("handling_note", core.ValText(value)))
+	r.Query.AndFilter(core.ExprGte(teaqlHandlingNoteStorageKey, core.ValText(value)))
 	return r
 }
 func (r *DispatchOrderRequest) WithHandlingNoteLessThan(value string) *DispatchOrderRequest {
-	r.Query.AndFilter(core.ExprLt("handling_note", core.ValText(value)))
+	r.Query.AndFilter(core.ExprLt(teaqlHandlingNoteStorageKey, core.ValText(value)))
 	return r
 }
 func (r *DispatchOrderRequest) WithHandlingNoteLessThanOrEqualTo(value string) *DispatchOrderRequest {
-	r.Query.AndFilter(core.ExprLte("handling_note", core.ValText(value)))
+	r.Query.AndFilter(core.ExprLte(teaqlHandlingNoteStorageKey, core.ValText(value)))
 	return r
 }
 func (r *DispatchOrderRequest) WithHandlingNoteBetween(lower string, upper string) *DispatchOrderRequest {
@@ -478,64 +478,64 @@ func (r *DispatchOrderRequest) WithHandlingNoteBetween(lower string, upper strin
 	from := core.ValText(value)
 	value = upper
 	to := core.ValText(value)
-	r.Query.AndFilter(core.ExprBetweenNode("handling_note", from, to))
+	r.Query.AndFilter(core.ExprBetweenNode(teaqlHandlingNoteStorageKey, from, to))
 	return r
 }
 func (r *DispatchOrderRequest) WithHandlingNoteIsKnown() *DispatchOrderRequest {
-	r.Query.AndFilter(core.ExprIsNotNullNode("handling_note"))
+	r.Query.AndFilter(core.ExprIsNotNullNode(teaqlHandlingNoteStorageKey))
 	return r
 }
 func (r *DispatchOrderRequest) WithHandlingNoteIsUnknown() *DispatchOrderRequest {
-	r.Query.AndFilter(core.ExprIsNullNode("handling_note"))
+	r.Query.AndFilter(core.ExprIsNullNode(teaqlHandlingNoteStorageKey))
 	return r
 }
 func (r *DispatchOrderRequest) WithHandlingNoteContaining(term string) *DispatchOrderRequest {
-	r.Query.AndFilter(core.ExprContain("handling_note", term))
+	r.Query.AndFilter(core.ExprContain(teaqlHandlingNoteStorageKey, term))
 	return r
 }
 func (r *DispatchOrderRequest) WithHandlingNoteNotContaining(term string) *DispatchOrderRequest {
-	r.Query.AndFilter(core.ExprNotContain("handling_note", term))
+	r.Query.AndFilter(core.ExprNotContain(teaqlHandlingNoteStorageKey, term))
 	return r
 }
 func (r *DispatchOrderRequest) WithHandlingNoteStartingWith(term string) *DispatchOrderRequest {
-	r.Query.AndFilter(core.ExprBeginWith("handling_note", term))
+	r.Query.AndFilter(core.ExprBeginWith(teaqlHandlingNoteStorageKey, term))
 	return r
 }
 func (r *DispatchOrderRequest) WithHandlingNoteNotStartingWith(term string) *DispatchOrderRequest {
-	r.Query.AndFilter(core.ExprNotBeginWith("handling_note", term))
+	r.Query.AndFilter(core.ExprNotBeginWith(teaqlHandlingNoteStorageKey, term))
 	return r
 }
 func (r *DispatchOrderRequest) WithHandlingNoteEndingWith(term string) *DispatchOrderRequest {
-	r.Query.AndFilter(core.ExprEndWith("handling_note", term))
+	r.Query.AndFilter(core.ExprEndWith(teaqlHandlingNoteStorageKey, term))
 	return r
 }
 func (r *DispatchOrderRequest) WithHandlingNoteNotEndingWith(term string) *DispatchOrderRequest {
-	r.Query.AndFilter(core.ExprNotEndWith("handling_note", term))
+	r.Query.AndFilter(core.ExprNotEndWith(teaqlHandlingNoteStorageKey, term))
 	return r
 }
 func (r *DispatchOrderRequest) WithHandlingNoteSoundingLike(term string) *DispatchOrderRequest {
-	r.Query.AndFilter(core.ExprSoundLike("handling_note", core.ValText(term)))
+	r.Query.AndFilter(core.ExprSoundLike(teaqlHandlingNoteStorageKey, core.ValText(term)))
 	return r
 }
 func (r *DispatchOrderRequest) OrderByHandlingNoteAsc() *DispatchOrderRequest {
-	r.Query.OrderAsc("handling_note")
+	r.Query.OrderAsc(teaqlHandlingNoteStorageKey)
 	return r
 }
 func (r *DispatchOrderRequest) OrderByHandlingNoteDesc() *DispatchOrderRequest {
-	r.Query.OrderDesc("handling_note")
+	r.Query.OrderDesc(teaqlHandlingNoteStorageKey)
 	return r
 }
 func (r *DispatchOrderRequest) SelectVersion() *DispatchOrderRequest {
-	r.Query.Project("version")
+	r.Query.Project(teaqlVersionStorageKey)
 	return r
 }
 
 func (r *DispatchOrderRequest) WithVersionIs(value int64) *DispatchOrderRequest {
-	r.Query.AndFilter(core.ExprEq("version", core.ValI64(value)))
+	r.Query.AndFilter(core.ExprEq(teaqlVersionStorageKey, core.ValI64(value)))
 	return r
 }
 func (r *DispatchOrderRequest) WithVersionIsNot(value int64) *DispatchOrderRequest {
-	r.Query.AndFilter(core.ExprNe("version", core.ValI64(value)))
+	r.Query.AndFilter(core.ExprNe(teaqlVersionStorageKey, core.ValI64(value)))
 	return r
 }
 func (r *DispatchOrderRequest) WithVersionIn(values []int64) *DispatchOrderRequest {
@@ -543,7 +543,7 @@ func (r *DispatchOrderRequest) WithVersionIn(values []int64) *DispatchOrderReque
 	for _, value := range values {
 		converted = append(converted, core.ValI64(value))
 	}
-	r.Query.AndFilter(core.ExprInList("version", converted))
+	r.Query.AndFilter(core.ExprInList(teaqlVersionStorageKey, converted))
 	return r
 }
 func (r *DispatchOrderRequest) WithVersionNotIn(values []int64) *DispatchOrderRequest {
@@ -551,23 +551,23 @@ func (r *DispatchOrderRequest) WithVersionNotIn(values []int64) *DispatchOrderRe
 	for _, value := range values {
 		converted = append(converted, core.ValI64(value))
 	}
-	r.Query.AndFilter(core.ExprNotInList("version", converted))
+	r.Query.AndFilter(core.ExprNotInList(teaqlVersionStorageKey, converted))
 	return r
 }
 func (r *DispatchOrderRequest) WithVersionGreaterThan(value int64) *DispatchOrderRequest {
-	r.Query.AndFilter(core.ExprGt("version", core.ValI64(value)))
+	r.Query.AndFilter(core.ExprGt(teaqlVersionStorageKey, core.ValI64(value)))
 	return r
 }
 func (r *DispatchOrderRequest) WithVersionGreaterThanOrEqualTo(value int64) *DispatchOrderRequest {
-	r.Query.AndFilter(core.ExprGte("version", core.ValI64(value)))
+	r.Query.AndFilter(core.ExprGte(teaqlVersionStorageKey, core.ValI64(value)))
 	return r
 }
 func (r *DispatchOrderRequest) WithVersionLessThan(value int64) *DispatchOrderRequest {
-	r.Query.AndFilter(core.ExprLt("version", core.ValI64(value)))
+	r.Query.AndFilter(core.ExprLt(teaqlVersionStorageKey, core.ValI64(value)))
 	return r
 }
 func (r *DispatchOrderRequest) WithVersionLessThanOrEqualTo(value int64) *DispatchOrderRequest {
-	r.Query.AndFilter(core.ExprLte("version", core.ValI64(value)))
+	r.Query.AndFilter(core.ExprLte(teaqlVersionStorageKey, core.ValI64(value)))
 	return r
 }
 func (r *DispatchOrderRequest) WithVersionBetween(lower int64, upper int64) *DispatchOrderRequest {
@@ -575,23 +575,23 @@ func (r *DispatchOrderRequest) WithVersionBetween(lower int64, upper int64) *Dis
 	from := core.ValI64(value)
 	value = upper
 	to := core.ValI64(value)
-	r.Query.AndFilter(core.ExprBetweenNode("version", from, to))
+	r.Query.AndFilter(core.ExprBetweenNode(teaqlVersionStorageKey, from, to))
 	return r
 }
 func (r *DispatchOrderRequest) WithVersionIsKnown() *DispatchOrderRequest {
-	r.Query.AndFilter(core.ExprIsNotNullNode("version"))
+	r.Query.AndFilter(core.ExprIsNotNullNode(teaqlVersionStorageKey))
 	return r
 }
 func (r *DispatchOrderRequest) WithVersionIsUnknown() *DispatchOrderRequest {
-	r.Query.AndFilter(core.ExprIsNullNode("version"))
+	r.Query.AndFilter(core.ExprIsNullNode(teaqlVersionStorageKey))
 	return r
 }
 func (r *DispatchOrderRequest) OrderByVersionAsc() *DispatchOrderRequest {
-	r.Query.OrderAsc("version")
+	r.Query.OrderAsc(teaqlVersionStorageKey)
 	return r
 }
 func (r *DispatchOrderRequest) OrderByVersionDesc() *DispatchOrderRequest {
-	r.Query.OrderDesc("version")
+	r.Query.OrderDesc(teaqlVersionStorageKey)
 	return r
 }
 
@@ -599,7 +599,7 @@ func (r *DispatchOrderRequest) SelectDistributionCenterWith(child interface {
 	GetQuery() *core.SelectQuery
 	NewRelationEntity() core.Entity
 }) *DispatchOrderRequest {
-	runtime.EnsureRelationProjection(r.Query, "distribution_center_id")
+	runtime.EnsureRelationProjection(r.Query, teaqlDistributionCenterStorageKey)
 	r.Query.RelationQuerySelection("distributionCenterEntity", core.QuerySelectionFor(child))
 	r.Query.Relations[len(r.Query.Relations)-1].Operation = &core.QueryOperation{Kind: "relation", Method: "SelectDistributionCenterWith", Relation: "distributionCenterEntity"}
 	r.relationFactories["distributionCenterEntity"] = func(record core.Record) (core.Entity, error) {
@@ -617,7 +617,7 @@ func (r *DispatchOrderRequest) WithDistributionCenterMatching(child interface {
 	GetQuery() *core.SelectQuery
 	GetEntityDescriptor() *core.EntityDescriptor
 }) *DispatchOrderRequest {
-	r.Query.AndFilter(core.ExprInSubQuery("distribution_center_id", child.GetEntityDescriptor(), child.GetQuery(), "id"))
+	r.Query.AndFilter(core.ExprInSubQuery(teaqlDistributionCenterStorageKey, child.GetEntityDescriptor(), child.GetQuery(), "id"))
 	return r
 }
 
@@ -625,7 +625,7 @@ func (r *DispatchOrderRequest) WithoutDistributionCenterMatching(child interface
 	GetQuery() *core.SelectQuery
 	GetEntityDescriptor() *core.EntityDescriptor
 }) *DispatchOrderRequest {
-	r.Query.AndFilter(core.ExprNotInSubQuery("distribution_center_id", child.GetEntityDescriptor(), child.GetQuery(), "id"))
+	r.Query.AndFilter(core.ExprNotInSubQuery(teaqlDistributionCenterStorageKey, child.GetEntityDescriptor(), child.GetQuery(), "id"))
 	return r
 }
 
@@ -761,52 +761,52 @@ func (r *DispatchOrderRequest) CountAs(alias string) *DispatchOrderRequest {
 
 
 func (r *DispatchOrderRequest) GroupById() *DispatchOrderRequest {
-	r.Query.WithGroupBy("id")
+	r.Query.WithGroupBy(teaqlIdStorageKey)
 	return r
 }
 
 func (r *DispatchOrderRequest) GroupByIdAs(alias string) *DispatchOrderRequest {
-	r.Query.WithGroupBy("id")
-	r.Query.ProjectExpr(alias, core.ExprColumnNode("id"))
+	r.Query.WithGroupBy(teaqlIdStorageKey)
+	r.Query.ProjectExpr(alias, core.ExprColumnNode(teaqlIdStorageKey))
 	return r
 }
 func (r *DispatchOrderRequest) GroupByDistributionCenter() *DispatchOrderRequest {
-	r.Query.WithGroupBy("distribution_center_id")
+	r.Query.WithGroupBy(teaqlDistributionCenterStorageKey)
 	return r
 }
 
 func (r *DispatchOrderRequest) GroupByDistributionCenterAs(alias string) *DispatchOrderRequest {
-	r.Query.WithGroupBy("distribution_center_id")
-	r.Query.ProjectExpr(alias, core.ExprColumnNode("distribution_center_id"))
+	r.Query.WithGroupBy(teaqlDistributionCenterStorageKey)
+	r.Query.ProjectExpr(alias, core.ExprColumnNode(teaqlDistributionCenterStorageKey))
 	return r
 }
 func (r *DispatchOrderRequest) GroupByOrderReference() *DispatchOrderRequest {
-	r.Query.WithGroupBy("order_reference")
+	r.Query.WithGroupBy(teaqlOrderReferenceStorageKey)
 	return r
 }
 
 func (r *DispatchOrderRequest) GroupByOrderReferenceAs(alias string) *DispatchOrderRequest {
-	r.Query.WithGroupBy("order_reference")
-	r.Query.ProjectExpr(alias, core.ExprColumnNode("order_reference"))
+	r.Query.WithGroupBy(teaqlOrderReferenceStorageKey)
+	r.Query.ProjectExpr(alias, core.ExprColumnNode(teaqlOrderReferenceStorageKey))
 	return r
 }
 func (r *DispatchOrderRequest) GroupByHandlingNote() *DispatchOrderRequest {
-	r.Query.WithGroupBy("handling_note")
+	r.Query.WithGroupBy(teaqlHandlingNoteStorageKey)
 	return r
 }
 
 func (r *DispatchOrderRequest) GroupByHandlingNoteAs(alias string) *DispatchOrderRequest {
-	r.Query.WithGroupBy("handling_note")
-	r.Query.ProjectExpr(alias, core.ExprColumnNode("handling_note"))
+	r.Query.WithGroupBy(teaqlHandlingNoteStorageKey)
+	r.Query.ProjectExpr(alias, core.ExprColumnNode(teaqlHandlingNoteStorageKey))
 	return r
 }
 func (r *DispatchOrderRequest) GroupByVersion() *DispatchOrderRequest {
-	r.Query.WithGroupBy("version")
+	r.Query.WithGroupBy(teaqlVersionStorageKey)
 	return r
 }
 
 func (r *DispatchOrderRequest) GroupByVersionAs(alias string) *DispatchOrderRequest {
-	r.Query.WithGroupBy("version")
-	r.Query.ProjectExpr(alias, core.ExprColumnNode("version"))
+	r.Query.WithGroupBy(teaqlVersionStorageKey)
+	r.Query.ProjectExpr(alias, core.ExprColumnNode(teaqlVersionStorageKey))
 	return r
 }

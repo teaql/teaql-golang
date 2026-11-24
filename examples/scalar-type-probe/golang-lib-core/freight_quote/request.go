@@ -182,16 +182,16 @@ func (r *FreightQuoteRequest) DeletedRowsOnly() *FreightQuoteRequest {
 }
 
 func (r *FreightQuoteRequest) SelectId() *FreightQuoteRequest {
-	r.Query.Project("id")
+	r.Query.Project(teaqlIdStorageKey)
 	return r
 }
 
 func (r *FreightQuoteRequest) WithIdIs(value uint64) *FreightQuoteRequest {
-	r.Query.AndFilter(core.ExprEq("id", core.ValU64(value)))
+	r.Query.AndFilter(core.ExprEq(teaqlIdStorageKey, core.ValU64(value)))
 	return r
 }
 func (r *FreightQuoteRequest) WithIdIsNot(value uint64) *FreightQuoteRequest {
-	r.Query.AndFilter(core.ExprNe("id", core.ValU64(value)))
+	r.Query.AndFilter(core.ExprNe(teaqlIdStorageKey, core.ValU64(value)))
 	return r
 }
 func (r *FreightQuoteRequest) WithIdIn(values []uint64) *FreightQuoteRequest {
@@ -199,7 +199,7 @@ func (r *FreightQuoteRequest) WithIdIn(values []uint64) *FreightQuoteRequest {
 	for _, value := range values {
 		converted = append(converted, core.ValU64(value))
 	}
-	r.Query.AndFilter(core.ExprInList("id", converted))
+	r.Query.AndFilter(core.ExprInList(teaqlIdStorageKey, converted))
 	return r
 }
 func (r *FreightQuoteRequest) WithIdNotIn(values []uint64) *FreightQuoteRequest {
@@ -207,23 +207,23 @@ func (r *FreightQuoteRequest) WithIdNotIn(values []uint64) *FreightQuoteRequest 
 	for _, value := range values {
 		converted = append(converted, core.ValU64(value))
 	}
-	r.Query.AndFilter(core.ExprNotInList("id", converted))
+	r.Query.AndFilter(core.ExprNotInList(teaqlIdStorageKey, converted))
 	return r
 }
 func (r *FreightQuoteRequest) WithIdGreaterThan(value uint64) *FreightQuoteRequest {
-	r.Query.AndFilter(core.ExprGt("id", core.ValU64(value)))
+	r.Query.AndFilter(core.ExprGt(teaqlIdStorageKey, core.ValU64(value)))
 	return r
 }
 func (r *FreightQuoteRequest) WithIdGreaterThanOrEqualTo(value uint64) *FreightQuoteRequest {
-	r.Query.AndFilter(core.ExprGte("id", core.ValU64(value)))
+	r.Query.AndFilter(core.ExprGte(teaqlIdStorageKey, core.ValU64(value)))
 	return r
 }
 func (r *FreightQuoteRequest) WithIdLessThan(value uint64) *FreightQuoteRequest {
-	r.Query.AndFilter(core.ExprLt("id", core.ValU64(value)))
+	r.Query.AndFilter(core.ExprLt(teaqlIdStorageKey, core.ValU64(value)))
 	return r
 }
 func (r *FreightQuoteRequest) WithIdLessThanOrEqualTo(value uint64) *FreightQuoteRequest {
-	r.Query.AndFilter(core.ExprLte("id", core.ValU64(value)))
+	r.Query.AndFilter(core.ExprLte(teaqlIdStorageKey, core.ValU64(value)))
 	return r
 }
 func (r *FreightQuoteRequest) WithIdBetween(lower uint64, upper uint64) *FreightQuoteRequest {
@@ -231,36 +231,36 @@ func (r *FreightQuoteRequest) WithIdBetween(lower uint64, upper uint64) *Freight
 	from := core.ValU64(value)
 	value = upper
 	to := core.ValU64(value)
-	r.Query.AndFilter(core.ExprBetweenNode("id", from, to))
+	r.Query.AndFilter(core.ExprBetweenNode(teaqlIdStorageKey, from, to))
 	return r
 }
 func (r *FreightQuoteRequest) WithIdIsKnown() *FreightQuoteRequest {
-	r.Query.AndFilter(core.ExprIsNotNullNode("id"))
+	r.Query.AndFilter(core.ExprIsNotNullNode(teaqlIdStorageKey))
 	return r
 }
 func (r *FreightQuoteRequest) WithIdIsUnknown() *FreightQuoteRequest {
-	r.Query.AndFilter(core.ExprIsNullNode("id"))
+	r.Query.AndFilter(core.ExprIsNullNode(teaqlIdStorageKey))
 	return r
 }
 func (r *FreightQuoteRequest) OrderByIdAsc() *FreightQuoteRequest {
-	r.Query.OrderAsc("id")
+	r.Query.OrderAsc(teaqlIdStorageKey)
 	return r
 }
 func (r *FreightQuoteRequest) OrderByIdDesc() *FreightQuoteRequest {
-	r.Query.OrderDesc("id")
+	r.Query.OrderDesc(teaqlIdStorageKey)
 	return r
 }
 func (r *FreightQuoteRequest) SelectPlatform() *FreightQuoteRequest {
-	r.Query.Project("platform_id")
+	r.Query.Project(teaqlPlatformStorageKey)
 	return r
 }
 
 func (r *FreightQuoteRequest) WithPlatformIs(value uint64) *FreightQuoteRequest {
-	r.Query.AndFilter(core.ExprEq("platform_id", core.ValU64(value)))
+	r.Query.AndFilter(core.ExprEq(teaqlPlatformStorageKey, core.ValU64(value)))
 	return r
 }
 func (r *FreightQuoteRequest) WithPlatformIsNot(value uint64) *FreightQuoteRequest {
-	r.Query.AndFilter(core.ExprNe("platform_id", core.ValU64(value)))
+	r.Query.AndFilter(core.ExprNe(teaqlPlatformStorageKey, core.ValU64(value)))
 	return r
 }
 func (r *FreightQuoteRequest) WithPlatformIn(values []uint64) *FreightQuoteRequest {
@@ -268,7 +268,7 @@ func (r *FreightQuoteRequest) WithPlatformIn(values []uint64) *FreightQuoteReque
 	for _, value := range values {
 		converted = append(converted, core.ValU64(value))
 	}
-	r.Query.AndFilter(core.ExprInList("platform_id", converted))
+	r.Query.AndFilter(core.ExprInList(teaqlPlatformStorageKey, converted))
 	return r
 }
 func (r *FreightQuoteRequest) WithPlatformNotIn(values []uint64) *FreightQuoteRequest {
@@ -276,23 +276,23 @@ func (r *FreightQuoteRequest) WithPlatformNotIn(values []uint64) *FreightQuoteRe
 	for _, value := range values {
 		converted = append(converted, core.ValU64(value))
 	}
-	r.Query.AndFilter(core.ExprNotInList("platform_id", converted))
+	r.Query.AndFilter(core.ExprNotInList(teaqlPlatformStorageKey, converted))
 	return r
 }
 func (r *FreightQuoteRequest) WithPlatformGreaterThan(value uint64) *FreightQuoteRequest {
-	r.Query.AndFilter(core.ExprGt("platform_id", core.ValU64(value)))
+	r.Query.AndFilter(core.ExprGt(teaqlPlatformStorageKey, core.ValU64(value)))
 	return r
 }
 func (r *FreightQuoteRequest) WithPlatformGreaterThanOrEqualTo(value uint64) *FreightQuoteRequest {
-	r.Query.AndFilter(core.ExprGte("platform_id", core.ValU64(value)))
+	r.Query.AndFilter(core.ExprGte(teaqlPlatformStorageKey, core.ValU64(value)))
 	return r
 }
 func (r *FreightQuoteRequest) WithPlatformLessThan(value uint64) *FreightQuoteRequest {
-	r.Query.AndFilter(core.ExprLt("platform_id", core.ValU64(value)))
+	r.Query.AndFilter(core.ExprLt(teaqlPlatformStorageKey, core.ValU64(value)))
 	return r
 }
 func (r *FreightQuoteRequest) WithPlatformLessThanOrEqualTo(value uint64) *FreightQuoteRequest {
-	r.Query.AndFilter(core.ExprLte("platform_id", core.ValU64(value)))
+	r.Query.AndFilter(core.ExprLte(teaqlPlatformStorageKey, core.ValU64(value)))
 	return r
 }
 func (r *FreightQuoteRequest) WithPlatformBetween(lower uint64, upper uint64) *FreightQuoteRequest {
@@ -300,15 +300,15 @@ func (r *FreightQuoteRequest) WithPlatformBetween(lower uint64, upper uint64) *F
 	from := core.ValU64(value)
 	value = upper
 	to := core.ValU64(value)
-	r.Query.AndFilter(core.ExprBetweenNode("platform_id", from, to))
+	r.Query.AndFilter(core.ExprBetweenNode(teaqlPlatformStorageKey, from, to))
 	return r
 }
 func (r *FreightQuoteRequest) WithPlatformIsKnown() *FreightQuoteRequest {
-	r.Query.AndFilter(core.ExprIsNotNullNode("platform_id"))
+	r.Query.AndFilter(core.ExprIsNotNullNode(teaqlPlatformStorageKey))
 	return r
 }
 func (r *FreightQuoteRequest) WithPlatformIsUnknown() *FreightQuoteRequest {
-	r.Query.AndFilter(core.ExprIsNullNode("platform_id"))
+	r.Query.AndFilter(core.ExprIsNullNode(teaqlPlatformStorageKey))
 	return r
 }
 func (r *FreightQuoteRequest) FacetByPlatformAs(
@@ -318,30 +318,30 @@ func (r *FreightQuoteRequest) FacetByPlatformAs(
 ) *FreightQuoteRequest {
 	includeAll := true
 	if len(includeAllFacets) > 0 { includeAll = includeAllFacets[0] }
-	facet := core.NewFacetRequest(name, "platform_id", core.QuerySelectionFor(nestedReq), includeAll)
+	facet := core.NewFacetRequest(name, teaqlPlatformStorageKey, core.QuerySelectionFor(nestedReq), includeAll)
 	facet.Operation = &core.QueryOperation{Kind: "facet", Method: "FacetByPlatformAs", Alias: &name, Relation: "platform"}
 	r.queryOptions.Facets = append(r.queryOptions.Facets, facet)
 	return r
 }
 func (r *FreightQuoteRequest) OrderByPlatformAsc() *FreightQuoteRequest {
-	r.Query.OrderAsc("platform_id")
+	r.Query.OrderAsc(teaqlPlatformStorageKey)
 	return r
 }
 func (r *FreightQuoteRequest) OrderByPlatformDesc() *FreightQuoteRequest {
-	r.Query.OrderDesc("platform_id")
+	r.Query.OrderDesc(teaqlPlatformStorageKey)
 	return r
 }
 func (r *FreightQuoteRequest) SelectReference() *FreightQuoteRequest {
-	r.Query.Project("reference")
+	r.Query.Project(teaqlReferenceStorageKey)
 	return r
 }
 
 func (r *FreightQuoteRequest) WithReferenceIs(value string) *FreightQuoteRequest {
-	r.Query.AndFilter(core.ExprEq("reference", core.ValText(value)))
+	r.Query.AndFilter(core.ExprEq(teaqlReferenceStorageKey, core.ValText(value)))
 	return r
 }
 func (r *FreightQuoteRequest) WithReferenceIsNot(value string) *FreightQuoteRequest {
-	r.Query.AndFilter(core.ExprNe("reference", core.ValText(value)))
+	r.Query.AndFilter(core.ExprNe(teaqlReferenceStorageKey, core.ValText(value)))
 	return r
 }
 func (r *FreightQuoteRequest) WithReferenceIn(values []string) *FreightQuoteRequest {
@@ -349,7 +349,7 @@ func (r *FreightQuoteRequest) WithReferenceIn(values []string) *FreightQuoteRequ
 	for _, value := range values {
 		converted = append(converted, core.ValText(value))
 	}
-	r.Query.AndFilter(core.ExprInList("reference", converted))
+	r.Query.AndFilter(core.ExprInList(teaqlReferenceStorageKey, converted))
 	return r
 }
 func (r *FreightQuoteRequest) WithReferenceNotIn(values []string) *FreightQuoteRequest {
@@ -357,23 +357,23 @@ func (r *FreightQuoteRequest) WithReferenceNotIn(values []string) *FreightQuoteR
 	for _, value := range values {
 		converted = append(converted, core.ValText(value))
 	}
-	r.Query.AndFilter(core.ExprNotInList("reference", converted))
+	r.Query.AndFilter(core.ExprNotInList(teaqlReferenceStorageKey, converted))
 	return r
 }
 func (r *FreightQuoteRequest) WithReferenceGreaterThan(value string) *FreightQuoteRequest {
-	r.Query.AndFilter(core.ExprGt("reference", core.ValText(value)))
+	r.Query.AndFilter(core.ExprGt(teaqlReferenceStorageKey, core.ValText(value)))
 	return r
 }
 func (r *FreightQuoteRequest) WithReferenceGreaterThanOrEqualTo(value string) *FreightQuoteRequest {
-	r.Query.AndFilter(core.ExprGte("reference", core.ValText(value)))
+	r.Query.AndFilter(core.ExprGte(teaqlReferenceStorageKey, core.ValText(value)))
 	return r
 }
 func (r *FreightQuoteRequest) WithReferenceLessThan(value string) *FreightQuoteRequest {
-	r.Query.AndFilter(core.ExprLt("reference", core.ValText(value)))
+	r.Query.AndFilter(core.ExprLt(teaqlReferenceStorageKey, core.ValText(value)))
 	return r
 }
 func (r *FreightQuoteRequest) WithReferenceLessThanOrEqualTo(value string) *FreightQuoteRequest {
-	r.Query.AndFilter(core.ExprLte("reference", core.ValText(value)))
+	r.Query.AndFilter(core.ExprLte(teaqlReferenceStorageKey, core.ValText(value)))
 	return r
 }
 func (r *FreightQuoteRequest) WithReferenceBetween(lower string, upper string) *FreightQuoteRequest {
@@ -381,64 +381,64 @@ func (r *FreightQuoteRequest) WithReferenceBetween(lower string, upper string) *
 	from := core.ValText(value)
 	value = upper
 	to := core.ValText(value)
-	r.Query.AndFilter(core.ExprBetweenNode("reference", from, to))
+	r.Query.AndFilter(core.ExprBetweenNode(teaqlReferenceStorageKey, from, to))
 	return r
 }
 func (r *FreightQuoteRequest) WithReferenceIsKnown() *FreightQuoteRequest {
-	r.Query.AndFilter(core.ExprIsNotNullNode("reference"))
+	r.Query.AndFilter(core.ExprIsNotNullNode(teaqlReferenceStorageKey))
 	return r
 }
 func (r *FreightQuoteRequest) WithReferenceIsUnknown() *FreightQuoteRequest {
-	r.Query.AndFilter(core.ExprIsNullNode("reference"))
+	r.Query.AndFilter(core.ExprIsNullNode(teaqlReferenceStorageKey))
 	return r
 }
 func (r *FreightQuoteRequest) WithReferenceContaining(term string) *FreightQuoteRequest {
-	r.Query.AndFilter(core.ExprContain("reference", term))
+	r.Query.AndFilter(core.ExprContain(teaqlReferenceStorageKey, term))
 	return r
 }
 func (r *FreightQuoteRequest) WithReferenceNotContaining(term string) *FreightQuoteRequest {
-	r.Query.AndFilter(core.ExprNotContain("reference", term))
+	r.Query.AndFilter(core.ExprNotContain(teaqlReferenceStorageKey, term))
 	return r
 }
 func (r *FreightQuoteRequest) WithReferenceStartingWith(term string) *FreightQuoteRequest {
-	r.Query.AndFilter(core.ExprBeginWith("reference", term))
+	r.Query.AndFilter(core.ExprBeginWith(teaqlReferenceStorageKey, term))
 	return r
 }
 func (r *FreightQuoteRequest) WithReferenceNotStartingWith(term string) *FreightQuoteRequest {
-	r.Query.AndFilter(core.ExprNotBeginWith("reference", term))
+	r.Query.AndFilter(core.ExprNotBeginWith(teaqlReferenceStorageKey, term))
 	return r
 }
 func (r *FreightQuoteRequest) WithReferenceEndingWith(term string) *FreightQuoteRequest {
-	r.Query.AndFilter(core.ExprEndWith("reference", term))
+	r.Query.AndFilter(core.ExprEndWith(teaqlReferenceStorageKey, term))
 	return r
 }
 func (r *FreightQuoteRequest) WithReferenceNotEndingWith(term string) *FreightQuoteRequest {
-	r.Query.AndFilter(core.ExprNotEndWith("reference", term))
+	r.Query.AndFilter(core.ExprNotEndWith(teaqlReferenceStorageKey, term))
 	return r
 }
 func (r *FreightQuoteRequest) WithReferenceSoundingLike(term string) *FreightQuoteRequest {
-	r.Query.AndFilter(core.ExprSoundLike("reference", core.ValText(term)))
+	r.Query.AndFilter(core.ExprSoundLike(teaqlReferenceStorageKey, core.ValText(term)))
 	return r
 }
 func (r *FreightQuoteRequest) OrderByReferenceAsc() *FreightQuoteRequest {
-	r.Query.OrderAsc("reference")
+	r.Query.OrderAsc(teaqlReferenceStorageKey)
 	return r
 }
 func (r *FreightQuoteRequest) OrderByReferenceDesc() *FreightQuoteRequest {
-	r.Query.OrderDesc("reference")
+	r.Query.OrderDesc(teaqlReferenceStorageKey)
 	return r
 }
 func (r *FreightQuoteRequest) SelectAmount() *FreightQuoteRequest {
-	r.Query.Project("amount")
+	r.Query.Project(teaqlAmountStorageKey)
 	return r
 }
 
 func (r *FreightQuoteRequest) WithAmountIs(value decimal.Decimal) *FreightQuoteRequest {
-	r.Query.AndFilter(core.ExprEq("amount", core.ValDecimal(value)))
+	r.Query.AndFilter(core.ExprEq(teaqlAmountStorageKey, core.ValDecimal(value)))
 	return r
 }
 func (r *FreightQuoteRequest) WithAmountIsNot(value decimal.Decimal) *FreightQuoteRequest {
-	r.Query.AndFilter(core.ExprNe("amount", core.ValDecimal(value)))
+	r.Query.AndFilter(core.ExprNe(teaqlAmountStorageKey, core.ValDecimal(value)))
 	return r
 }
 func (r *FreightQuoteRequest) WithAmountIn(values []decimal.Decimal) *FreightQuoteRequest {
@@ -446,7 +446,7 @@ func (r *FreightQuoteRequest) WithAmountIn(values []decimal.Decimal) *FreightQuo
 	for _, value := range values {
 		converted = append(converted, core.ValDecimal(value))
 	}
-	r.Query.AndFilter(core.ExprInList("amount", converted))
+	r.Query.AndFilter(core.ExprInList(teaqlAmountStorageKey, converted))
 	return r
 }
 func (r *FreightQuoteRequest) WithAmountNotIn(values []decimal.Decimal) *FreightQuoteRequest {
@@ -454,23 +454,23 @@ func (r *FreightQuoteRequest) WithAmountNotIn(values []decimal.Decimal) *Freight
 	for _, value := range values {
 		converted = append(converted, core.ValDecimal(value))
 	}
-	r.Query.AndFilter(core.ExprNotInList("amount", converted))
+	r.Query.AndFilter(core.ExprNotInList(teaqlAmountStorageKey, converted))
 	return r
 }
 func (r *FreightQuoteRequest) WithAmountGreaterThan(value decimal.Decimal) *FreightQuoteRequest {
-	r.Query.AndFilter(core.ExprGt("amount", core.ValDecimal(value)))
+	r.Query.AndFilter(core.ExprGt(teaqlAmountStorageKey, core.ValDecimal(value)))
 	return r
 }
 func (r *FreightQuoteRequest) WithAmountGreaterThanOrEqualTo(value decimal.Decimal) *FreightQuoteRequest {
-	r.Query.AndFilter(core.ExprGte("amount", core.ValDecimal(value)))
+	r.Query.AndFilter(core.ExprGte(teaqlAmountStorageKey, core.ValDecimal(value)))
 	return r
 }
 func (r *FreightQuoteRequest) WithAmountLessThan(value decimal.Decimal) *FreightQuoteRequest {
-	r.Query.AndFilter(core.ExprLt("amount", core.ValDecimal(value)))
+	r.Query.AndFilter(core.ExprLt(teaqlAmountStorageKey, core.ValDecimal(value)))
 	return r
 }
 func (r *FreightQuoteRequest) WithAmountLessThanOrEqualTo(value decimal.Decimal) *FreightQuoteRequest {
-	r.Query.AndFilter(core.ExprLte("amount", core.ValDecimal(value)))
+	r.Query.AndFilter(core.ExprLte(teaqlAmountStorageKey, core.ValDecimal(value)))
 	return r
 }
 func (r *FreightQuoteRequest) WithAmountBetween(lower decimal.Decimal, upper decimal.Decimal) *FreightQuoteRequest {
@@ -478,36 +478,36 @@ func (r *FreightQuoteRequest) WithAmountBetween(lower decimal.Decimal, upper dec
 	from := core.ValDecimal(value)
 	value = upper
 	to := core.ValDecimal(value)
-	r.Query.AndFilter(core.ExprBetweenNode("amount", from, to))
+	r.Query.AndFilter(core.ExprBetweenNode(teaqlAmountStorageKey, from, to))
 	return r
 }
 func (r *FreightQuoteRequest) WithAmountIsKnown() *FreightQuoteRequest {
-	r.Query.AndFilter(core.ExprIsNotNullNode("amount"))
+	r.Query.AndFilter(core.ExprIsNotNullNode(teaqlAmountStorageKey))
 	return r
 }
 func (r *FreightQuoteRequest) WithAmountIsUnknown() *FreightQuoteRequest {
-	r.Query.AndFilter(core.ExprIsNullNode("amount"))
+	r.Query.AndFilter(core.ExprIsNullNode(teaqlAmountStorageKey))
 	return r
 }
 func (r *FreightQuoteRequest) OrderByAmountAsc() *FreightQuoteRequest {
-	r.Query.OrderAsc("amount")
+	r.Query.OrderAsc(teaqlAmountStorageKey)
 	return r
 }
 func (r *FreightQuoteRequest) OrderByAmountDesc() *FreightQuoteRequest {
-	r.Query.OrderDesc("amount")
+	r.Query.OrderDesc(teaqlAmountStorageKey)
 	return r
 }
 func (r *FreightQuoteRequest) SelectShipmentNumber() *FreightQuoteRequest {
-	r.Query.Project("shipment_number")
+	r.Query.Project(teaqlShipmentNumberStorageKey)
 	return r
 }
 
 func (r *FreightQuoteRequest) WithShipmentNumberIs(value int64) *FreightQuoteRequest {
-	r.Query.AndFilter(core.ExprEq("shipment_number", core.ValI64(value)))
+	r.Query.AndFilter(core.ExprEq(teaqlShipmentNumberStorageKey, core.ValI64(value)))
 	return r
 }
 func (r *FreightQuoteRequest) WithShipmentNumberIsNot(value int64) *FreightQuoteRequest {
-	r.Query.AndFilter(core.ExprNe("shipment_number", core.ValI64(value)))
+	r.Query.AndFilter(core.ExprNe(teaqlShipmentNumberStorageKey, core.ValI64(value)))
 	return r
 }
 func (r *FreightQuoteRequest) WithShipmentNumberIn(values []int64) *FreightQuoteRequest {
@@ -515,7 +515,7 @@ func (r *FreightQuoteRequest) WithShipmentNumberIn(values []int64) *FreightQuote
 	for _, value := range values {
 		converted = append(converted, core.ValI64(value))
 	}
-	r.Query.AndFilter(core.ExprInList("shipment_number", converted))
+	r.Query.AndFilter(core.ExprInList(teaqlShipmentNumberStorageKey, converted))
 	return r
 }
 func (r *FreightQuoteRequest) WithShipmentNumberNotIn(values []int64) *FreightQuoteRequest {
@@ -523,23 +523,23 @@ func (r *FreightQuoteRequest) WithShipmentNumberNotIn(values []int64) *FreightQu
 	for _, value := range values {
 		converted = append(converted, core.ValI64(value))
 	}
-	r.Query.AndFilter(core.ExprNotInList("shipment_number", converted))
+	r.Query.AndFilter(core.ExprNotInList(teaqlShipmentNumberStorageKey, converted))
 	return r
 }
 func (r *FreightQuoteRequest) WithShipmentNumberGreaterThan(value int64) *FreightQuoteRequest {
-	r.Query.AndFilter(core.ExprGt("shipment_number", core.ValI64(value)))
+	r.Query.AndFilter(core.ExprGt(teaqlShipmentNumberStorageKey, core.ValI64(value)))
 	return r
 }
 func (r *FreightQuoteRequest) WithShipmentNumberGreaterThanOrEqualTo(value int64) *FreightQuoteRequest {
-	r.Query.AndFilter(core.ExprGte("shipment_number", core.ValI64(value)))
+	r.Query.AndFilter(core.ExprGte(teaqlShipmentNumberStorageKey, core.ValI64(value)))
 	return r
 }
 func (r *FreightQuoteRequest) WithShipmentNumberLessThan(value int64) *FreightQuoteRequest {
-	r.Query.AndFilter(core.ExprLt("shipment_number", core.ValI64(value)))
+	r.Query.AndFilter(core.ExprLt(teaqlShipmentNumberStorageKey, core.ValI64(value)))
 	return r
 }
 func (r *FreightQuoteRequest) WithShipmentNumberLessThanOrEqualTo(value int64) *FreightQuoteRequest {
-	r.Query.AndFilter(core.ExprLte("shipment_number", core.ValI64(value)))
+	r.Query.AndFilter(core.ExprLte(teaqlShipmentNumberStorageKey, core.ValI64(value)))
 	return r
 }
 func (r *FreightQuoteRequest) WithShipmentNumberBetween(lower int64, upper int64) *FreightQuoteRequest {
@@ -547,36 +547,36 @@ func (r *FreightQuoteRequest) WithShipmentNumberBetween(lower int64, upper int64
 	from := core.ValI64(value)
 	value = upper
 	to := core.ValI64(value)
-	r.Query.AndFilter(core.ExprBetweenNode("shipment_number", from, to))
+	r.Query.AndFilter(core.ExprBetweenNode(teaqlShipmentNumberStorageKey, from, to))
 	return r
 }
 func (r *FreightQuoteRequest) WithShipmentNumberIsKnown() *FreightQuoteRequest {
-	r.Query.AndFilter(core.ExprIsNotNullNode("shipment_number"))
+	r.Query.AndFilter(core.ExprIsNotNullNode(teaqlShipmentNumberStorageKey))
 	return r
 }
 func (r *FreightQuoteRequest) WithShipmentNumberIsUnknown() *FreightQuoteRequest {
-	r.Query.AndFilter(core.ExprIsNullNode("shipment_number"))
+	r.Query.AndFilter(core.ExprIsNullNode(teaqlShipmentNumberStorageKey))
 	return r
 }
 func (r *FreightQuoteRequest) OrderByShipmentNumberAsc() *FreightQuoteRequest {
-	r.Query.OrderAsc("shipment_number")
+	r.Query.OrderAsc(teaqlShipmentNumberStorageKey)
 	return r
 }
 func (r *FreightQuoteRequest) OrderByShipmentNumberDesc() *FreightQuoteRequest {
-	r.Query.OrderDesc("shipment_number")
+	r.Query.OrderDesc(teaqlShipmentNumberStorageKey)
 	return r
 }
 func (r *FreightQuoteRequest) SelectPackageCount() *FreightQuoteRequest {
-	r.Query.Project("package_count")
+	r.Query.Project(teaqlPackageCountStorageKey)
 	return r
 }
 
 func (r *FreightQuoteRequest) WithPackageCountIs(value int64) *FreightQuoteRequest {
-	r.Query.AndFilter(core.ExprEq("package_count", core.ValI64(value)))
+	r.Query.AndFilter(core.ExprEq(teaqlPackageCountStorageKey, core.ValI64(value)))
 	return r
 }
 func (r *FreightQuoteRequest) WithPackageCountIsNot(value int64) *FreightQuoteRequest {
-	r.Query.AndFilter(core.ExprNe("package_count", core.ValI64(value)))
+	r.Query.AndFilter(core.ExprNe(teaqlPackageCountStorageKey, core.ValI64(value)))
 	return r
 }
 func (r *FreightQuoteRequest) WithPackageCountIn(values []int64) *FreightQuoteRequest {
@@ -584,7 +584,7 @@ func (r *FreightQuoteRequest) WithPackageCountIn(values []int64) *FreightQuoteRe
 	for _, value := range values {
 		converted = append(converted, core.ValI64(value))
 	}
-	r.Query.AndFilter(core.ExprInList("package_count", converted))
+	r.Query.AndFilter(core.ExprInList(teaqlPackageCountStorageKey, converted))
 	return r
 }
 func (r *FreightQuoteRequest) WithPackageCountNotIn(values []int64) *FreightQuoteRequest {
@@ -592,23 +592,23 @@ func (r *FreightQuoteRequest) WithPackageCountNotIn(values []int64) *FreightQuot
 	for _, value := range values {
 		converted = append(converted, core.ValI64(value))
 	}
-	r.Query.AndFilter(core.ExprNotInList("package_count", converted))
+	r.Query.AndFilter(core.ExprNotInList(teaqlPackageCountStorageKey, converted))
 	return r
 }
 func (r *FreightQuoteRequest) WithPackageCountGreaterThan(value int64) *FreightQuoteRequest {
-	r.Query.AndFilter(core.ExprGt("package_count", core.ValI64(value)))
+	r.Query.AndFilter(core.ExprGt(teaqlPackageCountStorageKey, core.ValI64(value)))
 	return r
 }
 func (r *FreightQuoteRequest) WithPackageCountGreaterThanOrEqualTo(value int64) *FreightQuoteRequest {
-	r.Query.AndFilter(core.ExprGte("package_count", core.ValI64(value)))
+	r.Query.AndFilter(core.ExprGte(teaqlPackageCountStorageKey, core.ValI64(value)))
 	return r
 }
 func (r *FreightQuoteRequest) WithPackageCountLessThan(value int64) *FreightQuoteRequest {
-	r.Query.AndFilter(core.ExprLt("package_count", core.ValI64(value)))
+	r.Query.AndFilter(core.ExprLt(teaqlPackageCountStorageKey, core.ValI64(value)))
 	return r
 }
 func (r *FreightQuoteRequest) WithPackageCountLessThanOrEqualTo(value int64) *FreightQuoteRequest {
-	r.Query.AndFilter(core.ExprLte("package_count", core.ValI64(value)))
+	r.Query.AndFilter(core.ExprLte(teaqlPackageCountStorageKey, core.ValI64(value)))
 	return r
 }
 func (r *FreightQuoteRequest) WithPackageCountBetween(lower int64, upper int64) *FreightQuoteRequest {
@@ -616,36 +616,36 @@ func (r *FreightQuoteRequest) WithPackageCountBetween(lower int64, upper int64) 
 	from := core.ValI64(value)
 	value = upper
 	to := core.ValI64(value)
-	r.Query.AndFilter(core.ExprBetweenNode("package_count", from, to))
+	r.Query.AndFilter(core.ExprBetweenNode(teaqlPackageCountStorageKey, from, to))
 	return r
 }
 func (r *FreightQuoteRequest) WithPackageCountIsKnown() *FreightQuoteRequest {
-	r.Query.AndFilter(core.ExprIsNotNullNode("package_count"))
+	r.Query.AndFilter(core.ExprIsNotNullNode(teaqlPackageCountStorageKey))
 	return r
 }
 func (r *FreightQuoteRequest) WithPackageCountIsUnknown() *FreightQuoteRequest {
-	r.Query.AndFilter(core.ExprIsNullNode("package_count"))
+	r.Query.AndFilter(core.ExprIsNullNode(teaqlPackageCountStorageKey))
 	return r
 }
 func (r *FreightQuoteRequest) OrderByPackageCountAsc() *FreightQuoteRequest {
-	r.Query.OrderAsc("package_count")
+	r.Query.OrderAsc(teaqlPackageCountStorageKey)
 	return r
 }
 func (r *FreightQuoteRequest) OrderByPackageCountDesc() *FreightQuoteRequest {
-	r.Query.OrderDesc("package_count")
+	r.Query.OrderDesc(teaqlPackageCountStorageKey)
 	return r
 }
 func (r *FreightQuoteRequest) SelectDeliveryDate() *FreightQuoteRequest {
-	r.Query.Project("delivery_date")
+	r.Query.Project(teaqlDeliveryDateStorageKey)
 	return r
 }
 
 func (r *FreightQuoteRequest) WithDeliveryDateIs(value time.Time) *FreightQuoteRequest {
-	r.Query.AndFilter(core.ExprEq("delivery_date", core.ValDate(value)))
+	r.Query.AndFilter(core.ExprEq(teaqlDeliveryDateStorageKey, core.ValDate(value)))
 	return r
 }
 func (r *FreightQuoteRequest) WithDeliveryDateIsNot(value time.Time) *FreightQuoteRequest {
-	r.Query.AndFilter(core.ExprNe("delivery_date", core.ValDate(value)))
+	r.Query.AndFilter(core.ExprNe(teaqlDeliveryDateStorageKey, core.ValDate(value)))
 	return r
 }
 func (r *FreightQuoteRequest) WithDeliveryDateIn(values []time.Time) *FreightQuoteRequest {
@@ -653,7 +653,7 @@ func (r *FreightQuoteRequest) WithDeliveryDateIn(values []time.Time) *FreightQuo
 	for _, value := range values {
 		converted = append(converted, core.ValDate(value))
 	}
-	r.Query.AndFilter(core.ExprInList("delivery_date", converted))
+	r.Query.AndFilter(core.ExprInList(teaqlDeliveryDateStorageKey, converted))
 	return r
 }
 func (r *FreightQuoteRequest) WithDeliveryDateNotIn(values []time.Time) *FreightQuoteRequest {
@@ -661,23 +661,23 @@ func (r *FreightQuoteRequest) WithDeliveryDateNotIn(values []time.Time) *Freight
 	for _, value := range values {
 		converted = append(converted, core.ValDate(value))
 	}
-	r.Query.AndFilter(core.ExprNotInList("delivery_date", converted))
+	r.Query.AndFilter(core.ExprNotInList(teaqlDeliveryDateStorageKey, converted))
 	return r
 }
 func (r *FreightQuoteRequest) WithDeliveryDateGreaterThan(value time.Time) *FreightQuoteRequest {
-	r.Query.AndFilter(core.ExprGt("delivery_date", core.ValDate(value)))
+	r.Query.AndFilter(core.ExprGt(teaqlDeliveryDateStorageKey, core.ValDate(value)))
 	return r
 }
 func (r *FreightQuoteRequest) WithDeliveryDateGreaterThanOrEqualTo(value time.Time) *FreightQuoteRequest {
-	r.Query.AndFilter(core.ExprGte("delivery_date", core.ValDate(value)))
+	r.Query.AndFilter(core.ExprGte(teaqlDeliveryDateStorageKey, core.ValDate(value)))
 	return r
 }
 func (r *FreightQuoteRequest) WithDeliveryDateLessThan(value time.Time) *FreightQuoteRequest {
-	r.Query.AndFilter(core.ExprLt("delivery_date", core.ValDate(value)))
+	r.Query.AndFilter(core.ExprLt(teaqlDeliveryDateStorageKey, core.ValDate(value)))
 	return r
 }
 func (r *FreightQuoteRequest) WithDeliveryDateLessThanOrEqualTo(value time.Time) *FreightQuoteRequest {
-	r.Query.AndFilter(core.ExprLte("delivery_date", core.ValDate(value)))
+	r.Query.AndFilter(core.ExprLte(teaqlDeliveryDateStorageKey, core.ValDate(value)))
 	return r
 }
 func (r *FreightQuoteRequest) WithDeliveryDateBetween(lower time.Time, upper time.Time) *FreightQuoteRequest {
@@ -685,36 +685,36 @@ func (r *FreightQuoteRequest) WithDeliveryDateBetween(lower time.Time, upper tim
 	from := core.ValDate(value)
 	value = upper
 	to := core.ValDate(value)
-	r.Query.AndFilter(core.ExprBetweenNode("delivery_date", from, to))
+	r.Query.AndFilter(core.ExprBetweenNode(teaqlDeliveryDateStorageKey, from, to))
 	return r
 }
 func (r *FreightQuoteRequest) WithDeliveryDateIsKnown() *FreightQuoteRequest {
-	r.Query.AndFilter(core.ExprIsNotNullNode("delivery_date"))
+	r.Query.AndFilter(core.ExprIsNotNullNode(teaqlDeliveryDateStorageKey))
 	return r
 }
 func (r *FreightQuoteRequest) WithDeliveryDateIsUnknown() *FreightQuoteRequest {
-	r.Query.AndFilter(core.ExprIsNullNode("delivery_date"))
+	r.Query.AndFilter(core.ExprIsNullNode(teaqlDeliveryDateStorageKey))
 	return r
 }
 func (r *FreightQuoteRequest) OrderByDeliveryDateAsc() *FreightQuoteRequest {
-	r.Query.OrderAsc("delivery_date")
+	r.Query.OrderAsc(teaqlDeliveryDateStorageKey)
 	return r
 }
 func (r *FreightQuoteRequest) OrderByDeliveryDateDesc() *FreightQuoteRequest {
-	r.Query.OrderDesc("delivery_date")
+	r.Query.OrderDesc(teaqlDeliveryDateStorageKey)
 	return r
 }
 func (r *FreightQuoteRequest) SelectPickupTime() *FreightQuoteRequest {
-	r.Query.Project("pickup_time")
+	r.Query.Project(teaqlPickupTimeStorageKey)
 	return r
 }
 
 func (r *FreightQuoteRequest) WithPickupTimeIs(value core.TimeOfDay) *FreightQuoteRequest {
-	r.Query.AndFilter(core.ExprEq("pickup_time", core.ValTimeOfDay(value)))
+	r.Query.AndFilter(core.ExprEq(teaqlPickupTimeStorageKey, core.ValTimeOfDay(value)))
 	return r
 }
 func (r *FreightQuoteRequest) WithPickupTimeIsNot(value core.TimeOfDay) *FreightQuoteRequest {
-	r.Query.AndFilter(core.ExprNe("pickup_time", core.ValTimeOfDay(value)))
+	r.Query.AndFilter(core.ExprNe(teaqlPickupTimeStorageKey, core.ValTimeOfDay(value)))
 	return r
 }
 func (r *FreightQuoteRequest) WithPickupTimeIn(values []core.TimeOfDay) *FreightQuoteRequest {
@@ -722,7 +722,7 @@ func (r *FreightQuoteRequest) WithPickupTimeIn(values []core.TimeOfDay) *Freight
 	for _, value := range values {
 		converted = append(converted, core.ValTimeOfDay(value))
 	}
-	r.Query.AndFilter(core.ExprInList("pickup_time", converted))
+	r.Query.AndFilter(core.ExprInList(teaqlPickupTimeStorageKey, converted))
 	return r
 }
 func (r *FreightQuoteRequest) WithPickupTimeNotIn(values []core.TimeOfDay) *FreightQuoteRequest {
@@ -730,23 +730,23 @@ func (r *FreightQuoteRequest) WithPickupTimeNotIn(values []core.TimeOfDay) *Frei
 	for _, value := range values {
 		converted = append(converted, core.ValTimeOfDay(value))
 	}
-	r.Query.AndFilter(core.ExprNotInList("pickup_time", converted))
+	r.Query.AndFilter(core.ExprNotInList(teaqlPickupTimeStorageKey, converted))
 	return r
 }
 func (r *FreightQuoteRequest) WithPickupTimeGreaterThan(value core.TimeOfDay) *FreightQuoteRequest {
-	r.Query.AndFilter(core.ExprGt("pickup_time", core.ValTimeOfDay(value)))
+	r.Query.AndFilter(core.ExprGt(teaqlPickupTimeStorageKey, core.ValTimeOfDay(value)))
 	return r
 }
 func (r *FreightQuoteRequest) WithPickupTimeGreaterThanOrEqualTo(value core.TimeOfDay) *FreightQuoteRequest {
-	r.Query.AndFilter(core.ExprGte("pickup_time", core.ValTimeOfDay(value)))
+	r.Query.AndFilter(core.ExprGte(teaqlPickupTimeStorageKey, core.ValTimeOfDay(value)))
 	return r
 }
 func (r *FreightQuoteRequest) WithPickupTimeLessThan(value core.TimeOfDay) *FreightQuoteRequest {
-	r.Query.AndFilter(core.ExprLt("pickup_time", core.ValTimeOfDay(value)))
+	r.Query.AndFilter(core.ExprLt(teaqlPickupTimeStorageKey, core.ValTimeOfDay(value)))
 	return r
 }
 func (r *FreightQuoteRequest) WithPickupTimeLessThanOrEqualTo(value core.TimeOfDay) *FreightQuoteRequest {
-	r.Query.AndFilter(core.ExprLte("pickup_time", core.ValTimeOfDay(value)))
+	r.Query.AndFilter(core.ExprLte(teaqlPickupTimeStorageKey, core.ValTimeOfDay(value)))
 	return r
 }
 func (r *FreightQuoteRequest) WithPickupTimeBetween(lower core.TimeOfDay, upper core.TimeOfDay) *FreightQuoteRequest {
@@ -754,36 +754,36 @@ func (r *FreightQuoteRequest) WithPickupTimeBetween(lower core.TimeOfDay, upper 
 	from := core.ValTimeOfDay(value)
 	value = upper
 	to := core.ValTimeOfDay(value)
-	r.Query.AndFilter(core.ExprBetweenNode("pickup_time", from, to))
+	r.Query.AndFilter(core.ExprBetweenNode(teaqlPickupTimeStorageKey, from, to))
 	return r
 }
 func (r *FreightQuoteRequest) WithPickupTimeIsKnown() *FreightQuoteRequest {
-	r.Query.AndFilter(core.ExprIsNotNullNode("pickup_time"))
+	r.Query.AndFilter(core.ExprIsNotNullNode(teaqlPickupTimeStorageKey))
 	return r
 }
 func (r *FreightQuoteRequest) WithPickupTimeIsUnknown() *FreightQuoteRequest {
-	r.Query.AndFilter(core.ExprIsNullNode("pickup_time"))
+	r.Query.AndFilter(core.ExprIsNullNode(teaqlPickupTimeStorageKey))
 	return r
 }
 func (r *FreightQuoteRequest) OrderByPickupTimeAsc() *FreightQuoteRequest {
-	r.Query.OrderAsc("pickup_time")
+	r.Query.OrderAsc(teaqlPickupTimeStorageKey)
 	return r
 }
 func (r *FreightQuoteRequest) OrderByPickupTimeDesc() *FreightQuoteRequest {
-	r.Query.OrderDesc("pickup_time")
+	r.Query.OrderDesc(teaqlPickupTimeStorageKey)
 	return r
 }
 func (r *FreightQuoteRequest) SelectQuotedAt() *FreightQuoteRequest {
-	r.Query.Project("quoted_at")
+	r.Query.Project(teaqlQuotedAtStorageKey)
 	return r
 }
 
 func (r *FreightQuoteRequest) WithQuotedAtIs(value time.Time) *FreightQuoteRequest {
-	r.Query.AndFilter(core.ExprEq("quoted_at", core.ValTimestamp(value.UnixMilli())))
+	r.Query.AndFilter(core.ExprEq(teaqlQuotedAtStorageKey, core.ValTimestamp(value.UnixMilli())))
 	return r
 }
 func (r *FreightQuoteRequest) WithQuotedAtIsNot(value time.Time) *FreightQuoteRequest {
-	r.Query.AndFilter(core.ExprNe("quoted_at", core.ValTimestamp(value.UnixMilli())))
+	r.Query.AndFilter(core.ExprNe(teaqlQuotedAtStorageKey, core.ValTimestamp(value.UnixMilli())))
 	return r
 }
 func (r *FreightQuoteRequest) WithQuotedAtIn(values []time.Time) *FreightQuoteRequest {
@@ -791,7 +791,7 @@ func (r *FreightQuoteRequest) WithQuotedAtIn(values []time.Time) *FreightQuoteRe
 	for _, value := range values {
 		converted = append(converted, core.ValTimestamp(value.UnixMilli()))
 	}
-	r.Query.AndFilter(core.ExprInList("quoted_at", converted))
+	r.Query.AndFilter(core.ExprInList(teaqlQuotedAtStorageKey, converted))
 	return r
 }
 func (r *FreightQuoteRequest) WithQuotedAtNotIn(values []time.Time) *FreightQuoteRequest {
@@ -799,23 +799,23 @@ func (r *FreightQuoteRequest) WithQuotedAtNotIn(values []time.Time) *FreightQuot
 	for _, value := range values {
 		converted = append(converted, core.ValTimestamp(value.UnixMilli()))
 	}
-	r.Query.AndFilter(core.ExprNotInList("quoted_at", converted))
+	r.Query.AndFilter(core.ExprNotInList(teaqlQuotedAtStorageKey, converted))
 	return r
 }
 func (r *FreightQuoteRequest) WithQuotedAtGreaterThan(value time.Time) *FreightQuoteRequest {
-	r.Query.AndFilter(core.ExprGt("quoted_at", core.ValTimestamp(value.UnixMilli())))
+	r.Query.AndFilter(core.ExprGt(teaqlQuotedAtStorageKey, core.ValTimestamp(value.UnixMilli())))
 	return r
 }
 func (r *FreightQuoteRequest) WithQuotedAtGreaterThanOrEqualTo(value time.Time) *FreightQuoteRequest {
-	r.Query.AndFilter(core.ExprGte("quoted_at", core.ValTimestamp(value.UnixMilli())))
+	r.Query.AndFilter(core.ExprGte(teaqlQuotedAtStorageKey, core.ValTimestamp(value.UnixMilli())))
 	return r
 }
 func (r *FreightQuoteRequest) WithQuotedAtLessThan(value time.Time) *FreightQuoteRequest {
-	r.Query.AndFilter(core.ExprLt("quoted_at", core.ValTimestamp(value.UnixMilli())))
+	r.Query.AndFilter(core.ExprLt(teaqlQuotedAtStorageKey, core.ValTimestamp(value.UnixMilli())))
 	return r
 }
 func (r *FreightQuoteRequest) WithQuotedAtLessThanOrEqualTo(value time.Time) *FreightQuoteRequest {
-	r.Query.AndFilter(core.ExprLte("quoted_at", core.ValTimestamp(value.UnixMilli())))
+	r.Query.AndFilter(core.ExprLte(teaqlQuotedAtStorageKey, core.ValTimestamp(value.UnixMilli())))
 	return r
 }
 func (r *FreightQuoteRequest) WithQuotedAtBetween(lower time.Time, upper time.Time) *FreightQuoteRequest {
@@ -823,36 +823,36 @@ func (r *FreightQuoteRequest) WithQuotedAtBetween(lower time.Time, upper time.Ti
 	from := core.ValTimestamp(value.UnixMilli())
 	value = upper
 	to := core.ValTimestamp(value.UnixMilli())
-	r.Query.AndFilter(core.ExprBetweenNode("quoted_at", from, to))
+	r.Query.AndFilter(core.ExprBetweenNode(teaqlQuotedAtStorageKey, from, to))
 	return r
 }
 func (r *FreightQuoteRequest) WithQuotedAtIsKnown() *FreightQuoteRequest {
-	r.Query.AndFilter(core.ExprIsNotNullNode("quoted_at"))
+	r.Query.AndFilter(core.ExprIsNotNullNode(teaqlQuotedAtStorageKey))
 	return r
 }
 func (r *FreightQuoteRequest) WithQuotedAtIsUnknown() *FreightQuoteRequest {
-	r.Query.AndFilter(core.ExprIsNullNode("quoted_at"))
+	r.Query.AndFilter(core.ExprIsNullNode(teaqlQuotedAtStorageKey))
 	return r
 }
 func (r *FreightQuoteRequest) OrderByQuotedAtAsc() *FreightQuoteRequest {
-	r.Query.OrderAsc("quoted_at")
+	r.Query.OrderAsc(teaqlQuotedAtStorageKey)
 	return r
 }
 func (r *FreightQuoteRequest) OrderByQuotedAtDesc() *FreightQuoteRequest {
-	r.Query.OrderDesc("quoted_at")
+	r.Query.OrderDesc(teaqlQuotedAtStorageKey)
 	return r
 }
 func (r *FreightQuoteRequest) SelectInstructions() *FreightQuoteRequest {
-	r.Query.Project("instructions")
+	r.Query.Project(teaqlInstructionsStorageKey)
 	return r
 }
 
 func (r *FreightQuoteRequest) WithInstructionsIs(value *string) *FreightQuoteRequest {
-	r.Query.AndFilter(core.ExprEq("instructions", func() core.Value { if value == nil { return core.ValNull() }; return core.ValText((*value)) }()))
+	r.Query.AndFilter(core.ExprEq(teaqlInstructionsStorageKey, func() core.Value { if value == nil { return core.ValNull() }; return core.ValText((*value)) }()))
 	return r
 }
 func (r *FreightQuoteRequest) WithInstructionsIsNot(value *string) *FreightQuoteRequest {
-	r.Query.AndFilter(core.ExprNe("instructions", func() core.Value { if value == nil { return core.ValNull() }; return core.ValText((*value)) }()))
+	r.Query.AndFilter(core.ExprNe(teaqlInstructionsStorageKey, func() core.Value { if value == nil { return core.ValNull() }; return core.ValText((*value)) }()))
 	return r
 }
 func (r *FreightQuoteRequest) WithInstructionsIn(values []*string) *FreightQuoteRequest {
@@ -860,7 +860,7 @@ func (r *FreightQuoteRequest) WithInstructionsIn(values []*string) *FreightQuote
 	for _, value := range values {
 		converted = append(converted, func() core.Value { if value == nil { return core.ValNull() }; return core.ValText((*value)) }())
 	}
-	r.Query.AndFilter(core.ExprInList("instructions", converted))
+	r.Query.AndFilter(core.ExprInList(teaqlInstructionsStorageKey, converted))
 	return r
 }
 func (r *FreightQuoteRequest) WithInstructionsNotIn(values []*string) *FreightQuoteRequest {
@@ -868,23 +868,23 @@ func (r *FreightQuoteRequest) WithInstructionsNotIn(values []*string) *FreightQu
 	for _, value := range values {
 		converted = append(converted, func() core.Value { if value == nil { return core.ValNull() }; return core.ValText((*value)) }())
 	}
-	r.Query.AndFilter(core.ExprNotInList("instructions", converted))
+	r.Query.AndFilter(core.ExprNotInList(teaqlInstructionsStorageKey, converted))
 	return r
 }
 func (r *FreightQuoteRequest) WithInstructionsGreaterThan(value *string) *FreightQuoteRequest {
-	r.Query.AndFilter(core.ExprGt("instructions", func() core.Value { if value == nil { return core.ValNull() }; return core.ValText((*value)) }()))
+	r.Query.AndFilter(core.ExprGt(teaqlInstructionsStorageKey, func() core.Value { if value == nil { return core.ValNull() }; return core.ValText((*value)) }()))
 	return r
 }
 func (r *FreightQuoteRequest) WithInstructionsGreaterThanOrEqualTo(value *string) *FreightQuoteRequest {
-	r.Query.AndFilter(core.ExprGte("instructions", func() core.Value { if value == nil { return core.ValNull() }; return core.ValText((*value)) }()))
+	r.Query.AndFilter(core.ExprGte(teaqlInstructionsStorageKey, func() core.Value { if value == nil { return core.ValNull() }; return core.ValText((*value)) }()))
 	return r
 }
 func (r *FreightQuoteRequest) WithInstructionsLessThan(value *string) *FreightQuoteRequest {
-	r.Query.AndFilter(core.ExprLt("instructions", func() core.Value { if value == nil { return core.ValNull() }; return core.ValText((*value)) }()))
+	r.Query.AndFilter(core.ExprLt(teaqlInstructionsStorageKey, func() core.Value { if value == nil { return core.ValNull() }; return core.ValText((*value)) }()))
 	return r
 }
 func (r *FreightQuoteRequest) WithInstructionsLessThanOrEqualTo(value *string) *FreightQuoteRequest {
-	r.Query.AndFilter(core.ExprLte("instructions", func() core.Value { if value == nil { return core.ValNull() }; return core.ValText((*value)) }()))
+	r.Query.AndFilter(core.ExprLte(teaqlInstructionsStorageKey, func() core.Value { if value == nil { return core.ValNull() }; return core.ValText((*value)) }()))
 	return r
 }
 func (r *FreightQuoteRequest) WithInstructionsBetween(lower *string, upper *string) *FreightQuoteRequest {
@@ -892,64 +892,64 @@ func (r *FreightQuoteRequest) WithInstructionsBetween(lower *string, upper *stri
 	from := func() core.Value { if value == nil { return core.ValNull() }; return core.ValText((*value)) }()
 	value = upper
 	to := func() core.Value { if value == nil { return core.ValNull() }; return core.ValText((*value)) }()
-	r.Query.AndFilter(core.ExprBetweenNode("instructions", from, to))
+	r.Query.AndFilter(core.ExprBetweenNode(teaqlInstructionsStorageKey, from, to))
 	return r
 }
 func (r *FreightQuoteRequest) WithInstructionsIsKnown() *FreightQuoteRequest {
-	r.Query.AndFilter(core.ExprIsNotNullNode("instructions"))
+	r.Query.AndFilter(core.ExprIsNotNullNode(teaqlInstructionsStorageKey))
 	return r
 }
 func (r *FreightQuoteRequest) WithInstructionsIsUnknown() *FreightQuoteRequest {
-	r.Query.AndFilter(core.ExprIsNullNode("instructions"))
+	r.Query.AndFilter(core.ExprIsNullNode(teaqlInstructionsStorageKey))
 	return r
 }
 func (r *FreightQuoteRequest) WithInstructionsContaining(term string) *FreightQuoteRequest {
-	r.Query.AndFilter(core.ExprContain("instructions", term))
+	r.Query.AndFilter(core.ExprContain(teaqlInstructionsStorageKey, term))
 	return r
 }
 func (r *FreightQuoteRequest) WithInstructionsNotContaining(term string) *FreightQuoteRequest {
-	r.Query.AndFilter(core.ExprNotContain("instructions", term))
+	r.Query.AndFilter(core.ExprNotContain(teaqlInstructionsStorageKey, term))
 	return r
 }
 func (r *FreightQuoteRequest) WithInstructionsStartingWith(term string) *FreightQuoteRequest {
-	r.Query.AndFilter(core.ExprBeginWith("instructions", term))
+	r.Query.AndFilter(core.ExprBeginWith(teaqlInstructionsStorageKey, term))
 	return r
 }
 func (r *FreightQuoteRequest) WithInstructionsNotStartingWith(term string) *FreightQuoteRequest {
-	r.Query.AndFilter(core.ExprNotBeginWith("instructions", term))
+	r.Query.AndFilter(core.ExprNotBeginWith(teaqlInstructionsStorageKey, term))
 	return r
 }
 func (r *FreightQuoteRequest) WithInstructionsEndingWith(term string) *FreightQuoteRequest {
-	r.Query.AndFilter(core.ExprEndWith("instructions", term))
+	r.Query.AndFilter(core.ExprEndWith(teaqlInstructionsStorageKey, term))
 	return r
 }
 func (r *FreightQuoteRequest) WithInstructionsNotEndingWith(term string) *FreightQuoteRequest {
-	r.Query.AndFilter(core.ExprNotEndWith("instructions", term))
+	r.Query.AndFilter(core.ExprNotEndWith(teaqlInstructionsStorageKey, term))
 	return r
 }
 func (r *FreightQuoteRequest) WithInstructionsSoundingLike(term string) *FreightQuoteRequest {
-	r.Query.AndFilter(core.ExprSoundLike("instructions", core.ValText(term)))
+	r.Query.AndFilter(core.ExprSoundLike(teaqlInstructionsStorageKey, core.ValText(term)))
 	return r
 }
 func (r *FreightQuoteRequest) OrderByInstructionsAsc() *FreightQuoteRequest {
-	r.Query.OrderAsc("instructions")
+	r.Query.OrderAsc(teaqlInstructionsStorageKey)
 	return r
 }
 func (r *FreightQuoteRequest) OrderByInstructionsDesc() *FreightQuoteRequest {
-	r.Query.OrderDesc("instructions")
+	r.Query.OrderDesc(teaqlInstructionsStorageKey)
 	return r
 }
 func (r *FreightQuoteRequest) SelectVersion() *FreightQuoteRequest {
-	r.Query.Project("version")
+	r.Query.Project(teaqlVersionStorageKey)
 	return r
 }
 
 func (r *FreightQuoteRequest) WithVersionIs(value int64) *FreightQuoteRequest {
-	r.Query.AndFilter(core.ExprEq("version", core.ValI64(value)))
+	r.Query.AndFilter(core.ExprEq(teaqlVersionStorageKey, core.ValI64(value)))
 	return r
 }
 func (r *FreightQuoteRequest) WithVersionIsNot(value int64) *FreightQuoteRequest {
-	r.Query.AndFilter(core.ExprNe("version", core.ValI64(value)))
+	r.Query.AndFilter(core.ExprNe(teaqlVersionStorageKey, core.ValI64(value)))
 	return r
 }
 func (r *FreightQuoteRequest) WithVersionIn(values []int64) *FreightQuoteRequest {
@@ -957,7 +957,7 @@ func (r *FreightQuoteRequest) WithVersionIn(values []int64) *FreightQuoteRequest
 	for _, value := range values {
 		converted = append(converted, core.ValI64(value))
 	}
-	r.Query.AndFilter(core.ExprInList("version", converted))
+	r.Query.AndFilter(core.ExprInList(teaqlVersionStorageKey, converted))
 	return r
 }
 func (r *FreightQuoteRequest) WithVersionNotIn(values []int64) *FreightQuoteRequest {
@@ -965,23 +965,23 @@ func (r *FreightQuoteRequest) WithVersionNotIn(values []int64) *FreightQuoteRequ
 	for _, value := range values {
 		converted = append(converted, core.ValI64(value))
 	}
-	r.Query.AndFilter(core.ExprNotInList("version", converted))
+	r.Query.AndFilter(core.ExprNotInList(teaqlVersionStorageKey, converted))
 	return r
 }
 func (r *FreightQuoteRequest) WithVersionGreaterThan(value int64) *FreightQuoteRequest {
-	r.Query.AndFilter(core.ExprGt("version", core.ValI64(value)))
+	r.Query.AndFilter(core.ExprGt(teaqlVersionStorageKey, core.ValI64(value)))
 	return r
 }
 func (r *FreightQuoteRequest) WithVersionGreaterThanOrEqualTo(value int64) *FreightQuoteRequest {
-	r.Query.AndFilter(core.ExprGte("version", core.ValI64(value)))
+	r.Query.AndFilter(core.ExprGte(teaqlVersionStorageKey, core.ValI64(value)))
 	return r
 }
 func (r *FreightQuoteRequest) WithVersionLessThan(value int64) *FreightQuoteRequest {
-	r.Query.AndFilter(core.ExprLt("version", core.ValI64(value)))
+	r.Query.AndFilter(core.ExprLt(teaqlVersionStorageKey, core.ValI64(value)))
 	return r
 }
 func (r *FreightQuoteRequest) WithVersionLessThanOrEqualTo(value int64) *FreightQuoteRequest {
-	r.Query.AndFilter(core.ExprLte("version", core.ValI64(value)))
+	r.Query.AndFilter(core.ExprLte(teaqlVersionStorageKey, core.ValI64(value)))
 	return r
 }
 func (r *FreightQuoteRequest) WithVersionBetween(lower int64, upper int64) *FreightQuoteRequest {
@@ -989,23 +989,23 @@ func (r *FreightQuoteRequest) WithVersionBetween(lower int64, upper int64) *Frei
 	from := core.ValI64(value)
 	value = upper
 	to := core.ValI64(value)
-	r.Query.AndFilter(core.ExprBetweenNode("version", from, to))
+	r.Query.AndFilter(core.ExprBetweenNode(teaqlVersionStorageKey, from, to))
 	return r
 }
 func (r *FreightQuoteRequest) WithVersionIsKnown() *FreightQuoteRequest {
-	r.Query.AndFilter(core.ExprIsNotNullNode("version"))
+	r.Query.AndFilter(core.ExprIsNotNullNode(teaqlVersionStorageKey))
 	return r
 }
 func (r *FreightQuoteRequest) WithVersionIsUnknown() *FreightQuoteRequest {
-	r.Query.AndFilter(core.ExprIsNullNode("version"))
+	r.Query.AndFilter(core.ExprIsNullNode(teaqlVersionStorageKey))
 	return r
 }
 func (r *FreightQuoteRequest) OrderByVersionAsc() *FreightQuoteRequest {
-	r.Query.OrderAsc("version")
+	r.Query.OrderAsc(teaqlVersionStorageKey)
 	return r
 }
 func (r *FreightQuoteRequest) OrderByVersionDesc() *FreightQuoteRequest {
-	r.Query.OrderDesc("version")
+	r.Query.OrderDesc(teaqlVersionStorageKey)
 	return r
 }
 
@@ -1013,7 +1013,7 @@ func (r *FreightQuoteRequest) SelectPlatformWith(child interface {
 	GetQuery() *core.SelectQuery
 	NewRelationEntity() core.Entity
 }) *FreightQuoteRequest {
-	runtime.EnsureRelationProjection(r.Query, "platform_id")
+	runtime.EnsureRelationProjection(r.Query, teaqlPlatformStorageKey)
 	r.Query.RelationQuerySelection("platformEntity", core.QuerySelectionFor(child))
 	r.Query.Relations[len(r.Query.Relations)-1].Operation = &core.QueryOperation{Kind: "relation", Method: "SelectPlatformWith", Relation: "platformEntity"}
 	r.relationFactories["platformEntity"] = func(record core.Record) (core.Entity, error) {
@@ -1031,7 +1031,7 @@ func (r *FreightQuoteRequest) WithPlatformMatching(child interface {
 	GetQuery() *core.SelectQuery
 	GetEntityDescriptor() *core.EntityDescriptor
 }) *FreightQuoteRequest {
-	r.Query.AndFilter(core.ExprInSubQuery("platform_id", child.GetEntityDescriptor(), child.GetQuery(), "id"))
+	r.Query.AndFilter(core.ExprInSubQuery(teaqlPlatformStorageKey, child.GetEntityDescriptor(), child.GetQuery(), "id"))
 	return r
 }
 
@@ -1039,7 +1039,7 @@ func (r *FreightQuoteRequest) WithoutPlatformMatching(child interface {
 	GetQuery() *core.SelectQuery
 	GetEntityDescriptor() *core.EntityDescriptor
 }) *FreightQuoteRequest {
-	r.Query.AndFilter(core.ExprNotInSubQuery("platform_id", child.GetEntityDescriptor(), child.GetQuery(), "id"))
+	r.Query.AndFilter(core.ExprNotInSubQuery(teaqlPlatformStorageKey, child.GetEntityDescriptor(), child.GetQuery(), "id"))
 	return r
 }
 
@@ -1178,7 +1178,7 @@ func (r *FreightQuoteRequest) MinAmount() *FreightQuoteRequest {
 }
 
 func (r *FreightQuoteRequest) MinAmountAs(alias string) *FreightQuoteRequest {
-	r.Query.Min("amount", alias)
+	r.Query.Min(teaqlAmountStorageKey, alias)
 	return r
 }
 func (r *FreightQuoteRequest) MaxAmount() *FreightQuoteRequest {
@@ -1186,7 +1186,7 @@ func (r *FreightQuoteRequest) MaxAmount() *FreightQuoteRequest {
 }
 
 func (r *FreightQuoteRequest) MaxAmountAs(alias string) *FreightQuoteRequest {
-	r.Query.Max("amount", alias)
+	r.Query.Max(teaqlAmountStorageKey, alias)
 	return r
 }
 func (r *FreightQuoteRequest) SumAmount() *FreightQuoteRequest {
@@ -1194,7 +1194,7 @@ func (r *FreightQuoteRequest) SumAmount() *FreightQuoteRequest {
 }
 
 func (r *FreightQuoteRequest) SumAmountAs(alias string) *FreightQuoteRequest {
-	r.Query.Sum("amount", alias)
+	r.Query.Sum(teaqlAmountStorageKey, alias)
 	return r
 }
 func (r *FreightQuoteRequest) AvgAmount() *FreightQuoteRequest {
@@ -1202,7 +1202,7 @@ func (r *FreightQuoteRequest) AvgAmount() *FreightQuoteRequest {
 }
 
 func (r *FreightQuoteRequest) AvgAmountAs(alias string) *FreightQuoteRequest {
-	r.Query.Avg("amount", alias)
+	r.Query.Avg(teaqlAmountStorageKey, alias)
 	return r
 }
 func (r *FreightQuoteRequest) StddevAmount() *FreightQuoteRequest {
@@ -1210,7 +1210,7 @@ func (r *FreightQuoteRequest) StddevAmount() *FreightQuoteRequest {
 }
 
 func (r *FreightQuoteRequest) StddevAmountAs(alias string) *FreightQuoteRequest {
-	r.Query.Stddev("amount", alias)
+	r.Query.Stddev(teaqlAmountStorageKey, alias)
 	return r
 }
 func (r *FreightQuoteRequest) StddevPopAmount() *FreightQuoteRequest {
@@ -1218,7 +1218,7 @@ func (r *FreightQuoteRequest) StddevPopAmount() *FreightQuoteRequest {
 }
 
 func (r *FreightQuoteRequest) StddevPopAmountAs(alias string) *FreightQuoteRequest {
-	r.Query.StddevPop("amount", alias)
+	r.Query.StddevPop(teaqlAmountStorageKey, alias)
 	return r
 }
 func (r *FreightQuoteRequest) VarSampAmount() *FreightQuoteRequest {
@@ -1226,7 +1226,7 @@ func (r *FreightQuoteRequest) VarSampAmount() *FreightQuoteRequest {
 }
 
 func (r *FreightQuoteRequest) VarSampAmountAs(alias string) *FreightQuoteRequest {
-	r.Query.VarSamp("amount", alias)
+	r.Query.VarSamp(teaqlAmountStorageKey, alias)
 	return r
 }
 func (r *FreightQuoteRequest) VarPopAmount() *FreightQuoteRequest {
@@ -1234,7 +1234,7 @@ func (r *FreightQuoteRequest) VarPopAmount() *FreightQuoteRequest {
 }
 
 func (r *FreightQuoteRequest) VarPopAmountAs(alias string) *FreightQuoteRequest {
-	r.Query.VarPop("amount", alias)
+	r.Query.VarPop(teaqlAmountStorageKey, alias)
 	return r
 }
 func (r *FreightQuoteRequest) MinShipmentNumber() *FreightQuoteRequest {
@@ -1242,7 +1242,7 @@ func (r *FreightQuoteRequest) MinShipmentNumber() *FreightQuoteRequest {
 }
 
 func (r *FreightQuoteRequest) MinShipmentNumberAs(alias string) *FreightQuoteRequest {
-	r.Query.Min("shipment_number", alias)
+	r.Query.Min(teaqlShipmentNumberStorageKey, alias)
 	return r
 }
 func (r *FreightQuoteRequest) MaxShipmentNumber() *FreightQuoteRequest {
@@ -1250,7 +1250,7 @@ func (r *FreightQuoteRequest) MaxShipmentNumber() *FreightQuoteRequest {
 }
 
 func (r *FreightQuoteRequest) MaxShipmentNumberAs(alias string) *FreightQuoteRequest {
-	r.Query.Max("shipment_number", alias)
+	r.Query.Max(teaqlShipmentNumberStorageKey, alias)
 	return r
 }
 func (r *FreightQuoteRequest) SumShipmentNumber() *FreightQuoteRequest {
@@ -1258,7 +1258,7 @@ func (r *FreightQuoteRequest) SumShipmentNumber() *FreightQuoteRequest {
 }
 
 func (r *FreightQuoteRequest) SumShipmentNumberAs(alias string) *FreightQuoteRequest {
-	r.Query.Sum("shipment_number", alias)
+	r.Query.Sum(teaqlShipmentNumberStorageKey, alias)
 	return r
 }
 func (r *FreightQuoteRequest) AvgShipmentNumber() *FreightQuoteRequest {
@@ -1266,7 +1266,7 @@ func (r *FreightQuoteRequest) AvgShipmentNumber() *FreightQuoteRequest {
 }
 
 func (r *FreightQuoteRequest) AvgShipmentNumberAs(alias string) *FreightQuoteRequest {
-	r.Query.Avg("shipment_number", alias)
+	r.Query.Avg(teaqlShipmentNumberStorageKey, alias)
 	return r
 }
 func (r *FreightQuoteRequest) StddevShipmentNumber() *FreightQuoteRequest {
@@ -1274,7 +1274,7 @@ func (r *FreightQuoteRequest) StddevShipmentNumber() *FreightQuoteRequest {
 }
 
 func (r *FreightQuoteRequest) StddevShipmentNumberAs(alias string) *FreightQuoteRequest {
-	r.Query.Stddev("shipment_number", alias)
+	r.Query.Stddev(teaqlShipmentNumberStorageKey, alias)
 	return r
 }
 func (r *FreightQuoteRequest) StddevPopShipmentNumber() *FreightQuoteRequest {
@@ -1282,7 +1282,7 @@ func (r *FreightQuoteRequest) StddevPopShipmentNumber() *FreightQuoteRequest {
 }
 
 func (r *FreightQuoteRequest) StddevPopShipmentNumberAs(alias string) *FreightQuoteRequest {
-	r.Query.StddevPop("shipment_number", alias)
+	r.Query.StddevPop(teaqlShipmentNumberStorageKey, alias)
 	return r
 }
 func (r *FreightQuoteRequest) VarSampShipmentNumber() *FreightQuoteRequest {
@@ -1290,7 +1290,7 @@ func (r *FreightQuoteRequest) VarSampShipmentNumber() *FreightQuoteRequest {
 }
 
 func (r *FreightQuoteRequest) VarSampShipmentNumberAs(alias string) *FreightQuoteRequest {
-	r.Query.VarSamp("shipment_number", alias)
+	r.Query.VarSamp(teaqlShipmentNumberStorageKey, alias)
 	return r
 }
 func (r *FreightQuoteRequest) VarPopShipmentNumber() *FreightQuoteRequest {
@@ -1298,7 +1298,7 @@ func (r *FreightQuoteRequest) VarPopShipmentNumber() *FreightQuoteRequest {
 }
 
 func (r *FreightQuoteRequest) VarPopShipmentNumberAs(alias string) *FreightQuoteRequest {
-	r.Query.VarPop("shipment_number", alias)
+	r.Query.VarPop(teaqlShipmentNumberStorageKey, alias)
 	return r
 }
 func (r *FreightQuoteRequest) MinPackageCount() *FreightQuoteRequest {
@@ -1306,7 +1306,7 @@ func (r *FreightQuoteRequest) MinPackageCount() *FreightQuoteRequest {
 }
 
 func (r *FreightQuoteRequest) MinPackageCountAs(alias string) *FreightQuoteRequest {
-	r.Query.Min("package_count", alias)
+	r.Query.Min(teaqlPackageCountStorageKey, alias)
 	return r
 }
 func (r *FreightQuoteRequest) MaxPackageCount() *FreightQuoteRequest {
@@ -1314,7 +1314,7 @@ func (r *FreightQuoteRequest) MaxPackageCount() *FreightQuoteRequest {
 }
 
 func (r *FreightQuoteRequest) MaxPackageCountAs(alias string) *FreightQuoteRequest {
-	r.Query.Max("package_count", alias)
+	r.Query.Max(teaqlPackageCountStorageKey, alias)
 	return r
 }
 func (r *FreightQuoteRequest) SumPackageCount() *FreightQuoteRequest {
@@ -1322,7 +1322,7 @@ func (r *FreightQuoteRequest) SumPackageCount() *FreightQuoteRequest {
 }
 
 func (r *FreightQuoteRequest) SumPackageCountAs(alias string) *FreightQuoteRequest {
-	r.Query.Sum("package_count", alias)
+	r.Query.Sum(teaqlPackageCountStorageKey, alias)
 	return r
 }
 func (r *FreightQuoteRequest) AvgPackageCount() *FreightQuoteRequest {
@@ -1330,7 +1330,7 @@ func (r *FreightQuoteRequest) AvgPackageCount() *FreightQuoteRequest {
 }
 
 func (r *FreightQuoteRequest) AvgPackageCountAs(alias string) *FreightQuoteRequest {
-	r.Query.Avg("package_count", alias)
+	r.Query.Avg(teaqlPackageCountStorageKey, alias)
 	return r
 }
 func (r *FreightQuoteRequest) StddevPackageCount() *FreightQuoteRequest {
@@ -1338,7 +1338,7 @@ func (r *FreightQuoteRequest) StddevPackageCount() *FreightQuoteRequest {
 }
 
 func (r *FreightQuoteRequest) StddevPackageCountAs(alias string) *FreightQuoteRequest {
-	r.Query.Stddev("package_count", alias)
+	r.Query.Stddev(teaqlPackageCountStorageKey, alias)
 	return r
 }
 func (r *FreightQuoteRequest) StddevPopPackageCount() *FreightQuoteRequest {
@@ -1346,7 +1346,7 @@ func (r *FreightQuoteRequest) StddevPopPackageCount() *FreightQuoteRequest {
 }
 
 func (r *FreightQuoteRequest) StddevPopPackageCountAs(alias string) *FreightQuoteRequest {
-	r.Query.StddevPop("package_count", alias)
+	r.Query.StddevPop(teaqlPackageCountStorageKey, alias)
 	return r
 }
 func (r *FreightQuoteRequest) VarSampPackageCount() *FreightQuoteRequest {
@@ -1354,7 +1354,7 @@ func (r *FreightQuoteRequest) VarSampPackageCount() *FreightQuoteRequest {
 }
 
 func (r *FreightQuoteRequest) VarSampPackageCountAs(alias string) *FreightQuoteRequest {
-	r.Query.VarSamp("package_count", alias)
+	r.Query.VarSamp(teaqlPackageCountStorageKey, alias)
 	return r
 }
 func (r *FreightQuoteRequest) VarPopPackageCount() *FreightQuoteRequest {
@@ -1362,117 +1362,117 @@ func (r *FreightQuoteRequest) VarPopPackageCount() *FreightQuoteRequest {
 }
 
 func (r *FreightQuoteRequest) VarPopPackageCountAs(alias string) *FreightQuoteRequest {
-	r.Query.VarPop("package_count", alias)
+	r.Query.VarPop(teaqlPackageCountStorageKey, alias)
 	return r
 }
 
 func (r *FreightQuoteRequest) GroupById() *FreightQuoteRequest {
-	r.Query.WithGroupBy("id")
+	r.Query.WithGroupBy(teaqlIdStorageKey)
 	return r
 }
 
 func (r *FreightQuoteRequest) GroupByIdAs(alias string) *FreightQuoteRequest {
-	r.Query.WithGroupBy("id")
-	r.Query.ProjectExpr(alias, core.ExprColumnNode("id"))
+	r.Query.WithGroupBy(teaqlIdStorageKey)
+	r.Query.ProjectExpr(alias, core.ExprColumnNode(teaqlIdStorageKey))
 	return r
 }
 func (r *FreightQuoteRequest) GroupByPlatform() *FreightQuoteRequest {
-	r.Query.WithGroupBy("platform_id")
+	r.Query.WithGroupBy(teaqlPlatformStorageKey)
 	return r
 }
 
 func (r *FreightQuoteRequest) GroupByPlatformAs(alias string) *FreightQuoteRequest {
-	r.Query.WithGroupBy("platform_id")
-	r.Query.ProjectExpr(alias, core.ExprColumnNode("platform_id"))
+	r.Query.WithGroupBy(teaqlPlatformStorageKey)
+	r.Query.ProjectExpr(alias, core.ExprColumnNode(teaqlPlatformStorageKey))
 	return r
 }
 func (r *FreightQuoteRequest) GroupByReference() *FreightQuoteRequest {
-	r.Query.WithGroupBy("reference")
+	r.Query.WithGroupBy(teaqlReferenceStorageKey)
 	return r
 }
 
 func (r *FreightQuoteRequest) GroupByReferenceAs(alias string) *FreightQuoteRequest {
-	r.Query.WithGroupBy("reference")
-	r.Query.ProjectExpr(alias, core.ExprColumnNode("reference"))
+	r.Query.WithGroupBy(teaqlReferenceStorageKey)
+	r.Query.ProjectExpr(alias, core.ExprColumnNode(teaqlReferenceStorageKey))
 	return r
 }
 func (r *FreightQuoteRequest) GroupByAmount() *FreightQuoteRequest {
-	r.Query.WithGroupBy("amount")
+	r.Query.WithGroupBy(teaqlAmountStorageKey)
 	return r
 }
 
 func (r *FreightQuoteRequest) GroupByAmountAs(alias string) *FreightQuoteRequest {
-	r.Query.WithGroupBy("amount")
-	r.Query.ProjectExpr(alias, core.ExprColumnNode("amount"))
+	r.Query.WithGroupBy(teaqlAmountStorageKey)
+	r.Query.ProjectExpr(alias, core.ExprColumnNode(teaqlAmountStorageKey))
 	return r
 }
 func (r *FreightQuoteRequest) GroupByShipmentNumber() *FreightQuoteRequest {
-	r.Query.WithGroupBy("shipment_number")
+	r.Query.WithGroupBy(teaqlShipmentNumberStorageKey)
 	return r
 }
 
 func (r *FreightQuoteRequest) GroupByShipmentNumberAs(alias string) *FreightQuoteRequest {
-	r.Query.WithGroupBy("shipment_number")
-	r.Query.ProjectExpr(alias, core.ExprColumnNode("shipment_number"))
+	r.Query.WithGroupBy(teaqlShipmentNumberStorageKey)
+	r.Query.ProjectExpr(alias, core.ExprColumnNode(teaqlShipmentNumberStorageKey))
 	return r
 }
 func (r *FreightQuoteRequest) GroupByPackageCount() *FreightQuoteRequest {
-	r.Query.WithGroupBy("package_count")
+	r.Query.WithGroupBy(teaqlPackageCountStorageKey)
 	return r
 }
 
 func (r *FreightQuoteRequest) GroupByPackageCountAs(alias string) *FreightQuoteRequest {
-	r.Query.WithGroupBy("package_count")
-	r.Query.ProjectExpr(alias, core.ExprColumnNode("package_count"))
+	r.Query.WithGroupBy(teaqlPackageCountStorageKey)
+	r.Query.ProjectExpr(alias, core.ExprColumnNode(teaqlPackageCountStorageKey))
 	return r
 }
 func (r *FreightQuoteRequest) GroupByDeliveryDate() *FreightQuoteRequest {
-	r.Query.WithGroupBy("delivery_date")
+	r.Query.WithGroupBy(teaqlDeliveryDateStorageKey)
 	return r
 }
 
 func (r *FreightQuoteRequest) GroupByDeliveryDateAs(alias string) *FreightQuoteRequest {
-	r.Query.WithGroupBy("delivery_date")
-	r.Query.ProjectExpr(alias, core.ExprColumnNode("delivery_date"))
+	r.Query.WithGroupBy(teaqlDeliveryDateStorageKey)
+	r.Query.ProjectExpr(alias, core.ExprColumnNode(teaqlDeliveryDateStorageKey))
 	return r
 }
 func (r *FreightQuoteRequest) GroupByPickupTime() *FreightQuoteRequest {
-	r.Query.WithGroupBy("pickup_time")
+	r.Query.WithGroupBy(teaqlPickupTimeStorageKey)
 	return r
 }
 
 func (r *FreightQuoteRequest) GroupByPickupTimeAs(alias string) *FreightQuoteRequest {
-	r.Query.WithGroupBy("pickup_time")
-	r.Query.ProjectExpr(alias, core.ExprColumnNode("pickup_time"))
+	r.Query.WithGroupBy(teaqlPickupTimeStorageKey)
+	r.Query.ProjectExpr(alias, core.ExprColumnNode(teaqlPickupTimeStorageKey))
 	return r
 }
 func (r *FreightQuoteRequest) GroupByQuotedAt() *FreightQuoteRequest {
-	r.Query.WithGroupBy("quoted_at")
+	r.Query.WithGroupBy(teaqlQuotedAtStorageKey)
 	return r
 }
 
 func (r *FreightQuoteRequest) GroupByQuotedAtAs(alias string) *FreightQuoteRequest {
-	r.Query.WithGroupBy("quoted_at")
-	r.Query.ProjectExpr(alias, core.ExprColumnNode("quoted_at"))
+	r.Query.WithGroupBy(teaqlQuotedAtStorageKey)
+	r.Query.ProjectExpr(alias, core.ExprColumnNode(teaqlQuotedAtStorageKey))
 	return r
 }
 func (r *FreightQuoteRequest) GroupByInstructions() *FreightQuoteRequest {
-	r.Query.WithGroupBy("instructions")
+	r.Query.WithGroupBy(teaqlInstructionsStorageKey)
 	return r
 }
 
 func (r *FreightQuoteRequest) GroupByInstructionsAs(alias string) *FreightQuoteRequest {
-	r.Query.WithGroupBy("instructions")
-	r.Query.ProjectExpr(alias, core.ExprColumnNode("instructions"))
+	r.Query.WithGroupBy(teaqlInstructionsStorageKey)
+	r.Query.ProjectExpr(alias, core.ExprColumnNode(teaqlInstructionsStorageKey))
 	return r
 }
 func (r *FreightQuoteRequest) GroupByVersion() *FreightQuoteRequest {
-	r.Query.WithGroupBy("version")
+	r.Query.WithGroupBy(teaqlVersionStorageKey)
 	return r
 }
 
 func (r *FreightQuoteRequest) GroupByVersionAs(alias string) *FreightQuoteRequest {
-	r.Query.WithGroupBy("version")
-	r.Query.ProjectExpr(alias, core.ExprColumnNode("version"))
+	r.Query.WithGroupBy(teaqlVersionStorageKey)
+	r.Query.ProjectExpr(alias, core.ExprColumnNode(teaqlVersionStorageKey))
 	return r
 }

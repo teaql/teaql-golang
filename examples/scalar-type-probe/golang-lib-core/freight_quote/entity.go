@@ -23,6 +23,31 @@ var (
 	_ = errors.As
 )
 
+const (
+    teaqlIdStorageKey = "id"
+    teaqlIdModelKey = "id"
+    teaqlPlatformStorageKey = "platform_id"
+    teaqlPlatformModelKey = "platform"
+    teaqlReferenceStorageKey = "reference"
+    teaqlReferenceModelKey = "reference"
+    teaqlAmountStorageKey = "amount"
+    teaqlAmountModelKey = "amount"
+    teaqlShipmentNumberStorageKey = "shipment_number"
+    teaqlShipmentNumberModelKey = "shipment_number"
+    teaqlPackageCountStorageKey = "package_count"
+    teaqlPackageCountModelKey = "package_count"
+    teaqlDeliveryDateStorageKey = "delivery_date"
+    teaqlDeliveryDateModelKey = "delivery_date"
+    teaqlPickupTimeStorageKey = "pickup_time"
+    teaqlPickupTimeModelKey = "pickup_time"
+    teaqlQuotedAtStorageKey = "quoted_at"
+    teaqlQuotedAtModelKey = "quoted_at"
+    teaqlInstructionsStorageKey = "instructions"
+    teaqlInstructionsModelKey = "instructions"
+    teaqlVersionStorageKey = "version"
+    teaqlVersionModelKey = "version"
+)
+
 
 type FreightQuote struct {
 	base        *core.BaseEntityData
@@ -173,17 +198,17 @@ func (e *FreightQuote) teaqlFromRecord(record core.Record, captureLoaded bool) e
 	if err != nil {
 		return err
 	}
-	if value, present := base.Dynamic["pickup_time"]; present && !value.IsNull() {
+	if value, present := base.Dynamic[teaqlPickupTimeStorageKey]; present && !value.IsNull() {
 		clock, valid := value.TryTimeOfDay()
 		if !valid { return core.NewEntityError("Freight Quote", "invalid field pickup_time: expected TimeOfDay") }
-		base.Dynamic["pickup_time"] = core.ValTimeOfDay(clock)
+		base.Dynamic[teaqlPickupTimeStorageKey] = core.ValTimeOfDay(clock)
 	}
 
 
 
 
-	if value, present := base.Dynamic["package_count"]; present && !value.IsNull() {
-		if err := core.ValidateInteger32("Freight Quote", "package_count", value); err != nil { return err }
+	if value, present := base.Dynamic[teaqlPackageCountStorageKey]; present && !value.IsNull() {
+		if err := core.ValidateInteger32("Freight Quote", teaqlPackageCountModelKey, value); err != nil { return err }
 	}
 
 
@@ -211,11 +236,11 @@ func (e *FreightQuote) teaqlFromRecord(record core.Record, captureLoaded bool) e
 }
 
 func (e *FreightQuote) teaqlScalarSnapshot(record core.Record) core.LoadedScalarSnapshot {
-	return core.NewLoadedScalarSnapshot(record, "id", "platform_id", "reference", "amount", "shipment_number", "package_count", "delivery_date", "pickup_time", "quoted_at", "instructions", "version")
+	return core.NewLoadedScalarSnapshot(record, teaqlIdStorageKey, teaqlPlatformStorageKey, teaqlReferenceStorageKey, teaqlAmountStorageKey, teaqlShipmentNumberStorageKey, teaqlPackageCountStorageKey, teaqlDeliveryDateStorageKey, teaqlPickupTimeStorageKey, teaqlQuotedAtStorageKey, teaqlInstructionsStorageKey, teaqlVersionStorageKey)
 }
 
 func (e *FreightQuote) teaqlLoadedScalarSnapshot(record core.Record) core.LoadedScalarSnapshot {
-	return core.NewOwnedLoadedScalarSnapshot(e.EntityKey(), e.base.Version, record, "id", "platform_id", "reference", "amount", "shipment_number", "package_count", "delivery_date", "pickup_time", "quoted_at", "instructions", "version")
+	return core.NewOwnedLoadedScalarSnapshot(e.EntityKey(), e.base.Version, record, teaqlIdStorageKey, teaqlPlatformStorageKey, teaqlReferenceStorageKey, teaqlAmountStorageKey, teaqlShipmentNumberStorageKey, teaqlPackageCountStorageKey, teaqlDeliveryDateStorageKey, teaqlPickupTimeStorageKey, teaqlQuotedAtStorageKey, teaqlInstructionsStorageKey, teaqlVersionStorageKey)
 }
 
 func (e *FreightQuote) teaqlAcceptPersisted(context *runtime.UserContext, record core.Record) error {
@@ -320,17 +345,17 @@ func (e *FreightQuote) JSONQueryProperties() core.Record { return e.base.QueryPr
 func (e *FreightQuote) LoadedJSONFields() core.Record {
 	all := e.IntoRecord()
 	selected := make(core.Record)
-	if e.IsLoaded("id") { if value, present := all["id"]; present { selected["id"] = value } }
-	if e.IsLoaded("platform_id") { if value, present := all["platform_id"]; present { selected["platform_id"] = value } }
-	if e.IsLoaded("reference") { if value, present := all["reference"]; present { selected["reference"] = value } }
-	if e.IsLoaded("amount") { if value, present := all["amount"]; present { selected["amount"] = value } }
-	if e.IsLoaded("shipment_number") { if value, present := all["shipment_number"]; present { selected["shipment_number"] = value } }
-	if e.IsLoaded("package_count") { if value, present := all["package_count"]; present { selected["package_count"] = value } }
-	if e.IsLoaded("delivery_date") { if value, present := all["delivery_date"]; present { selected["delivery_date"] = value } }
-	if e.IsLoaded("pickup_time") { if value, present := all["pickup_time"]; present { selected["pickup_time"] = value } }
-	if e.IsLoaded("quoted_at") { if value, present := all["quoted_at"]; present { selected["quoted_at"] = value } }
-	if e.IsLoaded("instructions") { if value, present := all["instructions"]; present { selected["instructions"] = value } }
-	if e.IsLoaded("version") { if value, present := all["version"]; present { selected["version"] = value } }
+	if e.IsLoaded(teaqlIdStorageKey) { if value, present := all[teaqlIdStorageKey]; present { selected[teaqlIdStorageKey] = value } }
+	if e.IsLoaded(teaqlPlatformStorageKey) { if value, present := all[teaqlPlatformStorageKey]; present { selected[teaqlPlatformStorageKey] = value } }
+	if e.IsLoaded(teaqlReferenceStorageKey) { if value, present := all[teaqlReferenceStorageKey]; present { selected[teaqlReferenceStorageKey] = value } }
+	if e.IsLoaded(teaqlAmountStorageKey) { if value, present := all[teaqlAmountStorageKey]; present { selected[teaqlAmountStorageKey] = value } }
+	if e.IsLoaded(teaqlShipmentNumberStorageKey) { if value, present := all[teaqlShipmentNumberStorageKey]; present { selected[teaqlShipmentNumberStorageKey] = value } }
+	if e.IsLoaded(teaqlPackageCountStorageKey) { if value, present := all[teaqlPackageCountStorageKey]; present { selected[teaqlPackageCountStorageKey] = value } }
+	if e.IsLoaded(teaqlDeliveryDateStorageKey) { if value, present := all[teaqlDeliveryDateStorageKey]; present { selected[teaqlDeliveryDateStorageKey] = value } }
+	if e.IsLoaded(teaqlPickupTimeStorageKey) { if value, present := all[teaqlPickupTimeStorageKey]; present { selected[teaqlPickupTimeStorageKey] = value } }
+	if e.IsLoaded(teaqlQuotedAtStorageKey) { if value, present := all[teaqlQuotedAtStorageKey]; present { selected[teaqlQuotedAtStorageKey] = value } }
+	if e.IsLoaded(teaqlInstructionsStorageKey) { if value, present := all[teaqlInstructionsStorageKey]; present { selected[teaqlInstructionsStorageKey] = value } }
+	if e.IsLoaded(teaqlVersionStorageKey) { if value, present := all[teaqlVersionStorageKey]; present { selected[teaqlVersionStorageKey] = value } }
 	if e.isRelationLoaded("platformEntity") { if target, present := e.relations["platformEntity"]; present && target != nil { selected["platformEntity"] = core.Value{V: target} } }
 	return selected
 }
@@ -433,48 +458,48 @@ func (e *FreightQuote) TeaqlPreflightWithinGraph(context *runtime.UserContext, i
 		operation := core.MutationUpdate
 		if e.isNew { operation = core.MutationInsert }
 		if operation == core.MutationUpdate {
-			if !e.IsLoaded("id") {
-				result := runtime.CheckResult{RuleID: "invalid_type", EntityType: "FreightQuote", CanonicalLocation: runtime.Location().Property("id"), Message: "Mutation requires a fully loaded entity"}
+			if !e.IsLoaded(teaqlIdStorageKey) {
+				result := runtime.CheckResult{RuleID: "invalid_type", EntityType: "FreightQuote", CanonicalLocation: runtime.Location().Property(teaqlIdModelKey), Message: "Mutation requires a fully loaded entity"}
 				return &runtime.RuntimeError{Type: "Check", CheckResults: []runtime.CheckResult{result}}
 			}
-			if !e.IsLoaded("platform_id") {
-				result := runtime.CheckResult{RuleID: "invalid_type", EntityType: "FreightQuote", CanonicalLocation: runtime.Location().Property("platform"), Message: "Mutation requires a fully loaded entity"}
+			if !e.IsLoaded(teaqlPlatformStorageKey) {
+				result := runtime.CheckResult{RuleID: "invalid_type", EntityType: "FreightQuote", CanonicalLocation: runtime.Location().Property(teaqlPlatformModelKey), Message: "Mutation requires a fully loaded entity"}
 				return &runtime.RuntimeError{Type: "Check", CheckResults: []runtime.CheckResult{result}}
 			}
-			if !e.IsLoaded("reference") {
-				result := runtime.CheckResult{RuleID: "invalid_type", EntityType: "FreightQuote", CanonicalLocation: runtime.Location().Property("reference"), Message: "Mutation requires a fully loaded entity"}
+			if !e.IsLoaded(teaqlReferenceStorageKey) {
+				result := runtime.CheckResult{RuleID: "invalid_type", EntityType: "FreightQuote", CanonicalLocation: runtime.Location().Property(teaqlReferenceModelKey), Message: "Mutation requires a fully loaded entity"}
 				return &runtime.RuntimeError{Type: "Check", CheckResults: []runtime.CheckResult{result}}
 			}
-			if !e.IsLoaded("amount") {
-				result := runtime.CheckResult{RuleID: "invalid_type", EntityType: "FreightQuote", CanonicalLocation: runtime.Location().Property("amount"), Message: "Mutation requires a fully loaded entity"}
+			if !e.IsLoaded(teaqlAmountStorageKey) {
+				result := runtime.CheckResult{RuleID: "invalid_type", EntityType: "FreightQuote", CanonicalLocation: runtime.Location().Property(teaqlAmountModelKey), Message: "Mutation requires a fully loaded entity"}
 				return &runtime.RuntimeError{Type: "Check", CheckResults: []runtime.CheckResult{result}}
 			}
-			if !e.IsLoaded("shipment_number") {
-				result := runtime.CheckResult{RuleID: "invalid_type", EntityType: "FreightQuote", CanonicalLocation: runtime.Location().Property("shipment_number"), Message: "Mutation requires a fully loaded entity"}
+			if !e.IsLoaded(teaqlShipmentNumberStorageKey) {
+				result := runtime.CheckResult{RuleID: "invalid_type", EntityType: "FreightQuote", CanonicalLocation: runtime.Location().Property(teaqlShipmentNumberModelKey), Message: "Mutation requires a fully loaded entity"}
 				return &runtime.RuntimeError{Type: "Check", CheckResults: []runtime.CheckResult{result}}
 			}
-			if !e.IsLoaded("package_count") {
-				result := runtime.CheckResult{RuleID: "invalid_type", EntityType: "FreightQuote", CanonicalLocation: runtime.Location().Property("package_count"), Message: "Mutation requires a fully loaded entity"}
+			if !e.IsLoaded(teaqlPackageCountStorageKey) {
+				result := runtime.CheckResult{RuleID: "invalid_type", EntityType: "FreightQuote", CanonicalLocation: runtime.Location().Property(teaqlPackageCountModelKey), Message: "Mutation requires a fully loaded entity"}
 				return &runtime.RuntimeError{Type: "Check", CheckResults: []runtime.CheckResult{result}}
 			}
-			if !e.IsLoaded("delivery_date") {
-				result := runtime.CheckResult{RuleID: "invalid_type", EntityType: "FreightQuote", CanonicalLocation: runtime.Location().Property("delivery_date"), Message: "Mutation requires a fully loaded entity"}
+			if !e.IsLoaded(teaqlDeliveryDateStorageKey) {
+				result := runtime.CheckResult{RuleID: "invalid_type", EntityType: "FreightQuote", CanonicalLocation: runtime.Location().Property(teaqlDeliveryDateModelKey), Message: "Mutation requires a fully loaded entity"}
 				return &runtime.RuntimeError{Type: "Check", CheckResults: []runtime.CheckResult{result}}
 			}
-			if !e.IsLoaded("pickup_time") {
-				result := runtime.CheckResult{RuleID: "invalid_type", EntityType: "FreightQuote", CanonicalLocation: runtime.Location().Property("pickup_time"), Message: "Mutation requires a fully loaded entity"}
+			if !e.IsLoaded(teaqlPickupTimeStorageKey) {
+				result := runtime.CheckResult{RuleID: "invalid_type", EntityType: "FreightQuote", CanonicalLocation: runtime.Location().Property(teaqlPickupTimeModelKey), Message: "Mutation requires a fully loaded entity"}
 				return &runtime.RuntimeError{Type: "Check", CheckResults: []runtime.CheckResult{result}}
 			}
-			if !e.IsLoaded("quoted_at") {
-				result := runtime.CheckResult{RuleID: "invalid_type", EntityType: "FreightQuote", CanonicalLocation: runtime.Location().Property("quoted_at"), Message: "Mutation requires a fully loaded entity"}
+			if !e.IsLoaded(teaqlQuotedAtStorageKey) {
+				result := runtime.CheckResult{RuleID: "invalid_type", EntityType: "FreightQuote", CanonicalLocation: runtime.Location().Property(teaqlQuotedAtModelKey), Message: "Mutation requires a fully loaded entity"}
 				return &runtime.RuntimeError{Type: "Check", CheckResults: []runtime.CheckResult{result}}
 			}
-			if !e.IsLoaded("instructions") {
-				result := runtime.CheckResult{RuleID: "invalid_type", EntityType: "FreightQuote", CanonicalLocation: runtime.Location().Property("instructions"), Message: "Mutation requires a fully loaded entity"}
+			if !e.IsLoaded(teaqlInstructionsStorageKey) {
+				result := runtime.CheckResult{RuleID: "invalid_type", EntityType: "FreightQuote", CanonicalLocation: runtime.Location().Property(teaqlInstructionsModelKey), Message: "Mutation requires a fully loaded entity"}
 				return &runtime.RuntimeError{Type: "Check", CheckResults: []runtime.CheckResult{result}}
 			}
-			if !e.IsLoaded("version") {
-				result := runtime.CheckResult{RuleID: "invalid_type", EntityType: "FreightQuote", CanonicalLocation: runtime.Location().Property("version"), Message: "Mutation requires a fully loaded entity"}
+			if !e.IsLoaded(teaqlVersionStorageKey) {
+				result := runtime.CheckResult{RuleID: "invalid_type", EntityType: "FreightQuote", CanonicalLocation: runtime.Location().Property(teaqlVersionModelKey), Message: "Mutation requires a fully loaded entity"}
 				return &runtime.RuntimeError{Type: "Check", CheckResults: []runtime.CheckResult{result}}
 			}
 		}
@@ -727,120 +752,120 @@ func (e *FreightQuote) UpdateId(value uint64) *FreightQuote {
 	oldKey := e.EntityKey()
 	e.base.Id = value
 	e.root.Rekey(oldKey, e.EntityKey())
-	e.loadState["id"] = true
+	e.loadState[teaqlIdStorageKey] = true
 	return e
 }
 
 func (e *FreightQuote) Reference() string {
-	val, _ := e.base.GetDynamic("reference")
+	val, _ := e.base.GetDynamic(teaqlReferenceStorageKey)
 	res, _ := val.TryText()
 	return res}
 
 func (e *FreightQuote) UpdateReference(value string) *FreightQuote {
 	e.teaqlEnsureState()
-	e.base.PutDynamic("reference", core.ValText(value))
-	e.dirtyFields["reference"] = true
-	e.root.Set(e.EntityKey(), "reference", core.ValText(value))
-	e.loadState["reference"] = true
+	e.base.PutDynamic(teaqlReferenceStorageKey, core.ValText(value))
+	e.dirtyFields[teaqlReferenceStorageKey] = true
+	e.root.Set(e.EntityKey(), teaqlReferenceModelKey, core.ValText(value))
+	e.loadState[teaqlReferenceStorageKey] = true
 	return e
 }
 
 func (e *FreightQuote) Amount() decimal.Decimal {
-	val, _ := e.base.GetDynamic("amount")
+	val, _ := e.base.GetDynamic(teaqlAmountStorageKey)
 	res, _ := val.TryDecimal()
 	return res}
 
 func (e *FreightQuote) UpdateAmount(value decimal.Decimal) *FreightQuote {
 	e.teaqlEnsureState()
-	e.base.PutDynamic("amount", core.ValDecimal(value))
-	e.dirtyFields["amount"] = true
-	e.root.Set(e.EntityKey(), "amount", core.ValDecimal(value))
-	e.loadState["amount"] = true
+	e.base.PutDynamic(teaqlAmountStorageKey, core.ValDecimal(value))
+	e.dirtyFields[teaqlAmountStorageKey] = true
+	e.root.Set(e.EntityKey(), teaqlAmountModelKey, core.ValDecimal(value))
+	e.loadState[teaqlAmountStorageKey] = true
 	return e
 }
 
 func (e *FreightQuote) ShipmentNumber() int64 {
-	val, _ := e.base.GetDynamic("shipment_number")
+	val, _ := e.base.GetDynamic(teaqlShipmentNumberStorageKey)
 	res, _ := val.TryI64()
 	return res}
 
 func (e *FreightQuote) UpdateShipmentNumber(value int64) *FreightQuote {
 	e.teaqlEnsureState()
-	e.base.PutDynamic("shipment_number", core.ValI64(value))
-	e.dirtyFields["shipment_number"] = true
-	e.root.Set(e.EntityKey(), "shipment_number", core.ValI64(value))
-	e.loadState["shipment_number"] = true
+	e.base.PutDynamic(teaqlShipmentNumberStorageKey, core.ValI64(value))
+	e.dirtyFields[teaqlShipmentNumberStorageKey] = true
+	e.root.Set(e.EntityKey(), teaqlShipmentNumberModelKey, core.ValI64(value))
+	e.loadState[teaqlShipmentNumberStorageKey] = true
 	return e
 }
 
 func (e *FreightQuote) PackageCount() int64 {
-	val, _ := e.base.GetDynamic("package_count")
+	val, _ := e.base.GetDynamic(teaqlPackageCountStorageKey)
 	res, _ := val.TryI64()
 	return res}
 
 func (e *FreightQuote) UpdatePackageCount(value int64) *FreightQuote {
 	e.teaqlEnsureState()
-	e.base.PutDynamic("package_count", core.ValI64(value))
-	e.dirtyFields["package_count"] = true
-	e.root.Set(e.EntityKey(), "package_count", core.ValI64(value))
-	e.loadState["package_count"] = true
+	e.base.PutDynamic(teaqlPackageCountStorageKey, core.ValI64(value))
+	e.dirtyFields[teaqlPackageCountStorageKey] = true
+	e.root.Set(e.EntityKey(), teaqlPackageCountModelKey, core.ValI64(value))
+	e.loadState[teaqlPackageCountStorageKey] = true
 	return e
 }
 
 func (e *FreightQuote) DeliveryDate() time.Time {
-	val, _ := e.base.GetDynamic("delivery_date")
+	val, _ := e.base.GetDynamic(teaqlDeliveryDateStorageKey)
 	res, _ := val.TryDate()
 	return res}
 
 func (e *FreightQuote) UpdateDeliveryDate(value time.Time) *FreightQuote {
 	e.teaqlEnsureState()
-	e.base.PutDynamic("delivery_date", core.ValDate(value))
-	e.dirtyFields["delivery_date"] = true
-	e.root.Set(e.EntityKey(), "delivery_date", core.ValDate(value))
-	e.loadState["delivery_date"] = true
+	e.base.PutDynamic(teaqlDeliveryDateStorageKey, core.ValDate(value))
+	e.dirtyFields[teaqlDeliveryDateStorageKey] = true
+	e.root.Set(e.EntityKey(), teaqlDeliveryDateModelKey, core.ValDate(value))
+	e.loadState[teaqlDeliveryDateStorageKey] = true
 	return e
 }
 
 func (e *FreightQuote) PickupTime() core.TimeOfDay {
-	val, _ := e.base.GetDynamic("pickup_time")
+	val, _ := e.base.GetDynamic(teaqlPickupTimeStorageKey)
 	res, _ := val.TryTimeOfDay()
 	return res}
 
 func (e *FreightQuote) UpdatePickupTime(value core.TimeOfDay) *FreightQuote {
 	e.teaqlEnsureState()
-	e.base.PutDynamic("pickup_time", core.ValTimeOfDay(value))
-	e.dirtyFields["pickup_time"] = true
-	e.root.Set(e.EntityKey(), "pickup_time", core.ValTimeOfDay(value))
-	e.loadState["pickup_time"] = true
+	e.base.PutDynamic(teaqlPickupTimeStorageKey, core.ValTimeOfDay(value))
+	e.dirtyFields[teaqlPickupTimeStorageKey] = true
+	e.root.Set(e.EntityKey(), teaqlPickupTimeModelKey, core.ValTimeOfDay(value))
+	e.loadState[teaqlPickupTimeStorageKey] = true
 	return e
 }
 
 func (e *FreightQuote) QuotedAt() time.Time {
-	val, _ := e.base.GetDynamic("quoted_at")
+	val, _ := e.base.GetDynamic(teaqlQuotedAtStorageKey)
 	res, _ := val.TryTime()
 	return res}
 
 func (e *FreightQuote) UpdateQuotedAt(value time.Time) *FreightQuote {
 	e.teaqlEnsureState()
-	e.base.PutDynamic("quoted_at", core.ValTimestamp(value.UnixMilli()))
-	e.dirtyFields["quoted_at"] = true
-	e.root.Set(e.EntityKey(), "quoted_at", core.ValTimestamp(value.UnixMilli()))
-	e.loadState["quoted_at"] = true
+	e.base.PutDynamic(teaqlQuotedAtStorageKey, core.ValTimestamp(value.UnixMilli()))
+	e.dirtyFields[teaqlQuotedAtStorageKey] = true
+	e.root.Set(e.EntityKey(), teaqlQuotedAtModelKey, core.ValTimestamp(value.UnixMilli()))
+	e.loadState[teaqlQuotedAtStorageKey] = true
 	return e
 }
 
 func (e *FreightQuote) Instructions() *string {
-	val, _ := e.base.GetDynamic("instructions")
+	val, _ := e.base.GetDynamic(teaqlInstructionsStorageKey)
 	if val.IsNull() { return nil }
 	res, _ := val.TryText()
 	return &res}
 
 func (e *FreightQuote) UpdateInstructions(value *string) *FreightQuote {
 	e.teaqlEnsureState()
-	e.base.PutDynamic("instructions", func() core.Value { if value == nil { return core.ValNull() }; return core.ValText((*value)) }())
-	e.dirtyFields["instructions"] = true
-	e.root.Set(e.EntityKey(), "instructions", func() core.Value { if value == nil { return core.ValNull() }; return core.ValText((*value)) }())
-	e.loadState["instructions"] = true
+	e.base.PutDynamic(teaqlInstructionsStorageKey, func() core.Value { if value == nil { return core.ValNull() }; return core.ValText((*value)) }())
+	e.dirtyFields[teaqlInstructionsStorageKey] = true
+	e.root.Set(e.EntityKey(), teaqlInstructionsModelKey, func() core.Value { if value == nil { return core.ValNull() }; return core.ValText((*value)) }())
+	e.loadState[teaqlInstructionsStorageKey] = true
 	return e
 }
 
@@ -851,26 +876,26 @@ func (e *FreightQuote) Version() int64 {
 func (e *FreightQuote) UpdateVersion(value int64) *FreightQuote {
 	e.teaqlEnsureState()
 	e.base.Version = value
-	e.loadState["version"] = true
+	e.loadState[teaqlVersionStorageKey] = true
 	return e
 }
 func (e *FreightQuote) PlatformId() uint64 {
-	val, _ := e.base.GetDynamic("platform_id")
+	val, _ := e.base.GetDynamic(teaqlPlatformStorageKey)
 	res, _ := val.TryU64()
 	return res
 }
 
 func (e *FreightQuote) UpdatePlatformId(value uint64) *FreightQuote {
-	previous, present := e.base.GetDynamic("platform_id")
-	e.base.PutDynamic("platform_id", core.ValU64(value))
-	e.dirtyFields["platform_id"] = true
-	current, _ := e.base.GetDynamic("platform_id")
+	previous, present := e.base.GetDynamic(teaqlPlatformStorageKey)
+	e.base.PutDynamic(teaqlPlatformStorageKey, core.ValU64(value))
+	e.dirtyFields[teaqlPlatformStorageKey] = true
+	current, _ := e.base.GetDynamic(teaqlPlatformStorageKey)
 	if !present || !reflect.DeepEqual(previous, current) {
 		delete(e.relations, "platformEntity")
 		delete(e.loadedRelations, "platformEntity")
 	}
-	e.root.Set(e.EntityKey(), "platform", core.ValU64(value))
-	e.loadState["platform_id"] = true
+	e.root.Set(e.EntityKey(), teaqlPlatformModelKey, core.ValU64(value))
+	e.loadState[teaqlPlatformStorageKey] = true
 	return e
 }
 // DEBUG: constantObjectField is false

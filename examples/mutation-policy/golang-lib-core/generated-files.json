@@ -1,14 +1,14 @@
 {
   "customer/behavior.go": "feb6fcbd025ab8d3f85293f3ec75fd63b30c87a3abd4143f2327d36b592f6a44",
   "customer/checker.go": "003db818e57763e609fb670b182a2de387efb351d42a405d2a19d1ef442b186b",
-  "customer/entity.go": "952a65ba48fe0f6d7092c9917af3508ede8953894cccf44fae7a8b96d8656db2",
+  "customer/entity.go": "8122a6bda7b628141eb8c49f7ca29bbe5d0417ee41ab902afb7db908ec26705f",
   "customer/expression.go": "424af58a6565e2c4f0e1b3303ff2ba5a247780a26142385b1a4ade249ced5eb8",
-  "customer/request.go": "c8d9e00f7a02c9a0aceba12e0f1b3bc6ddccca9fe7a9c2df1c7b786ed5e1d625",
+  "customer/request.go": "12b2b06cd25db26c45a18efd865bef66eb25ea7fd4e596f95f5123d95ab4679d",
   "customer_contact/behavior.go": "309dc94448d5bb3c01aba558af2be1fc69ffd0bad78710e2be5485724b205173",
   "customer_contact/checker.go": "408337d5e0c2188516dd5ecbe5cf4619e0af588ca413458514a66d99b131fb02",
-  "customer_contact/entity.go": "e8d2e2fab8f66fda20bbbaf31927e13fbb5f757236ec49fd3bda1bd430ace118",
+  "customer_contact/entity.go": "08d4e43406a617cc8dbd0f77e82ebfe6ea1ab32152bfeac65a40229370079e98",
   "customer_contact/expression.go": "291c71430b806788d67bbb15cfeb45f57fc658c430b28f8ed5fa46a996525c75",
-  "customer_contact/request.go": "73b69ca8802fd7118baecb1c204a1d63850181d5d752292073df1fea0916672e",
+  "customer_contact/request.go": "452ca9d6a9df50b5768b5791c87249ecc8021d5c48ea3d5d819da6383bd1e132",
   "e.go": "5019eb21dd6405ca3e9b7e63f34339cc0e90a1643af2515a4594a4100c94bc80",
   "entity_json.go": "479a3200b57c9ab9523515bbaa5325e9dce4167277404fb89870d59069a31625",
   "go.mod": "f70bd715b0e323835548ffe01420bf5d133f07c197ac5ade537ebcf0cbcdd7a2",
@@ -18,11 +18,11 @@
   "lib.go": "7c87770ba14616af72bcd4da51ae2093efa024f7cbb4d32bb1d204de365f26f6",
   "platform/behavior.go": "a2bf9efebdfc883eb0e6457f2f79646f578212889cf9a1fd20f91f0a1a1be5a8",
   "platform/checker.go": "ae95114ab80d2d5e2793f9392cf55f54a5c9fd68401a6a24946d7a8f4368a1bd",
-  "platform/entity.go": "9a64166eb0cdf0f32191980fe5f50df70a20616dd910dfa36d2fd7c2780ced25",
+  "platform/entity.go": "c977d070245c81d9e1d6474d600c37921633c950e8a7891b56097e0a785ef9aa",
   "platform/expression.go": "348e338def6973e7cda7e3f32d3ff4f065f5438e9f6c458cdab2550fdd422110",
-  "platform/request.go": "e5304bd231f8f5e98e235bb97cda933b1458e9ec82024102d243cc4fb6a8d4ff",
+  "platform/request.go": "27930f46a035b57ec2194df01ff7cf62862f46d294bd919810633d3891fe2f51",
   "q.go": "fc8e1340c8a408d0358f161fcbfba2d52702801b50b7c273f734a4927857734f",
   "runtime.go": "1b4682aca0717c903faf0355b37b7e5447a1dcd40cbe56bb3b7cc314dbeaa8a5",
   "teaql/checker-model.json": "96a803519aea3aad17d53b57787db7b547cb40d693607209ebf2319e81fa888a",
-  "teaql/model-provenance.json": "60e6f66c41e91cbeb54ad562eec6fed6edae669e8066e1263720b8d3ccdbd10c"
+  "teaql/model-provenance.json": "e231626f598e519a9ec7fd24116e6ea34934e7da4eb3c8bd01ad09a5bd7f89dc"
 }

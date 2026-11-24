@@ -192,16 +192,16 @@ func (r *SchoolRequest) DeletedRowsOnly() *SchoolRequest {
 }
 
 func (r *SchoolRequest) SelectId() *SchoolRequest {
-	r.Query.Project("id")
+	r.Query.Project(teaqlIdStorageKey)
 	return r
 }
 
 func (r *SchoolRequest) WithIdIs(value uint64) *SchoolRequest {
-	r.Query.AndFilter(core.ExprEq("id", core.ValU64(value)))
+	r.Query.AndFilter(core.ExprEq(teaqlIdStorageKey, core.ValU64(value)))
 	return r
 }
 func (r *SchoolRequest) WithIdIsNot(value uint64) *SchoolRequest {
-	r.Query.AndFilter(core.ExprNe("id", core.ValU64(value)))
+	r.Query.AndFilter(core.ExprNe(teaqlIdStorageKey, core.ValU64(value)))
 	return r
 }
 func (r *SchoolRequest) WithIdIn(values []uint64) *SchoolRequest {
@@ -209,7 +209,7 @@ func (r *SchoolRequest) WithIdIn(values []uint64) *SchoolRequest {
 	for _, value := range values {
 		converted = append(converted, core.ValU64(value))
 	}
-	r.Query.AndFilter(core.ExprInList("id", converted))
+	r.Query.AndFilter(core.ExprInList(teaqlIdStorageKey, converted))
 	return r
 }
 func (r *SchoolRequest) WithIdNotIn(values []uint64) *SchoolRequest {
@@ -217,23 +217,23 @@ func (r *SchoolRequest) WithIdNotIn(values []uint64) *SchoolRequest {
 	for _, value := range values {
 		converted = append(converted, core.ValU64(value))
 	}
-	r.Query.AndFilter(core.ExprNotInList("id", converted))
+	r.Query.AndFilter(core.ExprNotInList(teaqlIdStorageKey, converted))
 	return r
 }
 func (r *SchoolRequest) WithIdGreaterThan(value uint64) *SchoolRequest {
-	r.Query.AndFilter(core.ExprGt("id", core.ValU64(value)))
+	r.Query.AndFilter(core.ExprGt(teaqlIdStorageKey, core.ValU64(value)))
 	return r
 }
 func (r *SchoolRequest) WithIdGreaterThanOrEqualTo(value uint64) *SchoolRequest {
-	r.Query.AndFilter(core.ExprGte("id", core.ValU64(value)))
+	r.Query.AndFilter(core.ExprGte(teaqlIdStorageKey, core.ValU64(value)))
 	return r
 }
 func (r *SchoolRequest) WithIdLessThan(value uint64) *SchoolRequest {
-	r.Query.AndFilter(core.ExprLt("id", core.ValU64(value)))
+	r.Query.AndFilter(core.ExprLt(teaqlIdStorageKey, core.ValU64(value)))
 	return r
 }
 func (r *SchoolRequest) WithIdLessThanOrEqualTo(value uint64) *SchoolRequest {
-	r.Query.AndFilter(core.ExprLte("id", core.ValU64(value)))
+	r.Query.AndFilter(core.ExprLte(teaqlIdStorageKey, core.ValU64(value)))
 	return r
 }
 func (r *SchoolRequest) WithIdBetween(lower uint64, upper uint64) *SchoolRequest {
@@ -241,36 +241,36 @@ func (r *SchoolRequest) WithIdBetween(lower uint64, upper uint64) *SchoolRequest
 	from := core.ValU64(value)
 	value = upper
 	to := core.ValU64(value)
-	r.Query.AndFilter(core.ExprBetweenNode("id", from, to))
+	r.Query.AndFilter(core.ExprBetweenNode(teaqlIdStorageKey, from, to))
 	return r
 }
 func (r *SchoolRequest) WithIdIsKnown() *SchoolRequest {
-	r.Query.AndFilter(core.ExprIsNotNullNode("id"))
+	r.Query.AndFilter(core.ExprIsNotNullNode(teaqlIdStorageKey))
 	return r
 }
 func (r *SchoolRequest) WithIdIsUnknown() *SchoolRequest {
-	r.Query.AndFilter(core.ExprIsNullNode("id"))
+	r.Query.AndFilter(core.ExprIsNullNode(teaqlIdStorageKey))
 	return r
 }
 func (r *SchoolRequest) OrderByIdAsc() *SchoolRequest {
-	r.Query.OrderAsc("id")
+	r.Query.OrderAsc(teaqlIdStorageKey)
 	return r
 }
 func (r *SchoolRequest) OrderByIdDesc() *SchoolRequest {
-	r.Query.OrderDesc("id")
+	r.Query.OrderDesc(teaqlIdStorageKey)
 	return r
 }
 func (r *SchoolRequest) SelectPlatform() *SchoolRequest {
-	r.Query.Project("platform_id")
+	r.Query.Project(teaqlPlatformStorageKey)
 	return r
 }
 
 func (r *SchoolRequest) WithPlatformIs(value uint64) *SchoolRequest {
-	r.Query.AndFilter(core.ExprEq("platform_id", core.ValU64(value)))
+	r.Query.AndFilter(core.ExprEq(teaqlPlatformStorageKey, core.ValU64(value)))
 	return r
 }
 func (r *SchoolRequest) WithPlatformIsNot(value uint64) *SchoolRequest {
-	r.Query.AndFilter(core.ExprNe("platform_id", core.ValU64(value)))
+	r.Query.AndFilter(core.ExprNe(teaqlPlatformStorageKey, core.ValU64(value)))
 	return r
 }
 func (r *SchoolRequest) WithPlatformIn(values []uint64) *SchoolRequest {
@@ -278,7 +278,7 @@ func (r *SchoolRequest) WithPlatformIn(values []uint64) *SchoolRequest {
 	for _, value := range values {
 		converted = append(converted, core.ValU64(value))
 	}
-	r.Query.AndFilter(core.ExprInList("platform_id", converted))
+	r.Query.AndFilter(core.ExprInList(teaqlPlatformStorageKey, converted))
 	return r
 }
 func (r *SchoolRequest) WithPlatformNotIn(values []uint64) *SchoolRequest {
@@ -286,23 +286,23 @@ func (r *SchoolRequest) WithPlatformNotIn(values []uint64) *SchoolRequest {
 	for _, value := range values {
 		converted = append(converted, core.ValU64(value))
 	}
-	r.Query.AndFilter(core.ExprNotInList("platform_id", converted))
+	r.Query.AndFilter(core.ExprNotInList(teaqlPlatformStorageKey, converted))
 	return r
 }
 func (r *SchoolRequest) WithPlatformGreaterThan(value uint64) *SchoolRequest {
-	r.Query.AndFilter(core.ExprGt("platform_id", core.ValU64(value)))
+	r.Query.AndFilter(core.ExprGt(teaqlPlatformStorageKey, core.ValU64(value)))
 	return r
 }
 func (r *SchoolRequest) WithPlatformGreaterThanOrEqualTo(value uint64) *SchoolRequest {
-	r.Query.AndFilter(core.ExprGte("platform_id", core.ValU64(value)))
+	r.Query.AndFilter(core.ExprGte(teaqlPlatformStorageKey, core.ValU64(value)))
 	return r
 }
 func (r *SchoolRequest) WithPlatformLessThan(value uint64) *SchoolRequest {
-	r.Query.AndFilter(core.ExprLt("platform_id", core.ValU64(value)))
+	r.Query.AndFilter(core.ExprLt(teaqlPlatformStorageKey, core.ValU64(value)))
 	return r
 }
 func (r *SchoolRequest) WithPlatformLessThanOrEqualTo(value uint64) *SchoolRequest {
-	r.Query.AndFilter(core.ExprLte("platform_id", core.ValU64(value)))
+	r.Query.AndFilter(core.ExprLte(teaqlPlatformStorageKey, core.ValU64(value)))
 	return r
 }
 func (r *SchoolRequest) WithPlatformBetween(lower uint64, upper uint64) *SchoolRequest {
@@ -310,15 +310,15 @@ func (r *SchoolRequest) WithPlatformBetween(lower uint64, upper uint64) *SchoolR
 	from := core.ValU64(value)
 	value = upper
 	to := core.ValU64(value)
-	r.Query.AndFilter(core.ExprBetweenNode("platform_id", from, to))
+	r.Query.AndFilter(core.ExprBetweenNode(teaqlPlatformStorageKey, from, to))
 	return r
 }
 func (r *SchoolRequest) WithPlatformIsKnown() *SchoolRequest {
-	r.Query.AndFilter(core.ExprIsNotNullNode("platform_id"))
+	r.Query.AndFilter(core.ExprIsNotNullNode(teaqlPlatformStorageKey))
 	return r
 }
 func (r *SchoolRequest) WithPlatformIsUnknown() *SchoolRequest {
-	r.Query.AndFilter(core.ExprIsNullNode("platform_id"))
+	r.Query.AndFilter(core.ExprIsNullNode(teaqlPlatformStorageKey))
 	return r
 }
 func (r *SchoolRequest) FacetByPlatformAs(
@@ -328,30 +328,30 @@ func (r *SchoolRequest) FacetByPlatformAs(
 ) *SchoolRequest {
 	includeAll := true
 	if len(includeAllFacets) > 0 { includeAll = includeAllFacets[0] }
-	facet := core.NewFacetRequest(name, "platform_id", core.QuerySelectionFor(nestedReq), includeAll)
+	facet := core.NewFacetRequest(name, teaqlPlatformStorageKey, core.QuerySelectionFor(nestedReq), includeAll)
 	facet.Operation = &core.QueryOperation{Kind: "facet", Method: "FacetByPlatformAs", Alias: &name, Relation: "platform"}
 	r.queryOptions.Facets = append(r.queryOptions.Facets, facet)
 	return r
 }
 func (r *SchoolRequest) OrderByPlatformAsc() *SchoolRequest {
-	r.Query.OrderAsc("platform_id")
+	r.Query.OrderAsc(teaqlPlatformStorageKey)
 	return r
 }
 func (r *SchoolRequest) OrderByPlatformDesc() *SchoolRequest {
-	r.Query.OrderDesc("platform_id")
+	r.Query.OrderDesc(teaqlPlatformStorageKey)
 	return r
 }
 func (r *SchoolRequest) SelectSchoolType() *SchoolRequest {
-	r.Query.Project("school_type_id")
+	r.Query.Project(teaqlSchoolTypeStorageKey)
 	return r
 }
 
 func (r *SchoolRequest) WithSchoolTypeIs(value uint64) *SchoolRequest {
-	r.Query.AndFilter(core.ExprEq("school_type_id", core.ValU64(value)))
+	r.Query.AndFilter(core.ExprEq(teaqlSchoolTypeStorageKey, core.ValU64(value)))
 	return r
 }
 func (r *SchoolRequest) WithSchoolTypeIsNot(value uint64) *SchoolRequest {
-	r.Query.AndFilter(core.ExprNe("school_type_id", core.ValU64(value)))
+	r.Query.AndFilter(core.ExprNe(teaqlSchoolTypeStorageKey, core.ValU64(value)))
 	return r
 }
 func (r *SchoolRequest) WithSchoolTypeIn(values []uint64) *SchoolRequest {
@@ -359,7 +359,7 @@ func (r *SchoolRequest) WithSchoolTypeIn(values []uint64) *SchoolRequest {
 	for _, value := range values {
 		converted = append(converted, core.ValU64(value))
 	}
-	r.Query.AndFilter(core.ExprInList("school_type_id", converted))
+	r.Query.AndFilter(core.ExprInList(teaqlSchoolTypeStorageKey, converted))
 	return r
 }
 func (r *SchoolRequest) WithSchoolTypeNotIn(values []uint64) *SchoolRequest {
@@ -367,23 +367,23 @@ func (r *SchoolRequest) WithSchoolTypeNotIn(values []uint64) *SchoolRequest {
 	for _, value := range values {
 		converted = append(converted, core.ValU64(value))
 	}
-	r.Query.AndFilter(core.ExprNotInList("school_type_id", converted))
+	r.Query.AndFilter(core.ExprNotInList(teaqlSchoolTypeStorageKey, converted))
 	return r
 }
 func (r *SchoolRequest) WithSchoolTypeGreaterThan(value uint64) *SchoolRequest {
-	r.Query.AndFilter(core.ExprGt("school_type_id", core.ValU64(value)))
+	r.Query.AndFilter(core.ExprGt(teaqlSchoolTypeStorageKey, core.ValU64(value)))
 	return r
 }
 func (r *SchoolRequest) WithSchoolTypeGreaterThanOrEqualTo(value uint64) *SchoolRequest {
-	r.Query.AndFilter(core.ExprGte("school_type_id", core.ValU64(value)))
+	r.Query.AndFilter(core.ExprGte(teaqlSchoolTypeStorageKey, core.ValU64(value)))
 	return r
 }
 func (r *SchoolRequest) WithSchoolTypeLessThan(value uint64) *SchoolRequest {
-	r.Query.AndFilter(core.ExprLt("school_type_id", core.ValU64(value)))
+	r.Query.AndFilter(core.ExprLt(teaqlSchoolTypeStorageKey, core.ValU64(value)))
 	return r
 }
 func (r *SchoolRequest) WithSchoolTypeLessThanOrEqualTo(value uint64) *SchoolRequest {
-	r.Query.AndFilter(core.ExprLte("school_type_id", core.ValU64(value)))
+	r.Query.AndFilter(core.ExprLte(teaqlSchoolTypeStorageKey, core.ValU64(value)))
 	return r
 }
 func (r *SchoolRequest) WithSchoolTypeBetween(lower uint64, upper uint64) *SchoolRequest {
@@ -391,15 +391,15 @@ func (r *SchoolRequest) WithSchoolTypeBetween(lower uint64, upper uint64) *Schoo
 	from := core.ValU64(value)
 	value = upper
 	to := core.ValU64(value)
-	r.Query.AndFilter(core.ExprBetweenNode("school_type_id", from, to))
+	r.Query.AndFilter(core.ExprBetweenNode(teaqlSchoolTypeStorageKey, from, to))
 	return r
 }
 func (r *SchoolRequest) WithSchoolTypeIsKnown() *SchoolRequest {
-	r.Query.AndFilter(core.ExprIsNotNullNode("school_type_id"))
+	r.Query.AndFilter(core.ExprIsNotNullNode(teaqlSchoolTypeStorageKey))
 	return r
 }
 func (r *SchoolRequest) WithSchoolTypeIsUnknown() *SchoolRequest {
-	r.Query.AndFilter(core.ExprIsNullNode("school_type_id"))
+	r.Query.AndFilter(core.ExprIsNullNode(teaqlSchoolTypeStorageKey))
 	return r
 }
 func (r *SchoolRequest) FacetBySchoolTypeAs(
@@ -409,38 +409,38 @@ func (r *SchoolRequest) FacetBySchoolTypeAs(
 ) *SchoolRequest {
 	includeAll := true
 	if len(includeAllFacets) > 0 { includeAll = includeAllFacets[0] }
-	facet := core.NewFacetRequest(name, "school_type_id", core.QuerySelectionFor(nestedReq), includeAll)
+	facet := core.NewFacetRequest(name, teaqlSchoolTypeStorageKey, core.QuerySelectionFor(nestedReq), includeAll)
 	facet.Operation = &core.QueryOperation{Kind: "facet", Method: "FacetBySchoolTypeAs", Alias: &name, Relation: "schoolType"}
 	r.queryOptions.Facets = append(r.queryOptions.Facets, facet)
 	return r
 }
 func (r *SchoolRequest) WithSchoolTypeIsPrimary() *SchoolRequest {
-	r.Query.AndFilter(core.ExprEq("school_type_id", core.ValU64(1001)))
+	r.Query.AndFilter(core.ExprEq(teaqlSchoolTypeStorageKey, core.ValU64(1001)))
 	return r
 }
 func (r *SchoolRequest) WithSchoolTypeIsSecondary() *SchoolRequest {
-	r.Query.AndFilter(core.ExprEq("school_type_id", core.ValU64(1002)))
+	r.Query.AndFilter(core.ExprEq(teaqlSchoolTypeStorageKey, core.ValU64(1002)))
 	return r
 }
 func (r *SchoolRequest) OrderBySchoolTypeAsc() *SchoolRequest {
-	r.Query.OrderAsc("school_type_id")
+	r.Query.OrderAsc(teaqlSchoolTypeStorageKey)
 	return r
 }
 func (r *SchoolRequest) OrderBySchoolTypeDesc() *SchoolRequest {
-	r.Query.OrderDesc("school_type_id")
+	r.Query.OrderDesc(teaqlSchoolTypeStorageKey)
 	return r
 }
 func (r *SchoolRequest) SelectName() *SchoolRequest {
-	r.Query.Project("name")
+	r.Query.Project(teaqlNameStorageKey)
 	return r
 }
 
 func (r *SchoolRequest) WithNameIs(value string) *SchoolRequest {
-	r.Query.AndFilter(core.ExprEq("name", core.ValText(value)))
+	r.Query.AndFilter(core.ExprEq(teaqlNameStorageKey, core.ValText(value)))
 	return r
 }
 func (r *SchoolRequest) WithNameIsNot(value string) *SchoolRequest {
-	r.Query.AndFilter(core.ExprNe("name", core.ValText(value)))
+	r.Query.AndFilter(core.ExprNe(teaqlNameStorageKey, core.ValText(value)))
 	return r
 }
 func (r *SchoolRequest) WithNameIn(values []string) *SchoolRequest {
@@ -448,7 +448,7 @@ func (r *SchoolRequest) WithNameIn(values []string) *SchoolRequest {
 	for _, value := range values {
 		converted = append(converted, core.ValText(value))
 	}
-	r.Query.AndFilter(core.ExprInList("name", converted))
+	r.Query.AndFilter(core.ExprInList(teaqlNameStorageKey, converted))
 	return r
 }
 func (r *SchoolRequest) WithNameNotIn(values []string) *SchoolRequest {
@@ -456,23 +456,23 @@ func (r *SchoolRequest) WithNameNotIn(values []string) *SchoolRequest {
 	for _, value := range values {
 		converted = append(converted, core.ValText(value))
 	}
-	r.Query.AndFilter(core.ExprNotInList("name", converted))
+	r.Query.AndFilter(core.ExprNotInList(teaqlNameStorageKey, converted))
 	return r
 }
 func (r *SchoolRequest) WithNameGreaterThan(value string) *SchoolRequest {
-	r.Query.AndFilter(core.ExprGt("name", core.ValText(value)))
+	r.Query.AndFilter(core.ExprGt(teaqlNameStorageKey, core.ValText(value)))
 	return r
 }
 func (r *SchoolRequest) WithNameGreaterThanOrEqualTo(value string) *SchoolRequest {
-	r.Query.AndFilter(core.ExprGte("name", core.ValText(value)))
+	r.Query.AndFilter(core.ExprGte(teaqlNameStorageKey, core.ValText(value)))
 	return r
 }
 func (r *SchoolRequest) WithNameLessThan(value string) *SchoolRequest {
-	r.Query.AndFilter(core.ExprLt("name", core.ValText(value)))
+	r.Query.AndFilter(core.ExprLt(teaqlNameStorageKey, core.ValText(value)))
 	return r
 }
 func (r *SchoolRequest) WithNameLessThanOrEqualTo(value string) *SchoolRequest {
-	r.Query.AndFilter(core.ExprLte("name", core.ValText(value)))
+	r.Query.AndFilter(core.ExprLte(teaqlNameStorageKey, core.ValText(value)))
 	return r
 }
 func (r *SchoolRequest) WithNameBetween(lower string, upper string) *SchoolRequest {
@@ -480,64 +480,64 @@ func (r *SchoolRequest) WithNameBetween(lower string, upper string) *SchoolReque
 	from := core.ValText(value)
 	value = upper
 	to := core.ValText(value)
-	r.Query.AndFilter(core.ExprBetweenNode("name", from, to))
+	r.Query.AndFilter(core.ExprBetweenNode(teaqlNameStorageKey, from, to))
 	return r
 }
 func (r *SchoolRequest) WithNameIsKnown() *SchoolRequest {
-	r.Query.AndFilter(core.ExprIsNotNullNode("name"))
+	r.Query.AndFilter(core.ExprIsNotNullNode(teaqlNameStorageKey))
 	return r
 }
 func (r *SchoolRequest) WithNameIsUnknown() *SchoolRequest {
-	r.Query.AndFilter(core.ExprIsNullNode("name"))
+	r.Query.AndFilter(core.ExprIsNullNode(teaqlNameStorageKey))
 	return r
 }
 func (r *SchoolRequest) WithNameContaining(term string) *SchoolRequest {
-	r.Query.AndFilter(core.ExprContain("name", term))
+	r.Query.AndFilter(core.ExprContain(teaqlNameStorageKey, term))
 	return r
 }
 func (r *SchoolRequest) WithNameNotContaining(term string) *SchoolRequest {
-	r.Query.AndFilter(core.ExprNotContain("name", term))
+	r.Query.AndFilter(core.ExprNotContain(teaqlNameStorageKey, term))
 	return r
 }
 func (r *SchoolRequest) WithNameStartingWith(term string) *SchoolRequest {
-	r.Query.AndFilter(core.ExprBeginWith("name", term))
+	r.Query.AndFilter(core.ExprBeginWith(teaqlNameStorageKey, term))
 	return r
 }
 func (r *SchoolRequest) WithNameNotStartingWith(term string) *SchoolRequest {
-	r.Query.AndFilter(core.ExprNotBeginWith("name", term))
+	r.Query.AndFilter(core.ExprNotBeginWith(teaqlNameStorageKey, term))
 	return r
 }
 func (r *SchoolRequest) WithNameEndingWith(term string) *SchoolRequest {
-	r.Query.AndFilter(core.ExprEndWith("name", term))
+	r.Query.AndFilter(core.ExprEndWith(teaqlNameStorageKey, term))
 	return r
 }
 func (r *SchoolRequest) WithNameNotEndingWith(term string) *SchoolRequest {
-	r.Query.AndFilter(core.ExprNotEndWith("name", term))
+	r.Query.AndFilter(core.ExprNotEndWith(teaqlNameStorageKey, term))
 	return r
 }
 func (r *SchoolRequest) WithNameSoundingLike(term string) *SchoolRequest {
-	r.Query.AndFilter(core.ExprSoundLike("name", core.ValText(term)))
+	r.Query.AndFilter(core.ExprSoundLike(teaqlNameStorageKey, core.ValText(term)))
 	return r
 }
 func (r *SchoolRequest) OrderByNameAsc() *SchoolRequest {
-	r.Query.OrderAsc("name")
+	r.Query.OrderAsc(teaqlNameStorageKey)
 	return r
 }
 func (r *SchoolRequest) OrderByNameDesc() *SchoolRequest {
-	r.Query.OrderDesc("name")
+	r.Query.OrderDesc(teaqlNameStorageKey)
 	return r
 }
 func (r *SchoolRequest) SelectAddress() *SchoolRequest {
-	r.Query.Project("address")
+	r.Query.Project(teaqlAddressStorageKey)
 	return r
 }
 
 func (r *SchoolRequest) WithAddressIs(value string) *SchoolRequest {
-	r.Query.AndFilter(core.ExprEq("address", core.ValText(value)))
+	r.Query.AndFilter(core.ExprEq(teaqlAddressStorageKey, core.ValText(value)))
 	return r
 }
 func (r *SchoolRequest) WithAddressIsNot(value string) *SchoolRequest {
-	r.Query.AndFilter(core.ExprNe("address", core.ValText(value)))
+	r.Query.AndFilter(core.ExprNe(teaqlAddressStorageKey, core.ValText(value)))
 	return r
 }
 func (r *SchoolRequest) WithAddressIn(values []string) *SchoolRequest {
@@ -545,7 +545,7 @@ func (r *SchoolRequest) WithAddressIn(values []string) *SchoolRequest {
 	for _, value := range values {
 		converted = append(converted, core.ValText(value))
 	}
-	r.Query.AndFilter(core.ExprInList("address", converted))
+	r.Query.AndFilter(core.ExprInList(teaqlAddressStorageKey, converted))
 	return r
 }
 func (r *SchoolRequest) WithAddressNotIn(values []string) *SchoolRequest {
@@ -553,23 +553,23 @@ func (r *SchoolRequest) WithAddressNotIn(values []string) *SchoolRequest {
 	for _, value := range values {
 		converted = append(converted, core.ValText(value))
 	}
-	r.Query.AndFilter(core.ExprNotInList("address", converted))
+	r.Query.AndFilter(core.ExprNotInList(teaqlAddressStorageKey, converted))
 	return r
 }
 func (r *SchoolRequest) WithAddressGreaterThan(value string) *SchoolRequest {
-	r.Query.AndFilter(core.ExprGt("address", core.ValText(value)))
+	r.Query.AndFilter(core.ExprGt(teaqlAddressStorageKey, core.ValText(value)))
 	return r
 }
 func (r *SchoolRequest) WithAddressGreaterThanOrEqualTo(value string) *SchoolRequest {
-	r.Query.AndFilter(core.ExprGte("address", core.ValText(value)))
+	r.Query.AndFilter(core.ExprGte(teaqlAddressStorageKey, core.ValText(value)))
 	return r
 }
 func (r *SchoolRequest) WithAddressLessThan(value string) *SchoolRequest {
-	r.Query.AndFilter(core.ExprLt("address", core.ValText(value)))
+	r.Query.AndFilter(core.ExprLt(teaqlAddressStorageKey, core.ValText(value)))
 	return r
 }
 func (r *SchoolRequest) WithAddressLessThanOrEqualTo(value string) *SchoolRequest {
-	r.Query.AndFilter(core.ExprLte("address", core.ValText(value)))
+	r.Query.AndFilter(core.ExprLte(teaqlAddressStorageKey, core.ValText(value)))
 	return r
 }
 func (r *SchoolRequest) WithAddressBetween(lower string, upper string) *SchoolRequest {
@@ -577,64 +577,64 @@ func (r *SchoolRequest) WithAddressBetween(lower string, upper string) *SchoolRe
 	from := core.ValText(value)
 	value = upper
 	to := core.ValText(value)
-	r.Query.AndFilter(core.ExprBetweenNode("address", from, to))
+	r.Query.AndFilter(core.ExprBetweenNode(teaqlAddressStorageKey, from, to))
 	return r
 }
 func (r *SchoolRequest) WithAddressIsKnown() *SchoolRequest {
-	r.Query.AndFilter(core.ExprIsNotNullNode("address"))
+	r.Query.AndFilter(core.ExprIsNotNullNode(teaqlAddressStorageKey))
 	return r
 }
 func (r *SchoolRequest) WithAddressIsUnknown() *SchoolRequest {
-	r.Query.AndFilter(core.ExprIsNullNode("address"))
+	r.Query.AndFilter(core.ExprIsNullNode(teaqlAddressStorageKey))
 	return r
 }
 func (r *SchoolRequest) WithAddressContaining(term string) *SchoolRequest {
-	r.Query.AndFilter(core.ExprContain("address", term))
+	r.Query.AndFilter(core.ExprContain(teaqlAddressStorageKey, term))
 	return r
 }
 func (r *SchoolRequest) WithAddressNotContaining(term string) *SchoolRequest {
-	r.Query.AndFilter(core.ExprNotContain("address", term))
+	r.Query.AndFilter(core.ExprNotContain(teaqlAddressStorageKey, term))
 	return r
 }
 func (r *SchoolRequest) WithAddressStartingWith(term string) *SchoolRequest {
-	r.Query.AndFilter(core.ExprBeginWith("address", term))
+	r.Query.AndFilter(core.ExprBeginWith(teaqlAddressStorageKey, term))
 	return r
 }
 func (r *SchoolRequest) WithAddressNotStartingWith(term string) *SchoolRequest {
-	r.Query.AndFilter(core.ExprNotBeginWith("address", term))
+	r.Query.AndFilter(core.ExprNotBeginWith(teaqlAddressStorageKey, term))
 	return r
 }
 func (r *SchoolRequest) WithAddressEndingWith(term string) *SchoolRequest {
-	r.Query.AndFilter(core.ExprEndWith("address", term))
+	r.Query.AndFilter(core.ExprEndWith(teaqlAddressStorageKey, term))
 	return r
 }
 func (r *SchoolRequest) WithAddressNotEndingWith(term string) *SchoolRequest {
-	r.Query.AndFilter(core.ExprNotEndWith("address", term))
+	r.Query.AndFilter(core.ExprNotEndWith(teaqlAddressStorageKey, term))
 	return r
 }
 func (r *SchoolRequest) WithAddressSoundingLike(term string) *SchoolRequest {
-	r.Query.AndFilter(core.ExprSoundLike("address", core.ValText(term)))
+	r.Query.AndFilter(core.ExprSoundLike(teaqlAddressStorageKey, core.ValText(term)))
 	return r
 }
 func (r *SchoolRequest) OrderByAddressAsc() *SchoolRequest {
-	r.Query.OrderAsc("address")
+	r.Query.OrderAsc(teaqlAddressStorageKey)
 	return r
 }
 func (r *SchoolRequest) OrderByAddressDesc() *SchoolRequest {
-	r.Query.OrderDesc("address")
+	r.Query.OrderDesc(teaqlAddressStorageKey)
 	return r
 }
 func (r *SchoolRequest) SelectEstablishedDate() *SchoolRequest {
-	r.Query.Project("established_date")
+	r.Query.Project(teaqlEstablishedDateStorageKey)
 	return r
 }
 
 func (r *SchoolRequest) WithEstablishedDateIs(value time.Time) *SchoolRequest {
-	r.Query.AndFilter(core.ExprEq("established_date", core.ValDate(value)))
+	r.Query.AndFilter(core.ExprEq(teaqlEstablishedDateStorageKey, core.ValDate(value)))
 	return r
 }
 func (r *SchoolRequest) WithEstablishedDateIsNot(value time.Time) *SchoolRequest {
-	r.Query.AndFilter(core.ExprNe("established_date", core.ValDate(value)))
+	r.Query.AndFilter(core.ExprNe(teaqlEstablishedDateStorageKey, core.ValDate(value)))
 	return r
 }
 func (r *SchoolRequest) WithEstablishedDateIn(values []time.Time) *SchoolRequest {
@@ -642,7 +642,7 @@ func (r *SchoolRequest) WithEstablishedDateIn(values []time.Time) *SchoolRequest
 	for _, value := range values {
 		converted = append(converted, core.ValDate(value))
 	}
-	r.Query.AndFilter(core.ExprInList("established_date", converted))
+	r.Query.AndFilter(core.ExprInList(teaqlEstablishedDateStorageKey, converted))
 	return r
 }
 func (r *SchoolRequest) WithEstablishedDateNotIn(values []time.Time) *SchoolRequest {
@@ -650,23 +650,23 @@ func (r *SchoolRequest) WithEstablishedDateNotIn(values []time.Time) *SchoolRequ
 	for _, value := range values {
 		converted = append(converted, core.ValDate(value))
 	}
-	r.Query.AndFilter(core.ExprNotInList("established_date", converted))
+	r.Query.AndFilter(core.ExprNotInList(teaqlEstablishedDateStorageKey, converted))
 	return r
 }
 func (r *SchoolRequest) WithEstablishedDateGreaterThan(value time.Time) *SchoolRequest {
-	r.Query.AndFilter(core.ExprGt("established_date", core.ValDate(value)))
+	r.Query.AndFilter(core.ExprGt(teaqlEstablishedDateStorageKey, core.ValDate(value)))
 	return r
 }
 func (r *SchoolRequest) WithEstablishedDateGreaterThanOrEqualTo(value time.Time) *SchoolRequest {
-	r.Query.AndFilter(core.ExprGte("established_date", core.ValDate(value)))
+	r.Query.AndFilter(core.ExprGte(teaqlEstablishedDateStorageKey, core.ValDate(value)))
 	return r
 }
 func (r *SchoolRequest) WithEstablishedDateLessThan(value time.Time) *SchoolRequest {
-	r.Query.AndFilter(core.ExprLt("established_date", core.ValDate(value)))
+	r.Query.AndFilter(core.ExprLt(teaqlEstablishedDateStorageKey, core.ValDate(value)))
 	return r
 }
 func (r *SchoolRequest) WithEstablishedDateLessThanOrEqualTo(value time.Time) *SchoolRequest {
-	r.Query.AndFilter(core.ExprLte("established_date", core.ValDate(value)))
+	r.Query.AndFilter(core.ExprLte(teaqlEstablishedDateStorageKey, core.ValDate(value)))
 	return r
 }
 func (r *SchoolRequest) WithEstablishedDateBetween(lower time.Time, upper time.Time) *SchoolRequest {
@@ -674,36 +674,36 @@ func (r *SchoolRequest) WithEstablishedDateBetween(lower time.Time, upper time.T
 	from := core.ValDate(value)
 	value = upper
 	to := core.ValDate(value)
-	r.Query.AndFilter(core.ExprBetweenNode("established_date", from, to))
+	r.Query.AndFilter(core.ExprBetweenNode(teaqlEstablishedDateStorageKey, from, to))
 	return r
 }
 func (r *SchoolRequest) WithEstablishedDateIsKnown() *SchoolRequest {
-	r.Query.AndFilter(core.ExprIsNotNullNode("established_date"))
+	r.Query.AndFilter(core.ExprIsNotNullNode(teaqlEstablishedDateStorageKey))
 	return r
 }
 func (r *SchoolRequest) WithEstablishedDateIsUnknown() *SchoolRequest {
-	r.Query.AndFilter(core.ExprIsNullNode("established_date"))
+	r.Query.AndFilter(core.ExprIsNullNode(teaqlEstablishedDateStorageKey))
 	return r
 }
 func (r *SchoolRequest) OrderByEstablishedDateAsc() *SchoolRequest {
-	r.Query.OrderAsc("established_date")
+	r.Query.OrderAsc(teaqlEstablishedDateStorageKey)
 	return r
 }
 func (r *SchoolRequest) OrderByEstablishedDateDesc() *SchoolRequest {
-	r.Query.OrderDesc("established_date")
+	r.Query.OrderDesc(teaqlEstablishedDateStorageKey)
 	return r
 }
 func (r *SchoolRequest) SelectStudentCapacity() *SchoolRequest {
-	r.Query.Project("student_capacity")
+	r.Query.Project(teaqlStudentCapacityStorageKey)
 	return r
 }
 
 func (r *SchoolRequest) WithStudentCapacityIs(value int64) *SchoolRequest {
-	r.Query.AndFilter(core.ExprEq("student_capacity", core.ValI64(value)))
+	r.Query.AndFilter(core.ExprEq(teaqlStudentCapacityStorageKey, core.ValI64(value)))
 	return r
 }
 func (r *SchoolRequest) WithStudentCapacityIsNot(value int64) *SchoolRequest {
-	r.Query.AndFilter(core.ExprNe("student_capacity", core.ValI64(value)))
+	r.Query.AndFilter(core.ExprNe(teaqlStudentCapacityStorageKey, core.ValI64(value)))
 	return r
 }
 func (r *SchoolRequest) WithStudentCapacityIn(values []int64) *SchoolRequest {
@@ -711,7 +711,7 @@ func (r *SchoolRequest) WithStudentCapacityIn(values []int64) *SchoolRequest {
 	for _, value := range values {
 		converted = append(converted, core.ValI64(value))
 	}
-	r.Query.AndFilter(core.ExprInList("student_capacity", converted))
+	r.Query.AndFilter(core.ExprInList(teaqlStudentCapacityStorageKey, converted))
 	return r
 }
 func (r *SchoolRequest) WithStudentCapacityNotIn(values []int64) *SchoolRequest {
@@ -719,23 +719,23 @@ func (r *SchoolRequest) WithStudentCapacityNotIn(values []int64) *SchoolRequest 
 	for _, value := range values {
 		converted = append(converted, core.ValI64(value))
 	}
-	r.Query.AndFilter(core.ExprNotInList("student_capacity", converted))
+	r.Query.AndFilter(core.ExprNotInList(teaqlStudentCapacityStorageKey, converted))
 	return r
 }
 func (r *SchoolRequest) WithStudentCapacityGreaterThan(value int64) *SchoolRequest {
-	r.Query.AndFilter(core.ExprGt("student_capacity", core.ValI64(value)))
+	r.Query.AndFilter(core.ExprGt(teaqlStudentCapacityStorageKey, core.ValI64(value)))
 	return r
 }
 func (r *SchoolRequest) WithStudentCapacityGreaterThanOrEqualTo(value int64) *SchoolRequest {
-	r.Query.AndFilter(core.ExprGte("student_capacity", core.ValI64(value)))
+	r.Query.AndFilter(core.ExprGte(teaqlStudentCapacityStorageKey, core.ValI64(value)))
 	return r
 }
 func (r *SchoolRequest) WithStudentCapacityLessThan(value int64) *SchoolRequest {
-	r.Query.AndFilter(core.ExprLt("student_capacity", core.ValI64(value)))
+	r.Query.AndFilter(core.ExprLt(teaqlStudentCapacityStorageKey, core.ValI64(value)))
 	return r
 }
 func (r *SchoolRequest) WithStudentCapacityLessThanOrEqualTo(value int64) *SchoolRequest {
-	r.Query.AndFilter(core.ExprLte("student_capacity", core.ValI64(value)))
+	r.Query.AndFilter(core.ExprLte(teaqlStudentCapacityStorageKey, core.ValI64(value)))
 	return r
 }
 func (r *SchoolRequest) WithStudentCapacityBetween(lower int64, upper int64) *SchoolRequest {
@@ -743,57 +743,57 @@ func (r *SchoolRequest) WithStudentCapacityBetween(lower int64, upper int64) *Sc
 	from := core.ValI64(value)
 	value = upper
 	to := core.ValI64(value)
-	r.Query.AndFilter(core.ExprBetweenNode("student_capacity", from, to))
+	r.Query.AndFilter(core.ExprBetweenNode(teaqlStudentCapacityStorageKey, from, to))
 	return r
 }
 func (r *SchoolRequest) WithStudentCapacityIsKnown() *SchoolRequest {
-	r.Query.AndFilter(core.ExprIsNotNullNode("student_capacity"))
+	r.Query.AndFilter(core.ExprIsNotNullNode(teaqlStudentCapacityStorageKey))
 	return r
 }
 func (r *SchoolRequest) WithStudentCapacityIsUnknown() *SchoolRequest {
-	r.Query.AndFilter(core.ExprIsNullNode("student_capacity"))
+	r.Query.AndFilter(core.ExprIsNullNode(teaqlStudentCapacityStorageKey))
 	return r
 }
 func (r *SchoolRequest) OrderByStudentCapacityAsc() *SchoolRequest {
-	r.Query.OrderAsc("student_capacity")
+	r.Query.OrderAsc(teaqlStudentCapacityStorageKey)
 	return r
 }
 func (r *SchoolRequest) OrderByStudentCapacityDesc() *SchoolRequest {
-	r.Query.OrderDesc("student_capacity")
+	r.Query.OrderDesc(teaqlStudentCapacityStorageKey)
 	return r
 }
 func (r *SchoolRequest) SelectActive() *SchoolRequest {
-	r.Query.Project("active")
+	r.Query.Project(teaqlActiveStorageKey)
 	return r
 }
 
 func (r *SchoolRequest) WhichAreActive() *SchoolRequest {
-	r.Query.AndFilter(core.ExprEq("active", core.ValBool(true)))
+	r.Query.AndFilter(core.ExprEq(teaqlActiveStorageKey, core.ValBool(true)))
 	return r
 }
 func (r *SchoolRequest) WhichAreNotActive() *SchoolRequest {
-	r.Query.AndFilter(core.ExprEq("active", core.ValBool(false)))
+	r.Query.AndFilter(core.ExprEq(teaqlActiveStorageKey, core.ValBool(false)))
 	return r
 }
 func (r *SchoolRequest) OrderByActiveAsc() *SchoolRequest {
-	r.Query.OrderAsc("active")
+	r.Query.OrderAsc(teaqlActiveStorageKey)
 	return r
 }
 func (r *SchoolRequest) OrderByActiveDesc() *SchoolRequest {
-	r.Query.OrderDesc("active")
+	r.Query.OrderDesc(teaqlActiveStorageKey)
 	return r
 }
 func (r *SchoolRequest) SelectCreateTime() *SchoolRequest {
-	r.Query.Project("create_time")
+	r.Query.Project(teaqlCreateTimeStorageKey)
 	return r
 }
 
 func (r *SchoolRequest) WithCreateTimeIs(value time.Time) *SchoolRequest {
-	r.Query.AndFilter(core.ExprEq("create_time", core.ValTimestamp(value.UnixMilli())))
+	r.Query.AndFilter(core.ExprEq(teaqlCreateTimeStorageKey, core.ValTimestamp(value.UnixMilli())))
 	return r
 }
 func (r *SchoolRequest) WithCreateTimeIsNot(value time.Time) *SchoolRequest {
-	r.Query.AndFilter(core.ExprNe("create_time", core.ValTimestamp(value.UnixMilli())))
+	r.Query.AndFilter(core.ExprNe(teaqlCreateTimeStorageKey, core.ValTimestamp(value.UnixMilli())))
 	return r
 }
 func (r *SchoolRequest) WithCreateTimeIn(values []time.Time) *SchoolRequest {
@@ -801,7 +801,7 @@ func (r *SchoolRequest) WithCreateTimeIn(values []time.Time) *SchoolRequest {
 	for _, value := range values {
 		converted = append(converted, core.ValTimestamp(value.UnixMilli()))
 	}
-	r.Query.AndFilter(core.ExprInList("create_time", converted))
+	r.Query.AndFilter(core.ExprInList(teaqlCreateTimeStorageKey, converted))
 	return r
 }
 func (r *SchoolRequest) WithCreateTimeNotIn(values []time.Time) *SchoolRequest {
@@ -809,23 +809,23 @@ func (r *SchoolRequest) WithCreateTimeNotIn(values []time.Time) *SchoolRequest {
 	for _, value := range values {
 		converted = append(converted, core.ValTimestamp(value.UnixMilli()))
 	}
-	r.Query.AndFilter(core.ExprNotInList("create_time", converted))
+	r.Query.AndFilter(core.ExprNotInList(teaqlCreateTimeStorageKey, converted))
 	return r
 }
 func (r *SchoolRequest) WithCreateTimeGreaterThan(value time.Time) *SchoolRequest {
-	r.Query.AndFilter(core.ExprGt("create_time", core.ValTimestamp(value.UnixMilli())))
+	r.Query.AndFilter(core.ExprGt(teaqlCreateTimeStorageKey, core.ValTimestamp(value.UnixMilli())))
 	return r
 }
 func (r *SchoolRequest) WithCreateTimeGreaterThanOrEqualTo(value time.Time) *SchoolRequest {
-	r.Query.AndFilter(core.ExprGte("create_time", core.ValTimestamp(value.UnixMilli())))
+	r.Query.AndFilter(core.ExprGte(teaqlCreateTimeStorageKey, core.ValTimestamp(value.UnixMilli())))
 	return r
 }
 func (r *SchoolRequest) WithCreateTimeLessThan(value time.Time) *SchoolRequest {
-	r.Query.AndFilter(core.ExprLt("create_time", core.ValTimestamp(value.UnixMilli())))
+	r.Query.AndFilter(core.ExprLt(teaqlCreateTimeStorageKey, core.ValTimestamp(value.UnixMilli())))
 	return r
 }
 func (r *SchoolRequest) WithCreateTimeLessThanOrEqualTo(value time.Time) *SchoolRequest {
-	r.Query.AndFilter(core.ExprLte("create_time", core.ValTimestamp(value.UnixMilli())))
+	r.Query.AndFilter(core.ExprLte(teaqlCreateTimeStorageKey, core.ValTimestamp(value.UnixMilli())))
 	return r
 }
 func (r *SchoolRequest) WithCreateTimeBetween(lower time.Time, upper time.Time) *SchoolRequest {
@@ -833,36 +833,36 @@ func (r *SchoolRequest) WithCreateTimeBetween(lower time.Time, upper time.Time) 
 	from := core.ValTimestamp(value.UnixMilli())
 	value = upper
 	to := core.ValTimestamp(value.UnixMilli())
-	r.Query.AndFilter(core.ExprBetweenNode("create_time", from, to))
+	r.Query.AndFilter(core.ExprBetweenNode(teaqlCreateTimeStorageKey, from, to))
 	return r
 }
 func (r *SchoolRequest) WithCreateTimeIsKnown() *SchoolRequest {
-	r.Query.AndFilter(core.ExprIsNotNullNode("create_time"))
+	r.Query.AndFilter(core.ExprIsNotNullNode(teaqlCreateTimeStorageKey))
 	return r
 }
 func (r *SchoolRequest) WithCreateTimeIsUnknown() *SchoolRequest {
-	r.Query.AndFilter(core.ExprIsNullNode("create_time"))
+	r.Query.AndFilter(core.ExprIsNullNode(teaqlCreateTimeStorageKey))
 	return r
 }
 func (r *SchoolRequest) OrderByCreateTimeAsc() *SchoolRequest {
-	r.Query.OrderAsc("create_time")
+	r.Query.OrderAsc(teaqlCreateTimeStorageKey)
 	return r
 }
 func (r *SchoolRequest) OrderByCreateTimeDesc() *SchoolRequest {
-	r.Query.OrderDesc("create_time")
+	r.Query.OrderDesc(teaqlCreateTimeStorageKey)
 	return r
 }
 func (r *SchoolRequest) SelectUpdateTime() *SchoolRequest {
-	r.Query.Project("update_time")
+	r.Query.Project(teaqlUpdateTimeStorageKey)
 	return r
 }
 
 func (r *SchoolRequest) WithUpdateTimeIs(value time.Time) *SchoolRequest {
-	r.Query.AndFilter(core.ExprEq("update_time", core.ValTimestamp(value.UnixMilli())))
+	r.Query.AndFilter(core.ExprEq(teaqlUpdateTimeStorageKey, core.ValTimestamp(value.UnixMilli())))
 	return r
 }
 func (r *SchoolRequest) WithUpdateTimeIsNot(value time.Time) *SchoolRequest {
-	r.Query.AndFilter(core.ExprNe("update_time", core.ValTimestamp(value.UnixMilli())))
+	r.Query.AndFilter(core.ExprNe(teaqlUpdateTimeStorageKey, core.ValTimestamp(value.UnixMilli())))
 	return r
 }
 func (r *SchoolRequest) WithUpdateTimeIn(values []time.Time) *SchoolRequest {
@@ -870,7 +870,7 @@ func (r *SchoolRequest) WithUpdateTimeIn(values []time.Time) *SchoolRequest {
 	for _, value := range values {
 		converted = append(converted, core.ValTimestamp(value.UnixMilli()))
 	}
-	r.Query.AndFilter(core.ExprInList("update_time", converted))
+	r.Query.AndFilter(core.ExprInList(teaqlUpdateTimeStorageKey, converted))
 	return r
 }
 func (r *SchoolRequest) WithUpdateTimeNotIn(values []time.Time) *SchoolRequest {
@@ -878,23 +878,23 @@ func (r *SchoolRequest) WithUpdateTimeNotIn(values []time.Time) *SchoolRequest {
 	for _, value := range values {
 		converted = append(converted, core.ValTimestamp(value.UnixMilli()))
 	}
-	r.Query.AndFilter(core.ExprNotInList("update_time", converted))
+	r.Query.AndFilter(core.ExprNotInList(teaqlUpdateTimeStorageKey, converted))
 	return r
 }
 func (r *SchoolRequest) WithUpdateTimeGreaterThan(value time.Time) *SchoolRequest {
-	r.Query.AndFilter(core.ExprGt("update_time", core.ValTimestamp(value.UnixMilli())))
+	r.Query.AndFilter(core.ExprGt(teaqlUpdateTimeStorageKey, core.ValTimestamp(value.UnixMilli())))
 	return r
 }
 func (r *SchoolRequest) WithUpdateTimeGreaterThanOrEqualTo(value time.Time) *SchoolRequest {
-	r.Query.AndFilter(core.ExprGte("update_time", core.ValTimestamp(value.UnixMilli())))
+	r.Query.AndFilter(core.ExprGte(teaqlUpdateTimeStorageKey, core.ValTimestamp(value.UnixMilli())))
 	return r
 }
 func (r *SchoolRequest) WithUpdateTimeLessThan(value time.Time) *SchoolRequest {
-	r.Query.AndFilter(core.ExprLt("update_time", core.ValTimestamp(value.UnixMilli())))
+	r.Query.AndFilter(core.ExprLt(teaqlUpdateTimeStorageKey, core.ValTimestamp(value.UnixMilli())))
 	return r
 }
 func (r *SchoolRequest) WithUpdateTimeLessThanOrEqualTo(value time.Time) *SchoolRequest {
-	r.Query.AndFilter(core.ExprLte("update_time", core.ValTimestamp(value.UnixMilli())))
+	r.Query.AndFilter(core.ExprLte(teaqlUpdateTimeStorageKey, core.ValTimestamp(value.UnixMilli())))
 	return r
 }
 func (r *SchoolRequest) WithUpdateTimeBetween(lower time.Time, upper time.Time) *SchoolRequest {
@@ -902,36 +902,36 @@ func (r *SchoolRequest) WithUpdateTimeBetween(lower time.Time, upper time.Time) 
 	from := core.ValTimestamp(value.UnixMilli())
 	value = upper
 	to := core.ValTimestamp(value.UnixMilli())
-	r.Query.AndFilter(core.ExprBetweenNode("update_time", from, to))
+	r.Query.AndFilter(core.ExprBetweenNode(teaqlUpdateTimeStorageKey, from, to))
 	return r
 }
 func (r *SchoolRequest) WithUpdateTimeIsKnown() *SchoolRequest {
-	r.Query.AndFilter(core.ExprIsNotNullNode("update_time"))
+	r.Query.AndFilter(core.ExprIsNotNullNode(teaqlUpdateTimeStorageKey))
 	return r
 }
 func (r *SchoolRequest) WithUpdateTimeIsUnknown() *SchoolRequest {
-	r.Query.AndFilter(core.ExprIsNullNode("update_time"))
+	r.Query.AndFilter(core.ExprIsNullNode(teaqlUpdateTimeStorageKey))
 	return r
 }
 func (r *SchoolRequest) OrderByUpdateTimeAsc() *SchoolRequest {
-	r.Query.OrderAsc("update_time")
+	r.Query.OrderAsc(teaqlUpdateTimeStorageKey)
 	return r
 }
 func (r *SchoolRequest) OrderByUpdateTimeDesc() *SchoolRequest {
-	r.Query.OrderDesc("update_time")
+	r.Query.OrderDesc(teaqlUpdateTimeStorageKey)
 	return r
 }
 func (r *SchoolRequest) SelectVersion() *SchoolRequest {
-	r.Query.Project("version")
+	r.Query.Project(teaqlVersionStorageKey)
 	return r
 }
 
 func (r *SchoolRequest) WithVersionIs(value int64) *SchoolRequest {
-	r.Query.AndFilter(core.ExprEq("version", core.ValI64(value)))
+	r.Query.AndFilter(core.ExprEq(teaqlVersionStorageKey, core.ValI64(value)))
 	return r
 }
 func (r *SchoolRequest) WithVersionIsNot(value int64) *SchoolRequest {
-	r.Query.AndFilter(core.ExprNe("version", core.ValI64(value)))
+	r.Query.AndFilter(core.ExprNe(teaqlVersionStorageKey, core.ValI64(value)))
 	return r
 }
 func (r *SchoolRequest) WithVersionIn(values []int64) *SchoolRequest {
@@ -939,7 +939,7 @@ func (r *SchoolRequest) WithVersionIn(values []int64) *SchoolRequest {
 	for _, value := range values {
 		converted = append(converted, core.ValI64(value))
 	}
-	r.Query.AndFilter(core.ExprInList("version", converted))
+	r.Query.AndFilter(core.ExprInList(teaqlVersionStorageKey, converted))
 	return r
 }
 func (r *SchoolRequest) WithVersionNotIn(values []int64) *SchoolRequest {
@@ -947,23 +947,23 @@ func (r *SchoolRequest) WithVersionNotIn(values []int64) *SchoolRequest {
 	for _, value := range values {
 		converted = append(converted, core.ValI64(value))
 	}
-	r.Query.AndFilter(core.ExprNotInList("version", converted))
+	r.Query.AndFilter(core.ExprNotInList(teaqlVersionStorageKey, converted))
 	return r
 }
 func (r *SchoolRequest) WithVersionGreaterThan(value int64) *SchoolRequest {
-	r.Query.AndFilter(core.ExprGt("version", core.ValI64(value)))
+	r.Query.AndFilter(core.ExprGt(teaqlVersionStorageKey, core.ValI64(value)))
 	return r
 }
 func (r *SchoolRequest) WithVersionGreaterThanOrEqualTo(value int64) *SchoolRequest {
-	r.Query.AndFilter(core.ExprGte("version", core.ValI64(value)))
+	r.Query.AndFilter(core.ExprGte(teaqlVersionStorageKey, core.ValI64(value)))
 	return r
 }
 func (r *SchoolRequest) WithVersionLessThan(value int64) *SchoolRequest {
-	r.Query.AndFilter(core.ExprLt("version", core.ValI64(value)))
+	r.Query.AndFilter(core.ExprLt(teaqlVersionStorageKey, core.ValI64(value)))
 	return r
 }
 func (r *SchoolRequest) WithVersionLessThanOrEqualTo(value int64) *SchoolRequest {
-	r.Query.AndFilter(core.ExprLte("version", core.ValI64(value)))
+	r.Query.AndFilter(core.ExprLte(teaqlVersionStorageKey, core.ValI64(value)))
 	return r
 }
 func (r *SchoolRequest) WithVersionBetween(lower int64, upper int64) *SchoolRequest {
@@ -971,23 +971,23 @@ func (r *SchoolRequest) WithVersionBetween(lower int64, upper int64) *SchoolRequ
 	from := core.ValI64(value)
 	value = upper
 	to := core.ValI64(value)
-	r.Query.AndFilter(core.ExprBetweenNode("version", from, to))
+	r.Query.AndFilter(core.ExprBetweenNode(teaqlVersionStorageKey, from, to))
 	return r
 }
 func (r *SchoolRequest) WithVersionIsKnown() *SchoolRequest {
-	r.Query.AndFilter(core.ExprIsNotNullNode("version"))
+	r.Query.AndFilter(core.ExprIsNotNullNode(teaqlVersionStorageKey))
 	return r
 }
 func (r *SchoolRequest) WithVersionIsUnknown() *SchoolRequest {
-	r.Query.AndFilter(core.ExprIsNullNode("version"))
+	r.Query.AndFilter(core.ExprIsNullNode(teaqlVersionStorageKey))
 	return r
 }
 func (r *SchoolRequest) OrderByVersionAsc() *SchoolRequest {
-	r.Query.OrderAsc("version")
+	r.Query.OrderAsc(teaqlVersionStorageKey)
 	return r
 }
 func (r *SchoolRequest) OrderByVersionDesc() *SchoolRequest {
-	r.Query.OrderDesc("version")
+	r.Query.OrderDesc(teaqlVersionStorageKey)
 	return r
 }
 
@@ -995,7 +995,7 @@ func (r *SchoolRequest) SelectPlatformWith(child interface {
 	GetQuery() *core.SelectQuery
 	NewRelationEntity() core.Entity
 }) *SchoolRequest {
-	runtime.EnsureRelationProjection(r.Query, "platform_id")
+	runtime.EnsureRelationProjection(r.Query, teaqlPlatformStorageKey)
 	r.Query.RelationQuerySelection("platformEntity", core.QuerySelectionFor(child))
 	r.Query.Relations[len(r.Query.Relations)-1].Operation = &core.QueryOperation{Kind: "relation", Method: "SelectPlatformWith", Relation: "platformEntity"}
 	r.relationFactories["platformEntity"] = func(record core.Record) (core.Entity, error) {
@@ -1012,7 +1012,7 @@ func (r *SchoolRequest) SelectSchoolTypeWith(child interface {
 	GetQuery() *core.SelectQuery
 	NewRelationEntity() core.Entity
 }) *SchoolRequest {
-	runtime.EnsureRelationProjection(r.Query, "school_type_id")
+	runtime.EnsureRelationProjection(r.Query, teaqlSchoolTypeStorageKey)
 	r.Query.RelationQuerySelection("schoolTypeEntity", core.QuerySelectionFor(child))
 	r.Query.Relations[len(r.Query.Relations)-1].Operation = &core.QueryOperation{Kind: "relation", Method: "SelectSchoolTypeWith", Relation: "schoolTypeEntity"}
 	r.relationFactories["schoolTypeEntity"] = func(record core.Record) (core.Entity, error) {
@@ -1030,7 +1030,7 @@ func (r *SchoolRequest) WithPlatformMatching(child interface {
 	GetQuery() *core.SelectQuery
 	GetEntityDescriptor() *core.EntityDescriptor
 }) *SchoolRequest {
-	r.Query.AndFilter(core.ExprInSubQuery("platform_id", child.GetEntityDescriptor(), child.GetQuery(), "id"))
+	r.Query.AndFilter(core.ExprInSubQuery(teaqlPlatformStorageKey, child.GetEntityDescriptor(), child.GetQuery(), "id"))
 	return r
 }
 
@@ -1038,14 +1038,14 @@ func (r *SchoolRequest) WithoutPlatformMatching(child interface {
 	GetQuery() *core.SelectQuery
 	GetEntityDescriptor() *core.EntityDescriptor
 }) *SchoolRequest {
-	r.Query.AndFilter(core.ExprNotInSubQuery("platform_id", child.GetEntityDescriptor(), child.GetQuery(), "id"))
+	r.Query.AndFilter(core.ExprNotInSubQuery(teaqlPlatformStorageKey, child.GetEntityDescriptor(), child.GetQuery(), "id"))
 	return r
 }
 func (r *SchoolRequest) WithSchoolTypeMatching(child interface {
 	GetQuery() *core.SelectQuery
 	GetEntityDescriptor() *core.EntityDescriptor
 }) *SchoolRequest {
-	r.Query.AndFilter(core.ExprInSubQuery("school_type_id", child.GetEntityDescriptor(), child.GetQuery(), "id"))
+	r.Query.AndFilter(core.ExprInSubQuery(teaqlSchoolTypeStorageKey, child.GetEntityDescriptor(), child.GetQuery(), "id"))
 	return r
 }
 
@@ -1053,7 +1053,7 @@ func (r *SchoolRequest) WithoutSchoolTypeMatching(child interface {
 	GetQuery() *core.SelectQuery
 	GetEntityDescriptor() *core.EntityDescriptor
 }) *SchoolRequest {
-	r.Query.AndFilter(core.ExprNotInSubQuery("school_type_id", child.GetEntityDescriptor(), child.GetQuery(), "id"))
+	r.Query.AndFilter(core.ExprNotInSubQuery(teaqlSchoolTypeStorageKey, child.GetEntityDescriptor(), child.GetQuery(), "id"))
 	return r
 }
 
@@ -1192,7 +1192,7 @@ func (r *SchoolRequest) MinStudentCapacity() *SchoolRequest {
 }
 
 func (r *SchoolRequest) MinStudentCapacityAs(alias string) *SchoolRequest {
-	r.Query.Min("student_capacity", alias)
+	r.Query.Min(teaqlStudentCapacityStorageKey, alias)
 	return r
 }
 func (r *SchoolRequest) MaxStudentCapacity() *SchoolRequest {
@@ -1200,7 +1200,7 @@ func (r *SchoolRequest) MaxStudentCapacity() *SchoolRequest {
 }
 
 func (r *SchoolRequest) MaxStudentCapacityAs(alias string) *SchoolRequest {
-	r.Query.Max("student_capacity", alias)
+	r.Query.Max(teaqlStudentCapacityStorageKey, alias)
 	return r
 }
 func (r *SchoolRequest) SumStudentCapacity() *SchoolRequest {
@@ -1208,7 +1208,7 @@ func (r *SchoolRequest) SumStudentCapacity() *SchoolRequest {
 }
 
 func (r *SchoolRequest) SumStudentCapacityAs(alias string) *SchoolRequest {
-	r.Query.Sum("student_capacity", alias)
+	r.Query.Sum(teaqlStudentCapacityStorageKey, alias)
 	return r
 }
 func (r *SchoolRequest) AvgStudentCapacity() *SchoolRequest {
@@ -1216,7 +1216,7 @@ func (r *SchoolRequest) AvgStudentCapacity() *SchoolRequest {
 }
 
 func (r *SchoolRequest) AvgStudentCapacityAs(alias string) *SchoolRequest {
-	r.Query.Avg("student_capacity", alias)
+	r.Query.Avg(teaqlStudentCapacityStorageKey, alias)
 	return r
 }
 func (r *SchoolRequest) StddevStudentCapacity() *SchoolRequest {
@@ -1224,7 +1224,7 @@ func (r *SchoolRequest) StddevStudentCapacity() *SchoolRequest {
 }
 
 func (r *SchoolRequest) StddevStudentCapacityAs(alias string) *SchoolRequest {
-	r.Query.Stddev("student_capacity", alias)
+	r.Query.Stddev(teaqlStudentCapacityStorageKey, alias)
 	return r
 }
 func (r *SchoolRequest) StddevPopStudentCapacity() *SchoolRequest {
@@ -1232,7 +1232,7 @@ func (r *SchoolRequest) StddevPopStudentCapacity() *SchoolRequest {
 }
 
 func (r *SchoolRequest) StddevPopStudentCapacityAs(alias string) *SchoolRequest {
-	r.Query.StddevPop("student_capacity", alias)
+	r.Query.StddevPop(teaqlStudentCapacityStorageKey, alias)
 	return r
 }
 func (r *SchoolRequest) VarSampStudentCapacity() *SchoolRequest {
@@ -1240,7 +1240,7 @@ func (r *SchoolRequest) VarSampStudentCapacity() *SchoolRequest {
 }
 
 func (r *SchoolRequest) VarSampStudentCapacityAs(alias string) *SchoolRequest {
-	r.Query.VarSamp("student_capacity", alias)
+	r.Query.VarSamp(teaqlStudentCapacityStorageKey, alias)
 	return r
 }
 func (r *SchoolRequest) VarPopStudentCapacity() *SchoolRequest {
@@ -1248,117 +1248,117 @@ func (r *SchoolRequest) VarPopStudentCapacity() *SchoolRequest {
 }
 
 func (r *SchoolRequest) VarPopStudentCapacityAs(alias string) *SchoolRequest {
-	r.Query.VarPop("student_capacity", alias)
+	r.Query.VarPop(teaqlStudentCapacityStorageKey, alias)
 	return r
 }
 
 func (r *SchoolRequest) GroupById() *SchoolRequest {
-	r.Query.WithGroupBy("id")
+	r.Query.WithGroupBy(teaqlIdStorageKey)
 	return r
 }
 
 func (r *SchoolRequest) GroupByIdAs(alias string) *SchoolRequest {
-	r.Query.WithGroupBy("id")
-	r.Query.ProjectExpr(alias, core.ExprColumnNode("id"))
+	r.Query.WithGroupBy(teaqlIdStorageKey)
+	r.Query.ProjectExpr(alias, core.ExprColumnNode(teaqlIdStorageKey))
 	return r
 }
 func (r *SchoolRequest) GroupByPlatform() *SchoolRequest {
-	r.Query.WithGroupBy("platform_id")
+	r.Query.WithGroupBy(teaqlPlatformStorageKey)
 	return r
 }
 
 func (r *SchoolRequest) GroupByPlatformAs(alias string) *SchoolRequest {
-	r.Query.WithGroupBy("platform_id")
-	r.Query.ProjectExpr(alias, core.ExprColumnNode("platform_id"))
+	r.Query.WithGroupBy(teaqlPlatformStorageKey)
+	r.Query.ProjectExpr(alias, core.ExprColumnNode(teaqlPlatformStorageKey))
 	return r
 }
 func (r *SchoolRequest) GroupBySchoolType() *SchoolRequest {
-	r.Query.WithGroupBy("school_type_id")
+	r.Query.WithGroupBy(teaqlSchoolTypeStorageKey)
 	return r
 }
 
 func (r *SchoolRequest) GroupBySchoolTypeAs(alias string) *SchoolRequest {
-	r.Query.WithGroupBy("school_type_id")
-	r.Query.ProjectExpr(alias, core.ExprColumnNode("school_type_id"))
+	r.Query.WithGroupBy(teaqlSchoolTypeStorageKey)
+	r.Query.ProjectExpr(alias, core.ExprColumnNode(teaqlSchoolTypeStorageKey))
 	return r
 }
 func (r *SchoolRequest) GroupByName() *SchoolRequest {
-	r.Query.WithGroupBy("name")
+	r.Query.WithGroupBy(teaqlNameStorageKey)
 	return r
 }
 
 func (r *SchoolRequest) GroupByNameAs(alias string) *SchoolRequest {
-	r.Query.WithGroupBy("name")
-	r.Query.ProjectExpr(alias, core.ExprColumnNode("name"))
+	r.Query.WithGroupBy(teaqlNameStorageKey)
+	r.Query.ProjectExpr(alias, core.ExprColumnNode(teaqlNameStorageKey))
 	return r
 }
 func (r *SchoolRequest) GroupByAddress() *SchoolRequest {
-	r.Query.WithGroupBy("address")
+	r.Query.WithGroupBy(teaqlAddressStorageKey)
 	return r
 }
 
 func (r *SchoolRequest) GroupByAddressAs(alias string) *SchoolRequest {
-	r.Query.WithGroupBy("address")
-	r.Query.ProjectExpr(alias, core.ExprColumnNode("address"))
+	r.Query.WithGroupBy(teaqlAddressStorageKey)
+	r.Query.ProjectExpr(alias, core.ExprColumnNode(teaqlAddressStorageKey))
 	return r
 }
 func (r *SchoolRequest) GroupByEstablishedDate() *SchoolRequest {
-	r.Query.WithGroupBy("established_date")
+	r.Query.WithGroupBy(teaqlEstablishedDateStorageKey)
 	return r
 }
 
 func (r *SchoolRequest) GroupByEstablishedDateAs(alias string) *SchoolRequest {
-	r.Query.WithGroupBy("established_date")
-	r.Query.ProjectExpr(alias, core.ExprColumnNode("established_date"))
+	r.Query.WithGroupBy(teaqlEstablishedDateStorageKey)
+	r.Query.ProjectExpr(alias, core.ExprColumnNode(teaqlEstablishedDateStorageKey))
 	return r
 }
 func (r *SchoolRequest) GroupByStudentCapacity() *SchoolRequest {
-	r.Query.WithGroupBy("student_capacity")
+	r.Query.WithGroupBy(teaqlStudentCapacityStorageKey)
 	return r
 }
 
 func (r *SchoolRequest) GroupByStudentCapacityAs(alias string) *SchoolRequest {
-	r.Query.WithGroupBy("student_capacity")
-	r.Query.ProjectExpr(alias, core.ExprColumnNode("student_capacity"))
+	r.Query.WithGroupBy(teaqlStudentCapacityStorageKey)
+	r.Query.ProjectExpr(alias, core.ExprColumnNode(teaqlStudentCapacityStorageKey))
 	return r
 }
 func (r *SchoolRequest) GroupByActive() *SchoolRequest {
-	r.Query.WithGroupBy("active")
+	r.Query.WithGroupBy(teaqlActiveStorageKey)
 	return r
 }
 
 func (r *SchoolRequest) GroupByActiveAs(alias string) *SchoolRequest {
-	r.Query.WithGroupBy("active")
-	r.Query.ProjectExpr(alias, core.ExprColumnNode("active"))
+	r.Query.WithGroupBy(teaqlActiveStorageKey)
+	r.Query.ProjectExpr(alias, core.ExprColumnNode(teaqlActiveStorageKey))
 	return r
 }
 func (r *SchoolRequest) GroupByCreateTime() *SchoolRequest {
-	r.Query.WithGroupBy("create_time")
+	r.Query.WithGroupBy(teaqlCreateTimeStorageKey)
 	return r
 }
 
 func (r *SchoolRequest) GroupByCreateTimeAs(alias string) *SchoolRequest {
-	r.Query.WithGroupBy("create_time")
-	r.Query.ProjectExpr(alias, core.ExprColumnNode("create_time"))
+	r.Query.WithGroupBy(teaqlCreateTimeStorageKey)
+	r.Query.ProjectExpr(alias, core.ExprColumnNode(teaqlCreateTimeStorageKey))
 	return r
 }
 func (r *SchoolRequest) GroupByUpdateTime() *SchoolRequest {
-	r.Query.WithGroupBy("update_time")
+	r.Query.WithGroupBy(teaqlUpdateTimeStorageKey)
 	return r
 }
 
 func (r *SchoolRequest) GroupByUpdateTimeAs(alias string) *SchoolRequest {
-	r.Query.WithGroupBy("update_time")
-	r.Query.ProjectExpr(alias, core.ExprColumnNode("update_time"))
+	r.Query.WithGroupBy(teaqlUpdateTimeStorageKey)
+	r.Query.ProjectExpr(alias, core.ExprColumnNode(teaqlUpdateTimeStorageKey))
 	return r
 }
 func (r *SchoolRequest) GroupByVersion() *SchoolRequest {
-	r.Query.WithGroupBy("version")
+	r.Query.WithGroupBy(teaqlVersionStorageKey)
 	return r
 }
 
 func (r *SchoolRequest) GroupByVersionAs(alias string) *SchoolRequest {
-	r.Query.WithGroupBy("version")
-	r.Query.ProjectExpr(alias, core.ExprColumnNode("version"))
+	r.Query.WithGroupBy(teaqlVersionStorageKey)
+	r.Query.ProjectExpr(alias, core.ExprColumnNode(teaqlVersionStorageKey))
 	return r
 }

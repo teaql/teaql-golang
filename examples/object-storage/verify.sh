@@ -15,6 +15,8 @@ else
   evidence="$(mktemp -d -t teaql-go-order-attachment.XXXXXXXX)"
 fi
 evidence="$(cd "$evidence" && pwd)"
+# Keep the runtime log out of the source tree covered by fingerprint().
+export TEAQL_LOG_ENDPOINT="$evidence/runtime.log"
 export GOWORK=off
 fingerprint() {
   (cd "$example" && find golang-lib-core golang-app-console -type f -not -path '*/.git/*' -print0 | sort -z | xargs -0 sha256sum)

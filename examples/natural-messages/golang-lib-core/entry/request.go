@@ -182,16 +182,16 @@ func (r *EntryRequest) DeletedRowsOnly() *EntryRequest {
 }
 
 func (r *EntryRequest) SelectId() *EntryRequest {
-	r.Query.Project("id")
+	r.Query.Project(teaqlIdStorageKey)
 	return r
 }
 
 func (r *EntryRequest) WithIdIs(value uint64) *EntryRequest {
-	r.Query.AndFilter(core.ExprEq("id", core.ValU64(value)))
+	r.Query.AndFilter(core.ExprEq(teaqlIdStorageKey, core.ValU64(value)))
 	return r
 }
 func (r *EntryRequest) WithIdIsNot(value uint64) *EntryRequest {
-	r.Query.AndFilter(core.ExprNe("id", core.ValU64(value)))
+	r.Query.AndFilter(core.ExprNe(teaqlIdStorageKey, core.ValU64(value)))
 	return r
 }
 func (r *EntryRequest) WithIdIn(values []uint64) *EntryRequest {
@@ -199,7 +199,7 @@ func (r *EntryRequest) WithIdIn(values []uint64) *EntryRequest {
 	for _, value := range values {
 		converted = append(converted, core.ValU64(value))
 	}
-	r.Query.AndFilter(core.ExprInList("id", converted))
+	r.Query.AndFilter(core.ExprInList(teaqlIdStorageKey, converted))
 	return r
 }
 func (r *EntryRequest) WithIdNotIn(values []uint64) *EntryRequest {
@@ -207,23 +207,23 @@ func (r *EntryRequest) WithIdNotIn(values []uint64) *EntryRequest {
 	for _, value := range values {
 		converted = append(converted, core.ValU64(value))
 	}
-	r.Query.AndFilter(core.ExprNotInList("id", converted))
+	r.Query.AndFilter(core.ExprNotInList(teaqlIdStorageKey, converted))
 	return r
 }
 func (r *EntryRequest) WithIdGreaterThan(value uint64) *EntryRequest {
-	r.Query.AndFilter(core.ExprGt("id", core.ValU64(value)))
+	r.Query.AndFilter(core.ExprGt(teaqlIdStorageKey, core.ValU64(value)))
 	return r
 }
 func (r *EntryRequest) WithIdGreaterThanOrEqualTo(value uint64) *EntryRequest {
-	r.Query.AndFilter(core.ExprGte("id", core.ValU64(value)))
+	r.Query.AndFilter(core.ExprGte(teaqlIdStorageKey, core.ValU64(value)))
 	return r
 }
 func (r *EntryRequest) WithIdLessThan(value uint64) *EntryRequest {
-	r.Query.AndFilter(core.ExprLt("id", core.ValU64(value)))
+	r.Query.AndFilter(core.ExprLt(teaqlIdStorageKey, core.ValU64(value)))
 	return r
 }
 func (r *EntryRequest) WithIdLessThanOrEqualTo(value uint64) *EntryRequest {
-	r.Query.AndFilter(core.ExprLte("id", core.ValU64(value)))
+	r.Query.AndFilter(core.ExprLte(teaqlIdStorageKey, core.ValU64(value)))
 	return r
 }
 func (r *EntryRequest) WithIdBetween(lower uint64, upper uint64) *EntryRequest {
@@ -231,36 +231,36 @@ func (r *EntryRequest) WithIdBetween(lower uint64, upper uint64) *EntryRequest {
 	from := core.ValU64(value)
 	value = upper
 	to := core.ValU64(value)
-	r.Query.AndFilter(core.ExprBetweenNode("id", from, to))
+	r.Query.AndFilter(core.ExprBetweenNode(teaqlIdStorageKey, from, to))
 	return r
 }
 func (r *EntryRequest) WithIdIsKnown() *EntryRequest {
-	r.Query.AndFilter(core.ExprIsNotNullNode("id"))
+	r.Query.AndFilter(core.ExprIsNotNullNode(teaqlIdStorageKey))
 	return r
 }
 func (r *EntryRequest) WithIdIsUnknown() *EntryRequest {
-	r.Query.AndFilter(core.ExprIsNullNode("id"))
+	r.Query.AndFilter(core.ExprIsNullNode(teaqlIdStorageKey))
 	return r
 }
 func (r *EntryRequest) OrderByIdAsc() *EntryRequest {
-	r.Query.OrderAsc("id")
+	r.Query.OrderAsc(teaqlIdStorageKey)
 	return r
 }
 func (r *EntryRequest) OrderByIdDesc() *EntryRequest {
-	r.Query.OrderDesc("id")
+	r.Query.OrderDesc(teaqlIdStorageKey)
 	return r
 }
 func (r *EntryRequest) SelectCatalog() *EntryRequest {
-	r.Query.Project("catalog_id")
+	r.Query.Project(teaqlCatalogStorageKey)
 	return r
 }
 
 func (r *EntryRequest) WithCatalogIs(value uint64) *EntryRequest {
-	r.Query.AndFilter(core.ExprEq("catalog_id", core.ValU64(value)))
+	r.Query.AndFilter(core.ExprEq(teaqlCatalogStorageKey, core.ValU64(value)))
 	return r
 }
 func (r *EntryRequest) WithCatalogIsNot(value uint64) *EntryRequest {
-	r.Query.AndFilter(core.ExprNe("catalog_id", core.ValU64(value)))
+	r.Query.AndFilter(core.ExprNe(teaqlCatalogStorageKey, core.ValU64(value)))
 	return r
 }
 func (r *EntryRequest) WithCatalogIn(values []uint64) *EntryRequest {
@@ -268,7 +268,7 @@ func (r *EntryRequest) WithCatalogIn(values []uint64) *EntryRequest {
 	for _, value := range values {
 		converted = append(converted, core.ValU64(value))
 	}
-	r.Query.AndFilter(core.ExprInList("catalog_id", converted))
+	r.Query.AndFilter(core.ExprInList(teaqlCatalogStorageKey, converted))
 	return r
 }
 func (r *EntryRequest) WithCatalogNotIn(values []uint64) *EntryRequest {
@@ -276,23 +276,23 @@ func (r *EntryRequest) WithCatalogNotIn(values []uint64) *EntryRequest {
 	for _, value := range values {
 		converted = append(converted, core.ValU64(value))
 	}
-	r.Query.AndFilter(core.ExprNotInList("catalog_id", converted))
+	r.Query.AndFilter(core.ExprNotInList(teaqlCatalogStorageKey, converted))
 	return r
 }
 func (r *EntryRequest) WithCatalogGreaterThan(value uint64) *EntryRequest {
-	r.Query.AndFilter(core.ExprGt("catalog_id", core.ValU64(value)))
+	r.Query.AndFilter(core.ExprGt(teaqlCatalogStorageKey, core.ValU64(value)))
 	return r
 }
 func (r *EntryRequest) WithCatalogGreaterThanOrEqualTo(value uint64) *EntryRequest {
-	r.Query.AndFilter(core.ExprGte("catalog_id", core.ValU64(value)))
+	r.Query.AndFilter(core.ExprGte(teaqlCatalogStorageKey, core.ValU64(value)))
 	return r
 }
 func (r *EntryRequest) WithCatalogLessThan(value uint64) *EntryRequest {
-	r.Query.AndFilter(core.ExprLt("catalog_id", core.ValU64(value)))
+	r.Query.AndFilter(core.ExprLt(teaqlCatalogStorageKey, core.ValU64(value)))
 	return r
 }
 func (r *EntryRequest) WithCatalogLessThanOrEqualTo(value uint64) *EntryRequest {
-	r.Query.AndFilter(core.ExprLte("catalog_id", core.ValU64(value)))
+	r.Query.AndFilter(core.ExprLte(teaqlCatalogStorageKey, core.ValU64(value)))
 	return r
 }
 func (r *EntryRequest) WithCatalogBetween(lower uint64, upper uint64) *EntryRequest {
@@ -300,15 +300,15 @@ func (r *EntryRequest) WithCatalogBetween(lower uint64, upper uint64) *EntryRequ
 	from := core.ValU64(value)
 	value = upper
 	to := core.ValU64(value)
-	r.Query.AndFilter(core.ExprBetweenNode("catalog_id", from, to))
+	r.Query.AndFilter(core.ExprBetweenNode(teaqlCatalogStorageKey, from, to))
 	return r
 }
 func (r *EntryRequest) WithCatalogIsKnown() *EntryRequest {
-	r.Query.AndFilter(core.ExprIsNotNullNode("catalog_id"))
+	r.Query.AndFilter(core.ExprIsNotNullNode(teaqlCatalogStorageKey))
 	return r
 }
 func (r *EntryRequest) WithCatalogIsUnknown() *EntryRequest {
-	r.Query.AndFilter(core.ExprIsNullNode("catalog_id"))
+	r.Query.AndFilter(core.ExprIsNullNode(teaqlCatalogStorageKey))
 	return r
 }
 func (r *EntryRequest) FacetByCatalogAs(
@@ -318,30 +318,30 @@ func (r *EntryRequest) FacetByCatalogAs(
 ) *EntryRequest {
 	includeAll := true
 	if len(includeAllFacets) > 0 { includeAll = includeAllFacets[0] }
-	facet := core.NewFacetRequest(name, "catalog_id", core.QuerySelectionFor(nestedReq), includeAll)
+	facet := core.NewFacetRequest(name, teaqlCatalogStorageKey, core.QuerySelectionFor(nestedReq), includeAll)
 	facet.Operation = &core.QueryOperation{Kind: "facet", Method: "FacetByCatalogAs", Alias: &name, Relation: "catalog"}
 	r.queryOptions.Facets = append(r.queryOptions.Facets, facet)
 	return r
 }
 func (r *EntryRequest) OrderByCatalogAsc() *EntryRequest {
-	r.Query.OrderAsc("catalog_id")
+	r.Query.OrderAsc(teaqlCatalogStorageKey)
 	return r
 }
 func (r *EntryRequest) OrderByCatalogDesc() *EntryRequest {
-	r.Query.OrderDesc("catalog_id")
+	r.Query.OrderDesc(teaqlCatalogStorageKey)
 	return r
 }
 func (r *EntryRequest) SelectName() *EntryRequest {
-	r.Query.Project("name")
+	r.Query.Project(teaqlNameStorageKey)
 	return r
 }
 
 func (r *EntryRequest) WithNameIs(value string) *EntryRequest {
-	r.Query.AndFilter(core.ExprEq("name", core.ValText(value)))
+	r.Query.AndFilter(core.ExprEq(teaqlNameStorageKey, core.ValText(value)))
 	return r
 }
 func (r *EntryRequest) WithNameIsNot(value string) *EntryRequest {
-	r.Query.AndFilter(core.ExprNe("name", core.ValText(value)))
+	r.Query.AndFilter(core.ExprNe(teaqlNameStorageKey, core.ValText(value)))
 	return r
 }
 func (r *EntryRequest) WithNameIn(values []string) *EntryRequest {
@@ -349,7 +349,7 @@ func (r *EntryRequest) WithNameIn(values []string) *EntryRequest {
 	for _, value := range values {
 		converted = append(converted, core.ValText(value))
 	}
-	r.Query.AndFilter(core.ExprInList("name", converted))
+	r.Query.AndFilter(core.ExprInList(teaqlNameStorageKey, converted))
 	return r
 }
 func (r *EntryRequest) WithNameNotIn(values []string) *EntryRequest {
@@ -357,23 +357,23 @@ func (r *EntryRequest) WithNameNotIn(values []string) *EntryRequest {
 	for _, value := range values {
 		converted = append(converted, core.ValText(value))
 	}
-	r.Query.AndFilter(core.ExprNotInList("name", converted))
+	r.Query.AndFilter(core.ExprNotInList(teaqlNameStorageKey, converted))
 	return r
 }
 func (r *EntryRequest) WithNameGreaterThan(value string) *EntryRequest {
-	r.Query.AndFilter(core.ExprGt("name", core.ValText(value)))
+	r.Query.AndFilter(core.ExprGt(teaqlNameStorageKey, core.ValText(value)))
 	return r
 }
 func (r *EntryRequest) WithNameGreaterThanOrEqualTo(value string) *EntryRequest {
-	r.Query.AndFilter(core.ExprGte("name", core.ValText(value)))
+	r.Query.AndFilter(core.ExprGte(teaqlNameStorageKey, core.ValText(value)))
 	return r
 }
 func (r *EntryRequest) WithNameLessThan(value string) *EntryRequest {
-	r.Query.AndFilter(core.ExprLt("name", core.ValText(value)))
+	r.Query.AndFilter(core.ExprLt(teaqlNameStorageKey, core.ValText(value)))
 	return r
 }
 func (r *EntryRequest) WithNameLessThanOrEqualTo(value string) *EntryRequest {
-	r.Query.AndFilter(core.ExprLte("name", core.ValText(value)))
+	r.Query.AndFilter(core.ExprLte(teaqlNameStorageKey, core.ValText(value)))
 	return r
 }
 func (r *EntryRequest) WithNameBetween(lower string, upper string) *EntryRequest {
@@ -381,64 +381,64 @@ func (r *EntryRequest) WithNameBetween(lower string, upper string) *EntryRequest
 	from := core.ValText(value)
 	value = upper
 	to := core.ValText(value)
-	r.Query.AndFilter(core.ExprBetweenNode("name", from, to))
+	r.Query.AndFilter(core.ExprBetweenNode(teaqlNameStorageKey, from, to))
 	return r
 }
 func (r *EntryRequest) WithNameIsKnown() *EntryRequest {
-	r.Query.AndFilter(core.ExprIsNotNullNode("name"))
+	r.Query.AndFilter(core.ExprIsNotNullNode(teaqlNameStorageKey))
 	return r
 }
 func (r *EntryRequest) WithNameIsUnknown() *EntryRequest {
-	r.Query.AndFilter(core.ExprIsNullNode("name"))
+	r.Query.AndFilter(core.ExprIsNullNode(teaqlNameStorageKey))
 	return r
 }
 func (r *EntryRequest) WithNameContaining(term string) *EntryRequest {
-	r.Query.AndFilter(core.ExprContain("name", term))
+	r.Query.AndFilter(core.ExprContain(teaqlNameStorageKey, term))
 	return r
 }
 func (r *EntryRequest) WithNameNotContaining(term string) *EntryRequest {
-	r.Query.AndFilter(core.ExprNotContain("name", term))
+	r.Query.AndFilter(core.ExprNotContain(teaqlNameStorageKey, term))
 	return r
 }
 func (r *EntryRequest) WithNameStartingWith(term string) *EntryRequest {
-	r.Query.AndFilter(core.ExprBeginWith("name", term))
+	r.Query.AndFilter(core.ExprBeginWith(teaqlNameStorageKey, term))
 	return r
 }
 func (r *EntryRequest) WithNameNotStartingWith(term string) *EntryRequest {
-	r.Query.AndFilter(core.ExprNotBeginWith("name", term))
+	r.Query.AndFilter(core.ExprNotBeginWith(teaqlNameStorageKey, term))
 	return r
 }
 func (r *EntryRequest) WithNameEndingWith(term string) *EntryRequest {
-	r.Query.AndFilter(core.ExprEndWith("name", term))
+	r.Query.AndFilter(core.ExprEndWith(teaqlNameStorageKey, term))
 	return r
 }
 func (r *EntryRequest) WithNameNotEndingWith(term string) *EntryRequest {
-	r.Query.AndFilter(core.ExprNotEndWith("name", term))
+	r.Query.AndFilter(core.ExprNotEndWith(teaqlNameStorageKey, term))
 	return r
 }
 func (r *EntryRequest) WithNameSoundingLike(term string) *EntryRequest {
-	r.Query.AndFilter(core.ExprSoundLike("name", core.ValText(term)))
+	r.Query.AndFilter(core.ExprSoundLike(teaqlNameStorageKey, core.ValText(term)))
 	return r
 }
 func (r *EntryRequest) OrderByNameAsc() *EntryRequest {
-	r.Query.OrderAsc("name")
+	r.Query.OrderAsc(teaqlNameStorageKey)
 	return r
 }
 func (r *EntryRequest) OrderByNameDesc() *EntryRequest {
-	r.Query.OrderDesc("name")
+	r.Query.OrderDesc(teaqlNameStorageKey)
 	return r
 }
 func (r *EntryRequest) SelectBornAt() *EntryRequest {
-	r.Query.Project("born_at")
+	r.Query.Project(teaqlBornAtStorageKey)
 	return r
 }
 
 func (r *EntryRequest) WithBornAtIs(value time.Time) *EntryRequest {
-	r.Query.AndFilter(core.ExprEq("born_at", core.ValTimestamp(value.UnixMilli())))
+	r.Query.AndFilter(core.ExprEq(teaqlBornAtStorageKey, core.ValTimestamp(value.UnixMilli())))
 	return r
 }
 func (r *EntryRequest) WithBornAtIsNot(value time.Time) *EntryRequest {
-	r.Query.AndFilter(core.ExprNe("born_at", core.ValTimestamp(value.UnixMilli())))
+	r.Query.AndFilter(core.ExprNe(teaqlBornAtStorageKey, core.ValTimestamp(value.UnixMilli())))
 	return r
 }
 func (r *EntryRequest) WithBornAtIn(values []time.Time) *EntryRequest {
@@ -446,7 +446,7 @@ func (r *EntryRequest) WithBornAtIn(values []time.Time) *EntryRequest {
 	for _, value := range values {
 		converted = append(converted, core.ValTimestamp(value.UnixMilli()))
 	}
-	r.Query.AndFilter(core.ExprInList("born_at", converted))
+	r.Query.AndFilter(core.ExprInList(teaqlBornAtStorageKey, converted))
 	return r
 }
 func (r *EntryRequest) WithBornAtNotIn(values []time.Time) *EntryRequest {
@@ -454,23 +454,23 @@ func (r *EntryRequest) WithBornAtNotIn(values []time.Time) *EntryRequest {
 	for _, value := range values {
 		converted = append(converted, core.ValTimestamp(value.UnixMilli()))
 	}
-	r.Query.AndFilter(core.ExprNotInList("born_at", converted))
+	r.Query.AndFilter(core.ExprNotInList(teaqlBornAtStorageKey, converted))
 	return r
 }
 func (r *EntryRequest) WithBornAtGreaterThan(value time.Time) *EntryRequest {
-	r.Query.AndFilter(core.ExprGt("born_at", core.ValTimestamp(value.UnixMilli())))
+	r.Query.AndFilter(core.ExprGt(teaqlBornAtStorageKey, core.ValTimestamp(value.UnixMilli())))
 	return r
 }
 func (r *EntryRequest) WithBornAtGreaterThanOrEqualTo(value time.Time) *EntryRequest {
-	r.Query.AndFilter(core.ExprGte("born_at", core.ValTimestamp(value.UnixMilli())))
+	r.Query.AndFilter(core.ExprGte(teaqlBornAtStorageKey, core.ValTimestamp(value.UnixMilli())))
 	return r
 }
 func (r *EntryRequest) WithBornAtLessThan(value time.Time) *EntryRequest {
-	r.Query.AndFilter(core.ExprLt("born_at", core.ValTimestamp(value.UnixMilli())))
+	r.Query.AndFilter(core.ExprLt(teaqlBornAtStorageKey, core.ValTimestamp(value.UnixMilli())))
 	return r
 }
 func (r *EntryRequest) WithBornAtLessThanOrEqualTo(value time.Time) *EntryRequest {
-	r.Query.AndFilter(core.ExprLte("born_at", core.ValTimestamp(value.UnixMilli())))
+	r.Query.AndFilter(core.ExprLte(teaqlBornAtStorageKey, core.ValTimestamp(value.UnixMilli())))
 	return r
 }
 func (r *EntryRequest) WithBornAtBetween(lower time.Time, upper time.Time) *EntryRequest {
@@ -478,36 +478,36 @@ func (r *EntryRequest) WithBornAtBetween(lower time.Time, upper time.Time) *Entr
 	from := core.ValTimestamp(value.UnixMilli())
 	value = upper
 	to := core.ValTimestamp(value.UnixMilli())
-	r.Query.AndFilter(core.ExprBetweenNode("born_at", from, to))
+	r.Query.AndFilter(core.ExprBetweenNode(teaqlBornAtStorageKey, from, to))
 	return r
 }
 func (r *EntryRequest) WithBornAtIsKnown() *EntryRequest {
-	r.Query.AndFilter(core.ExprIsNotNullNode("born_at"))
+	r.Query.AndFilter(core.ExprIsNotNullNode(teaqlBornAtStorageKey))
 	return r
 }
 func (r *EntryRequest) WithBornAtIsUnknown() *EntryRequest {
-	r.Query.AndFilter(core.ExprIsNullNode("born_at"))
+	r.Query.AndFilter(core.ExprIsNullNode(teaqlBornAtStorageKey))
 	return r
 }
 func (r *EntryRequest) OrderByBornAtAsc() *EntryRequest {
-	r.Query.OrderAsc("born_at")
+	r.Query.OrderAsc(teaqlBornAtStorageKey)
 	return r
 }
 func (r *EntryRequest) OrderByBornAtDesc() *EntryRequest {
-	r.Query.OrderDesc("born_at")
+	r.Query.OrderDesc(teaqlBornAtStorageKey)
 	return r
 }
 func (r *EntryRequest) SelectTouchedAt() *EntryRequest {
-	r.Query.Project("touched_at")
+	r.Query.Project(teaqlTouchedAtStorageKey)
 	return r
 }
 
 func (r *EntryRequest) WithTouchedAtIs(value time.Time) *EntryRequest {
-	r.Query.AndFilter(core.ExprEq("touched_at", core.ValTimestamp(value.UnixMilli())))
+	r.Query.AndFilter(core.ExprEq(teaqlTouchedAtStorageKey, core.ValTimestamp(value.UnixMilli())))
 	return r
 }
 func (r *EntryRequest) WithTouchedAtIsNot(value time.Time) *EntryRequest {
-	r.Query.AndFilter(core.ExprNe("touched_at", core.ValTimestamp(value.UnixMilli())))
+	r.Query.AndFilter(core.ExprNe(teaqlTouchedAtStorageKey, core.ValTimestamp(value.UnixMilli())))
 	return r
 }
 func (r *EntryRequest) WithTouchedAtIn(values []time.Time) *EntryRequest {
@@ -515,7 +515,7 @@ func (r *EntryRequest) WithTouchedAtIn(values []time.Time) *EntryRequest {
 	for _, value := range values {
 		converted = append(converted, core.ValTimestamp(value.UnixMilli()))
 	}
-	r.Query.AndFilter(core.ExprInList("touched_at", converted))
+	r.Query.AndFilter(core.ExprInList(teaqlTouchedAtStorageKey, converted))
 	return r
 }
 func (r *EntryRequest) WithTouchedAtNotIn(values []time.Time) *EntryRequest {
@@ -523,23 +523,23 @@ func (r *EntryRequest) WithTouchedAtNotIn(values []time.Time) *EntryRequest {
 	for _, value := range values {
 		converted = append(converted, core.ValTimestamp(value.UnixMilli()))
 	}
-	r.Query.AndFilter(core.ExprNotInList("touched_at", converted))
+	r.Query.AndFilter(core.ExprNotInList(teaqlTouchedAtStorageKey, converted))
 	return r
 }
 func (r *EntryRequest) WithTouchedAtGreaterThan(value time.Time) *EntryRequest {
-	r.Query.AndFilter(core.ExprGt("touched_at", core.ValTimestamp(value.UnixMilli())))
+	r.Query.AndFilter(core.ExprGt(teaqlTouchedAtStorageKey, core.ValTimestamp(value.UnixMilli())))
 	return r
 }
 func (r *EntryRequest) WithTouchedAtGreaterThanOrEqualTo(value time.Time) *EntryRequest {
-	r.Query.AndFilter(core.ExprGte("touched_at", core.ValTimestamp(value.UnixMilli())))
+	r.Query.AndFilter(core.ExprGte(teaqlTouchedAtStorageKey, core.ValTimestamp(value.UnixMilli())))
 	return r
 }
 func (r *EntryRequest) WithTouchedAtLessThan(value time.Time) *EntryRequest {
-	r.Query.AndFilter(core.ExprLt("touched_at", core.ValTimestamp(value.UnixMilli())))
+	r.Query.AndFilter(core.ExprLt(teaqlTouchedAtStorageKey, core.ValTimestamp(value.UnixMilli())))
 	return r
 }
 func (r *EntryRequest) WithTouchedAtLessThanOrEqualTo(value time.Time) *EntryRequest {
-	r.Query.AndFilter(core.ExprLte("touched_at", core.ValTimestamp(value.UnixMilli())))
+	r.Query.AndFilter(core.ExprLte(teaqlTouchedAtStorageKey, core.ValTimestamp(value.UnixMilli())))
 	return r
 }
 func (r *EntryRequest) WithTouchedAtBetween(lower time.Time, upper time.Time) *EntryRequest {
@@ -547,36 +547,36 @@ func (r *EntryRequest) WithTouchedAtBetween(lower time.Time, upper time.Time) *E
 	from := core.ValTimestamp(value.UnixMilli())
 	value = upper
 	to := core.ValTimestamp(value.UnixMilli())
-	r.Query.AndFilter(core.ExprBetweenNode("touched_at", from, to))
+	r.Query.AndFilter(core.ExprBetweenNode(teaqlTouchedAtStorageKey, from, to))
 	return r
 }
 func (r *EntryRequest) WithTouchedAtIsKnown() *EntryRequest {
-	r.Query.AndFilter(core.ExprIsNotNullNode("touched_at"))
+	r.Query.AndFilter(core.ExprIsNotNullNode(teaqlTouchedAtStorageKey))
 	return r
 }
 func (r *EntryRequest) WithTouchedAtIsUnknown() *EntryRequest {
-	r.Query.AndFilter(core.ExprIsNullNode("touched_at"))
+	r.Query.AndFilter(core.ExprIsNullNode(teaqlTouchedAtStorageKey))
 	return r
 }
 func (r *EntryRequest) OrderByTouchedAtAsc() *EntryRequest {
-	r.Query.OrderAsc("touched_at")
+	r.Query.OrderAsc(teaqlTouchedAtStorageKey)
 	return r
 }
 func (r *EntryRequest) OrderByTouchedAtDesc() *EntryRequest {
-	r.Query.OrderDesc("touched_at")
+	r.Query.OrderDesc(teaqlTouchedAtStorageKey)
 	return r
 }
 func (r *EntryRequest) SelectVersion() *EntryRequest {
-	r.Query.Project("version")
+	r.Query.Project(teaqlVersionStorageKey)
 	return r
 }
 
 func (r *EntryRequest) WithVersionIs(value int64) *EntryRequest {
-	r.Query.AndFilter(core.ExprEq("version", core.ValI64(value)))
+	r.Query.AndFilter(core.ExprEq(teaqlVersionStorageKey, core.ValI64(value)))
 	return r
 }
 func (r *EntryRequest) WithVersionIsNot(value int64) *EntryRequest {
-	r.Query.AndFilter(core.ExprNe("version", core.ValI64(value)))
+	r.Query.AndFilter(core.ExprNe(teaqlVersionStorageKey, core.ValI64(value)))
 	return r
 }
 func (r *EntryRequest) WithVersionIn(values []int64) *EntryRequest {
@@ -584,7 +584,7 @@ func (r *EntryRequest) WithVersionIn(values []int64) *EntryRequest {
 	for _, value := range values {
 		converted = append(converted, core.ValI64(value))
 	}
-	r.Query.AndFilter(core.ExprInList("version", converted))
+	r.Query.AndFilter(core.ExprInList(teaqlVersionStorageKey, converted))
 	return r
 }
 func (r *EntryRequest) WithVersionNotIn(values []int64) *EntryRequest {
@@ -592,23 +592,23 @@ func (r *EntryRequest) WithVersionNotIn(values []int64) *EntryRequest {
 	for _, value := range values {
 		converted = append(converted, core.ValI64(value))
 	}
-	r.Query.AndFilter(core.ExprNotInList("version", converted))
+	r.Query.AndFilter(core.ExprNotInList(teaqlVersionStorageKey, converted))
 	return r
 }
 func (r *EntryRequest) WithVersionGreaterThan(value int64) *EntryRequest {
-	r.Query.AndFilter(core.ExprGt("version", core.ValI64(value)))
+	r.Query.AndFilter(core.ExprGt(teaqlVersionStorageKey, core.ValI64(value)))
 	return r
 }
 func (r *EntryRequest) WithVersionGreaterThanOrEqualTo(value int64) *EntryRequest {
-	r.Query.AndFilter(core.ExprGte("version", core.ValI64(value)))
+	r.Query.AndFilter(core.ExprGte(teaqlVersionStorageKey, core.ValI64(value)))
 	return r
 }
 func (r *EntryRequest) WithVersionLessThan(value int64) *EntryRequest {
-	r.Query.AndFilter(core.ExprLt("version", core.ValI64(value)))
+	r.Query.AndFilter(core.ExprLt(teaqlVersionStorageKey, core.ValI64(value)))
 	return r
 }
 func (r *EntryRequest) WithVersionLessThanOrEqualTo(value int64) *EntryRequest {
-	r.Query.AndFilter(core.ExprLte("version", core.ValI64(value)))
+	r.Query.AndFilter(core.ExprLte(teaqlVersionStorageKey, core.ValI64(value)))
 	return r
 }
 func (r *EntryRequest) WithVersionBetween(lower int64, upper int64) *EntryRequest {
@@ -616,23 +616,23 @@ func (r *EntryRequest) WithVersionBetween(lower int64, upper int64) *EntryReques
 	from := core.ValI64(value)
 	value = upper
 	to := core.ValI64(value)
-	r.Query.AndFilter(core.ExprBetweenNode("version", from, to))
+	r.Query.AndFilter(core.ExprBetweenNode(teaqlVersionStorageKey, from, to))
 	return r
 }
 func (r *EntryRequest) WithVersionIsKnown() *EntryRequest {
-	r.Query.AndFilter(core.ExprIsNotNullNode("version"))
+	r.Query.AndFilter(core.ExprIsNotNullNode(teaqlVersionStorageKey))
 	return r
 }
 func (r *EntryRequest) WithVersionIsUnknown() *EntryRequest {
-	r.Query.AndFilter(core.ExprIsNullNode("version"))
+	r.Query.AndFilter(core.ExprIsNullNode(teaqlVersionStorageKey))
 	return r
 }
 func (r *EntryRequest) OrderByVersionAsc() *EntryRequest {
-	r.Query.OrderAsc("version")
+	r.Query.OrderAsc(teaqlVersionStorageKey)
 	return r
 }
 func (r *EntryRequest) OrderByVersionDesc() *EntryRequest {
-	r.Query.OrderDesc("version")
+	r.Query.OrderDesc(teaqlVersionStorageKey)
 	return r
 }
 
@@ -640,7 +640,7 @@ func (r *EntryRequest) SelectCatalogWith(child interface {
 	GetQuery() *core.SelectQuery
 	NewRelationEntity() core.Entity
 }) *EntryRequest {
-	runtime.EnsureRelationProjection(r.Query, "catalog_id")
+	runtime.EnsureRelationProjection(r.Query, teaqlCatalogStorageKey)
 	r.Query.RelationQuerySelection("catalogEntity", core.QuerySelectionFor(child))
 	r.Query.Relations[len(r.Query.Relations)-1].Operation = &core.QueryOperation{Kind: "relation", Method: "SelectCatalogWith", Relation: "catalogEntity"}
 	r.relationFactories["catalogEntity"] = func(record core.Record) (core.Entity, error) {
@@ -658,7 +658,7 @@ func (r *EntryRequest) WithCatalogMatching(child interface {
 	GetQuery() *core.SelectQuery
 	GetEntityDescriptor() *core.EntityDescriptor
 }) *EntryRequest {
-	r.Query.AndFilter(core.ExprInSubQuery("catalog_id", child.GetEntityDescriptor(), child.GetQuery(), "id"))
+	r.Query.AndFilter(core.ExprInSubQuery(teaqlCatalogStorageKey, child.GetEntityDescriptor(), child.GetQuery(), "id"))
 	return r
 }
 
@@ -666,7 +666,7 @@ func (r *EntryRequest) WithoutCatalogMatching(child interface {
 	GetQuery() *core.SelectQuery
 	GetEntityDescriptor() *core.EntityDescriptor
 }) *EntryRequest {
-	r.Query.AndFilter(core.ExprNotInSubQuery("catalog_id", child.GetEntityDescriptor(), child.GetQuery(), "id"))
+	r.Query.AndFilter(core.ExprNotInSubQuery(teaqlCatalogStorageKey, child.GetEntityDescriptor(), child.GetQuery(), "id"))
 	return r
 }
 
@@ -802,62 +802,62 @@ func (r *EntryRequest) CountAs(alias string) *EntryRequest {
 
 
 func (r *EntryRequest) GroupById() *EntryRequest {
-	r.Query.WithGroupBy("id")
+	r.Query.WithGroupBy(teaqlIdStorageKey)
 	return r
 }
 
 func (r *EntryRequest) GroupByIdAs(alias string) *EntryRequest {
-	r.Query.WithGroupBy("id")
-	r.Query.ProjectExpr(alias, core.ExprColumnNode("id"))
+	r.Query.WithGroupBy(teaqlIdStorageKey)
+	r.Query.ProjectExpr(alias, core.ExprColumnNode(teaqlIdStorageKey))
 	return r
 }
 func (r *EntryRequest) GroupByCatalog() *EntryRequest {
-	r.Query.WithGroupBy("catalog_id")
+	r.Query.WithGroupBy(teaqlCatalogStorageKey)
 	return r
 }
 
 func (r *EntryRequest) GroupByCatalogAs(alias string) *EntryRequest {
-	r.Query.WithGroupBy("catalog_id")
-	r.Query.ProjectExpr(alias, core.ExprColumnNode("catalog_id"))
+	r.Query.WithGroupBy(teaqlCatalogStorageKey)
+	r.Query.ProjectExpr(alias, core.ExprColumnNode(teaqlCatalogStorageKey))
 	return r
 }
 func (r *EntryRequest) GroupByName() *EntryRequest {
-	r.Query.WithGroupBy("name")
+	r.Query.WithGroupBy(teaqlNameStorageKey)
 	return r
 }
 
 func (r *EntryRequest) GroupByNameAs(alias string) *EntryRequest {
-	r.Query.WithGroupBy("name")
-	r.Query.ProjectExpr(alias, core.ExprColumnNode("name"))
+	r.Query.WithGroupBy(teaqlNameStorageKey)
+	r.Query.ProjectExpr(alias, core.ExprColumnNode(teaqlNameStorageKey))
 	return r
 }
 func (r *EntryRequest) GroupByBornAt() *EntryRequest {
-	r.Query.WithGroupBy("born_at")
+	r.Query.WithGroupBy(teaqlBornAtStorageKey)
 	return r
 }
 
 func (r *EntryRequest) GroupByBornAtAs(alias string) *EntryRequest {
-	r.Query.WithGroupBy("born_at")
-	r.Query.ProjectExpr(alias, core.ExprColumnNode("born_at"))
+	r.Query.WithGroupBy(teaqlBornAtStorageKey)
+	r.Query.ProjectExpr(alias, core.ExprColumnNode(teaqlBornAtStorageKey))
 	return r
 }
 func (r *EntryRequest) GroupByTouchedAt() *EntryRequest {
-	r.Query.WithGroupBy("touched_at")
+	r.Query.WithGroupBy(teaqlTouchedAtStorageKey)
 	return r
 }
 
 func (r *EntryRequest) GroupByTouchedAtAs(alias string) *EntryRequest {
-	r.Query.WithGroupBy("touched_at")
-	r.Query.ProjectExpr(alias, core.ExprColumnNode("touched_at"))
+	r.Query.WithGroupBy(teaqlTouchedAtStorageKey)
+	r.Query.ProjectExpr(alias, core.ExprColumnNode(teaqlTouchedAtStorageKey))
 	return r
 }
 func (r *EntryRequest) GroupByVersion() *EntryRequest {
-	r.Query.WithGroupBy("version")
+	r.Query.WithGroupBy(teaqlVersionStorageKey)
 	return r
 }
 
 func (r *EntryRequest) GroupByVersionAs(alias string) *EntryRequest {
-	r.Query.WithGroupBy("version")
-	r.Query.ProjectExpr(alias, core.ExprColumnNode("version"))
+	r.Query.WithGroupBy(teaqlVersionStorageKey)
+	r.Query.ProjectExpr(alias, core.ExprColumnNode(teaqlVersionStorageKey))
 	return r
 }

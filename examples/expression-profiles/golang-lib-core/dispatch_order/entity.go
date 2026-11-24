@@ -23,6 +23,19 @@ var (
 	_ = errors.As
 )
 
+const (
+    teaqlIdStorageKey = "id"
+    teaqlIdModelKey = "id"
+    teaqlDistributionCenterStorageKey = "distribution_center_id"
+    teaqlDistributionCenterModelKey = "distribution_center"
+    teaqlOrderReferenceStorageKey = "order_reference"
+    teaqlOrderReferenceModelKey = "order_reference"
+    teaqlHandlingNoteStorageKey = "handling_note"
+    teaqlHandlingNoteModelKey = "handling_note"
+    teaqlVersionStorageKey = "version"
+    teaqlVersionModelKey = "version"
+)
+
 
 type DispatchOrder struct {
 	base        *core.BaseEntityData
@@ -193,11 +206,11 @@ func (e *DispatchOrder) teaqlFromRecord(record core.Record, captureLoaded bool) 
 }
 
 func (e *DispatchOrder) teaqlScalarSnapshot(record core.Record) core.LoadedScalarSnapshot {
-	return core.NewLoadedScalarSnapshot(record, "id", "distribution_center_id", "order_reference", "handling_note", "version")
+	return core.NewLoadedScalarSnapshot(record, teaqlIdStorageKey, teaqlDistributionCenterStorageKey, teaqlOrderReferenceStorageKey, teaqlHandlingNoteStorageKey, teaqlVersionStorageKey)
 }
 
 func (e *DispatchOrder) teaqlLoadedScalarSnapshot(record core.Record) core.LoadedScalarSnapshot {
-	return core.NewOwnedLoadedScalarSnapshot(e.EntityKey(), e.base.Version, record, "id", "distribution_center_id", "order_reference", "handling_note", "version")
+	return core.NewOwnedLoadedScalarSnapshot(e.EntityKey(), e.base.Version, record, teaqlIdStorageKey, teaqlDistributionCenterStorageKey, teaqlOrderReferenceStorageKey, teaqlHandlingNoteStorageKey, teaqlVersionStorageKey)
 }
 
 func (e *DispatchOrder) teaqlAcceptPersisted(context *runtime.UserContext, record core.Record) error {
@@ -302,11 +315,11 @@ func (e *DispatchOrder) JSONQueryProperties() core.Record { return e.base.QueryP
 func (e *DispatchOrder) LoadedJSONFields() core.Record {
 	all := e.IntoRecord()
 	selected := make(core.Record)
-	if e.IsLoaded("id") { if value, present := all["id"]; present { selected["id"] = value } }
-	if e.IsLoaded("distribution_center_id") { if value, present := all["distribution_center_id"]; present { selected["distribution_center_id"] = value } }
-	if e.IsLoaded("order_reference") { if value, present := all["order_reference"]; present { selected["order_reference"] = value } }
-	if e.IsLoaded("handling_note") { if value, present := all["handling_note"]; present { selected["handling_note"] = value } }
-	if e.IsLoaded("version") { if value, present := all["version"]; present { selected["version"] = value } }
+	if e.IsLoaded(teaqlIdStorageKey) { if value, present := all[teaqlIdStorageKey]; present { selected[teaqlIdStorageKey] = value } }
+	if e.IsLoaded(teaqlDistributionCenterStorageKey) { if value, present := all[teaqlDistributionCenterStorageKey]; present { selected[teaqlDistributionCenterStorageKey] = value } }
+	if e.IsLoaded(teaqlOrderReferenceStorageKey) { if value, present := all[teaqlOrderReferenceStorageKey]; present { selected[teaqlOrderReferenceStorageKey] = value } }
+	if e.IsLoaded(teaqlHandlingNoteStorageKey) { if value, present := all[teaqlHandlingNoteStorageKey]; present { selected[teaqlHandlingNoteStorageKey] = value } }
+	if e.IsLoaded(teaqlVersionStorageKey) { if value, present := all[teaqlVersionStorageKey]; present { selected[teaqlVersionStorageKey] = value } }
 	if e.isRelationLoaded("distributionCenterEntity") { if target, present := e.relations["distributionCenterEntity"]; present && target != nil { selected["distributionCenterEntity"] = core.Value{V: target} } }
 	return selected
 }
@@ -409,24 +422,24 @@ func (e *DispatchOrder) TeaqlPreflightWithinGraph(context *runtime.UserContext, 
 		operation := core.MutationUpdate
 		if e.isNew { operation = core.MutationInsert }
 		if operation == core.MutationUpdate {
-			if !e.IsLoaded("id") {
-				result := runtime.CheckResult{RuleID: "invalid_type", EntityType: "DispatchOrder", CanonicalLocation: runtime.Location().Property("id"), Message: "Mutation requires a fully loaded entity"}
+			if !e.IsLoaded(teaqlIdStorageKey) {
+				result := runtime.CheckResult{RuleID: "invalid_type", EntityType: "DispatchOrder", CanonicalLocation: runtime.Location().Property(teaqlIdModelKey), Message: "Mutation requires a fully loaded entity"}
 				return &runtime.RuntimeError{Type: "Check", CheckResults: []runtime.CheckResult{result}}
 			}
-			if !e.IsLoaded("distribution_center_id") {
-				result := runtime.CheckResult{RuleID: "invalid_type", EntityType: "DispatchOrder", CanonicalLocation: runtime.Location().Property("distribution_center"), Message: "Mutation requires a fully loaded entity"}
+			if !e.IsLoaded(teaqlDistributionCenterStorageKey) {
+				result := runtime.CheckResult{RuleID: "invalid_type", EntityType: "DispatchOrder", CanonicalLocation: runtime.Location().Property(teaqlDistributionCenterModelKey), Message: "Mutation requires a fully loaded entity"}
 				return &runtime.RuntimeError{Type: "Check", CheckResults: []runtime.CheckResult{result}}
 			}
-			if !e.IsLoaded("order_reference") {
-				result := runtime.CheckResult{RuleID: "invalid_type", EntityType: "DispatchOrder", CanonicalLocation: runtime.Location().Property("order_reference"), Message: "Mutation requires a fully loaded entity"}
+			if !e.IsLoaded(teaqlOrderReferenceStorageKey) {
+				result := runtime.CheckResult{RuleID: "invalid_type", EntityType: "DispatchOrder", CanonicalLocation: runtime.Location().Property(teaqlOrderReferenceModelKey), Message: "Mutation requires a fully loaded entity"}
 				return &runtime.RuntimeError{Type: "Check", CheckResults: []runtime.CheckResult{result}}
 			}
-			if !e.IsLoaded("handling_note") {
-				result := runtime.CheckResult{RuleID: "invalid_type", EntityType: "DispatchOrder", CanonicalLocation: runtime.Location().Property("handling_note"), Message: "Mutation requires a fully loaded entity"}
+			if !e.IsLoaded(teaqlHandlingNoteStorageKey) {
+				result := runtime.CheckResult{RuleID: "invalid_type", EntityType: "DispatchOrder", CanonicalLocation: runtime.Location().Property(teaqlHandlingNoteModelKey), Message: "Mutation requires a fully loaded entity"}
 				return &runtime.RuntimeError{Type: "Check", CheckResults: []runtime.CheckResult{result}}
 			}
-			if !e.IsLoaded("version") {
-				result := runtime.CheckResult{RuleID: "invalid_type", EntityType: "DispatchOrder", CanonicalLocation: runtime.Location().Property("version"), Message: "Mutation requires a fully loaded entity"}
+			if !e.IsLoaded(teaqlVersionStorageKey) {
+				result := runtime.CheckResult{RuleID: "invalid_type", EntityType: "DispatchOrder", CanonicalLocation: runtime.Location().Property(teaqlVersionModelKey), Message: "Mutation requires a fully loaded entity"}
 				return &runtime.RuntimeError{Type: "Check", CheckResults: []runtime.CheckResult{result}}
 			}
 		}
@@ -679,35 +692,35 @@ func (e *DispatchOrder) UpdateId(value uint64) *DispatchOrder {
 	oldKey := e.EntityKey()
 	e.base.Id = value
 	e.root.Rekey(oldKey, e.EntityKey())
-	e.loadState["id"] = true
+	e.loadState[teaqlIdStorageKey] = true
 	return e
 }
 
 func (e *DispatchOrder) OrderReference() string {
-	val, _ := e.base.GetDynamic("order_reference")
+	val, _ := e.base.GetDynamic(teaqlOrderReferenceStorageKey)
 	res, _ := val.TryText()
 	return res}
 
 func (e *DispatchOrder) UpdateOrderReference(value string) *DispatchOrder {
 	e.teaqlEnsureState()
-	e.base.PutDynamic("order_reference", core.ValText(value))
-	e.dirtyFields["order_reference"] = true
-	e.root.Set(e.EntityKey(), "order_reference", core.ValText(value))
-	e.loadState["order_reference"] = true
+	e.base.PutDynamic(teaqlOrderReferenceStorageKey, core.ValText(value))
+	e.dirtyFields[teaqlOrderReferenceStorageKey] = true
+	e.root.Set(e.EntityKey(), teaqlOrderReferenceModelKey, core.ValText(value))
+	e.loadState[teaqlOrderReferenceStorageKey] = true
 	return e
 }
 
 func (e *DispatchOrder) HandlingNote() string {
-	val, _ := e.base.GetDynamic("handling_note")
+	val, _ := e.base.GetDynamic(teaqlHandlingNoteStorageKey)
 	res, _ := val.TryText()
 	return res}
 
 func (e *DispatchOrder) UpdateHandlingNote(value string) *DispatchOrder {
 	e.teaqlEnsureState()
-	e.base.PutDynamic("handling_note", core.ValText(value))
-	e.dirtyFields["handling_note"] = true
-	e.root.Set(e.EntityKey(), "handling_note", core.ValText(value))
-	e.loadState["handling_note"] = true
+	e.base.PutDynamic(teaqlHandlingNoteStorageKey, core.ValText(value))
+	e.dirtyFields[teaqlHandlingNoteStorageKey] = true
+	e.root.Set(e.EntityKey(), teaqlHandlingNoteModelKey, core.ValText(value))
+	e.loadState[teaqlHandlingNoteStorageKey] = true
 	return e
 }
 
@@ -718,26 +731,26 @@ func (e *DispatchOrder) Version() int64 {
 func (e *DispatchOrder) UpdateVersion(value int64) *DispatchOrder {
 	e.teaqlEnsureState()
 	e.base.Version = value
-	e.loadState["version"] = true
+	e.loadState[teaqlVersionStorageKey] = true
 	return e
 }
 func (e *DispatchOrder) DistributionCenterId() uint64 {
-	val, _ := e.base.GetDynamic("distribution_center_id")
+	val, _ := e.base.GetDynamic(teaqlDistributionCenterStorageKey)
 	res, _ := val.TryU64()
 	return res
 }
 
 func (e *DispatchOrder) UpdateDistributionCenterId(value uint64) *DispatchOrder {
-	previous, present := e.base.GetDynamic("distribution_center_id")
-	e.base.PutDynamic("distribution_center_id", core.ValU64(value))
-	e.dirtyFields["distribution_center_id"] = true
-	current, _ := e.base.GetDynamic("distribution_center_id")
+	previous, present := e.base.GetDynamic(teaqlDistributionCenterStorageKey)
+	e.base.PutDynamic(teaqlDistributionCenterStorageKey, core.ValU64(value))
+	e.dirtyFields[teaqlDistributionCenterStorageKey] = true
+	current, _ := e.base.GetDynamic(teaqlDistributionCenterStorageKey)
 	if !present || !reflect.DeepEqual(previous, current) {
 		delete(e.relations, "distributionCenterEntity")
 		delete(e.loadedRelations, "distributionCenterEntity")
 	}
-	e.root.Set(e.EntityKey(), "distribution_center", core.ValU64(value))
-	e.loadState["distribution_center_id"] = true
+	e.root.Set(e.EntityKey(), teaqlDistributionCenterModelKey, core.ValU64(value))
+	e.loadState[teaqlDistributionCenterStorageKey] = true
 	return e
 }
 // DEBUG: constantObjectField is false
