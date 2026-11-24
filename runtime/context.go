@@ -301,6 +301,7 @@ type UserContext struct {
 	graphSaveMu                       sync.Mutex
 	graphSaveActive                   bool
 	graphCommitActions                []func() error
+	graphReadbackActions              []func()
 	graphRollbackActions              []func()
 	graphFixTime                      time.Time
 	preparedGraphSnapshot             *preparedGraphSnapshot
@@ -314,6 +315,7 @@ type UserContext struct {
 	businessIDService                 BusinessIDService
 	schemaExecutor                    SchemaExecutor
 	internalIDGenerator               InternalIdGenerator
+	contextTransaction                *contextTransaction
 }
 
 type FixEvidenceSource string
@@ -768,6 +770,15 @@ func (c *UserContext) Entity(name string) *core.EntityDescriptor {
 }
 
 func (c *UserContext) InsertResource(name string, resource interface{}) {
+	if name == "dataService" {
+		c.graphSaveMu.Lock()
+		defer c.graphSaveMu.Unlock()
+		if c.contextTransaction != nil {
+			panic("cannot replace the data service of a transaction UserContext")
+		}
+		c.resources[name] = resource
+		return
+	}
 	if name == "idGenerator" {
 		if resource != nil {
 			if missingSPI(resource) {
@@ -786,6 +797,14 @@ func (c *UserContext) InsertResource(name string, resource interface{}) {
 }
 
 func (c *UserContext) GetResource(name string) interface{} {
+	if name == "dataService" {
+		if c.contextTransaction != nil && !c.contextTransaction.isActive() {
+			return nil
+		}
+		c.graphSaveMu.Lock()
+		defer c.graphSaveMu.Unlock()
+		return c.resources[name]
+	}
 	if name == "idGenerator" {
 		c.graphSaveMu.Lock()
 		defer c.graphSaveMu.Unlock()
@@ -800,7 +819,13 @@ func (c *UserContext) GetResource(name string) interface{} {
 // ExecuteGraphSave coordinates one generated object graph through one provider
 // transaction. Generated descendants use their within-graph entry points;
 // independent public/root saves remain isolated.
-func (c *UserContext) ExecuteGraphSave(intent core.MutationIntent, work func() error) error {
+func (c *UserContext) ExecuteGraphSave(intent core.MutationIntent, work func() error) (err error) {
+	if c.contextTransaction != nil {
+		defer c.contextTransaction.recordSaveResult(&err)
+		if err = c.contextTransaction.requireWritable(); err != nil {
+			return err
+		}
+	}
 	if err := intent.Validate(); err != nil {
 		return err
 	}
@@ -818,7 +843,13 @@ func (c *UserContext) ExecuteGraphSave(intent core.MutationIntent, work func() e
 // ExecutePlannedGraphSave reviews the immutable, complete graph mutation plan
 // before starting a provider transaction. Generated root Save methods should
 // use this entry point once they can provide the full aggregate plan.
-func (c *UserContext) ExecutePlannedGraphSave(plan *MutationPlan, work func() error) error {
+func (c *UserContext) ExecutePlannedGraphSave(plan *MutationPlan, work func() error) (err error) {
+	if c.contextTransaction != nil {
+		defer c.contextTransaction.recordSaveResult(&err)
+		if err = c.contextTransaction.requireWritable(); err != nil {
+			return err
+		}
+	}
 	parent := preserveRuntimeContextServices(c)
 	if err := c.graphSaveGate.LockContext(parent); err != nil {
 		return err
@@ -847,7 +878,13 @@ func (c *UserContext) ExecutePreparedGraphSave(
 	intent core.MutationIntent,
 	prepare func() (*MutationPlan, error),
 	work func() error,
-) error {
+) (err error) {
+	if c.contextTransaction != nil {
+		defer c.contextTransaction.recordSaveResult(&err)
+		if err = c.contextTransaction.requireWritable(); err != nil {
+			return err
+		}
+	}
 	if err := intent.Validate(); err != nil {
 		return err
 	}
@@ -885,6 +922,9 @@ func (c *UserContext) executePreparedGraphSave(ctx stdcontext.Context, intent co
 		plan.AuditReason = intent.AuditReason()
 		if err := validateLedgerComposition(plan.ledger); err != nil {
 			return err
+		}
+		if c.contextTransaction != nil && plan.ledger != nil {
+			c.contextTransaction.ledgers = append(c.contextTransaction.ledgers, plan.ledger)
 		}
 	}
 	if err := c.sealPreparedPlan(plan); err != nil {
@@ -980,13 +1020,22 @@ func (c *UserContext) executeGraphSave(operationContext stdcontext.Context, work
 	if guard != nil && !guard.metadataUnchanged() {
 		return preparedMutationChanged(guard.state.plan.RootEntity, "metadata")
 	}
-	executor, ok := provider.(data_service.TransactionExecutor)
-	if !ok {
-		return fmt.Errorf("configured dataService does not support graph transactions")
-	}
-	transaction, err := executor.Begin(operationContext)
-	if err != nil {
-		return err
+	scope := c.contextTransaction
+	var transaction data_service.Transaction
+	if scope != nil {
+		if err := scope.requireWritable(); err != nil {
+			return err
+		}
+		transaction = scope.bound
+	} else {
+		executor, ok := provider.(data_service.TransactionExecutor)
+		if !ok {
+			return fmt.Errorf("configured dataService does not support graph transactions")
+		}
+		transaction, err = executor.Begin(operationContext)
+		if err != nil {
+			return err
+		}
 	}
 	// The carrier follows the actual transaction instead of rewriting c.Context.
 	transaction = bindGraphTelemetryTransaction(transaction, operationContext, guard)
@@ -1003,9 +1052,13 @@ func (c *UserContext) executeGraphSave(operationContext stdcontext.Context, work
 				if guard != nil {
 					_ = guard.finishWork(operationContext, preparedIncomplete(guard.state.plan.RootEntity))
 				}
-				_ = transaction.Rollback(operationContext)
-				for index := len(c.graphRollbackActions) - 1; index >= 0; index-- {
-					c.graphRollbackActions[index]()
+				if scope != nil {
+					scope.enlistGraph(c)
+				} else {
+					_ = transaction.Rollback(operationContext)
+					for index := len(c.graphRollbackActions) - 1; index >= 0; index-- {
+						c.graphRollbackActions[index]()
+					}
 				}
 			}()
 		}
@@ -1018,6 +1071,7 @@ func (c *UserContext) executeGraphSave(operationContext stdcontext.Context, work
 		}
 		c.graphSaveActive = false
 		c.graphCommitActions = nil
+		c.graphReadbackActions = nil
 		c.graphRollbackActions = nil
 		c.graphSaveMu.Unlock()
 		c.finishGraphPreparation()
@@ -1029,6 +1083,7 @@ func (c *UserContext) executeGraphSave(operationContext stdcontext.Context, work
 	c.graphSaveMu.Lock()
 	c.graphSaveActive = true
 	c.graphCommitActions = nil
+	c.graphReadbackActions = nil
 	c.graphRollbackActions = nil
 	if !preparationStarted {
 		c.graphFixTime = now
@@ -1043,6 +1098,16 @@ func (c *UserContext) executeGraphSave(operationContext stdcontext.Context, work
 	err = work()
 	if guard != nil {
 		err = guard.finishWork(operationContext, err)
+	}
+	if scope != nil {
+		if err == nil {
+			for _, accept := range c.graphReadbackActions {
+				accept()
+			}
+		}
+		scope.enlistGraph(c)
+		transactionFinished = true
+		return err
 	}
 	committed := false
 	if err == nil {
@@ -1205,6 +1270,27 @@ func (c *UserContext) AfterGraphCommit(action func()) {
 	c.graphCommitActions = append(c.graphCommitActions, func() error { action(); return nil })
 }
 
+// AcceptGraphReadback is for generated saves. An explicit transaction can
+// use the new baseline after each successful save, while audit waits for commit.
+func (c *UserContext) AcceptGraphReadback(action func()) {
+	if c.contextTransaction == nil {
+		c.AfterGraphCommit(action)
+		return
+	}
+	c.graphSaveMu.Lock()
+	defer c.graphSaveMu.Unlock()
+	if !c.graphSaveActive {
+		panic("no graph save is active")
+	}
+	c.graphReadbackActions = append(c.graphReadbackActions, action)
+}
+
+// InUserContextTransaction indicates that generated readbacks need a
+// rollback checkpoint for their provisional ledger.
+func (c *UserContext) InUserContextTransaction() bool {
+	return c.contextTransaction != nil
+}
+
 func (c *UserContext) AfterGraphRollback(action func()) {
 	c.graphSaveMu.Lock()
 	defer c.graphSaveMu.Unlock()
@@ -1278,6 +1364,10 @@ func (c *UserContext) emitMutationAudit(context stdcontext.Context, request data
 		return nil
 	}
 	c.graphSaveMu.Unlock()
+	if c.contextTransaction != nil && c.contextTransaction.isActive() {
+		c.contextTransaction.deferAudit(func() error { return c.sendEvent(context, event) })
+		return nil
+	}
 	return c.sendEvent(context, event)
 }
 

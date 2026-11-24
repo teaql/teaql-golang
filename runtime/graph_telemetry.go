@@ -143,9 +143,16 @@ func bindGraphTelemetryTransaction(inner data_service.Transaction, ctx context.C
 	if len(guards) != 0 {
 		base.guard = guards[0]
 	}
-	ids, hasID := inner.(graphIDGenerator)
-	floor, hasFloor := inner.(graphIDFloor)
-	if stream, ok := inner.(data_service.StreamQueryExecutor); ok {
+	return transactionWithCapabilities(base, inner, inner)
+}
+
+func transactionWithCapabilities(base, native data_service.Transaction, capabilities interface{}) data_service.Transaction {
+	_, hasID := native.(graphIDGenerator)
+	_, hasFloor := native.(graphIDFloor)
+	ids, _ := capabilities.(graphIDGenerator)
+	floor, _ := capabilities.(graphIDFloor)
+	if _, ok := native.(data_service.StreamQueryExecutor); ok {
+		stream := capabilities.(data_service.StreamQueryExecutor)
 		streamed := &graphStream{Transaction: base, streamer: stream}
 		if hasID && hasFloor {
 			return &graphStreamIDsFloor{graphStreamIDs: &graphStreamIDs{graphStream: streamed, generator: ids}, floor: floor}
