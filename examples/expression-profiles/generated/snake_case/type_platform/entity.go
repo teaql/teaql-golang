@@ -44,19 +44,36 @@ type TypePlatform struct {
 }
 
 type ScalarTypeProbeList struct {
-	items []*scalar_type_probe.ScalarTypeProbe
+	items *core.SmartList[*scalar_type_probe.ScalarTypeProbe]
 }
 
 func newScalarTypeProbeList() *ScalarTypeProbeList {
-	return &ScalarTypeProbeList{items: make([]*scalar_type_probe.ScalarTypeProbe, 0)}
+	return &ScalarTypeProbeList{items: core.NewSmartList([]*scalar_type_probe.ScalarTypeProbe{})}
+}
+
+func (l *ScalarTypeProbeList) teaqlRows() *core.SmartList[*scalar_type_probe.ScalarTypeProbe] {
+	if l.items == nil { l.items = core.NewSmartList([]*scalar_type_probe.ScalarTypeProbe{}) }
+	return l.items
 }
 
 func (l *ScalarTypeProbeList) Add(entity *scalar_type_probe.ScalarTypeProbe) {
-	l.items = append(l.items, entity)
+	l.teaqlRows().Push(entity)
+}
+
+// Set replaces one local relation member without changing its query metadata.
+func (l *ScalarTypeProbeList) Set(index int, entity *scalar_type_probe.ScalarTypeProbe) {
+	l.teaqlRows().Set(index, entity)
 }
 
 func (l *ScalarTypeProbeList) Items() []*scalar_type_probe.ScalarTypeProbe {
-	return l.items
+	return l.teaqlRows().IntoVec()
+}
+
+func (l *ScalarTypeProbeList) IsLoaded() bool { return l.teaqlRows().IsLoaded }
+
+// SmartList returns a detached query snapshot; writing it cannot change the owner's load state.
+func (l *ScalarTypeProbeList) SmartList() *core.SmartList[*scalar_type_probe.ScalarTypeProbe] {
+	return core.MapSmartList(l.teaqlRows(), func(entity *scalar_type_probe.ScalarTypeProbe) *scalar_type_probe.ScalarTypeProbe { return entity })
 }
 // ScalarTypeProbeListFacet reads this parent's collection facet, not a global count.
 func (e *TypePlatform) ScalarTypeProbeListFacet(name string) (*core.SmartList[core.Record], bool) {
@@ -104,6 +121,7 @@ func NewTypePlatform(context *runtime.UserContext) (*TypePlatform, error) {
 func newLoadedTypePlatform() *TypePlatform {
 	entity := newUninitializedTypePlatform()
 	entity.creationState.Hydrated()
+	entity.scalarTypeProbeList.teaqlRows().IsLoaded = false
 	return entity
 }
 
@@ -143,6 +161,7 @@ func (e *TypePlatform) setRelationEntity(name string, value core.Entity) {
 
 func (e *TypePlatform) markRelationLoaded(name string) {
 	e.loadedRelations[name] = true
+	if name == "scalarTypeProbeList" || name == "scalar_type_probe_list" { e.scalarTypeProbeList.teaqlRows().IsLoaded = true }
 }
 
 func (e *TypePlatform) isRelationLoaded(name string) bool {
@@ -327,7 +346,9 @@ func (e *TypePlatform) LoadedJSONFields() core.Record {
 	if e.IsLoaded("id") { if value, present := all["id"]; present { selected["id"] = value } }
 	if e.IsLoaded("name") { if value, present := all["name"]; present { selected["name"] = value } }
 	if e.IsLoaded("version") { if value, present := all["version"]; present { selected["version"] = value } }
-	if e.IsLoaded("scalarTypeProbeList") {
+	includeScalarTypeProbeList := e.ScalarTypeProbeList().IsLoaded()
+	for _, child := range e.ScalarTypeProbeList().Items() { if child.IsNew() || child.IsMarkedAsDelete() || len(child.EntityRoot().Change(child.EntityKey())) > 0 { includeScalarTypeProbeList = true } }
+	if includeScalarTypeProbeList {
 		items := make([]core.Value, 0, len(e.ScalarTypeProbeList().Items()))
 		for _, child := range e.ScalarTypeProbeList().Items() { items = append(items, core.Value{V: child}) }
 		selected["scalarTypeProbeList"] = core.ValList(items)
@@ -500,7 +521,8 @@ func (e *TypePlatform) TeaqlPreflightWithinGraph(context *runtime.UserContext, i
 		}
 		checkedValues := e.IntoRecord()
 		valuesBeforeCheck := e.IntoRecord()
-		checkErr := runtime.CheckAndFixGraphEntity(context, &runtime.CheckAndFixInput{Entity: "Type Platform", Operation: operation, Values: checkedValues}, e.root, e.EntityKey())
+		context.CaptureContextFixUndo(e.EntityName(), func() *core.BaseEntityData { return e.base }, e.root, e.EntityKey())
+		checkErr := runtime.CheckAndFixGraphEntity(context, &runtime.CheckAndFixInput{Entity: "Type Platform", Operation: operation, Values: checkedValues, OldValues: e.loadedSnapshot.ValuesFor(e.EntityKey(), e.base.Version)}, e.root, e.EntityKey())
 		for field, value := range checkedValues {
 			if before, exists := valuesBeforeCheck[field]; !exists || !reflect.DeepEqual(before, value) {
 				e.base.PutDynamic(field, value)
@@ -530,7 +552,7 @@ func (e *TypePlatform) TeaqlPreflightWithinGraph(context *runtime.UserContext, i
 			return fmt.Errorf("preflight child from scalarTypeProbeList: %w", err)
 		}
 	}
-	return nil
+	return e.TeaqlNormalizeMutationGraph(context)
 }
 
 type teaqlTypePlatformSaveSnapshot struct {
@@ -704,7 +726,7 @@ func (e *TypePlatform) TeaqlSaveWithinGraph(context *runtime.UserContext, intent
 	} else {
 		checkedValues := e.IntoRecord()
 		valuesBeforeCheck := e.IntoRecord()
-		checkErr := runtime.CheckAndFixGraphEntity(context, &runtime.CheckAndFixInput{Entity: "Type Platform", Operation: core.MutationUpdate, Values: checkedValues}, e.root, e.EntityKey())
+		checkErr := runtime.CheckAndFixGraphEntity(context, &runtime.CheckAndFixInput{Entity: "Type Platform", Operation: core.MutationUpdate, Values: checkedValues, OldValues: e.loadedSnapshot.ValuesFor(e.EntityKey(), e.base.Version)}, e.root, e.EntityKey())
 		for field, value := range checkedValues {
 			if before, exists := valuesBeforeCheck[field]; !exists || !reflect.DeepEqual(before, value) {
 				canonical, mappingErr := context.CanonicalLedgerField(e.EntityName(), field)

@@ -1,5 +1,7 @@
 # Go retained minimum conformance example
 
+`model.xml` owns `golang-lib-core` and `golang-app-console`. The application and retained regression checks live in the native workspace. Run `bash examples/conformance/verify.sh` from the SDK root for source qualification, persisted business-result checks and owned scratch cleanup. Provenance and current qualification state are in `showcase.json`.
+
 This generated SQLite workspace retains executable evidence for the minimum
 TeaQL runtime contract:
 
@@ -12,14 +14,14 @@ TeaQL runtime contract:
 7. soft-delete visibility rules; and
 8. optimistic-version isolation for different entity types sharing one numeric ID.
 
-Run it from this directory:
+Run it from `golang-app-console`:
 
 ```bash
 go test ./...
 go run ./src
 ```
 
-The generated domain library is under `lib/`; `src/conformance_test.go` is the
+The generated domain library is under `golang-lib-core/`; `src/conformance_test.go` is the
 retained executable specification. Installing a runtime module does not mutate
 schema. The application calls `lib.EnsureSchema(context)` explicitly.
 

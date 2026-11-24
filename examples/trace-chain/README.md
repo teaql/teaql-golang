@@ -1,5 +1,11 @@
 # Generated Go Trace Chain Example
 
+The order graph and its replay checks live in `golang-app-console` and consume the
+domain from `golang-lib-core`. The separate `standard-order` model owns the
+order pagination workspace. Run the verification scripts in this directory
+to reproduce both launches of each workflow.
+
+
 The generated dynamic-aggregate suite observes each physical provider result,
 including when diagnostic logs are disabled. Root/nested counts retain the
 initiating root and verified reverse-relation ancestry. Numeric grouping emits

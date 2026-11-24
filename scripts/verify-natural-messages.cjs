@@ -27,7 +27,7 @@ function testSummary(log){
     packageNames:events.filter(e=>['pass','skip'].includes(e.Action)&&!e.Test).map(e=>e.Package).sort()};
 }
 function generated(){
-  const fixture=path.join(repo,'examples/natural-messages/fixture'),bytes=fs.readFileSync(path.join(fixture,'generated-files.json')),files=JSON.parse(bytes);
+  const fixture=path.join(repo,'examples/natural-messages/golang-lib-core'),bytes=fs.readFileSync(path.join(fixture,'generated-files.json')),files=JSON.parse(bytes);
   for(const [name,digest]of Object.entries(files)){assert(!path.isAbsolute(name)&&!name.split('/').includes('..'));const file=path.join(fixture,name);assert.equal(fs.realpathSync(file),file);assert.equal(sha(fs.readFileSync(file)),digest,name);}
   return {files,manifestSha256:sha(bytes),modelSha256:sha(fs.readFileSync(path.join(fixture,'model.xml')))};
 }
@@ -49,10 +49,11 @@ async function main(){
       }
     }
     if(args.includes('--example')||args.includes('--example-only')){
-      report.fixture=generated();const app=path.join(scratch,'consumer');fs.mkdirSync(app);
-      fs.copyFileSync(path.join(repo,'examples/natural-messages/natural_messages_test.go'),path.join(app,'natural_messages_test.go'));
-      const mod=fs.readFileSync(path.join(repo,'examples/natural-messages/go.mod'),'utf8')
-        .replace('=> ./fixture','=> '+JSON.stringify(path.join(repo,'examples/natural-messages/fixture'))).replace('=> ../..','=> '+JSON.stringify(repo));
+      report.fixture=generated();
+      const app=path.join(scratch,'golang-app-console'),library=path.join(scratch,'golang-lib-core');
+      fs.cpSync(path.join(repo,'examples/natural-messages/golang-app-console'),app,{recursive:true});
+      fs.cpSync(path.join(repo,'examples/natural-messages/golang-lib-core'),library,{recursive:true});
+      const mod=fs.readFileSync(path.join(app,'go.mod'),'utf8').replace('=> ../../..','=> '+JSON.stringify(repo));
       fs.writeFileSync(path.join(app,'go.mod'),mod);
       report.runtimeOrigin=JSON.parse(await run('origin',[go,'list','-m','-json','github.com/teaql/teaql-golang'],app));assert.equal(report.runtimeOrigin.Replace?.Dir,repo);
       const binary=path.join(scratch,'natural.test');await run('example-build',[go,'test','-race','-mod=mod','-c','-o',binary,'.'],app);

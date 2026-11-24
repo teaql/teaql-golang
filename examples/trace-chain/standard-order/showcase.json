@@ -1,0 +1,52 @@
+{
+  "generatedDomainLibraryHandEdited": false,
+  "goalId": "go:examples/trace-chain",
+  "library": {
+    "generatedFilesManifestSHA256": "d073478ecb59e2e02ceb82b50df21d725e54047c2df7fa2c2f1869de8f5ceb96",
+    "root": "golang-lib-core",
+    "scope": "golang-lib-core"
+  },
+  "model": {
+    "path": "model.xml",
+    "sha256": "9e60ff448b17cbbc38035565643f44e6618841632cf4f08fdc089dc961c3a62c"
+  },
+  "producer": {
+    "generator": {
+      "artifactKind": "unsigned unpublished versioned source candidate; not a released artifact",
+      "baseRelease": "v4.2.0",
+      "candidatePreparationReceiptSHA256": "52b4c2042be58624c08d07186b7081cf6ad4c0fccfc8e9724bee7f9280b5c02f",
+      "candidateVersion": "4.3.0",
+      "jarSHA256": "3a4988ada43aeb01d5cbba5901c1eef64c58b2bd4142c99fd7692cf1dc413e9e",
+      "sourceCommit": "021b1ed8bee5db7eef38a6b1e3a3ef2e7ac69daa",
+      "sourceQualificationReceiptSHA256": "5119b9f3a5c95fb84f527885fdd5bac0fe79a56352a55b8acf116f67fd12787d",
+      "tag": "unsigned-candidate-v4.3.0"
+    },
+    "receipt": "teaql-conformance/evidence/2026-11-20-example-showcase-remediation/trace-chain-order-native-scope-pairs/receipt.json",
+    "receiptSHA256": "56bf2a9a076d6997ffff35ab4c8b6cb7448ae40b8b439200953a9ea8a6ca5ef3"
+  },
+  "qualification": {
+    "businessReceipt": "teaql-conformance/evidence/2026-11-20-example-showcase-remediation/go-trace-chain-standard-native/runtime/trace-chain/receipt.json",
+    "businessReceiptSHA256": "9c1db572f58439679a8d9d4c18db63d1ce07a6b51b9770b18243fa78f13e817f",
+    "nativeReceipt": "teaql-conformance/evidence/2026-11-20-example-showcase-remediation/go-trace-chain-standard-native/receipt.json",
+    "nativeReceiptSHA256": "537100f41eee6f6413bff2d56ad7933ed9210d4173addc3f12cd0a112228423c",
+    "remainingFullRuntimeInventory": true,
+    "sourceCommit": "7afa425a2cc51c3a2129a120567f616175453db0",
+    "standardCase": "order"
+  },
+  "scene": "Order page, preview, total and facets with standard telemetry",
+  "schema": "teaql.model-workspace-showcase/v1",
+  "status": "focused-verified",
+  "verification": [
+    "bash",
+    "examples/trace-chain/verify-standard-order.sh"
+  ],
+  "workspace": {
+    "applicationOwnedFiles": [
+      "go.mod",
+      "src/main.go"
+    ],
+    "generatedFilesManifestSHA256": "a577b5f56e89c7b409a9d38b494b86f479312c41a316304c3c93c54c3e422aea",
+    "root": "golang-app-console",
+    "scope": "golang-app-console"
+  }
+}

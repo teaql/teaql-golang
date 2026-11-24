@@ -94,6 +94,7 @@ func (r *CommercePlatformRequest) teaqlHydrateQueryRecord(rec core.Record) (*Com
 	entity := newLoadedCommercePlatform()
 	if err := entity.FromRecord(rec); err != nil { return nil, err }
 	if relationValue, selected := rec["customerList"]; selected {
+		entity.markRelationLoaded("customerList")
 		factory := r.relationFactories["customerList"]
 		if factory == nil { return nil, fmt.Errorf("missing generated query hydrator for relation customerList") }
 		childRecords, ok := relationValue.V.([]core.Record)
@@ -107,6 +108,7 @@ func (r *CommercePlatformRequest) teaqlHydrateQueryRecord(rec core.Record) (*Com
 				entity.CustomerList().Add(childEntity)
 			}}
 	if relationValue, selected := rec["orderStatusList"]; selected {
+		entity.markRelationLoaded("orderStatusList")
 		factory := r.relationFactories["orderStatusList"]
 		if factory == nil { return nil, fmt.Errorf("missing generated query hydrator for relation orderStatusList") }
 		childRecords, ok := relationValue.V.([]core.Record)
@@ -120,6 +122,7 @@ func (r *CommercePlatformRequest) teaqlHydrateQueryRecord(rec core.Record) (*Com
 				entity.OrderStatusList().Add(childEntity)
 			}}
 	if relationValue, selected := rec["customerOrderList"]; selected {
+		entity.markRelationLoaded("customerOrderList")
 		factory := r.relationFactories["customerOrderList"]
 		if factory == nil { return nil, fmt.Errorf("missing generated query hydrator for relation customerOrderList") }
 		childRecords, ok := relationValue.V.([]core.Record)
@@ -133,6 +136,7 @@ func (r *CommercePlatformRequest) teaqlHydrateQueryRecord(rec core.Record) (*Com
 				entity.CustomerOrderList().Add(childEntity)
 			}}
 	if relationValue, selected := rec["productList"]; selected {
+		entity.markRelationLoaded("productList")
 		factory := r.relationFactories["productList"]
 		if factory == nil { return nil, fmt.Errorf("missing generated query hydrator for relation productList") }
 		childRecords, ok := relationValue.V.([]core.Record)
@@ -146,6 +150,7 @@ func (r *CommercePlatformRequest) teaqlHydrateQueryRecord(rec core.Record) (*Com
 				entity.ProductList().Add(childEntity)
 			}}
 	if relationValue, selected := rec["orderLineList"]; selected {
+		entity.markRelationLoaded("orderLineList")
 		factory := r.relationFactories["orderLineList"]
 		if factory == nil { return nil, fmt.Errorf("missing generated query hydrator for relation orderLineList") }
 		childRecords, ok := relationValue.V.([]core.Record)
@@ -159,6 +164,7 @@ func (r *CommercePlatformRequest) teaqlHydrateQueryRecord(rec core.Record) (*Com
 				entity.OrderLineList().Add(childEntity)
 			}}
 	if relationValue, selected := rec["orderSearchPresetList"]; selected {
+		entity.markRelationLoaded("orderSearchPresetList")
 		factory := r.relationFactories["orderSearchPresetList"]
 		if factory == nil { return nil, fmt.Errorf("missing generated query hydrator for relation orderSearchPresetList") }
 		childRecords, ok := relationValue.V.([]core.Record)
@@ -256,16 +262,16 @@ func (r *CommercePlatformRequest) DeletedRowsOnly() *CommercePlatformRequest {
 }
 
 func (r *CommercePlatformRequest) SelectId() *CommercePlatformRequest {
-	r.Query.Project("id")
+	r.Query.Project(teaqlIdStorageKey)
 	return r
 }
 
 func (r *CommercePlatformRequest) WithIdIs(value uint64) *CommercePlatformRequest {
-	r.Query.AndFilter(core.ExprEq("id", core.ValU64(value)))
+	r.Query.AndFilter(core.ExprEq(teaqlIdStorageKey, core.ValU64(value)))
 	return r
 }
 func (r *CommercePlatformRequest) WithIdIsNot(value uint64) *CommercePlatformRequest {
-	r.Query.AndFilter(core.ExprNe("id", core.ValU64(value)))
+	r.Query.AndFilter(core.ExprNe(teaqlIdStorageKey, core.ValU64(value)))
 	return r
 }
 func (r *CommercePlatformRequest) WithIdIn(values []uint64) *CommercePlatformRequest {
@@ -273,7 +279,7 @@ func (r *CommercePlatformRequest) WithIdIn(values []uint64) *CommercePlatformReq
 	for _, value := range values {
 		converted = append(converted, core.ValU64(value))
 	}
-	r.Query.AndFilter(core.ExprInList("id", converted))
+	r.Query.AndFilter(core.ExprInList(teaqlIdStorageKey, converted))
 	return r
 }
 func (r *CommercePlatformRequest) WithIdNotIn(values []uint64) *CommercePlatformRequest {
@@ -281,23 +287,23 @@ func (r *CommercePlatformRequest) WithIdNotIn(values []uint64) *CommercePlatform
 	for _, value := range values {
 		converted = append(converted, core.ValU64(value))
 	}
-	r.Query.AndFilter(core.ExprNotInList("id", converted))
+	r.Query.AndFilter(core.ExprNotInList(teaqlIdStorageKey, converted))
 	return r
 }
 func (r *CommercePlatformRequest) WithIdGreaterThan(value uint64) *CommercePlatformRequest {
-	r.Query.AndFilter(core.ExprGt("id", core.ValU64(value)))
+	r.Query.AndFilter(core.ExprGt(teaqlIdStorageKey, core.ValU64(value)))
 	return r
 }
 func (r *CommercePlatformRequest) WithIdGreaterThanOrEqualTo(value uint64) *CommercePlatformRequest {
-	r.Query.AndFilter(core.ExprGte("id", core.ValU64(value)))
+	r.Query.AndFilter(core.ExprGte(teaqlIdStorageKey, core.ValU64(value)))
 	return r
 }
 func (r *CommercePlatformRequest) WithIdLessThan(value uint64) *CommercePlatformRequest {
-	r.Query.AndFilter(core.ExprLt("id", core.ValU64(value)))
+	r.Query.AndFilter(core.ExprLt(teaqlIdStorageKey, core.ValU64(value)))
 	return r
 }
 func (r *CommercePlatformRequest) WithIdLessThanOrEqualTo(value uint64) *CommercePlatformRequest {
-	r.Query.AndFilter(core.ExprLte("id", core.ValU64(value)))
+	r.Query.AndFilter(core.ExprLte(teaqlIdStorageKey, core.ValU64(value)))
 	return r
 }
 func (r *CommercePlatformRequest) WithIdBetween(lower uint64, upper uint64) *CommercePlatformRequest {
@@ -305,36 +311,36 @@ func (r *CommercePlatformRequest) WithIdBetween(lower uint64, upper uint64) *Com
 	from := core.ValU64(value)
 	value = upper
 	to := core.ValU64(value)
-	r.Query.AndFilter(core.ExprBetweenNode("id", from, to))
+	r.Query.AndFilter(core.ExprBetweenNode(teaqlIdStorageKey, from, to))
 	return r
 }
 func (r *CommercePlatformRequest) WithIdIsKnown() *CommercePlatformRequest {
-	r.Query.AndFilter(core.ExprIsNotNullNode("id"))
+	r.Query.AndFilter(core.ExprIsNotNullNode(teaqlIdStorageKey))
 	return r
 }
 func (r *CommercePlatformRequest) WithIdIsUnknown() *CommercePlatformRequest {
-	r.Query.AndFilter(core.ExprIsNullNode("id"))
+	r.Query.AndFilter(core.ExprIsNullNode(teaqlIdStorageKey))
 	return r
 }
 func (r *CommercePlatformRequest) OrderByIdAsc() *CommercePlatformRequest {
-	r.Query.OrderAsc("id")
+	r.Query.OrderAsc(teaqlIdStorageKey)
 	return r
 }
 func (r *CommercePlatformRequest) OrderByIdDesc() *CommercePlatformRequest {
-	r.Query.OrderDesc("id")
+	r.Query.OrderDesc(teaqlIdStorageKey)
 	return r
 }
 func (r *CommercePlatformRequest) SelectName() *CommercePlatformRequest {
-	r.Query.Project("name")
+	r.Query.Project(teaqlNameStorageKey)
 	return r
 }
 
 func (r *CommercePlatformRequest) WithNameIs(value string) *CommercePlatformRequest {
-	r.Query.AndFilter(core.ExprEq("name", core.ValText(value)))
+	r.Query.AndFilter(core.ExprEq(teaqlNameStorageKey, core.ValText(value)))
 	return r
 }
 func (r *CommercePlatformRequest) WithNameIsNot(value string) *CommercePlatformRequest {
-	r.Query.AndFilter(core.ExprNe("name", core.ValText(value)))
+	r.Query.AndFilter(core.ExprNe(teaqlNameStorageKey, core.ValText(value)))
 	return r
 }
 func (r *CommercePlatformRequest) WithNameIn(values []string) *CommercePlatformRequest {
@@ -342,7 +348,7 @@ func (r *CommercePlatformRequest) WithNameIn(values []string) *CommercePlatformR
 	for _, value := range values {
 		converted = append(converted, core.ValText(value))
 	}
-	r.Query.AndFilter(core.ExprInList("name", converted))
+	r.Query.AndFilter(core.ExprInList(teaqlNameStorageKey, converted))
 	return r
 }
 func (r *CommercePlatformRequest) WithNameNotIn(values []string) *CommercePlatformRequest {
@@ -350,23 +356,23 @@ func (r *CommercePlatformRequest) WithNameNotIn(values []string) *CommercePlatfo
 	for _, value := range values {
 		converted = append(converted, core.ValText(value))
 	}
-	r.Query.AndFilter(core.ExprNotInList("name", converted))
+	r.Query.AndFilter(core.ExprNotInList(teaqlNameStorageKey, converted))
 	return r
 }
 func (r *CommercePlatformRequest) WithNameGreaterThan(value string) *CommercePlatformRequest {
-	r.Query.AndFilter(core.ExprGt("name", core.ValText(value)))
+	r.Query.AndFilter(core.ExprGt(teaqlNameStorageKey, core.ValText(value)))
 	return r
 }
 func (r *CommercePlatformRequest) WithNameGreaterThanOrEqualTo(value string) *CommercePlatformRequest {
-	r.Query.AndFilter(core.ExprGte("name", core.ValText(value)))
+	r.Query.AndFilter(core.ExprGte(teaqlNameStorageKey, core.ValText(value)))
 	return r
 }
 func (r *CommercePlatformRequest) WithNameLessThan(value string) *CommercePlatformRequest {
-	r.Query.AndFilter(core.ExprLt("name", core.ValText(value)))
+	r.Query.AndFilter(core.ExprLt(teaqlNameStorageKey, core.ValText(value)))
 	return r
 }
 func (r *CommercePlatformRequest) WithNameLessThanOrEqualTo(value string) *CommercePlatformRequest {
-	r.Query.AndFilter(core.ExprLte("name", core.ValText(value)))
+	r.Query.AndFilter(core.ExprLte(teaqlNameStorageKey, core.ValText(value)))
 	return r
 }
 func (r *CommercePlatformRequest) WithNameBetween(lower string, upper string) *CommercePlatformRequest {
@@ -374,64 +380,64 @@ func (r *CommercePlatformRequest) WithNameBetween(lower string, upper string) *C
 	from := core.ValText(value)
 	value = upper
 	to := core.ValText(value)
-	r.Query.AndFilter(core.ExprBetweenNode("name", from, to))
+	r.Query.AndFilter(core.ExprBetweenNode(teaqlNameStorageKey, from, to))
 	return r
 }
 func (r *CommercePlatformRequest) WithNameIsKnown() *CommercePlatformRequest {
-	r.Query.AndFilter(core.ExprIsNotNullNode("name"))
+	r.Query.AndFilter(core.ExprIsNotNullNode(teaqlNameStorageKey))
 	return r
 }
 func (r *CommercePlatformRequest) WithNameIsUnknown() *CommercePlatformRequest {
-	r.Query.AndFilter(core.ExprIsNullNode("name"))
+	r.Query.AndFilter(core.ExprIsNullNode(teaqlNameStorageKey))
 	return r
 }
 func (r *CommercePlatformRequest) WithNameContaining(term string) *CommercePlatformRequest {
-	r.Query.AndFilter(core.ExprContain("name", term))
+	r.Query.AndFilter(core.ExprContain(teaqlNameStorageKey, term))
 	return r
 }
 func (r *CommercePlatformRequest) WithNameNotContaining(term string) *CommercePlatformRequest {
-	r.Query.AndFilter(core.ExprNotContain("name", term))
+	r.Query.AndFilter(core.ExprNotContain(teaqlNameStorageKey, term))
 	return r
 }
 func (r *CommercePlatformRequest) WithNameStartingWith(term string) *CommercePlatformRequest {
-	r.Query.AndFilter(core.ExprBeginWith("name", term))
+	r.Query.AndFilter(core.ExprBeginWith(teaqlNameStorageKey, term))
 	return r
 }
 func (r *CommercePlatformRequest) WithNameNotStartingWith(term string) *CommercePlatformRequest {
-	r.Query.AndFilter(core.ExprNotBeginWith("name", term))
+	r.Query.AndFilter(core.ExprNotBeginWith(teaqlNameStorageKey, term))
 	return r
 }
 func (r *CommercePlatformRequest) WithNameEndingWith(term string) *CommercePlatformRequest {
-	r.Query.AndFilter(core.ExprEndWith("name", term))
+	r.Query.AndFilter(core.ExprEndWith(teaqlNameStorageKey, term))
 	return r
 }
 func (r *CommercePlatformRequest) WithNameNotEndingWith(term string) *CommercePlatformRequest {
-	r.Query.AndFilter(core.ExprNotEndWith("name", term))
+	r.Query.AndFilter(core.ExprNotEndWith(teaqlNameStorageKey, term))
 	return r
 }
 func (r *CommercePlatformRequest) WithNameSoundingLike(term string) *CommercePlatformRequest {
-	r.Query.AndFilter(core.ExprSoundLike("name", core.ValText(term)))
+	r.Query.AndFilter(core.ExprSoundLike(teaqlNameStorageKey, core.ValText(term)))
 	return r
 }
 func (r *CommercePlatformRequest) OrderByNameAsc() *CommercePlatformRequest {
-	r.Query.OrderAsc("name")
+	r.Query.OrderAsc(teaqlNameStorageKey)
 	return r
 }
 func (r *CommercePlatformRequest) OrderByNameDesc() *CommercePlatformRequest {
-	r.Query.OrderDesc("name")
+	r.Query.OrderDesc(teaqlNameStorageKey)
 	return r
 }
 func (r *CommercePlatformRequest) SelectCreateTime() *CommercePlatformRequest {
-	r.Query.Project("create_time")
+	r.Query.Project(teaqlCreateTimeStorageKey)
 	return r
 }
 
 func (r *CommercePlatformRequest) WithCreateTimeIs(value time.Time) *CommercePlatformRequest {
-	r.Query.AndFilter(core.ExprEq("create_time", core.ValTimestamp(value.UnixMilli())))
+	r.Query.AndFilter(core.ExprEq(teaqlCreateTimeStorageKey, core.ValTimestamp(value.UnixMilli())))
 	return r
 }
 func (r *CommercePlatformRequest) WithCreateTimeIsNot(value time.Time) *CommercePlatformRequest {
-	r.Query.AndFilter(core.ExprNe("create_time", core.ValTimestamp(value.UnixMilli())))
+	r.Query.AndFilter(core.ExprNe(teaqlCreateTimeStorageKey, core.ValTimestamp(value.UnixMilli())))
 	return r
 }
 func (r *CommercePlatformRequest) WithCreateTimeIn(values []time.Time) *CommercePlatformRequest {
@@ -439,7 +445,7 @@ func (r *CommercePlatformRequest) WithCreateTimeIn(values []time.Time) *Commerce
 	for _, value := range values {
 		converted = append(converted, core.ValTimestamp(value.UnixMilli()))
 	}
-	r.Query.AndFilter(core.ExprInList("create_time", converted))
+	r.Query.AndFilter(core.ExprInList(teaqlCreateTimeStorageKey, converted))
 	return r
 }
 func (r *CommercePlatformRequest) WithCreateTimeNotIn(values []time.Time) *CommercePlatformRequest {
@@ -447,23 +453,23 @@ func (r *CommercePlatformRequest) WithCreateTimeNotIn(values []time.Time) *Comme
 	for _, value := range values {
 		converted = append(converted, core.ValTimestamp(value.UnixMilli()))
 	}
-	r.Query.AndFilter(core.ExprNotInList("create_time", converted))
+	r.Query.AndFilter(core.ExprNotInList(teaqlCreateTimeStorageKey, converted))
 	return r
 }
 func (r *CommercePlatformRequest) WithCreateTimeGreaterThan(value time.Time) *CommercePlatformRequest {
-	r.Query.AndFilter(core.ExprGt("create_time", core.ValTimestamp(value.UnixMilli())))
+	r.Query.AndFilter(core.ExprGt(teaqlCreateTimeStorageKey, core.ValTimestamp(value.UnixMilli())))
 	return r
 }
 func (r *CommercePlatformRequest) WithCreateTimeGreaterThanOrEqualTo(value time.Time) *CommercePlatformRequest {
-	r.Query.AndFilter(core.ExprGte("create_time", core.ValTimestamp(value.UnixMilli())))
+	r.Query.AndFilter(core.ExprGte(teaqlCreateTimeStorageKey, core.ValTimestamp(value.UnixMilli())))
 	return r
 }
 func (r *CommercePlatformRequest) WithCreateTimeLessThan(value time.Time) *CommercePlatformRequest {
-	r.Query.AndFilter(core.ExprLt("create_time", core.ValTimestamp(value.UnixMilli())))
+	r.Query.AndFilter(core.ExprLt(teaqlCreateTimeStorageKey, core.ValTimestamp(value.UnixMilli())))
 	return r
 }
 func (r *CommercePlatformRequest) WithCreateTimeLessThanOrEqualTo(value time.Time) *CommercePlatformRequest {
-	r.Query.AndFilter(core.ExprLte("create_time", core.ValTimestamp(value.UnixMilli())))
+	r.Query.AndFilter(core.ExprLte(teaqlCreateTimeStorageKey, core.ValTimestamp(value.UnixMilli())))
 	return r
 }
 func (r *CommercePlatformRequest) WithCreateTimeBetween(lower time.Time, upper time.Time) *CommercePlatformRequest {
@@ -471,36 +477,36 @@ func (r *CommercePlatformRequest) WithCreateTimeBetween(lower time.Time, upper t
 	from := core.ValTimestamp(value.UnixMilli())
 	value = upper
 	to := core.ValTimestamp(value.UnixMilli())
-	r.Query.AndFilter(core.ExprBetweenNode("create_time", from, to))
+	r.Query.AndFilter(core.ExprBetweenNode(teaqlCreateTimeStorageKey, from, to))
 	return r
 }
 func (r *CommercePlatformRequest) WithCreateTimeIsKnown() *CommercePlatformRequest {
-	r.Query.AndFilter(core.ExprIsNotNullNode("create_time"))
+	r.Query.AndFilter(core.ExprIsNotNullNode(teaqlCreateTimeStorageKey))
 	return r
 }
 func (r *CommercePlatformRequest) WithCreateTimeIsUnknown() *CommercePlatformRequest {
-	r.Query.AndFilter(core.ExprIsNullNode("create_time"))
+	r.Query.AndFilter(core.ExprIsNullNode(teaqlCreateTimeStorageKey))
 	return r
 }
 func (r *CommercePlatformRequest) OrderByCreateTimeAsc() *CommercePlatformRequest {
-	r.Query.OrderAsc("create_time")
+	r.Query.OrderAsc(teaqlCreateTimeStorageKey)
 	return r
 }
 func (r *CommercePlatformRequest) OrderByCreateTimeDesc() *CommercePlatformRequest {
-	r.Query.OrderDesc("create_time")
+	r.Query.OrderDesc(teaqlCreateTimeStorageKey)
 	return r
 }
 func (r *CommercePlatformRequest) SelectUpdateTime() *CommercePlatformRequest {
-	r.Query.Project("update_time")
+	r.Query.Project(teaqlUpdateTimeStorageKey)
 	return r
 }
 
 func (r *CommercePlatformRequest) WithUpdateTimeIs(value time.Time) *CommercePlatformRequest {
-	r.Query.AndFilter(core.ExprEq("update_time", core.ValTimestamp(value.UnixMilli())))
+	r.Query.AndFilter(core.ExprEq(teaqlUpdateTimeStorageKey, core.ValTimestamp(value.UnixMilli())))
 	return r
 }
 func (r *CommercePlatformRequest) WithUpdateTimeIsNot(value time.Time) *CommercePlatformRequest {
-	r.Query.AndFilter(core.ExprNe("update_time", core.ValTimestamp(value.UnixMilli())))
+	r.Query.AndFilter(core.ExprNe(teaqlUpdateTimeStorageKey, core.ValTimestamp(value.UnixMilli())))
 	return r
 }
 func (r *CommercePlatformRequest) WithUpdateTimeIn(values []time.Time) *CommercePlatformRequest {
@@ -508,7 +514,7 @@ func (r *CommercePlatformRequest) WithUpdateTimeIn(values []time.Time) *Commerce
 	for _, value := range values {
 		converted = append(converted, core.ValTimestamp(value.UnixMilli()))
 	}
-	r.Query.AndFilter(core.ExprInList("update_time", converted))
+	r.Query.AndFilter(core.ExprInList(teaqlUpdateTimeStorageKey, converted))
 	return r
 }
 func (r *CommercePlatformRequest) WithUpdateTimeNotIn(values []time.Time) *CommercePlatformRequest {
@@ -516,23 +522,23 @@ func (r *CommercePlatformRequest) WithUpdateTimeNotIn(values []time.Time) *Comme
 	for _, value := range values {
 		converted = append(converted, core.ValTimestamp(value.UnixMilli()))
 	}
-	r.Query.AndFilter(core.ExprNotInList("update_time", converted))
+	r.Query.AndFilter(core.ExprNotInList(teaqlUpdateTimeStorageKey, converted))
 	return r
 }
 func (r *CommercePlatformRequest) WithUpdateTimeGreaterThan(value time.Time) *CommercePlatformRequest {
-	r.Query.AndFilter(core.ExprGt("update_time", core.ValTimestamp(value.UnixMilli())))
+	r.Query.AndFilter(core.ExprGt(teaqlUpdateTimeStorageKey, core.ValTimestamp(value.UnixMilli())))
 	return r
 }
 func (r *CommercePlatformRequest) WithUpdateTimeGreaterThanOrEqualTo(value time.Time) *CommercePlatformRequest {
-	r.Query.AndFilter(core.ExprGte("update_time", core.ValTimestamp(value.UnixMilli())))
+	r.Query.AndFilter(core.ExprGte(teaqlUpdateTimeStorageKey, core.ValTimestamp(value.UnixMilli())))
 	return r
 }
 func (r *CommercePlatformRequest) WithUpdateTimeLessThan(value time.Time) *CommercePlatformRequest {
-	r.Query.AndFilter(core.ExprLt("update_time", core.ValTimestamp(value.UnixMilli())))
+	r.Query.AndFilter(core.ExprLt(teaqlUpdateTimeStorageKey, core.ValTimestamp(value.UnixMilli())))
 	return r
 }
 func (r *CommercePlatformRequest) WithUpdateTimeLessThanOrEqualTo(value time.Time) *CommercePlatformRequest {
-	r.Query.AndFilter(core.ExprLte("update_time", core.ValTimestamp(value.UnixMilli())))
+	r.Query.AndFilter(core.ExprLte(teaqlUpdateTimeStorageKey, core.ValTimestamp(value.UnixMilli())))
 	return r
 }
 func (r *CommercePlatformRequest) WithUpdateTimeBetween(lower time.Time, upper time.Time) *CommercePlatformRequest {
@@ -540,36 +546,36 @@ func (r *CommercePlatformRequest) WithUpdateTimeBetween(lower time.Time, upper t
 	from := core.ValTimestamp(value.UnixMilli())
 	value = upper
 	to := core.ValTimestamp(value.UnixMilli())
-	r.Query.AndFilter(core.ExprBetweenNode("update_time", from, to))
+	r.Query.AndFilter(core.ExprBetweenNode(teaqlUpdateTimeStorageKey, from, to))
 	return r
 }
 func (r *CommercePlatformRequest) WithUpdateTimeIsKnown() *CommercePlatformRequest {
-	r.Query.AndFilter(core.ExprIsNotNullNode("update_time"))
+	r.Query.AndFilter(core.ExprIsNotNullNode(teaqlUpdateTimeStorageKey))
 	return r
 }
 func (r *CommercePlatformRequest) WithUpdateTimeIsUnknown() *CommercePlatformRequest {
-	r.Query.AndFilter(core.ExprIsNullNode("update_time"))
+	r.Query.AndFilter(core.ExprIsNullNode(teaqlUpdateTimeStorageKey))
 	return r
 }
 func (r *CommercePlatformRequest) OrderByUpdateTimeAsc() *CommercePlatformRequest {
-	r.Query.OrderAsc("update_time")
+	r.Query.OrderAsc(teaqlUpdateTimeStorageKey)
 	return r
 }
 func (r *CommercePlatformRequest) OrderByUpdateTimeDesc() *CommercePlatformRequest {
-	r.Query.OrderDesc("update_time")
+	r.Query.OrderDesc(teaqlUpdateTimeStorageKey)
 	return r
 }
 func (r *CommercePlatformRequest) SelectVersion() *CommercePlatformRequest {
-	r.Query.Project("version")
+	r.Query.Project(teaqlVersionStorageKey)
 	return r
 }
 
 func (r *CommercePlatformRequest) WithVersionIs(value int64) *CommercePlatformRequest {
-	r.Query.AndFilter(core.ExprEq("version", core.ValI64(value)))
+	r.Query.AndFilter(core.ExprEq(teaqlVersionStorageKey, core.ValI64(value)))
 	return r
 }
 func (r *CommercePlatformRequest) WithVersionIsNot(value int64) *CommercePlatformRequest {
-	r.Query.AndFilter(core.ExprNe("version", core.ValI64(value)))
+	r.Query.AndFilter(core.ExprNe(teaqlVersionStorageKey, core.ValI64(value)))
 	return r
 }
 func (r *CommercePlatformRequest) WithVersionIn(values []int64) *CommercePlatformRequest {
@@ -577,7 +583,7 @@ func (r *CommercePlatformRequest) WithVersionIn(values []int64) *CommercePlatfor
 	for _, value := range values {
 		converted = append(converted, core.ValI64(value))
 	}
-	r.Query.AndFilter(core.ExprInList("version", converted))
+	r.Query.AndFilter(core.ExprInList(teaqlVersionStorageKey, converted))
 	return r
 }
 func (r *CommercePlatformRequest) WithVersionNotIn(values []int64) *CommercePlatformRequest {
@@ -585,23 +591,23 @@ func (r *CommercePlatformRequest) WithVersionNotIn(values []int64) *CommercePlat
 	for _, value := range values {
 		converted = append(converted, core.ValI64(value))
 	}
-	r.Query.AndFilter(core.ExprNotInList("version", converted))
+	r.Query.AndFilter(core.ExprNotInList(teaqlVersionStorageKey, converted))
 	return r
 }
 func (r *CommercePlatformRequest) WithVersionGreaterThan(value int64) *CommercePlatformRequest {
-	r.Query.AndFilter(core.ExprGt("version", core.ValI64(value)))
+	r.Query.AndFilter(core.ExprGt(teaqlVersionStorageKey, core.ValI64(value)))
 	return r
 }
 func (r *CommercePlatformRequest) WithVersionGreaterThanOrEqualTo(value int64) *CommercePlatformRequest {
-	r.Query.AndFilter(core.ExprGte("version", core.ValI64(value)))
+	r.Query.AndFilter(core.ExprGte(teaqlVersionStorageKey, core.ValI64(value)))
 	return r
 }
 func (r *CommercePlatformRequest) WithVersionLessThan(value int64) *CommercePlatformRequest {
-	r.Query.AndFilter(core.ExprLt("version", core.ValI64(value)))
+	r.Query.AndFilter(core.ExprLt(teaqlVersionStorageKey, core.ValI64(value)))
 	return r
 }
 func (r *CommercePlatformRequest) WithVersionLessThanOrEqualTo(value int64) *CommercePlatformRequest {
-	r.Query.AndFilter(core.ExprLte("version", core.ValI64(value)))
+	r.Query.AndFilter(core.ExprLte(teaqlVersionStorageKey, core.ValI64(value)))
 	return r
 }
 func (r *CommercePlatformRequest) WithVersionBetween(lower int64, upper int64) *CommercePlatformRequest {
@@ -609,23 +615,23 @@ func (r *CommercePlatformRequest) WithVersionBetween(lower int64, upper int64) *
 	from := core.ValI64(value)
 	value = upper
 	to := core.ValI64(value)
-	r.Query.AndFilter(core.ExprBetweenNode("version", from, to))
+	r.Query.AndFilter(core.ExprBetweenNode(teaqlVersionStorageKey, from, to))
 	return r
 }
 func (r *CommercePlatformRequest) WithVersionIsKnown() *CommercePlatformRequest {
-	r.Query.AndFilter(core.ExprIsNotNullNode("version"))
+	r.Query.AndFilter(core.ExprIsNotNullNode(teaqlVersionStorageKey))
 	return r
 }
 func (r *CommercePlatformRequest) WithVersionIsUnknown() *CommercePlatformRequest {
-	r.Query.AndFilter(core.ExprIsNullNode("version"))
+	r.Query.AndFilter(core.ExprIsNullNode(teaqlVersionStorageKey))
 	return r
 }
 func (r *CommercePlatformRequest) OrderByVersionAsc() *CommercePlatformRequest {
-	r.Query.OrderAsc("version")
+	r.Query.OrderAsc(teaqlVersionStorageKey)
 	return r
 }
 func (r *CommercePlatformRequest) OrderByVersionDesc() *CommercePlatformRequest {
-	r.Query.OrderDesc("version")
+	r.Query.OrderDesc(teaqlVersionStorageKey)
 	return r
 }
 
@@ -1567,52 +1573,52 @@ func (r *CommercePlatformRequest) CountAs(alias string) *CommercePlatformRequest
 
 
 func (r *CommercePlatformRequest) GroupById() *CommercePlatformRequest {
-	r.Query.WithGroupBy("id")
+	r.Query.WithGroupBy(teaqlIdStorageKey)
 	return r
 }
 
 func (r *CommercePlatformRequest) GroupByIdAs(alias string) *CommercePlatformRequest {
-	r.Query.WithGroupBy("id")
-	r.Query.ProjectExpr(alias, core.ExprColumnNode("id"))
+	r.Query.WithGroupBy(teaqlIdStorageKey)
+	r.Query.ProjectExpr(alias, core.ExprColumnNode(teaqlIdStorageKey))
 	return r
 }
 func (r *CommercePlatformRequest) GroupByName() *CommercePlatformRequest {
-	r.Query.WithGroupBy("name")
+	r.Query.WithGroupBy(teaqlNameStorageKey)
 	return r
 }
 
 func (r *CommercePlatformRequest) GroupByNameAs(alias string) *CommercePlatformRequest {
-	r.Query.WithGroupBy("name")
-	r.Query.ProjectExpr(alias, core.ExprColumnNode("name"))
+	r.Query.WithGroupBy(teaqlNameStorageKey)
+	r.Query.ProjectExpr(alias, core.ExprColumnNode(teaqlNameStorageKey))
 	return r
 }
 func (r *CommercePlatformRequest) GroupByCreateTime() *CommercePlatformRequest {
-	r.Query.WithGroupBy("create_time")
+	r.Query.WithGroupBy(teaqlCreateTimeStorageKey)
 	return r
 }
 
 func (r *CommercePlatformRequest) GroupByCreateTimeAs(alias string) *CommercePlatformRequest {
-	r.Query.WithGroupBy("create_time")
-	r.Query.ProjectExpr(alias, core.ExprColumnNode("create_time"))
+	r.Query.WithGroupBy(teaqlCreateTimeStorageKey)
+	r.Query.ProjectExpr(alias, core.ExprColumnNode(teaqlCreateTimeStorageKey))
 	return r
 }
 func (r *CommercePlatformRequest) GroupByUpdateTime() *CommercePlatformRequest {
-	r.Query.WithGroupBy("update_time")
+	r.Query.WithGroupBy(teaqlUpdateTimeStorageKey)
 	return r
 }
 
 func (r *CommercePlatformRequest) GroupByUpdateTimeAs(alias string) *CommercePlatformRequest {
-	r.Query.WithGroupBy("update_time")
-	r.Query.ProjectExpr(alias, core.ExprColumnNode("update_time"))
+	r.Query.WithGroupBy(teaqlUpdateTimeStorageKey)
+	r.Query.ProjectExpr(alias, core.ExprColumnNode(teaqlUpdateTimeStorageKey))
 	return r
 }
 func (r *CommercePlatformRequest) GroupByVersion() *CommercePlatformRequest {
-	r.Query.WithGroupBy("version")
+	r.Query.WithGroupBy(teaqlVersionStorageKey)
 	return r
 }
 
 func (r *CommercePlatformRequest) GroupByVersionAs(alias string) *CommercePlatformRequest {
-	r.Query.WithGroupBy("version")
-	r.Query.ProjectExpr(alias, core.ExprColumnNode("version"))
+	r.Query.WithGroupBy(teaqlVersionStorageKey)
+	r.Query.ProjectExpr(alias, core.ExprColumnNode(teaqlVersionStorageKey))
 	return r
 }

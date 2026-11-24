@@ -1,0 +1,48 @@
+{
+  "generatedDomainLibraryHandEdited": false,
+  "goalId": "go:examples/mutation-policy",
+  "library": {
+    "generatedFilesManifestSHA256": "197f5b4c408b2bc54895821280431213687d289cf6f2a9dc430357d06368be4b",
+    "root": "golang-lib-core",
+    "scope": "golang-lib-core"
+  },
+  "model": {
+    "path": "model.xml",
+    "sha256": "55d87208e2f03d597c194ec4c976a446807f2a004547fec55b5916608a135628"
+  },
+  "producer": {
+    "generator": {
+      "artifactKind": "qualified source build",
+      "jarSHA256": "029f602cf0e2de4ec0910495c340fbeb41f11772b6aca875569f498811158e7d",
+      "qualificationReceiptSHA256": "1012520de60d49cfc1e45c7e08fcf204dd2db36a163909e1e36752065a31047a",
+      "sourceCommit": "99d6bde2351d79b7d8b1b1c5cbc78c5dc777b6f2",
+      "tag": "unreleased-source-99d6bde2"
+    },
+    "receipt": "teaql-conformance/evidence/2026-11-20-example-showcase-remediation/customer-approval-first-order-school-schema-generation/receipt.json",
+    "receiptSHA256": "0dfc2d5e5752541338c6f29613e7fa50fc28465c9ad059f9aacffce3c3d60424"
+  },
+  "qualification": {
+    "businessReceipt": "teaql-conformance/evidence/2026-11-20-example-showcase-remediation/go-mutation-policy-generated-entity-key/runtime/mutation-policy/receipt.json",
+    "businessReceiptSHA256": "46535b227d22b8cc2c058a129645e95220c5c87c6c4ec833a4150b2db711931c",
+    "nativeReceipt": "teaql-conformance/evidence/2026-11-20-example-showcase-remediation/go-mutation-policy-generated-entity-key/receipt.json",
+    "nativeReceiptSHA256": "729722445395233bcb9362bdb7259a27c15c9e030c4d64ffd796d481f8a66eeb",
+    "remainingFullRuntimeInventory": true,
+    "sourceCommit": "60224b0036813f77a9a5bb5d0263b91094800f1a"
+  },
+  "scene": "Approve a customer profile and contact preference",
+  "schema": "teaql.model-workspace-showcase/v1",
+  "status": "focused-verified",
+  "verification": [
+    "golang-app-console/src/main.go"
+  ],
+  "workspace": {
+    "applicationOwnedFiles": [
+      "src/main.go",
+      "calibration/main.go",
+      "go.mod"
+    ],
+    "generatedFilesManifestSHA256": "35050e49889c0cbe7a0584e08e690fccb5887c6809b5af8ecc5466007d935abe",
+    "root": "golang-app-console",
+    "scope": "golang-app-console"
+  }
+}

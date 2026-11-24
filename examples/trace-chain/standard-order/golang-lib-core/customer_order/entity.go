@@ -1,0 +1,995 @@
+package customer_order
+
+import (
+	stdcontext "context"
+	"errors"
+	"fmt"
+	"reflect"
+	"strings"
+
+	"time"
+	"github.com/shopspring/decimal"
+	"github.com/teaql/teaql-golang/core"
+	"github.com/teaql/teaql-golang/data_service"
+	"github.com/teaql/teaql-golang/runtime"
+	"request-tree-order-service-core-workspace/lib/internal/generatedjson"
+	"request-tree-order-service-core-workspace/lib/order_item"
+)
+
+var (
+	_ = time.Time{}
+	_ = decimal.Decimal{}
+	_ = fmt.Sprint
+	_ = strings.Join
+	_ = errors.As
+)
+
+const (
+    teaqlIdStorageKey = "id"
+    teaqlIdModelKey = "id"
+    teaqlCustomerStorageKey = "customer_id"
+    teaqlCustomerModelKey = "customer"
+    teaqlStatusStorageKey = "status_id"
+    teaqlStatusModelKey = "status"
+    teaqlOrderNumberStorageKey = "order_number"
+    teaqlOrderNumberModelKey = "order_number"
+    teaqlOrderDateStorageKey = "order_date"
+    teaqlOrderDateModelKey = "order_date"
+    teaqlTotalAmountStorageKey = "total_amount"
+    teaqlTotalAmountModelKey = "total_amount"
+    teaqlVersionStorageKey = "version"
+    teaqlVersionModelKey = "version"
+)
+
+
+type CustomerOrder struct {
+	base        *core.BaseEntityData
+	loadedSnapshot core.LoadedScalarSnapshot
+	creationState core.EntityCreationState
+	dirtyFields map[string]bool
+	isNew       bool
+	markedAsDelete bool
+	comment     *string
+	purpose     *string
+	loadState   map[string]bool
+	restrictLoadState bool
+	root        *core.EntityRoot
+	ledgerID    core.Value
+	relations   map[string]core.Entity
+	loadedRelations map[string]bool
+	orderItemList *OrderItemList
+}
+
+type OrderItemList struct {
+	items *core.SmartList[*order_item.OrderItem]
+}
+
+func newOrderItemList() *OrderItemList {
+	return &OrderItemList{items: core.NewSmartList([]*order_item.OrderItem{})}
+}
+
+func (l *OrderItemList) teaqlRows() *core.SmartList[*order_item.OrderItem] {
+	if l.items == nil { l.items = core.NewSmartList([]*order_item.OrderItem{}) }
+	return l.items
+}
+
+func (l *OrderItemList) Add(entity *order_item.OrderItem) {
+	l.teaqlRows().Push(entity)
+}
+
+// Set replaces one local relation member without changing its query metadata.
+func (l *OrderItemList) Set(index int, entity *order_item.OrderItem) {
+	l.teaqlRows().Set(index, entity)
+}
+
+func (l *OrderItemList) Items() []*order_item.OrderItem {
+	return l.teaqlRows().IntoVec()
+}
+
+func (l *OrderItemList) IsLoaded() bool { return l.teaqlRows().IsLoaded }
+
+// SmartList returns a detached query snapshot; writing it cannot change the owner's load state.
+func (l *OrderItemList) SmartList() *core.SmartList[*order_item.OrderItem] {
+	return core.MapSmartList(l.teaqlRows(), func(entity *order_item.OrderItem) *order_item.OrderItem { return entity })
+}
+// CustomerFacet reads metadata of the selected relation; it never queries the database.
+func (e *CustomerOrder) CustomerFacet(name string) (*core.SmartList[core.Record], bool) {
+	return e.base.RelationFacet("customerEntity", name)
+}
+
+// StatusFacet reads metadata of the selected relation; it never queries the database.
+func (e *CustomerOrder) StatusFacet(name string) (*core.SmartList[core.Record], bool) {
+	return e.base.RelationFacet("statusEntity", name)
+}
+// OrderItemListFacet reads this parent's collection facet, not a global count.
+func (e *CustomerOrder) OrderItemListFacet(name string) (*core.SmartList[core.Record], bool) {
+	return e.base.RelationFacet("orderItemList", name)
+}
+
+// newUninitialized allocates only local carriers; it does not grant insert intent.
+func newUninitializedCustomerOrder() *CustomerOrder {
+	entity := &CustomerOrder{
+		base:        core.NewBaseEntityData(),
+		dirtyFields: make(map[string]bool),
+		loadState:   make(map[string]bool),
+		root:        core.NewEntityRoot(),
+		ledgerID:    core.ValU64(0),
+		relations:   make(map[string]core.Entity),
+		loadedRelations: make(map[string]bool),
+		orderItemList: newOrderItemList(),
+	}
+	return entity
+}
+
+// New reserves through Context before constructing mutation state or defaults.
+func NewCustomerOrder(context *runtime.UserContext) (*CustomerOrder, error) {
+	if context == nil { return nil, &core.EntityCreationError{Entity: "Customer Order"} }
+	id, err := context.GenerateInternalId("Customer Order")
+	if err != nil { return nil, err }
+	entity := newUninitializedCustomerOrder()
+	entity.UpdateId(id)
+	if err := entity.creationState.Reserve(entity.EntityName(), id); err != nil { return nil, err }
+	entity.isNew = true
+	entity.root.MarkAsNew(entity.EntityKey())
+	initialized := context.InitializeEntity("CustomerOrder", entity)
+	typed, ok := initialized.(*CustomerOrder)
+	if !ok || typed == nil { return nil, fmt.Errorf("entity initializer changed CustomerOrder to an incompatible type") }
+	typed.teaqlEnsureState()
+	if err := typed.creationState.Reserve(typed.EntityName(), id); err != nil { return nil, err }
+	typed.UpdateId(id)
+	if err := typed.base.RecordAllocatedID(id); err != nil { return nil, err }
+	typed.isNew = true
+	typed.root.MarkAsNew(typed.EntityKey())
+	return typed, nil
+}
+
+// A hydrated read view is independent and never starts an insert ledger.
+func newLoadedCustomerOrder() *CustomerOrder {
+	entity := newUninitializedCustomerOrder()
+	entity.creationState.Hydrated()
+	entity.orderItemList.teaqlRows().IsLoaded = false
+	return entity
+}
+
+func (e *CustomerOrder) teaqlEnsureState() {
+	if e.base == nil { e.base = core.NewBaseEntityData() }
+	if e.root == nil { e.root = core.NewEntityRoot() }
+	if e.dirtyFields == nil { e.dirtyFields = make(map[string]bool) }
+	if e.loadState == nil { e.loadState = make(map[string]bool) }
+	if e.relations == nil { e.relations = make(map[string]core.Entity) }
+	if e.loadedRelations == nil { e.loadedRelations = make(map[string]bool) }
+}
+
+func (e *CustomerOrder) EntityKey() core.EntityKey {
+	e.teaqlEnsureState()
+	if e.base.Id != 0 { return core.NewEntityKey(e.EntityName(), core.ValU64(e.base.Id)) }
+	return core.NewEntityKey(e.EntityName(), e.ledgerID)
+}
+
+func (e *CustomerOrder) EntityRoot() *core.EntityRoot { return e.root }
+
+func (e *CustomerOrder) AttachEntityRoot(root *core.EntityRoot) {
+	if root == nil || root == e.root { return }
+	root.MergeFrom(e.root)
+	if root.CompositionError() != nil { return }
+	e.root = root
+		for _, child := range e.orderItemList.Items() { child.AttachEntityRoot(root) }
+}
+
+func (e *CustomerOrder) RelationEntity(name string) (core.Entity, bool) {
+	value, ok := e.relations[name]
+	return value, ok
+}
+
+func (e *CustomerOrder) setRelationEntity(name string, value core.Entity) {
+	e.relations[name] = value
+}
+
+func (e *CustomerOrder) markRelationLoaded(name string) {
+	e.loadedRelations[name] = true
+	if name == "orderItemList" || name == "order_item_list" { e.orderItemList.teaqlRows().IsLoaded = true }
+}
+
+func (e *CustomerOrder) isRelationLoaded(name string) bool {
+	return e.loadedRelations[name]
+}
+
+func (e *CustomerOrder) MarkLoadedOnly(fields ...string) *CustomerOrder {
+	e.restrictLoadState = true
+	e.loadState = make(map[string]bool, len(fields))
+	for _, field := range fields { e.loadState[field] = true }
+	return e
+}
+
+func (e *CustomerOrder) IsLoaded(field string) bool {
+	if e.isNew && !e.restrictLoadState { return true }
+	return e.loadState[field]
+}
+
+func (e *CustomerOrder) EntityName() string {
+	return "Customer Order"
+}
+
+func (e *CustomerOrder) EntityDescriptor() *core.EntityDescriptor {
+	return nil // Handled by runtime context in Go
+}
+
+func (e *CustomerOrder) Base() *core.BaseEntityData {
+	return e.base
+}
+
+func (e *CustomerOrder) IdValue() core.Value {
+	return core.ValU64(e.base.Id)
+}
+
+
+
+// FromRecord replaces this entity's loaded snapshot and its obsolete pending
+// intent only after validation. Other entities in the ledger are unaffected.
+func (e *CustomerOrder) FromRecord(record core.Record) error {
+	return e.teaqlFromRecord(record, true)
+}
+
+func (e *CustomerOrder) teaqlFromRecord(record core.Record, captureLoaded bool) error {
+	e.teaqlEnsureState()
+	oldKey := e.EntityKey()
+	base, err := core.BaseEntityDataFromRecord(record)
+	if err != nil {
+		return err
+	}
+	if captureLoaded {
+		e.root.ClearEntity(oldKey)
+		e.markedAsDelete = false
+		e.creationState.Hydrated()
+	} else {
+		base.PreserveAllocatedIDFrom(e.base)
+	}
+	e.base = base
+	e.root.Rekey(oldKey, e.EntityKey())
+	e.root.SetOriginalVersion(e.EntityKey(), e.base.Version)
+	e.isNew = false
+	e.dirtyFields = make(map[string]bool)
+	e.loadState = make(map[string]bool, len(record))
+	e.restrictLoadState = true
+	for field := range record { e.loadState[field] = true }
+	if captureLoaded { e.loadedSnapshot = e.teaqlLoadedScalarSnapshot(e.IntoRecord()) }
+	return nil
+}
+
+func (e *CustomerOrder) teaqlScalarSnapshot(record core.Record) core.LoadedScalarSnapshot {
+	return core.NewLoadedScalarSnapshot(record, teaqlIdStorageKey, teaqlCustomerStorageKey, teaqlStatusStorageKey, teaqlOrderNumberStorageKey, teaqlOrderDateStorageKey, teaqlTotalAmountStorageKey, teaqlVersionStorageKey)
+}
+
+func (e *CustomerOrder) teaqlLoadedScalarSnapshot(record core.Record) core.LoadedScalarSnapshot {
+	return core.NewOwnedLoadedScalarSnapshot(e.EntityKey(), e.base.Version, record, teaqlIdStorageKey, teaqlCustomerStorageKey, teaqlStatusStorageKey, teaqlOrderNumberStorageKey, teaqlOrderDateStorageKey, teaqlTotalAmountStorageKey, teaqlVersionStorageKey)
+}
+
+func (e *CustomerOrder) teaqlAcceptPersisted(context *runtime.UserContext, record core.Record) error {
+	if err := e.teaqlFromRecord(record, false); err != nil { return err }
+	committed := e.teaqlLoadedScalarSnapshot(record)
+	context.AfterGraphCommit(func() { e.loadedSnapshot = committed; e.creationState.Hydrated() })
+	return nil
+}
+
+// Capture only the explicitly composed owned graph; no shared Context state.
+func (e *CustomerOrder) TeaqlPrivacyEntries() []data_service.MutationPrivacyEntry {
+	entries := []data_service.MutationPrivacyEntry{
+		data_service.NewMutationPrivacyEntry(e.EntityName(), e.loadedSnapshot.Values()),
+		data_service.NewMutationPrivacyEntry(e.EntityName(), e.teaqlScalarSnapshot(e.IntoRecord()).Values()),
+	}
+	for _, child := range e.orderItemList.Items() {
+		entries = append(entries, child.TeaqlPrivacyEntries()...)
+	}
+	return entries
+}
+
+func (e *CustomerOrder) IntoRecord() core.Record {
+	rec := e.base.ToRecord()
+	if e.isNew && e.base.Id == 0 {
+		delete(rec, "id")
+	}
+	return rec
+}
+
+func (e *CustomerOrder) DirtyFields() []string {
+	var fields []string
+	for k, v := range e.dirtyFields {
+		if v {
+			fields = append(fields, k)
+		}
+	}
+	return fields
+}
+
+func (e *CustomerOrder) IsMarkedAsDelete() bool {
+	return e.markedAsDelete
+}
+
+func (e *CustomerOrder) MarkForDeletion() *CustomerOrder {
+	e.markedAsDelete = true
+	e.root.MarkAsDeleted(e.EntityKey())
+	return e
+}
+
+func (e *CustomerOrder) IsNew() bool {
+	return e.isNew
+}
+
+func (e *CustomerOrder) MarkAsNew() {
+	e.isNew = true
+}
+
+func (e *CustomerOrder) GetComment() *string {
+	return e.comment
+}
+
+func (e *CustomerOrder) SetComment(comment string) {
+	e.comment = &comment
+}
+
+func (e *CustomerOrder) AuditAs(comment string) *CustomerOrder {
+	if _, err := core.NewMutationIntent(&comment); err != nil { panic(err) }
+	e.comment = &comment
+	return e
+}
+
+func (e *CustomerOrder) Comment(comment string) *CustomerOrder {
+	e.comment = &comment
+	return e
+}
+
+func (e *CustomerOrder) Purpose(purpose string) *CustomerOrder {
+	e.purpose = &purpose
+	return e
+}
+
+func (e *CustomerOrder) OriginalValues() core.Record {
+	return make(core.Record) // Basic implementation
+}
+
+func (e *CustomerOrder) OnLoaded(context any) {
+}
+
+func (e *CustomerOrder) IntoJson() any {
+	return e // encoding/json dispatches MarshalJSON and preserves any error.
+}
+
+func (e *CustomerOrder) ToJSON(profile ...runtime.JsonFieldNamingProfile) ([]byte, error) {
+	return generatedjson.Model.Serialize(e.EntityName(), e, profile...)
+}
+
+func (e *CustomerOrder) MarshalJSON() ([]byte, error) { return e.ToJSON() }
+
+// Only aliases captured from an executed query are public query properties.
+// Never dump Base().Dynamic: it also contains modeled and private runtime data.
+func (e *CustomerOrder) JSONQueryProperties() core.Record { return e.base.QueryProperties() }
+
+// Only shallow loaded values escape. Related documents are visited lazily by
+// the runtime codec under its depth, byte and cycle guards.
+func (e *CustomerOrder) LoadedJSONFields() core.Record {
+	all := e.IntoRecord()
+	selected := make(core.Record)
+	if e.IsLoaded(teaqlIdStorageKey) { if value, present := all[teaqlIdStorageKey]; present { selected[teaqlIdStorageKey] = value } }
+	if e.IsLoaded(teaqlCustomerStorageKey) { if value, present := all[teaqlCustomerStorageKey]; present { selected[teaqlCustomerStorageKey] = value } }
+	if e.IsLoaded(teaqlStatusStorageKey) { if value, present := all[teaqlStatusStorageKey]; present { selected[teaqlStatusStorageKey] = value } }
+	if e.IsLoaded(teaqlOrderNumberStorageKey) { if value, present := all[teaqlOrderNumberStorageKey]; present { selected[teaqlOrderNumberStorageKey] = value } }
+	if e.IsLoaded(teaqlOrderDateStorageKey) { if value, present := all[teaqlOrderDateStorageKey]; present { selected[teaqlOrderDateStorageKey] = value } }
+	if e.IsLoaded(teaqlTotalAmountStorageKey) { if value, present := all[teaqlTotalAmountStorageKey]; present { selected[teaqlTotalAmountStorageKey] = value } }
+	if e.IsLoaded(teaqlVersionStorageKey) { if value, present := all[teaqlVersionStorageKey]; present { selected[teaqlVersionStorageKey] = value } }
+	if e.isRelationLoaded("customerEntity") { if target, present := e.relations["customerEntity"]; present && target != nil { selected["customerEntity"] = core.Value{V: target} } }
+	if e.isRelationLoaded("statusEntity") { if target, present := e.relations["statusEntity"]; present && target != nil { selected["statusEntity"] = core.Value{V: target} } }
+	includeOrderItemList := e.OrderItemList().IsLoaded()
+	for _, child := range e.OrderItemList().Items() { if child.IsNew() || child.IsMarkedAsDelete() || len(child.EntityRoot().Change(child.EntityKey())) > 0 { includeOrderItemList = true } }
+	if includeOrderItemList {
+		items := make([]core.Value, 0, len(e.OrderItemList().Items()))
+		for _, child := range e.OrderItemList().Items() { items = append(items, core.Value{V: child}) }
+		selected["orderItemList"] = core.ValList(items)
+	}
+	return selected
+}
+
+// Generated infrastructure used by the facade's typed factories. It never
+// replaces an existing caller-owned entity or imports a parent entity package.
+func TeaqlCustomerOrderFromJSONRecord(record core.Record, factory func(string, core.Record) (core.Entity, error)) (*CustomerOrder, error) {
+	entity := newLoadedCustomerOrder()
+	if err := entity.FromRecord(record); err != nil { return nil, err }
+	if value, selected := record["customerEntity"]; selected {
+		entity.markRelationLoaded("customerEntity")
+		if !value.IsNull() {
+			targetRecord, ok := value.TryObject(); if !ok { return nil, fmt.Errorf("invalid generated JSON relation record") }
+			target, err := factory("Customer", targetRecord); if err != nil { return nil, err }
+			entity.setRelationEntity("customerEntity", target)
+		}
+	}
+	if value, selected := record["statusEntity"]; selected {
+		entity.markRelationLoaded("statusEntity")
+		if !value.IsNull() {
+			targetRecord, ok := value.TryObject(); if !ok { return nil, fmt.Errorf("invalid generated JSON relation record") }
+			target, err := factory("Order Status", targetRecord); if err != nil { return nil, err }
+			entity.setRelationEntity("statusEntity", target)
+		}
+	}
+	if value, selected := record["orderItemList"]; selected {
+		items, ok := value.TryList(); if !ok { return nil, fmt.Errorf("invalid generated JSON collection record") }
+		for _, item := range items {
+			childRecord, ok := item.TryObject(); if !ok { return nil, fmt.Errorf("invalid generated JSON child record") }
+			child, err := factory("Order Item", childRecord); if err != nil { return nil, err }
+			typed, ok := child.(*order_item.OrderItem); if !ok { return nil, fmt.Errorf("unexpected generated JSON child type") }
+			typed.AttachEntityRoot(entity.root)
+			entity.OrderItemList().Add(typed)
+		}
+	}
+	return entity, nil
+}
+
+func (e *CustomerOrder) Save(context *runtime.UserContext) (*CustomerOrder, error) {
+	if e == nil || e.base == nil || e.root == nil { return nil, &core.EntityCreationError{Entity: "Customer Order"} }
+	intent, intentErr := core.NewMutationIntent(e.comment)
+	if intentErr != nil { return nil, intentErr }
+	var saved *CustomerOrder
+	var privacy *data_service.MutationPrivacy
+	err := context.ExecutePreparedGraphSave(intent, func() (*runtime.MutationPlan, error) {
+		if preflightErr := e.TeaqlPreflightGraph(context, intent); preflightErr != nil { return nil, preflightErr }
+		privacy = data_service.NewMutationPrivacy(e.TeaqlPrivacyEntries()...)
+		auditReason := intent.AuditReason()
+		return runtime.MutationPlanFromEntityRoot(e.root, e.EntityName(), auditReason), nil
+	}, func() error {
+		var innerErr error
+		saved, innerErr = e.TeaqlSaveWithinGraph(context, intent, nil, privacy)
+		return innerErr
+	})
+	return saved, err
+}
+
+// TeaqlPreflightGraph runs Checker/Fix for the complete aggregate before the
+// first provider mutation. It is generated infrastructure, not application API.
+func (e *CustomerOrder) TeaqlPreflightGraph(context *runtime.UserContext, intent core.MutationIntent) error {
+	if e == nil || e.base == nil || e.root == nil { return &core.EntityCreationError{Entity: "Customer Order"} }
+	if err := intent.Validate(); err != nil { return err }
+	if err := e.TeaqlPrepareMutationViews(context); err != nil { return err }
+	if err := e.TeaqlNormalizeMutationGraph(context); err != nil { return err }
+	if err := context.ValidateGraphMutationVersions(e.root); err != nil { return err }
+	if err := e.TeaqlAdmitMutationGraph(context); err != nil { return err }
+	return e.TeaqlPreflightWithinGraph(context, intent, nil)
+}
+
+// Preserve instance-local intent before automatic ledger attachment can merge
+// aliases. Known-baseline equal assignments are not writable intent.
+func (e *CustomerOrder) TeaqlPrepareMutationViews(context *runtime.UserContext) error {
+	if e == nil || e.base == nil || e.root == nil { return &core.EntityCreationError{Entity: "Customer Order"} }
+	if e.isNew { if err := e.creationState.RequireNew(e.EntityName(), e.base.Id); err != nil { return err } }
+	if e.isNew && e.markedAsDelete { return nil }
+	restoredFields, err := context.DiscardRestoredScalarChanges(e.root, e.EntityKey(), e.loadedSnapshot)
+	if err != nil { return err }
+	for _, field := range restoredFields { delete(e.dirtyFields, field) }
+	if e.isNew || e.markedAsDelete || len(e.root.Change(e.EntityKey())) > 0 {
+		if err := context.AdmitPreparedGraphEntityView(e.EntityKey(), e); err != nil { return err }
+	}
+	for index, child := range e.orderItemList.Items() {
+		if child.IsNew() && child.IsMarkedAsDelete() { continue }
+		if err := child.TeaqlPrepareMutationViews(context); err != nil {
+			var checkError *runtime.RuntimeError
+			if errors.As(err, &checkError) && checkError.Type == "Check" {
+				prefix := runtime.Location().Property("order_item_list").At(index)
+				prefixed := make([]runtime.CheckResult, len(checkError.CheckResults))
+				for resultIndex, result := range checkError.CheckResults { prefixed[resultIndex] = result.PrefixedBy(prefix) }
+				context.TranslateCheckResults(prefixed)
+				return &runtime.RuntimeError{Type: "Check", CheckResults: prefixed}
+			}
+			return fmt.Errorf("prepare views from orderItemList: %w", err)
+		}
+	}
+	return nil
+}
+
+// Cancel known-baseline equal assignments and attach the complete pending graph
+// before the first Checker, Fix, business-ID allocation or version admission.
+func (e *CustomerOrder) TeaqlNormalizeMutationGraph(context *runtime.UserContext) error {
+	if e.isNew && e.markedAsDelete { return nil }
+	restoredFields, err := context.DiscardRestoredScalarChanges(e.root, e.EntityKey(), e.loadedSnapshot)
+	if err != nil { return err }
+	for _, field := range restoredFields { delete(e.dirtyFields, field) }
+	for index, child := range e.orderItemList.Items() {
+		if child.IsNew() && child.IsMarkedAsDelete() { continue }
+		child.AttachEntityRoot(e.root)
+		parentID := core.ValU64(e.base.Id)
+		if e.base.Id == 0 { parentID = e.ledgerID }
+		child.Base().PutDynamic("customer_order_id", parentID)
+		if err := child.TeaqlNormalizeMutationGraph(context); err != nil {
+			var checkError *runtime.RuntimeError
+			if errors.As(err, &checkError) && checkError.Type == "Check" {
+				prefix := runtime.Location().Property("order_item_list").At(index)
+				prefixed := make([]runtime.CheckResult, len(checkError.CheckResults))
+				for resultIndex, result := range checkError.CheckResults { prefixed[resultIndex] = result.PrefixedBy(prefix) }
+				context.TranslateCheckResults(prefixed)
+				return &runtime.RuntimeError{Type: "Check", CheckResults: prefixed}
+			}
+			return fmt.Errorf("normalize child from orderItemList: %w", err)
+		}
+	}
+	return nil
+}
+
+// Admit all writable object instances before any Checker/Fix can rewrite a
+// carrier. Explicit compatible ledger composition into one view stays legal.
+func (e *CustomerOrder) TeaqlAdmitMutationGraph(context *runtime.UserContext) error {
+	if e.isNew && e.markedAsDelete { return nil }
+	if e.isNew || e.markedAsDelete || len(e.root.Change(e.EntityKey())) > 0 {
+		if err := context.AdmitPreparedGraphEntityView(e.EntityKey(), e); err != nil { return err }
+	}
+	if err := runtime.RememberPreparedGraphRelation(context, e.EntityKey(), "order_item_list", func() []*order_item.OrderItem {
+		if e.orderItemList == nil { return nil }
+		return e.orderItemList.Items()
+	}); err != nil { return err }
+	for index, child := range e.orderItemList.Items() {
+		if child.IsNew() && child.IsMarkedAsDelete() { continue }
+		if err := child.TeaqlAdmitMutationGraph(context); err != nil {
+			var checkError *runtime.RuntimeError
+			if errors.As(err, &checkError) && checkError.Type == "Check" {
+				prefix := runtime.Location().Property("order_item_list").At(index)
+				prefixed := make([]runtime.CheckResult, len(checkError.CheckResults))
+				for resultIndex, result := range checkError.CheckResults { prefixed[resultIndex] = result.PrefixedBy(prefix) }
+				context.TranslateCheckResults(prefixed)
+				return &runtime.RuntimeError{Type: "Check", CheckResults: prefixed}
+			}
+			return fmt.Errorf("admit child from orderItemList: %w", err)
+		}
+	}
+	return nil
+}
+
+func (e *CustomerOrder) TeaqlPreflightWithinGraph(context *runtime.UserContext, intent core.MutationIntent, parent *core.EntityKey) error {
+	if err := intent.Validate(); err != nil { return err }
+	if e.isNew && e.markedAsDelete {
+		if parent == nil { return fmt.Errorf("cancelled new root %s: create-then-delete has no persisted entity to return", e.EntityName()) }
+		return nil
+	}
+	if err := context.PrepareGraphMutationLineage(e.root, e.EntityKey(), parent, intent, e.comment); err != nil { return err }
+	restoredFields, err := context.DiscardRestoredScalarChanges(e.root, e.EntityKey(), e.loadedSnapshot)
+	if err != nil { return err }
+	for _, field := range restoredFields { delete(e.dirtyFields, field) }
+	if !e.markedAsDelete && (e.isNew || len(e.root.Change(e.EntityKey())) > 0) {
+		if e.isNew {
+		}
+		operation := core.MutationUpdate
+		if e.isNew { operation = core.MutationInsert }
+		if operation == core.MutationUpdate {
+			if !e.IsLoaded(teaqlIdStorageKey) {
+				result := runtime.CheckResult{RuleID: "invalid_type", EntityType: "CustomerOrder", CanonicalLocation: runtime.Location().Property(teaqlIdModelKey), Message: "Mutation requires a fully loaded entity"}
+				return &runtime.RuntimeError{Type: "Check", CheckResults: []runtime.CheckResult{result}}
+			}
+			if !e.IsLoaded(teaqlCustomerStorageKey) {
+				result := runtime.CheckResult{RuleID: "invalid_type", EntityType: "CustomerOrder", CanonicalLocation: runtime.Location().Property(teaqlCustomerModelKey), Message: "Mutation requires a fully loaded entity"}
+				return &runtime.RuntimeError{Type: "Check", CheckResults: []runtime.CheckResult{result}}
+			}
+			if !e.IsLoaded(teaqlStatusStorageKey) {
+				result := runtime.CheckResult{RuleID: "invalid_type", EntityType: "CustomerOrder", CanonicalLocation: runtime.Location().Property(teaqlStatusModelKey), Message: "Mutation requires a fully loaded entity"}
+				return &runtime.RuntimeError{Type: "Check", CheckResults: []runtime.CheckResult{result}}
+			}
+			if !e.IsLoaded(teaqlOrderNumberStorageKey) {
+				result := runtime.CheckResult{RuleID: "invalid_type", EntityType: "CustomerOrder", CanonicalLocation: runtime.Location().Property(teaqlOrderNumberModelKey), Message: "Mutation requires a fully loaded entity"}
+				return &runtime.RuntimeError{Type: "Check", CheckResults: []runtime.CheckResult{result}}
+			}
+			if !e.IsLoaded(teaqlOrderDateStorageKey) {
+				result := runtime.CheckResult{RuleID: "invalid_type", EntityType: "CustomerOrder", CanonicalLocation: runtime.Location().Property(teaqlOrderDateModelKey), Message: "Mutation requires a fully loaded entity"}
+				return &runtime.RuntimeError{Type: "Check", CheckResults: []runtime.CheckResult{result}}
+			}
+			if !e.IsLoaded(teaqlTotalAmountStorageKey) {
+				result := runtime.CheckResult{RuleID: "invalid_type", EntityType: "CustomerOrder", CanonicalLocation: runtime.Location().Property(teaqlTotalAmountModelKey), Message: "Mutation requires a fully loaded entity"}
+				return &runtime.RuntimeError{Type: "Check", CheckResults: []runtime.CheckResult{result}}
+			}
+			if !e.IsLoaded(teaqlVersionStorageKey) {
+				result := runtime.CheckResult{RuleID: "invalid_type", EntityType: "CustomerOrder", CanonicalLocation: runtime.Location().Property(teaqlVersionModelKey), Message: "Mutation requires a fully loaded entity"}
+				return &runtime.RuntimeError{Type: "Check", CheckResults: []runtime.CheckResult{result}}
+			}
+		}
+		checkedValues := e.IntoRecord()
+		valuesBeforeCheck := e.IntoRecord()
+		context.CaptureContextFixUndo(e.EntityName(), func() *core.BaseEntityData { return e.base }, e.root, e.EntityKey())
+		checkErr := runtime.CheckAndFixGraphEntity(context, &runtime.CheckAndFixInput{Entity: "Customer Order", Operation: operation, Values: checkedValues, OldValues: e.loadedSnapshot.ValuesFor(e.EntityKey(), e.base.Version)}, e.root, e.EntityKey())
+		for field, value := range checkedValues {
+			if before, exists := valuesBeforeCheck[field]; !exists || !reflect.DeepEqual(before, value) {
+				e.base.PutDynamic(field, value)
+				canonical, mappingErr := context.CanonicalLedgerField(e.EntityName(), field)
+				if mappingErr != nil { return mappingErr }
+				e.root.Set(e.EntityKey(), canonical, value)
+			}
+		}
+		if checkErr != nil { return checkErr }
+	}
+	for index, child := range e.orderItemList.Items() {
+		if child.IsNew() && child.IsMarkedAsDelete() { continue }
+		child.AttachEntityRoot(e.root)
+		parentID := core.ValU64(e.base.Id)
+		if e.base.Id == 0 { parentID = e.ledgerID }
+		child.Base().PutDynamic("customer_order_id", parentID)
+		parentKey := e.EntityKey()
+		if err := child.TeaqlPreflightWithinGraph(context, intent, &parentKey); err != nil {
+			var checkError *runtime.RuntimeError
+			if errors.As(err, &checkError) && checkError.Type == "Check" {
+				prefix := runtime.Location().Property("order_item_list").At(index)
+				prefixed := make([]runtime.CheckResult, len(checkError.CheckResults))
+				for resultIndex, result := range checkError.CheckResults { prefixed[resultIndex] = result.PrefixedBy(prefix) }
+				context.TranslateCheckResults(prefixed)
+				return &runtime.RuntimeError{Type: "Check", CheckResults: prefixed}
+			}
+			return fmt.Errorf("preflight child from orderItemList: %w", err)
+		}
+	}
+	return e.TeaqlNormalizeMutationGraph(context)
+}
+
+type teaqlCustomerOrderSaveSnapshot struct {
+	loadedSnapshot core.LoadedScalarSnapshot
+	creationState core.EntityCreationState
+	record core.Record
+	queryProperties core.Record
+	dirtyFields map[string]bool
+	isNew bool
+	markedAsDelete bool
+	loadState map[string]bool
+	restrictLoadState bool
+	ledgerID core.Value
+}
+
+func (e *CustomerOrder) teaqlSaveSnapshot() teaqlCustomerOrderSaveSnapshot {
+	dirty := make(map[string]bool, len(e.dirtyFields))
+	for field, value := range e.dirtyFields { dirty[field] = value }
+	loaded := make(map[string]bool, len(e.loadState))
+	for field, value := range e.loadState { loaded[field] = value }
+	return teaqlCustomerOrderSaveSnapshot{
+		loadedSnapshot: e.loadedSnapshot,
+		creationState: e.creationState,
+		queryProperties: e.base.QueryProperties(),
+		record: e.IntoRecord(), dirtyFields: dirty, isNew: e.isNew,
+		markedAsDelete: e.markedAsDelete, loadState: loaded,
+		restrictLoadState: e.restrictLoadState, ledgerID: e.ledgerID,
+	}
+}
+
+func (e *CustomerOrder) teaqlRegisterGraphOutcome(context *runtime.UserContext, snapshot teaqlCustomerOrderSaveSnapshot) {
+	context.AfterGraphRollback(func() {
+		// Rollback restores the native view, not a newly loaded snapshot. Keep
+		// pending insert/update/delete intent available for the same graph retry.
+		if err := e.teaqlFromRecord(snapshot.record, false); err != nil { panic(err) }
+		e.base.CaptureQueryProperties(snapshot.queryProperties)
+		e.loadedSnapshot = snapshot.loadedSnapshot
+		e.creationState = snapshot.creationState
+		e.dirtyFields = snapshot.dirtyFields
+		e.isNew = snapshot.isNew
+		e.markedAsDelete = snapshot.markedAsDelete
+		e.loadState = snapshot.loadState
+		e.restrictLoadState = snapshot.restrictLoadState
+		e.ledgerID = snapshot.ledgerID
+	})
+	context.AfterGraphCommit(func() { e.root.ClearEntity(e.EntityKey()) })
+}
+
+// TeaqlSaveWithinGraph is generated infrastructure used by related entity
+// packages after the public root Save has opened the graph transaction.
+func (e *CustomerOrder) TeaqlSaveWithinGraph(context *runtime.UserContext, intent core.MutationIntent, parentScope *core.MutationTraceScope, privacy *data_service.MutationPrivacy, visited ...map[any]struct{}) (*CustomerOrder, error) {
+	if e == nil || e.base == nil || e.root == nil { return nil, &core.EntityCreationError{Entity: "Customer Order"} }
+	if e.isNew { if err := e.creationState.RequireNew(e.EntityName(), e.base.Id); err != nil { return nil, err } }
+	if err := intent.Validate(); err != nil { return nil, err }
+	// This traversal owns its pointer-identity set. Never deduplicate distinct
+	// views by entity ID, or keep a guard on Context/entities across saves.
+	var seen map[any]struct{}
+	if len(visited) > 0 { seen = visited[0] }
+	if seen == nil { seen = make(map[any]struct{}) }
+	if _, exists := seen[e]; exists { return e, nil }
+	seen[e] = struct{}{}
+	if e.isNew && e.markedAsDelete {
+		if parentScope == nil { return nil, fmt.Errorf("cancelled new root %s: create-then-delete has no persisted entity to return", e.EntityName()) }
+		return e, nil
+	}
+	// Reached but unchanged entities are ancestry, not writes. Their changed
+	// descendants still participate without requiring a complete parent projection.
+	if !e.isNew && !e.markedAsDelete && len(e.root.Change(e.EntityKey())) == 0 {
+		scope, err := core.MutationScopeForEntity(parentScope, e.EntityKey(), intent, e.comment)
+		if err != nil { return nil, err }
+		if err := e.saveCascade(context, intent, scope, privacy, seen); err != nil { return nil, err }
+		return e, nil
+	}
+	snapshot := e.teaqlSaveSnapshot()
+	e.teaqlRegisterGraphOutcome(context, snapshot)
+	dsRaw := context.GetResource("dataService")
+	if dsRaw == nil {
+		return nil, fmt.Errorf("dataService not found in UserContext")
+	}
+	// Dynamic assert
+	type mutator interface {
+		Mutate(stdcontext.Context, data_service.MutationRequest) (*data_service.MutationResult, error)
+	}
+	ds, ok := dsRaw.(mutator)
+	if !ok {
+		return nil, fmt.Errorf("dataService does not implement Mutator")
+	}
+
+
+	if e.isNew {
+		checkedValues := e.IntoRecord()
+		valuesBeforeCheck := e.IntoRecord()
+		checkErr := runtime.CheckAndFixGraphEntity(context, &runtime.CheckAndFixInput{Entity: "Customer Order", Operation: core.MutationInsert, Values: checkedValues}, e.root, e.EntityKey())
+		for field, value := range checkedValues {
+			if before, exists := valuesBeforeCheck[field]; !exists || !reflect.DeepEqual(before, value) {
+				canonical, mappingErr := context.CanonicalLedgerField(e.EntityName(), field)
+				if mappingErr != nil { return nil, mappingErr }
+				e.root.Set(e.EntityKey(), canonical, value)
+			}
+		}
+		if checkErr != nil { return nil, checkErr }
+		if err := e.teaqlFromRecord(checkedValues, false); err != nil { return nil, err }
+		if e.base.Id == 0 {
+			return nil, &core.EntityCreationError{Entity: e.EntityName()}
+		} else if !e.base.HasAllocatedID() {
+			if err := context.EnsureInternalIdFloor(context.Context, e.EntityName(), e.base.Id); err != nil {
+				return nil, fmt.Errorf("synchronize id floor for %s: %w", e.EntityName(), err)
+			}
+		}
+		if e.base.Version == 0 {
+			e.base.Version = 1
+		}
+		scope, err := core.MutationScopeForEntity(parentScope, e.EntityKey(), intent, e.comment)
+		if err != nil { return nil, err }
+		cmd := core.NewInsertCommand("Customer Order")
+		cmd.Values = e.IntoRecord()
+		cmd.TraceChain = core.MutationTraceForEntity(e.root, e.EntityKey(), scope)
+		request, err := data_service.NewMutationRequest(&data_service.InsertMutation{Cmd: cmd}, intent.Comment())
+		if err != nil { return nil, err }
+		request, err = data_service.WithMutationPrivacy(request, privacy)
+		if err != nil { return nil, err }
+		res, err := ds.Mutate(context, request)
+		if err == nil {
+			e.isNew = false
+			e.dirtyFields = make(map[string]bool)
+			if res.GeneratedValues != nil {
+				if idVal, ok := res.GeneratedValues["id"]; ok {
+					if idU64, ok := idVal.TryU64(); ok {
+						e.base.Id = idU64
+					} else if idI64, ok := idVal.TryI64(); ok {
+						e.base.Id = uint64(idI64)
+					}
+				}
+			}
+		}
+		if err != nil {
+			return nil, err
+		}
+		if res.PersistedRecord == nil {
+			return nil, fmt.Errorf("mutation did not return the authoritative persisted record")
+		}
+		if err := e.teaqlAcceptPersisted(context, res.PersistedRecord); err != nil {
+			return nil, err
+		}
+		if err := e.saveCascade(context, intent, scope, privacy, seen); err != nil { return nil, err }
+		return e, nil
+	} else if e.markedAsDelete {
+		scope, err := core.MutationScopeForEntity(parentScope, e.EntityKey(), intent, e.comment)
+		if err != nil { return nil, err }
+		expectedVersion := e.base.Version
+		cmd := core.NewDeleteCommand("Customer Order", core.ValU64(e.base.Id)).
+			WithExpectedVersion(expectedVersion)
+		cmd.TraceChain = core.MutationTraceForEntity(e.root, e.EntityKey(), scope)
+		request, err := data_service.NewMutationRequest(&data_service.DeleteMutation{Cmd: cmd}, intent.Comment())
+		if err != nil { return nil, err }
+		request, err = data_service.WithMutationPrivacy(request, privacy)
+		if err != nil { return nil, err }
+		res, err := ds.Mutate(context, request)
+		if err != nil { return nil, err }
+		if res.AffectedRows == 0 {
+			return nil, fmt.Errorf("optimistic lock failed for %s(%d) at version %d", e.EntityName(), e.base.Id, expectedVersion)
+		}
+		e.base.Version = -(expectedVersion + 1)
+		e.markedAsDelete = false
+		e.dirtyFields = make(map[string]bool)
+		if res.PersistedRecord == nil {
+			return nil, fmt.Errorf("mutation did not return the authoritative persisted record")
+		}
+		if err := e.teaqlAcceptPersisted(context, res.PersistedRecord); err != nil { return nil, err }
+		return e, nil
+	} else {
+		checkedValues := e.IntoRecord()
+		valuesBeforeCheck := e.IntoRecord()
+		checkErr := runtime.CheckAndFixGraphEntity(context, &runtime.CheckAndFixInput{Entity: "Customer Order", Operation: core.MutationUpdate, Values: checkedValues, OldValues: e.loadedSnapshot.ValuesFor(e.EntityKey(), e.base.Version)}, e.root, e.EntityKey())
+		for field, value := range checkedValues {
+			if before, exists := valuesBeforeCheck[field]; !exists || !reflect.DeepEqual(before, value) {
+				canonical, mappingErr := context.CanonicalLedgerField(e.EntityName(), field)
+				if mappingErr != nil { return nil, mappingErr }
+				e.root.Set(e.EntityKey(), canonical, value)
+			}
+		}
+		if checkErr != nil { return nil, checkErr }
+		if err := e.teaqlFromRecord(checkedValues, false); err != nil { return nil, err }
+		scope, err := core.MutationScopeForEntity(parentScope, e.EntityKey(), intent, e.comment)
+		if err != nil { return nil, err }
+		cmd := core.NewUpdateCommand("Customer Order", core.ValU64(e.base.Id))
+		cmd.Values, err = context.StorageLedgerRecord(e.EntityName(), e.root.Change(e.EntityKey()))
+		if err != nil { return nil, err }
+		// A clean parent still carries the scope for changed descendants, but
+		// must not emit an empty UPDATE or bump its optimistic version.
+		if len(cmd.Values) == 0 {
+			if err := e.saveCascade(context, intent, scope, privacy, seen); err != nil { return nil, err }
+			return e, nil
+		}
+		expectedVersion := e.base.Version
+		cmd.ExpectedVersion = &expectedVersion
+		cmd.TraceChain = core.MutationTraceForEntity(e.root, e.EntityKey(), scope)
+		request, err := data_service.NewMutationRequest(&data_service.UpdateMutation{Cmd: cmd}, intent.Comment())
+		if err != nil { return nil, err }
+		request, err = data_service.WithMutationPrivacy(request, privacy)
+		if err != nil { return nil, err }
+		res, err := ds.Mutate(context, request)
+		if err == nil {
+			if res.AffectedRows == 0 {
+				return nil, fmt.Errorf("optimistic lock failed for %s(%d) at version %d", e.EntityName(), e.base.Id, expectedVersion)
+			}
+			e.base.Version = expectedVersion + 1
+			e.dirtyFields = make(map[string]bool)
+		}
+		if err != nil {
+			return nil, err
+		}
+		if res.PersistedRecord == nil {
+			return nil, fmt.Errorf("mutation did not return the authoritative persisted record")
+		}
+		if err := e.teaqlAcceptPersisted(context, res.PersistedRecord); err != nil { return nil, err }
+		if err := e.saveCascade(context, intent, scope, privacy, seen); err != nil { return nil, err }
+		return e, nil
+	}
+}
+
+func (e *CustomerOrder) saveCascade(context *runtime.UserContext, intent core.MutationIntent, scope *core.MutationTraceScope, privacy *data_service.MutationPrivacy, seen map[any]struct{}) error {
+	for index, child := range e.orderItemList.Items() {
+		if child.IsNew() && child.IsMarkedAsDelete() { continue }
+		child.AttachEntityRoot(e.root)
+		child.Base().PutDynamic("customer_order_id", core.ValU64(e.base.Id))
+		if _, err := child.TeaqlSaveWithinGraph(context, intent, scope, privacy, seen); err != nil {
+			var checkError *runtime.RuntimeError
+			if errors.As(err, &checkError) && checkError.Type == "Check" {
+				prefix := runtime.Location().Property("order_item_list").At(index)
+				prefixed := make([]runtime.CheckResult, len(checkError.CheckResults))
+				for resultIndex, result := range checkError.CheckResults { prefixed[resultIndex] = result.PrefixedBy(prefix) }
+				context.TranslateCheckResults(prefixed)
+				return &runtime.RuntimeError{Type: "Check", CheckResults: prefixed}
+			}
+			return fmt.Errorf("save child from orderItemList: %w", err)
+		}
+	}
+	return nil
+}
+
+func (e *CustomerOrder) Id() uint64 {
+	return e.base.Id
+}
+
+func (e *CustomerOrder) UpdateId(value uint64) *CustomerOrder {
+	e.teaqlEnsureState()
+	oldKey := e.EntityKey()
+	e.base.Id = value
+	e.root.Rekey(oldKey, e.EntityKey())
+	e.loadState[teaqlIdStorageKey] = true
+	return e
+}
+
+func (e *CustomerOrder) OrderNumber() string {
+	val, _ := e.base.GetDynamic(teaqlOrderNumberStorageKey)
+	res, _ := val.TryText()
+	return res}
+
+func (e *CustomerOrder) UpdateOrderNumber(value string) *CustomerOrder {
+	e.teaqlEnsureState()
+	e.base.PutDynamic(teaqlOrderNumberStorageKey, core.ValText(value))
+	e.dirtyFields[teaqlOrderNumberStorageKey] = true
+	e.root.Set(e.EntityKey(), teaqlOrderNumberModelKey, core.ValText(value))
+	e.loadState[teaqlOrderNumberStorageKey] = true
+	return e
+}
+
+func (e *CustomerOrder) OrderDate() time.Time {
+	val, _ := e.base.GetDynamic(teaqlOrderDateStorageKey)
+	res, _ := val.TryDate()
+	return res}
+
+func (e *CustomerOrder) UpdateOrderDate(value time.Time) *CustomerOrder {
+	e.teaqlEnsureState()
+	e.base.PutDynamic(teaqlOrderDateStorageKey, core.ValDate(value))
+	e.dirtyFields[teaqlOrderDateStorageKey] = true
+	e.root.Set(e.EntityKey(), teaqlOrderDateModelKey, core.ValDate(value))
+	e.loadState[teaqlOrderDateStorageKey] = true
+	return e
+}
+
+func (e *CustomerOrder) TotalAmount() decimal.Decimal {
+	val, _ := e.base.GetDynamic(teaqlTotalAmountStorageKey)
+	res, _ := val.TryDecimal()
+	return res}
+
+func (e *CustomerOrder) UpdateTotalAmount(value decimal.Decimal) *CustomerOrder {
+	e.teaqlEnsureState()
+	e.base.PutDynamic(teaqlTotalAmountStorageKey, core.ValDecimal(value))
+	e.dirtyFields[teaqlTotalAmountStorageKey] = true
+	e.root.Set(e.EntityKey(), teaqlTotalAmountModelKey, core.ValDecimal(value))
+	e.loadState[teaqlTotalAmountStorageKey] = true
+	return e
+}
+
+func (e *CustomerOrder) Version() int64 {
+	return e.base.Version
+}
+
+func (e *CustomerOrder) UpdateVersion(value int64) *CustomerOrder {
+	e.teaqlEnsureState()
+	e.base.Version = value
+	e.loadState[teaqlVersionStorageKey] = true
+	return e
+}
+func (e *CustomerOrder) CustomerId() uint64 {
+	val, _ := e.base.GetDynamic(teaqlCustomerStorageKey)
+	res, _ := val.TryU64()
+	return res
+}
+
+func (e *CustomerOrder) UpdateCustomerId(value uint64) *CustomerOrder {
+	previous, present := e.base.GetDynamic(teaqlCustomerStorageKey)
+	e.base.PutDynamic(teaqlCustomerStorageKey, core.ValU64(value))
+	e.dirtyFields[teaqlCustomerStorageKey] = true
+	current, _ := e.base.GetDynamic(teaqlCustomerStorageKey)
+	if !present || !reflect.DeepEqual(previous, current) {
+		delete(e.relations, "customerEntity")
+		delete(e.loadedRelations, "customerEntity")
+	}
+	e.root.Set(e.EntityKey(), teaqlCustomerModelKey, core.ValU64(value))
+	e.loadState[teaqlCustomerStorageKey] = true
+	return e
+}
+// DEBUG: constantObjectField is false
+
+
+func (e *CustomerOrder) StatusId() uint64 {
+	val, _ := e.base.GetDynamic(teaqlStatusStorageKey)
+	res, _ := val.TryU64()
+	return res
+}
+
+func (e *CustomerOrder) UpdateStatusId(value uint64) *CustomerOrder {
+	previous, present := e.base.GetDynamic(teaqlStatusStorageKey)
+	e.base.PutDynamic(teaqlStatusStorageKey, core.ValU64(value))
+	e.dirtyFields[teaqlStatusStorageKey] = true
+	current, _ := e.base.GetDynamic(teaqlStatusStorageKey)
+	if !present || !reflect.DeepEqual(previous, current) {
+		delete(e.relations, "statusEntity")
+		delete(e.loadedRelations, "statusEntity")
+	}
+	e.root.Set(e.EntityKey(), teaqlStatusModelKey, core.ValU64(value))
+	e.loadState[teaqlStatusStorageKey] = true
+	return e
+}
+// DEBUG: constantObjectField is true
+
+func (e *CustomerOrder) UpdateStatusToNew() *CustomerOrder {
+	return e.UpdateStatusId(1001)
+}
+
+func (e *CustomerOrder) StatusIsNew() bool {
+	return e.StatusId() == 1001
+}
+
+func (e *CustomerOrder) UpdateStatusToPaid() *CustomerOrder {
+	return e.UpdateStatusId(1002)
+}
+
+func (e *CustomerOrder) StatusIsPaid() bool {
+	return e.StatusId() == 1002
+}
+
+func (e *CustomerOrder) UpdateStatusToCancelled() *CustomerOrder {
+	return e.UpdateStatusId(1003)
+}
+
+func (e *CustomerOrder) StatusIsCancelled() bool {
+	return e.StatusId() == 1003
+}
+
+func (e *CustomerOrder) OrderItemList() *OrderItemList {
+	return e.orderItemList
+}

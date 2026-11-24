@@ -23,6 +23,27 @@ var (
 	_ = errors.As
 )
 
+const (
+    teaqlIdStorageKey = "id"
+    teaqlIdModelKey = "id"
+    teaqlCustomerOrderStorageKey = "customer_order_id"
+    teaqlCustomerOrderModelKey = "customer_order"
+    teaqlProductStorageKey = "product_id"
+    teaqlProductModelKey = "product"
+    teaqlProductNameStorageKey = "product_name"
+    teaqlProductNameModelKey = "product_name"
+    teaqlSkuStorageKey = "sku"
+    teaqlSkuModelKey = "sku"
+    teaqlQuantityStorageKey = "quantity"
+    teaqlQuantityModelKey = "quantity"
+    teaqlCommercePlatformStorageKey = "commerce_platform_id"
+    teaqlCommercePlatformModelKey = "commerce_platform"
+    teaqlCreateTimeStorageKey = "create_time"
+    teaqlCreateTimeModelKey = "create_time"
+    teaqlVersionStorageKey = "version"
+    teaqlVersionModelKey = "version"
+)
+
 
 type OrderLine struct {
 	base        *core.BaseEntityData
@@ -183,8 +204,8 @@ func (e *OrderLine) teaqlFromRecord(record core.Record, captureLoaded bool) erro
 	if err != nil {
 		return err
 	}
-	if value, present := base.Dynamic["quantity"]; present && !value.IsNull() {
-		if err := core.ValidateInteger32("order_line", "quantity", value); err != nil { return err }
+	if value, present := base.Dynamic[teaqlQuantityStorageKey]; present && !value.IsNull() {
+		if err := core.ValidateInteger32("order_line", teaqlQuantityModelKey, value); err != nil { return err }
 	}
 
 
@@ -210,11 +231,11 @@ func (e *OrderLine) teaqlFromRecord(record core.Record, captureLoaded bool) erro
 }
 
 func (e *OrderLine) teaqlScalarSnapshot(record core.Record) core.LoadedScalarSnapshot {
-	return core.NewLoadedScalarSnapshot(record, "id", "customer_order_id", "product_id", "product_name", "sku", "quantity", "commerce_platform_id", "create_time", "version")
+	return core.NewLoadedScalarSnapshot(record, teaqlIdStorageKey, teaqlCustomerOrderStorageKey, teaqlProductStorageKey, teaqlProductNameStorageKey, teaqlSkuStorageKey, teaqlQuantityStorageKey, teaqlCommercePlatformStorageKey, teaqlCreateTimeStorageKey, teaqlVersionStorageKey)
 }
 
 func (e *OrderLine) teaqlLoadedScalarSnapshot(record core.Record) core.LoadedScalarSnapshot {
-	return core.NewOwnedLoadedScalarSnapshot(e.EntityKey(), e.base.Version, record, "id", "customer_order_id", "product_id", "product_name", "sku", "quantity", "commerce_platform_id", "create_time", "version")
+	return core.NewOwnedLoadedScalarSnapshot(e.EntityKey(), e.base.Version, record, teaqlIdStorageKey, teaqlCustomerOrderStorageKey, teaqlProductStorageKey, teaqlProductNameStorageKey, teaqlSkuStorageKey, teaqlQuantityStorageKey, teaqlCommercePlatformStorageKey, teaqlCreateTimeStorageKey, teaqlVersionStorageKey)
 }
 
 func (e *OrderLine) teaqlAcceptPersisted(context *runtime.UserContext, record core.Record) error {
@@ -319,15 +340,15 @@ func (e *OrderLine) JSONQueryProperties() core.Record { return e.base.QueryPrope
 func (e *OrderLine) LoadedJSONFields() core.Record {
 	all := e.IntoRecord()
 	selected := make(core.Record)
-	if e.IsLoaded("id") { if value, present := all["id"]; present { selected["id"] = value } }
-	if e.IsLoaded("customer_order_id") { if value, present := all["customer_order_id"]; present { selected["customer_order_id"] = value } }
-	if e.IsLoaded("product_id") { if value, present := all["product_id"]; present { selected["product_id"] = value } }
-	if e.IsLoaded("product_name") { if value, present := all["product_name"]; present { selected["product_name"] = value } }
-	if e.IsLoaded("sku") { if value, present := all["sku"]; present { selected["sku"] = value } }
-	if e.IsLoaded("quantity") { if value, present := all["quantity"]; present { selected["quantity"] = value } }
-	if e.IsLoaded("commerce_platform_id") { if value, present := all["commerce_platform_id"]; present { selected["commerce_platform_id"] = value } }
-	if e.IsLoaded("create_time") { if value, present := all["create_time"]; present { selected["create_time"] = value } }
-	if e.IsLoaded("version") { if value, present := all["version"]; present { selected["version"] = value } }
+	if e.IsLoaded(teaqlIdStorageKey) { if value, present := all[teaqlIdStorageKey]; present { selected[teaqlIdStorageKey] = value } }
+	if e.IsLoaded(teaqlCustomerOrderStorageKey) { if value, present := all[teaqlCustomerOrderStorageKey]; present { selected[teaqlCustomerOrderStorageKey] = value } }
+	if e.IsLoaded(teaqlProductStorageKey) { if value, present := all[teaqlProductStorageKey]; present { selected[teaqlProductStorageKey] = value } }
+	if e.IsLoaded(teaqlProductNameStorageKey) { if value, present := all[teaqlProductNameStorageKey]; present { selected[teaqlProductNameStorageKey] = value } }
+	if e.IsLoaded(teaqlSkuStorageKey) { if value, present := all[teaqlSkuStorageKey]; present { selected[teaqlSkuStorageKey] = value } }
+	if e.IsLoaded(teaqlQuantityStorageKey) { if value, present := all[teaqlQuantityStorageKey]; present { selected[teaqlQuantityStorageKey] = value } }
+	if e.IsLoaded(teaqlCommercePlatformStorageKey) { if value, present := all[teaqlCommercePlatformStorageKey]; present { selected[teaqlCommercePlatformStorageKey] = value } }
+	if e.IsLoaded(teaqlCreateTimeStorageKey) { if value, present := all[teaqlCreateTimeStorageKey]; present { selected[teaqlCreateTimeStorageKey] = value } }
+	if e.IsLoaded(teaqlVersionStorageKey) { if value, present := all[teaqlVersionStorageKey]; present { selected[teaqlVersionStorageKey] = value } }
 	if e.isRelationLoaded("customerOrderEntity") { if target, present := e.relations["customerOrderEntity"]; present && target != nil { selected["customerOrderEntity"] = core.Value{V: target} } }
 	if e.isRelationLoaded("productEntity") { if target, present := e.relations["productEntity"]; present && target != nil { selected["productEntity"] = core.Value{V: target} } }
 	if e.isRelationLoaded("commercePlatformEntity") { if target, present := e.relations["commercePlatformEntity"]; present && target != nil { selected["commercePlatformEntity"] = core.Value{V: target} } }
@@ -448,46 +469,47 @@ func (e *OrderLine) TeaqlPreflightWithinGraph(context *runtime.UserContext, inte
 		operation := core.MutationUpdate
 		if e.isNew { operation = core.MutationInsert }
 		if operation == core.MutationUpdate {
-			if !e.IsLoaded("id") {
-				result := runtime.CheckResult{RuleID: "invalid_type", EntityType: "OrderLine", CanonicalLocation: runtime.Location().Property("id"), Message: "Mutation requires a fully loaded entity"}
+			if !e.IsLoaded(teaqlIdStorageKey) {
+				result := runtime.CheckResult{RuleID: "invalid_type", EntityType: "OrderLine", CanonicalLocation: runtime.Location().Property(teaqlIdModelKey), Message: "Mutation requires a fully loaded entity"}
 				return &runtime.RuntimeError{Type: "Check", CheckResults: []runtime.CheckResult{result}}
 			}
-			if !e.IsLoaded("customer_order_id") {
-				result := runtime.CheckResult{RuleID: "invalid_type", EntityType: "OrderLine", CanonicalLocation: runtime.Location().Property("customer_order"), Message: "Mutation requires a fully loaded entity"}
+			if !e.IsLoaded(teaqlCustomerOrderStorageKey) {
+				result := runtime.CheckResult{RuleID: "invalid_type", EntityType: "OrderLine", CanonicalLocation: runtime.Location().Property(teaqlCustomerOrderModelKey), Message: "Mutation requires a fully loaded entity"}
 				return &runtime.RuntimeError{Type: "Check", CheckResults: []runtime.CheckResult{result}}
 			}
-			if !e.IsLoaded("product_id") {
-				result := runtime.CheckResult{RuleID: "invalid_type", EntityType: "OrderLine", CanonicalLocation: runtime.Location().Property("product"), Message: "Mutation requires a fully loaded entity"}
+			if !e.IsLoaded(teaqlProductStorageKey) {
+				result := runtime.CheckResult{RuleID: "invalid_type", EntityType: "OrderLine", CanonicalLocation: runtime.Location().Property(teaqlProductModelKey), Message: "Mutation requires a fully loaded entity"}
 				return &runtime.RuntimeError{Type: "Check", CheckResults: []runtime.CheckResult{result}}
 			}
-			if !e.IsLoaded("product_name") {
-				result := runtime.CheckResult{RuleID: "invalid_type", EntityType: "OrderLine", CanonicalLocation: runtime.Location().Property("product_name"), Message: "Mutation requires a fully loaded entity"}
+			if !e.IsLoaded(teaqlProductNameStorageKey) {
+				result := runtime.CheckResult{RuleID: "invalid_type", EntityType: "OrderLine", CanonicalLocation: runtime.Location().Property(teaqlProductNameModelKey), Message: "Mutation requires a fully loaded entity"}
 				return &runtime.RuntimeError{Type: "Check", CheckResults: []runtime.CheckResult{result}}
 			}
-			if !e.IsLoaded("sku") {
-				result := runtime.CheckResult{RuleID: "invalid_type", EntityType: "OrderLine", CanonicalLocation: runtime.Location().Property("sku"), Message: "Mutation requires a fully loaded entity"}
+			if !e.IsLoaded(teaqlSkuStorageKey) {
+				result := runtime.CheckResult{RuleID: "invalid_type", EntityType: "OrderLine", CanonicalLocation: runtime.Location().Property(teaqlSkuModelKey), Message: "Mutation requires a fully loaded entity"}
 				return &runtime.RuntimeError{Type: "Check", CheckResults: []runtime.CheckResult{result}}
 			}
-			if !e.IsLoaded("quantity") {
-				result := runtime.CheckResult{RuleID: "invalid_type", EntityType: "OrderLine", CanonicalLocation: runtime.Location().Property("quantity"), Message: "Mutation requires a fully loaded entity"}
+			if !e.IsLoaded(teaqlQuantityStorageKey) {
+				result := runtime.CheckResult{RuleID: "invalid_type", EntityType: "OrderLine", CanonicalLocation: runtime.Location().Property(teaqlQuantityModelKey), Message: "Mutation requires a fully loaded entity"}
 				return &runtime.RuntimeError{Type: "Check", CheckResults: []runtime.CheckResult{result}}
 			}
-			if !e.IsLoaded("commerce_platform_id") {
-				result := runtime.CheckResult{RuleID: "invalid_type", EntityType: "OrderLine", CanonicalLocation: runtime.Location().Property("commerce_platform"), Message: "Mutation requires a fully loaded entity"}
+			if !e.IsLoaded(teaqlCommercePlatformStorageKey) {
+				result := runtime.CheckResult{RuleID: "invalid_type", EntityType: "OrderLine", CanonicalLocation: runtime.Location().Property(teaqlCommercePlatformModelKey), Message: "Mutation requires a fully loaded entity"}
 				return &runtime.RuntimeError{Type: "Check", CheckResults: []runtime.CheckResult{result}}
 			}
-			if !e.IsLoaded("create_time") {
-				result := runtime.CheckResult{RuleID: "invalid_type", EntityType: "OrderLine", CanonicalLocation: runtime.Location().Property("create_time"), Message: "Mutation requires a fully loaded entity"}
+			if !e.IsLoaded(teaqlCreateTimeStorageKey) {
+				result := runtime.CheckResult{RuleID: "invalid_type", EntityType: "OrderLine", CanonicalLocation: runtime.Location().Property(teaqlCreateTimeModelKey), Message: "Mutation requires a fully loaded entity"}
 				return &runtime.RuntimeError{Type: "Check", CheckResults: []runtime.CheckResult{result}}
 			}
-			if !e.IsLoaded("version") {
-				result := runtime.CheckResult{RuleID: "invalid_type", EntityType: "OrderLine", CanonicalLocation: runtime.Location().Property("version"), Message: "Mutation requires a fully loaded entity"}
+			if !e.IsLoaded(teaqlVersionStorageKey) {
+				result := runtime.CheckResult{RuleID: "invalid_type", EntityType: "OrderLine", CanonicalLocation: runtime.Location().Property(teaqlVersionModelKey), Message: "Mutation requires a fully loaded entity"}
 				return &runtime.RuntimeError{Type: "Check", CheckResults: []runtime.CheckResult{result}}
 			}
 		}
 		checkedValues := e.IntoRecord()
 		valuesBeforeCheck := e.IntoRecord()
-		checkErr := runtime.CheckAndFixGraphEntity(context, &runtime.CheckAndFixInput{Entity: "order_line", Operation: operation, Values: checkedValues}, e.root, e.EntityKey())
+		context.CaptureContextFixUndo(e.EntityName(), func() *core.BaseEntityData { return e.base }, e.root, e.EntityKey())
+		checkErr := runtime.CheckAndFixGraphEntity(context, &runtime.CheckAndFixInput{Entity: "order_line", Operation: operation, Values: checkedValues, OldValues: e.loadedSnapshot.ValuesFor(e.EntityKey(), e.base.Version)}, e.root, e.EntityKey())
 		for field, value := range checkedValues {
 			if before, exists := valuesBeforeCheck[field]; !exists || !reflect.DeepEqual(before, value) {
 				e.base.PutDynamic(field, value)
@@ -498,7 +520,7 @@ func (e *OrderLine) TeaqlPreflightWithinGraph(context *runtime.UserContext, inte
 		}
 		if checkErr != nil { return checkErr }
 	}
-	return nil
+	return e.TeaqlNormalizeMutationGraph(context)
 }
 
 type teaqlOrderLineSaveSnapshot struct {
@@ -672,7 +694,7 @@ func (e *OrderLine) TeaqlSaveWithinGraph(context *runtime.UserContext, intent co
 	} else {
 		checkedValues := e.IntoRecord()
 		valuesBeforeCheck := e.IntoRecord()
-		checkErr := runtime.CheckAndFixGraphEntity(context, &runtime.CheckAndFixInput{Entity: "order_line", Operation: core.MutationUpdate, Values: checkedValues}, e.root, e.EntityKey())
+		checkErr := runtime.CheckAndFixGraphEntity(context, &runtime.CheckAndFixInput{Entity: "order_line", Operation: core.MutationUpdate, Values: checkedValues, OldValues: e.loadedSnapshot.ValuesFor(e.EntityKey(), e.base.Version)}, e.root, e.EntityKey())
 		for field, value := range checkedValues {
 			if before, exists := valuesBeforeCheck[field]; !exists || !reflect.DeepEqual(before, value) {
 				canonical, mappingErr := context.CanonicalLedgerField(e.EntityName(), field)
@@ -733,63 +755,63 @@ func (e *OrderLine) UpdateId(value uint64) *OrderLine {
 	oldKey := e.EntityKey()
 	e.base.Id = value
 	e.root.Rekey(oldKey, e.EntityKey())
-	e.loadState["id"] = true
+	e.loadState[teaqlIdStorageKey] = true
 	return e
 }
 
 func (e *OrderLine) ProductName() string {
-	val, _ := e.base.GetDynamic("product_name")
+	val, _ := e.base.GetDynamic(teaqlProductNameStorageKey)
 	res, _ := val.TryText()
 	return res}
 
 func (e *OrderLine) UpdateProductName(value string) *OrderLine {
 	e.teaqlEnsureState()
-	e.base.PutDynamic("product_name", core.ValText(value))
-	e.dirtyFields["product_name"] = true
-	e.root.Set(e.EntityKey(), "product_name", core.ValText(value))
-	e.loadState["product_name"] = true
+	e.base.PutDynamic(teaqlProductNameStorageKey, core.ValText(value))
+	e.dirtyFields[teaqlProductNameStorageKey] = true
+	e.root.Set(e.EntityKey(), teaqlProductNameModelKey, core.ValText(value))
+	e.loadState[teaqlProductNameStorageKey] = true
 	return e
 }
 
 func (e *OrderLine) Sku() string {
-	val, _ := e.base.GetDynamic("sku")
+	val, _ := e.base.GetDynamic(teaqlSkuStorageKey)
 	res, _ := val.TryText()
 	return res}
 
 func (e *OrderLine) UpdateSku(value string) *OrderLine {
 	e.teaqlEnsureState()
-	e.base.PutDynamic("sku", core.ValText(value))
-	e.dirtyFields["sku"] = true
-	e.root.Set(e.EntityKey(), "sku", core.ValText(value))
-	e.loadState["sku"] = true
+	e.base.PutDynamic(teaqlSkuStorageKey, core.ValText(value))
+	e.dirtyFields[teaqlSkuStorageKey] = true
+	e.root.Set(e.EntityKey(), teaqlSkuModelKey, core.ValText(value))
+	e.loadState[teaqlSkuStorageKey] = true
 	return e
 }
 
 func (e *OrderLine) Quantity() int64 {
-	val, _ := e.base.GetDynamic("quantity")
+	val, _ := e.base.GetDynamic(teaqlQuantityStorageKey)
 	res, _ := val.TryI64()
 	return res}
 
 func (e *OrderLine) UpdateQuantity(value int64) *OrderLine {
 	e.teaqlEnsureState()
-	e.base.PutDynamic("quantity", core.ValI64(value))
-	e.dirtyFields["quantity"] = true
-	e.root.Set(e.EntityKey(), "quantity", core.ValI64(value))
-	e.loadState["quantity"] = true
+	e.base.PutDynamic(teaqlQuantityStorageKey, core.ValI64(value))
+	e.dirtyFields[teaqlQuantityStorageKey] = true
+	e.root.Set(e.EntityKey(), teaqlQuantityModelKey, core.ValI64(value))
+	e.loadState[teaqlQuantityStorageKey] = true
 	return e
 }
 
 func (e *OrderLine) CreateTime() time.Time {
-	val, _ := e.base.GetDynamic("create_time")
+	val, _ := e.base.GetDynamic(teaqlCreateTimeStorageKey)
 	res, _ := val.TryTime()
 	return res}
 
 func (e *OrderLine) UpdateCreateTime(value time.Time) *OrderLine {
 	e.teaqlEnsureState()
-	e.base.PutDynamic("create_time", core.ValTimestamp(value.UnixMilli()))
-	e.dirtyFields["create_time"] = true
-	e.root.Set(e.EntityKey(), "create_time", core.ValTimestamp(value.UnixMilli()))
-	e.loadState["create_time"] = true
+	e.base.PutDynamic(teaqlCreateTimeStorageKey, core.ValTimestamp(value.UnixMilli()))
+	e.dirtyFields[teaqlCreateTimeStorageKey] = true
+	e.root.Set(e.EntityKey(), teaqlCreateTimeModelKey, core.ValTimestamp(value.UnixMilli()))
+	e.loadState[teaqlCreateTimeStorageKey] = true
 	return e
 }
 
@@ -800,70 +822,70 @@ func (e *OrderLine) Version() int64 {
 func (e *OrderLine) UpdateVersion(value int64) *OrderLine {
 	e.teaqlEnsureState()
 	e.base.Version = value
-	e.loadState["version"] = true
+	e.loadState[teaqlVersionStorageKey] = true
 	return e
 }
 func (e *OrderLine) CustomerOrderId() uint64 {
-	val, _ := e.base.GetDynamic("customer_order_id")
+	val, _ := e.base.GetDynamic(teaqlCustomerOrderStorageKey)
 	res, _ := val.TryU64()
 	return res
 }
 
 func (e *OrderLine) UpdateCustomerOrderId(value uint64) *OrderLine {
-	previous, present := e.base.GetDynamic("customer_order_id")
-	e.base.PutDynamic("customer_order_id", core.ValU64(value))
-	e.dirtyFields["customer_order_id"] = true
-	current, _ := e.base.GetDynamic("customer_order_id")
+	previous, present := e.base.GetDynamic(teaqlCustomerOrderStorageKey)
+	e.base.PutDynamic(teaqlCustomerOrderStorageKey, core.ValU64(value))
+	e.dirtyFields[teaqlCustomerOrderStorageKey] = true
+	current, _ := e.base.GetDynamic(teaqlCustomerOrderStorageKey)
 	if !present || !reflect.DeepEqual(previous, current) {
 		delete(e.relations, "customerOrderEntity")
 		delete(e.loadedRelations, "customerOrderEntity")
 	}
-	e.root.Set(e.EntityKey(), "customer_order", core.ValU64(value))
-	e.loadState["customer_order_id"] = true
+	e.root.Set(e.EntityKey(), teaqlCustomerOrderModelKey, core.ValU64(value))
+	e.loadState[teaqlCustomerOrderStorageKey] = true
 	return e
 }
 // DEBUG: constantObjectField is false
 
 
 func (e *OrderLine) ProductId() uint64 {
-	val, _ := e.base.GetDynamic("product_id")
+	val, _ := e.base.GetDynamic(teaqlProductStorageKey)
 	res, _ := val.TryU64()
 	return res
 }
 
 func (e *OrderLine) UpdateProductId(value uint64) *OrderLine {
-	previous, present := e.base.GetDynamic("product_id")
-	e.base.PutDynamic("product_id", core.ValU64(value))
-	e.dirtyFields["product_id"] = true
-	current, _ := e.base.GetDynamic("product_id")
+	previous, present := e.base.GetDynamic(teaqlProductStorageKey)
+	e.base.PutDynamic(teaqlProductStorageKey, core.ValU64(value))
+	e.dirtyFields[teaqlProductStorageKey] = true
+	current, _ := e.base.GetDynamic(teaqlProductStorageKey)
 	if !present || !reflect.DeepEqual(previous, current) {
 		delete(e.relations, "productEntity")
 		delete(e.loadedRelations, "productEntity")
 	}
-	e.root.Set(e.EntityKey(), "product", core.ValU64(value))
-	e.loadState["product_id"] = true
+	e.root.Set(e.EntityKey(), teaqlProductModelKey, core.ValU64(value))
+	e.loadState[teaqlProductStorageKey] = true
 	return e
 }
 // DEBUG: constantObjectField is false
 
 
 func (e *OrderLine) CommercePlatformId() uint64 {
-	val, _ := e.base.GetDynamic("commerce_platform_id")
+	val, _ := e.base.GetDynamic(teaqlCommercePlatformStorageKey)
 	res, _ := val.TryU64()
 	return res
 }
 
 func (e *OrderLine) UpdateCommercePlatformId(value uint64) *OrderLine {
-	previous, present := e.base.GetDynamic("commerce_platform_id")
-	e.base.PutDynamic("commerce_platform_id", core.ValU64(value))
-	e.dirtyFields["commerce_platform_id"] = true
-	current, _ := e.base.GetDynamic("commerce_platform_id")
+	previous, present := e.base.GetDynamic(teaqlCommercePlatformStorageKey)
+	e.base.PutDynamic(teaqlCommercePlatformStorageKey, core.ValU64(value))
+	e.dirtyFields[teaqlCommercePlatformStorageKey] = true
+	current, _ := e.base.GetDynamic(teaqlCommercePlatformStorageKey)
 	if !present || !reflect.DeepEqual(previous, current) {
 		delete(e.relations, "commercePlatformEntity")
 		delete(e.loadedRelations, "commercePlatformEntity")
 	}
-	e.root.Set(e.EntityKey(), "commerce_platform", core.ValU64(value))
-	e.loadState["commerce_platform_id"] = true
+	e.root.Set(e.EntityKey(), teaqlCommercePlatformModelKey, core.ValU64(value))
+	e.loadState[teaqlCommercePlatformStorageKey] = true
 	return e
 }
 // DEBUG: constantObjectField is false

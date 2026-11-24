@@ -3,8 +3,8 @@ set -euo pipefail
 
 example="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 repo="$(cd "$example/../.." && pwd)"
-cd "$example"
-export GOWORK="$example/go.work"
+cd "$example/golang-app-console"
+export GOWORK="$example/golang-app-console/go.work"
 resolved="$(go list -m -f '{{.Dir}}' github.com/teaql/teaql-golang)"
 if [[ "$(realpath "$resolved")" != "$(realpath "$repo")" ]]; then
   echo "FAIL: trace-chain example must use this repository's runtime" >&2
@@ -15,7 +15,7 @@ verification="${TEAQL_TRACE_CHAIN_EVIDENCE_DIRECTORY:-$(mktemp -d)}"
 mkdir -p "$verification"
 export TEAQL_TRACE_CHAIN_DATABASE_DIRECTORY="${TEAQL_TRACE_CHAIN_DATABASE_DIRECTORY:-$verification/databases}"
 mkdir -p "$TEAQL_TRACE_CHAIN_DATABASE_DIRECTORY"
-find lib -type f -print0 | sort -z | xargs -0 sha256sum > "$verification/library-before.sha256"
+find ../golang-lib-core -type f -print0 | sort -z | xargs -0 sha256sum > "$verification/library-before.sha256"
 for iteration in 1 2; do
   # Separate real-provider regressions; these use fresh SQLite test fixtures,
   # not the generated graph databases or a prepared-batch transport.
@@ -115,7 +115,7 @@ for iteration in 1 2; do
     exit 1
   fi
 done
-find lib -type f -print0 | sort -z | xargs -0 sha256sum > "$verification/library-after.sha256"
+find ../golang-lib-core -type f -print0 | sort -z | xargs -0 sha256sum > "$verification/library-after.sha256"
 diff -u "$verification/library-before.sha256" "$verification/library-after.sha256"
 echo "PASS: generated Go graph/Q/E acceptance twice without cleanup; library unchanged"
 echo "PASS: sixteen native SQLite batch/transaction regressions twice; not prepared/generated batching"

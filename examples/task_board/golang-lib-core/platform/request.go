@@ -1,0 +1,1073 @@
+
+
+package platform
+
+import (
+	"fmt"
+	"time"
+
+	"github.com/shopspring/decimal"
+	"github.com/teaql/teaql-golang/core"
+	"github.com/teaql/teaql-golang/data_service"
+	"github.com/teaql/teaql-golang/runtime"
+	"robot-kanban-service-core-workspace/lib/internal/generatedsearch"
+	"robot-kanban-service-core-workspace/lib/task_status"
+	"robot-kanban-service-core-workspace/lib/task"
+)
+
+var (
+	_ = time.Time{}
+	_ = decimal.Decimal{}
+)
+
+type PlatformRequest struct {
+	Query       *core.SelectQuery
+	queryOptions *core.QueryOptions
+	purposeText string
+	commentText string
+	relationFactories map[string]func(core.Record) (core.Entity, error)
+	dynamicSearchWarnings []core.DynamicSearchWarning
+}
+
+type ExecutablePlatformRequest struct {
+	request *PlatformRequest
+}
+
+func NewPlatformRequest() *PlatformRequest {
+	r := &PlatformRequest{
+		Query: core.NewSelectQuery("Platform"),
+		queryOptions: core.NewQueryOptions(),
+		relationFactories: make(map[string]func(core.Record) (core.Entity, error)),
+	}
+	r.Query.AndFilter(core.ExprGte("version", core.ValI64(1)))
+	return r
+}
+
+func NewPlatformMinimalRequest() *PlatformRequest {
+	r := NewPlatformRequest()
+	r.Query.Projects("id", "version")
+	return r
+}
+
+func (r *PlatformRequest) GetQuery() *core.SelectQuery {
+	return r.Query
+}
+
+// FilterByJson validates all clauses before changing this request.
+func (r *PlatformRequest) FilterByJson(source []byte) (*PlatformRequest, error) {
+	query, warnings, err := generatedsearch.Apply(r.Query, source, nil)
+	if err != nil { return nil, err }
+	r.Query = query
+	r.dynamicSearchWarnings = append(r.dynamicSearchWarnings, warnings...)
+	return r, nil
+}
+
+func (r *PlatformRequest) DynamicSearchWarnings() []core.DynamicSearchWarning {
+	return append([]core.DynamicSearchWarning(nil), r.dynamicSearchWarnings...)
+}
+
+func (r *PlatformRequest) GetQuerySelection() *core.QuerySelection {
+	selection := core.NewQuerySelection(r.Query)
+	selection.QueryOptions = r.queryOptions
+	return selection
+}
+
+func (r *PlatformRequest) GetEntityDescriptor() *core.EntityDescriptor {
+	return newLoadedPlatform().EntityDescriptor()
+}
+
+func (r *PlatformRequest) NewRelationEntity() core.Entity {
+	return newLoadedPlatform()
+}
+
+// Generated query infrastructure. Preserve this request's selected nested
+// factories without importing parent packages or using a global registry.
+func (r *PlatformRequest) TeaqlHydrateQueryRecord(rec core.Record) (core.Entity, error) {
+	return r.teaqlHydrateQueryRecord(rec)
+}
+
+func (r *PlatformRequest) teaqlHydrateQueryRecord(rec core.Record) (*Platform, error) {
+	entity := newLoadedPlatform()
+	if err := entity.FromRecord(rec); err != nil { return nil, err }
+	if relationValue, selected := rec["taskStatusList"]; selected {
+		entity.markRelationLoaded("taskStatusList")
+		factory := r.relationFactories["taskStatusList"]
+		if factory == nil { return nil, fmt.Errorf("missing generated query hydrator for relation taskStatusList") }
+		childRecords, ok := relationValue.V.([]core.Record)
+			if !ok { return nil, fmt.Errorf("relation taskStatusList has unexpected runtime type %T", relationValue.V) }
+			for _, childRecord := range childRecords {
+				child, err := factory(childRecord)
+				if err != nil { return nil, err }
+				childEntity, ok := child.(*task_status.TaskStatus)
+				if !ok { return nil, fmt.Errorf("unexpected generated query child type for relation taskStatusList") }
+				childEntity.AttachEntityRoot(entity.EntityRoot())
+				entity.TaskStatusList().Add(childEntity)
+			}}
+	if relationValue, selected := rec["taskList"]; selected {
+		entity.markRelationLoaded("taskList")
+		factory := r.relationFactories["taskList"]
+		if factory == nil { return nil, fmt.Errorf("missing generated query hydrator for relation taskList") }
+		childRecords, ok := relationValue.V.([]core.Record)
+			if !ok { return nil, fmt.Errorf("relation taskList has unexpected runtime type %T", relationValue.V) }
+			for _, childRecord := range childRecords {
+				child, err := factory(childRecord)
+				if err != nil { return nil, err }
+				childEntity, ok := child.(*task.Task)
+				if !ok { return nil, fmt.Errorf("unexpected generated query child type for relation taskList") }
+				childEntity.AttachEntityRoot(entity.EntityRoot())
+				entity.TaskList().Add(childEntity)
+			}}
+	return entity, nil
+}
+
+func (r *PlatformRequest) Comment(comment string) *PlatformRequest {
+	r.commentText = comment
+	r.Query.Comment(comment)
+	return r
+}
+
+func (r *PlatformRequest) Purpose(purpose string) *ExecutablePlatformRequest {
+	r.purposeText = purpose
+	return &ExecutablePlatformRequest{request: r}
+}
+
+func (r *ExecutablePlatformRequest) Comment(comment string) *ExecutablePlatformRequest {
+	r.request.commentText = comment
+	r.request.Query.Comment(comment)
+	return r
+}
+
+func (r *PlatformRequest) Limit(limit uint64) *PlatformRequest {
+	r.Query.Limit(limit)
+	return r
+}
+
+func (r *PlatformRequest) Offset(offset uint64) *PlatformRequest {
+	r.Query.Offset(offset)
+	return r
+}
+
+func (r *PlatformRequest) OptimizeForContinuousPageFetch() *PlatformRequest {
+	r.Query.OptimizeForContinuousPageFetch()
+	return r
+}
+
+func (r *PlatformRequest) OptimizeForContinuousPageFetchWith(namespace string, ttlSeconds uint64) *PlatformRequest {
+	r.Query.OptimizeForContinuousPageFetchWith(namespace, ttlSeconds)
+	return r
+}
+
+func (r *PlatformRequest) OptimizePaginationWithIDSet() *PlatformRequest {
+	r.Query.OptimizePaginationWithIDSet()
+	return r
+}
+
+func (r *PlatformRequest) OptimizePaginationWithIDSetConfig(namespace string, ttlSeconds, maxIDs uint64) *PlatformRequest {
+	r.Query.OptimizePaginationWithIDSetConfig(namespace, ttlSeconds, maxIDs)
+	return r
+}
+
+func (r *PlatformRequest) TopNProbeParentThreshold(threshold uint64) *PlatformRequest {
+	r.Query.TopNProbeParentThreshold(threshold)
+	return r
+}
+
+func removePlatformVersionFilter(expr *core.Expr) *core.Expr {
+	if expr == nil { return nil }
+	if expr.Type == core.ExprTypeBinary && expr.Left != nil &&
+		expr.Left.Type == core.ExprTypeColumn && expr.Left.Column == "version" {
+		return nil
+	}
+	if expr.Type != core.ExprTypeAnd { return expr }
+	parts := make([]*core.Expr, 0, len(expr.Parts))
+	for _, part := range expr.Parts {
+		if kept := removePlatformVersionFilter(part); kept != nil {
+			parts = append(parts, kept)
+		}
+	}
+	if len(parts) == 0 { return nil }
+	if len(parts) == 1 { return parts[0] }
+	return core.ExprAndNode(parts...)
+}
+
+func (r *PlatformRequest) WithDeletedRows() *PlatformRequest {
+	r.Query.Filter = removePlatformVersionFilter(r.Query.Filter)
+	return r
+}
+
+func (r *PlatformRequest) DeletedRowsOnly() *PlatformRequest {
+	r.WithDeletedRows()
+	r.Query.AndFilter(core.ExprLte("version", core.ValI64(-1)))
+	return r
+}
+
+func (r *PlatformRequest) SelectId() *PlatformRequest {
+	r.Query.Project(teaqlIdStorageKey)
+	return r
+}
+
+func (r *PlatformRequest) WithIdIs(value uint64) *PlatformRequest {
+	r.Query.AndFilter(core.ExprEq(teaqlIdStorageKey, core.ValU64(value)))
+	return r
+}
+func (r *PlatformRequest) WithIdIsNot(value uint64) *PlatformRequest {
+	r.Query.AndFilter(core.ExprNe(teaqlIdStorageKey, core.ValU64(value)))
+	return r
+}
+func (r *PlatformRequest) WithIdIn(values []uint64) *PlatformRequest {
+	converted := make([]core.Value, 0, len(values))
+	for _, value := range values {
+		converted = append(converted, core.ValU64(value))
+	}
+	r.Query.AndFilter(core.ExprInList(teaqlIdStorageKey, converted))
+	return r
+}
+func (r *PlatformRequest) WithIdNotIn(values []uint64) *PlatformRequest {
+	converted := make([]core.Value, 0, len(values))
+	for _, value := range values {
+		converted = append(converted, core.ValU64(value))
+	}
+	r.Query.AndFilter(core.ExprNotInList(teaqlIdStorageKey, converted))
+	return r
+}
+func (r *PlatformRequest) WithIdGreaterThan(value uint64) *PlatformRequest {
+	r.Query.AndFilter(core.ExprGt(teaqlIdStorageKey, core.ValU64(value)))
+	return r
+}
+func (r *PlatformRequest) WithIdGreaterThanOrEqualTo(value uint64) *PlatformRequest {
+	r.Query.AndFilter(core.ExprGte(teaqlIdStorageKey, core.ValU64(value)))
+	return r
+}
+func (r *PlatformRequest) WithIdLessThan(value uint64) *PlatformRequest {
+	r.Query.AndFilter(core.ExprLt(teaqlIdStorageKey, core.ValU64(value)))
+	return r
+}
+func (r *PlatformRequest) WithIdLessThanOrEqualTo(value uint64) *PlatformRequest {
+	r.Query.AndFilter(core.ExprLte(teaqlIdStorageKey, core.ValU64(value)))
+	return r
+}
+func (r *PlatformRequest) WithIdBetween(lower uint64, upper uint64) *PlatformRequest {
+	value := lower
+	from := core.ValU64(value)
+	value = upper
+	to := core.ValU64(value)
+	r.Query.AndFilter(core.ExprBetweenNode(teaqlIdStorageKey, from, to))
+	return r
+}
+func (r *PlatformRequest) WithIdIsKnown() *PlatformRequest {
+	r.Query.AndFilter(core.ExprIsNotNullNode(teaqlIdStorageKey))
+	return r
+}
+func (r *PlatformRequest) WithIdIsUnknown() *PlatformRequest {
+	r.Query.AndFilter(core.ExprIsNullNode(teaqlIdStorageKey))
+	return r
+}
+func (r *PlatformRequest) OrderByIdAsc() *PlatformRequest {
+	r.Query.OrderAsc(teaqlIdStorageKey)
+	return r
+}
+func (r *PlatformRequest) OrderByIdDesc() *PlatformRequest {
+	r.Query.OrderDesc(teaqlIdStorageKey)
+	return r
+}
+func (r *PlatformRequest) SelectName() *PlatformRequest {
+	r.Query.Project(teaqlNameStorageKey)
+	return r
+}
+
+func (r *PlatformRequest) WithNameIs(value string) *PlatformRequest {
+	r.Query.AndFilter(core.ExprEq(teaqlNameStorageKey, core.ValText(value)))
+	return r
+}
+func (r *PlatformRequest) WithNameIsNot(value string) *PlatformRequest {
+	r.Query.AndFilter(core.ExprNe(teaqlNameStorageKey, core.ValText(value)))
+	return r
+}
+func (r *PlatformRequest) WithNameIn(values []string) *PlatformRequest {
+	converted := make([]core.Value, 0, len(values))
+	for _, value := range values {
+		converted = append(converted, core.ValText(value))
+	}
+	r.Query.AndFilter(core.ExprInList(teaqlNameStorageKey, converted))
+	return r
+}
+func (r *PlatformRequest) WithNameNotIn(values []string) *PlatformRequest {
+	converted := make([]core.Value, 0, len(values))
+	for _, value := range values {
+		converted = append(converted, core.ValText(value))
+	}
+	r.Query.AndFilter(core.ExprNotInList(teaqlNameStorageKey, converted))
+	return r
+}
+func (r *PlatformRequest) WithNameGreaterThan(value string) *PlatformRequest {
+	r.Query.AndFilter(core.ExprGt(teaqlNameStorageKey, core.ValText(value)))
+	return r
+}
+func (r *PlatformRequest) WithNameGreaterThanOrEqualTo(value string) *PlatformRequest {
+	r.Query.AndFilter(core.ExprGte(teaqlNameStorageKey, core.ValText(value)))
+	return r
+}
+func (r *PlatformRequest) WithNameLessThan(value string) *PlatformRequest {
+	r.Query.AndFilter(core.ExprLt(teaqlNameStorageKey, core.ValText(value)))
+	return r
+}
+func (r *PlatformRequest) WithNameLessThanOrEqualTo(value string) *PlatformRequest {
+	r.Query.AndFilter(core.ExprLte(teaqlNameStorageKey, core.ValText(value)))
+	return r
+}
+func (r *PlatformRequest) WithNameBetween(lower string, upper string) *PlatformRequest {
+	value := lower
+	from := core.ValText(value)
+	value = upper
+	to := core.ValText(value)
+	r.Query.AndFilter(core.ExprBetweenNode(teaqlNameStorageKey, from, to))
+	return r
+}
+func (r *PlatformRequest) WithNameIsKnown() *PlatformRequest {
+	r.Query.AndFilter(core.ExprIsNotNullNode(teaqlNameStorageKey))
+	return r
+}
+func (r *PlatformRequest) WithNameIsUnknown() *PlatformRequest {
+	r.Query.AndFilter(core.ExprIsNullNode(teaqlNameStorageKey))
+	return r
+}
+func (r *PlatformRequest) WithNameContaining(term string) *PlatformRequest {
+	r.Query.AndFilter(core.ExprContain(teaqlNameStorageKey, term))
+	return r
+}
+func (r *PlatformRequest) WithNameNotContaining(term string) *PlatformRequest {
+	r.Query.AndFilter(core.ExprNotContain(teaqlNameStorageKey, term))
+	return r
+}
+func (r *PlatformRequest) WithNameStartingWith(term string) *PlatformRequest {
+	r.Query.AndFilter(core.ExprBeginWith(teaqlNameStorageKey, term))
+	return r
+}
+func (r *PlatformRequest) WithNameNotStartingWith(term string) *PlatformRequest {
+	r.Query.AndFilter(core.ExprNotBeginWith(teaqlNameStorageKey, term))
+	return r
+}
+func (r *PlatformRequest) WithNameEndingWith(term string) *PlatformRequest {
+	r.Query.AndFilter(core.ExprEndWith(teaqlNameStorageKey, term))
+	return r
+}
+func (r *PlatformRequest) WithNameNotEndingWith(term string) *PlatformRequest {
+	r.Query.AndFilter(core.ExprNotEndWith(teaqlNameStorageKey, term))
+	return r
+}
+func (r *PlatformRequest) WithNameSoundingLike(term string) *PlatformRequest {
+	r.Query.AndFilter(core.ExprSoundLike(teaqlNameStorageKey, core.ValText(term)))
+	return r
+}
+func (r *PlatformRequest) OrderByNameAsc() *PlatformRequest {
+	r.Query.OrderAsc(teaqlNameStorageKey)
+	return r
+}
+func (r *PlatformRequest) OrderByNameDesc() *PlatformRequest {
+	r.Query.OrderDesc(teaqlNameStorageKey)
+	return r
+}
+func (r *PlatformRequest) SelectFounded() *PlatformRequest {
+	r.Query.Project(teaqlFoundedStorageKey)
+	return r
+}
+
+func (r *PlatformRequest) WithFoundedIs(value time.Time) *PlatformRequest {
+	r.Query.AndFilter(core.ExprEq(teaqlFoundedStorageKey, core.ValTimestamp(value.UnixMilli())))
+	return r
+}
+func (r *PlatformRequest) WithFoundedIsNot(value time.Time) *PlatformRequest {
+	r.Query.AndFilter(core.ExprNe(teaqlFoundedStorageKey, core.ValTimestamp(value.UnixMilli())))
+	return r
+}
+func (r *PlatformRequest) WithFoundedIn(values []time.Time) *PlatformRequest {
+	converted := make([]core.Value, 0, len(values))
+	for _, value := range values {
+		converted = append(converted, core.ValTimestamp(value.UnixMilli()))
+	}
+	r.Query.AndFilter(core.ExprInList(teaqlFoundedStorageKey, converted))
+	return r
+}
+func (r *PlatformRequest) WithFoundedNotIn(values []time.Time) *PlatformRequest {
+	converted := make([]core.Value, 0, len(values))
+	for _, value := range values {
+		converted = append(converted, core.ValTimestamp(value.UnixMilli()))
+	}
+	r.Query.AndFilter(core.ExprNotInList(teaqlFoundedStorageKey, converted))
+	return r
+}
+func (r *PlatformRequest) WithFoundedGreaterThan(value time.Time) *PlatformRequest {
+	r.Query.AndFilter(core.ExprGt(teaqlFoundedStorageKey, core.ValTimestamp(value.UnixMilli())))
+	return r
+}
+func (r *PlatformRequest) WithFoundedGreaterThanOrEqualTo(value time.Time) *PlatformRequest {
+	r.Query.AndFilter(core.ExprGte(teaqlFoundedStorageKey, core.ValTimestamp(value.UnixMilli())))
+	return r
+}
+func (r *PlatformRequest) WithFoundedLessThan(value time.Time) *PlatformRequest {
+	r.Query.AndFilter(core.ExprLt(teaqlFoundedStorageKey, core.ValTimestamp(value.UnixMilli())))
+	return r
+}
+func (r *PlatformRequest) WithFoundedLessThanOrEqualTo(value time.Time) *PlatformRequest {
+	r.Query.AndFilter(core.ExprLte(teaqlFoundedStorageKey, core.ValTimestamp(value.UnixMilli())))
+	return r
+}
+func (r *PlatformRequest) WithFoundedBetween(lower time.Time, upper time.Time) *PlatformRequest {
+	value := lower
+	from := core.ValTimestamp(value.UnixMilli())
+	value = upper
+	to := core.ValTimestamp(value.UnixMilli())
+	r.Query.AndFilter(core.ExprBetweenNode(teaqlFoundedStorageKey, from, to))
+	return r
+}
+func (r *PlatformRequest) WithFoundedIsKnown() *PlatformRequest {
+	r.Query.AndFilter(core.ExprIsNotNullNode(teaqlFoundedStorageKey))
+	return r
+}
+func (r *PlatformRequest) WithFoundedIsUnknown() *PlatformRequest {
+	r.Query.AndFilter(core.ExprIsNullNode(teaqlFoundedStorageKey))
+	return r
+}
+func (r *PlatformRequest) OrderByFoundedAsc() *PlatformRequest {
+	r.Query.OrderAsc(teaqlFoundedStorageKey)
+	return r
+}
+func (r *PlatformRequest) OrderByFoundedDesc() *PlatformRequest {
+	r.Query.OrderDesc(teaqlFoundedStorageKey)
+	return r
+}
+func (r *PlatformRequest) SelectUserEmail() *PlatformRequest {
+	r.Query.Project(teaqlUserEmailStorageKey)
+	return r
+}
+
+func (r *PlatformRequest) WithUserEmailIs(value string) *PlatformRequest {
+	r.Query.AndFilter(core.ExprEq(teaqlUserEmailStorageKey, core.ValText(value)))
+	return r
+}
+func (r *PlatformRequest) WithUserEmailIsNot(value string) *PlatformRequest {
+	r.Query.AndFilter(core.ExprNe(teaqlUserEmailStorageKey, core.ValText(value)))
+	return r
+}
+func (r *PlatformRequest) WithUserEmailIn(values []string) *PlatformRequest {
+	converted := make([]core.Value, 0, len(values))
+	for _, value := range values {
+		converted = append(converted, core.ValText(value))
+	}
+	r.Query.AndFilter(core.ExprInList(teaqlUserEmailStorageKey, converted))
+	return r
+}
+func (r *PlatformRequest) WithUserEmailNotIn(values []string) *PlatformRequest {
+	converted := make([]core.Value, 0, len(values))
+	for _, value := range values {
+		converted = append(converted, core.ValText(value))
+	}
+	r.Query.AndFilter(core.ExprNotInList(teaqlUserEmailStorageKey, converted))
+	return r
+}
+func (r *PlatformRequest) WithUserEmailGreaterThan(value string) *PlatformRequest {
+	r.Query.AndFilter(core.ExprGt(teaqlUserEmailStorageKey, core.ValText(value)))
+	return r
+}
+func (r *PlatformRequest) WithUserEmailGreaterThanOrEqualTo(value string) *PlatformRequest {
+	r.Query.AndFilter(core.ExprGte(teaqlUserEmailStorageKey, core.ValText(value)))
+	return r
+}
+func (r *PlatformRequest) WithUserEmailLessThan(value string) *PlatformRequest {
+	r.Query.AndFilter(core.ExprLt(teaqlUserEmailStorageKey, core.ValText(value)))
+	return r
+}
+func (r *PlatformRequest) WithUserEmailLessThanOrEqualTo(value string) *PlatformRequest {
+	r.Query.AndFilter(core.ExprLte(teaqlUserEmailStorageKey, core.ValText(value)))
+	return r
+}
+func (r *PlatformRequest) WithUserEmailBetween(lower string, upper string) *PlatformRequest {
+	value := lower
+	from := core.ValText(value)
+	value = upper
+	to := core.ValText(value)
+	r.Query.AndFilter(core.ExprBetweenNode(teaqlUserEmailStorageKey, from, to))
+	return r
+}
+func (r *PlatformRequest) WithUserEmailIsKnown() *PlatformRequest {
+	r.Query.AndFilter(core.ExprIsNotNullNode(teaqlUserEmailStorageKey))
+	return r
+}
+func (r *PlatformRequest) WithUserEmailIsUnknown() *PlatformRequest {
+	r.Query.AndFilter(core.ExprIsNullNode(teaqlUserEmailStorageKey))
+	return r
+}
+func (r *PlatformRequest) WithUserEmailContaining(term string) *PlatformRequest {
+	r.Query.AndFilter(core.ExprContain(teaqlUserEmailStorageKey, term))
+	return r
+}
+func (r *PlatformRequest) WithUserEmailNotContaining(term string) *PlatformRequest {
+	r.Query.AndFilter(core.ExprNotContain(teaqlUserEmailStorageKey, term))
+	return r
+}
+func (r *PlatformRequest) WithUserEmailStartingWith(term string) *PlatformRequest {
+	r.Query.AndFilter(core.ExprBeginWith(teaqlUserEmailStorageKey, term))
+	return r
+}
+func (r *PlatformRequest) WithUserEmailNotStartingWith(term string) *PlatformRequest {
+	r.Query.AndFilter(core.ExprNotBeginWith(teaqlUserEmailStorageKey, term))
+	return r
+}
+func (r *PlatformRequest) WithUserEmailEndingWith(term string) *PlatformRequest {
+	r.Query.AndFilter(core.ExprEndWith(teaqlUserEmailStorageKey, term))
+	return r
+}
+func (r *PlatformRequest) WithUserEmailNotEndingWith(term string) *PlatformRequest {
+	r.Query.AndFilter(core.ExprNotEndWith(teaqlUserEmailStorageKey, term))
+	return r
+}
+func (r *PlatformRequest) WithUserEmailSoundingLike(term string) *PlatformRequest {
+	r.Query.AndFilter(core.ExprSoundLike(teaqlUserEmailStorageKey, core.ValText(term)))
+	return r
+}
+func (r *PlatformRequest) OrderByUserEmailAsc() *PlatformRequest {
+	r.Query.OrderAsc(teaqlUserEmailStorageKey)
+	return r
+}
+func (r *PlatformRequest) OrderByUserEmailDesc() *PlatformRequest {
+	r.Query.OrderDesc(teaqlUserEmailStorageKey)
+	return r
+}
+func (r *PlatformRequest) SelectVersion() *PlatformRequest {
+	r.Query.Project(teaqlVersionStorageKey)
+	return r
+}
+
+func (r *PlatformRequest) WithVersionIs(value int64) *PlatformRequest {
+	r.Query.AndFilter(core.ExprEq(teaqlVersionStorageKey, core.ValI64(value)))
+	return r
+}
+func (r *PlatformRequest) WithVersionIsNot(value int64) *PlatformRequest {
+	r.Query.AndFilter(core.ExprNe(teaqlVersionStorageKey, core.ValI64(value)))
+	return r
+}
+func (r *PlatformRequest) WithVersionIn(values []int64) *PlatformRequest {
+	converted := make([]core.Value, 0, len(values))
+	for _, value := range values {
+		converted = append(converted, core.ValI64(value))
+	}
+	r.Query.AndFilter(core.ExprInList(teaqlVersionStorageKey, converted))
+	return r
+}
+func (r *PlatformRequest) WithVersionNotIn(values []int64) *PlatformRequest {
+	converted := make([]core.Value, 0, len(values))
+	for _, value := range values {
+		converted = append(converted, core.ValI64(value))
+	}
+	r.Query.AndFilter(core.ExprNotInList(teaqlVersionStorageKey, converted))
+	return r
+}
+func (r *PlatformRequest) WithVersionGreaterThan(value int64) *PlatformRequest {
+	r.Query.AndFilter(core.ExprGt(teaqlVersionStorageKey, core.ValI64(value)))
+	return r
+}
+func (r *PlatformRequest) WithVersionGreaterThanOrEqualTo(value int64) *PlatformRequest {
+	r.Query.AndFilter(core.ExprGte(teaqlVersionStorageKey, core.ValI64(value)))
+	return r
+}
+func (r *PlatformRequest) WithVersionLessThan(value int64) *PlatformRequest {
+	r.Query.AndFilter(core.ExprLt(teaqlVersionStorageKey, core.ValI64(value)))
+	return r
+}
+func (r *PlatformRequest) WithVersionLessThanOrEqualTo(value int64) *PlatformRequest {
+	r.Query.AndFilter(core.ExprLte(teaqlVersionStorageKey, core.ValI64(value)))
+	return r
+}
+func (r *PlatformRequest) WithVersionBetween(lower int64, upper int64) *PlatformRequest {
+	value := lower
+	from := core.ValI64(value)
+	value = upper
+	to := core.ValI64(value)
+	r.Query.AndFilter(core.ExprBetweenNode(teaqlVersionStorageKey, from, to))
+	return r
+}
+func (r *PlatformRequest) WithVersionIsKnown() *PlatformRequest {
+	r.Query.AndFilter(core.ExprIsNotNullNode(teaqlVersionStorageKey))
+	return r
+}
+func (r *PlatformRequest) WithVersionIsUnknown() *PlatformRequest {
+	r.Query.AndFilter(core.ExprIsNullNode(teaqlVersionStorageKey))
+	return r
+}
+func (r *PlatformRequest) OrderByVersionAsc() *PlatformRequest {
+	r.Query.OrderAsc(teaqlVersionStorageKey)
+	return r
+}
+func (r *PlatformRequest) OrderByVersionDesc() *PlatformRequest {
+	r.Query.OrderDesc(teaqlVersionStorageKey)
+	return r
+}
+
+
+
+func (r *PlatformRequest) CountTaskStatuses() *PlatformRequest {
+	return r.CountTaskStatusesAs("countTaskStatuses")
+
+}
+func (r *PlatformRequest) CountTaskStatusesAs(alias string) *PlatformRequest {
+	r.CountTaskStatusesWith(alias, task_status.NewTaskStatusRequest())
+	r.Query.RelationAggregates[len(r.Query.RelationAggregates)-1].Operation = &core.QueryOperation{Kind: "count", Method: "CountTaskStatusesAs", Alias: &alias, Relation: "taskStatusList"}
+	return r
+}
+func (r *PlatformRequest) CountTaskStatusesWith(alias string, child *task_status.TaskStatusRequest) *PlatformRequest {
+	query := child.GetQuery().Clone()
+	query.Aggregates = nil
+	query.Count(alias)
+	aggregate := core.NewRelationAggregate("taskStatusList", alias, query, true)
+	aggregate.Operation = &core.QueryOperation{Kind: "count", Method: "CountTaskStatusesWith", Alias: &alias, Relation: "taskStatusList"}
+	r.Query.RelationAggregates = append(r.Query.RelationAggregates, aggregate)
+	return r
+}
+
+func (r *PlatformRequest) SumDisplayOrderOfTaskStatuses() *PlatformRequest {
+	return r.SumDisplayOrderOfTaskStatusesAs("sumDisplayOrderOfTaskStatuses", task_status.NewTaskStatusRequest())
+}
+func (r *PlatformRequest) SumDisplayOrderOfTaskStatusesAs(alias string, child *task_status.TaskStatusRequest) *PlatformRequest {
+	query := child.GetQuery().Clone()
+	query.Aggregates = nil
+	query.Sum("display_order", alias)
+	aggregate := core.NewRelationAggregate("taskStatusList", alias, query, true)
+	aggregate.Operation = &core.QueryOperation{Kind: "aggregate", Method: "SumDisplayOrderOfTaskStatusesAs", Alias: &alias, Relation: "taskStatusList"}
+	r.Query.RelationAggregates = append(r.Query.RelationAggregates, aggregate)
+	return r
+}
+func (r *PlatformRequest) MinDisplayOrderOfTaskStatuses() *PlatformRequest {
+	return r.MinDisplayOrderOfTaskStatusesAs("minDisplayOrderOfTaskStatuses", task_status.NewTaskStatusRequest())
+}
+func (r *PlatformRequest) MinDisplayOrderOfTaskStatusesAs(alias string, child *task_status.TaskStatusRequest) *PlatformRequest {
+	query := child.GetQuery().Clone()
+	query.Aggregates = nil
+	query.Min("display_order", alias)
+	aggregate := core.NewRelationAggregate("taskStatusList", alias, query, true)
+	aggregate.Operation = &core.QueryOperation{Kind: "aggregate", Method: "MinDisplayOrderOfTaskStatusesAs", Alias: &alias, Relation: "taskStatusList"}
+	r.Query.RelationAggregates = append(r.Query.RelationAggregates, aggregate)
+	return r
+}
+func (r *PlatformRequest) MaxDisplayOrderOfTaskStatuses() *PlatformRequest {
+	return r.MaxDisplayOrderOfTaskStatusesAs("maxDisplayOrderOfTaskStatuses", task_status.NewTaskStatusRequest())
+}
+func (r *PlatformRequest) MaxDisplayOrderOfTaskStatusesAs(alias string, child *task_status.TaskStatusRequest) *PlatformRequest {
+	query := child.GetQuery().Clone()
+	query.Aggregates = nil
+	query.Max("display_order", alias)
+	aggregate := core.NewRelationAggregate("taskStatusList", alias, query, true)
+	aggregate.Operation = &core.QueryOperation{Kind: "aggregate", Method: "MaxDisplayOrderOfTaskStatusesAs", Alias: &alias, Relation: "taskStatusList"}
+	r.Query.RelationAggregates = append(r.Query.RelationAggregates, aggregate)
+	return r
+}
+func (r *PlatformRequest) AvgDisplayOrderOfTaskStatuses() *PlatformRequest {
+	return r.AvgDisplayOrderOfTaskStatusesAs("avgDisplayOrderOfTaskStatuses", task_status.NewTaskStatusRequest())
+}
+func (r *PlatformRequest) AvgDisplayOrderOfTaskStatusesAs(alias string, child *task_status.TaskStatusRequest) *PlatformRequest {
+	query := child.GetQuery().Clone()
+	query.Aggregates = nil
+	query.Avg("display_order", alias)
+	aggregate := core.NewRelationAggregate("taskStatusList", alias, query, true)
+	aggregate.Operation = &core.QueryOperation{Kind: "aggregate", Method: "AvgDisplayOrderOfTaskStatusesAs", Alias: &alias, Relation: "taskStatusList"}
+	r.Query.RelationAggregates = append(r.Query.RelationAggregates, aggregate)
+	return r
+}
+func (r *PlatformRequest) StandardDeviationDisplayOrderOfTaskStatuses() *PlatformRequest {
+	return r.StandardDeviationDisplayOrderOfTaskStatusesAs("standardDeviationDisplayOrderOfTaskStatuses", task_status.NewTaskStatusRequest())
+}
+func (r *PlatformRequest) StandardDeviationDisplayOrderOfTaskStatusesAs(alias string, child *task_status.TaskStatusRequest) *PlatformRequest {
+	query := child.GetQuery().Clone()
+	query.Aggregates = nil
+	query.Stddev("display_order", alias)
+	aggregate := core.NewRelationAggregate("taskStatusList", alias, query, true)
+	aggregate.Operation = &core.QueryOperation{Kind: "aggregate", Method: "StandardDeviationDisplayOrderOfTaskStatusesAs", Alias: &alias, Relation: "taskStatusList"}
+	r.Query.RelationAggregates = append(r.Query.RelationAggregates, aggregate)
+	return r
+}
+func (r *PlatformRequest) SquareRootOfPopulationStandardDeviationDisplayOrderOfTaskStatuses() *PlatformRequest {
+	return r.SquareRootOfPopulationStandardDeviationDisplayOrderOfTaskStatusesAs("squareRootOfPopulationStandardDeviationDisplayOrderOfTaskStatuses", task_status.NewTaskStatusRequest())
+}
+func (r *PlatformRequest) SquareRootOfPopulationStandardDeviationDisplayOrderOfTaskStatusesAs(alias string, child *task_status.TaskStatusRequest) *PlatformRequest {
+	query := child.GetQuery().Clone()
+	query.Aggregates = nil
+	query.StddevPop("display_order", alias)
+	aggregate := core.NewRelationAggregate("taskStatusList", alias, query, true)
+	aggregate.Operation = &core.QueryOperation{Kind: "aggregate", Method: "SquareRootOfPopulationStandardDeviationDisplayOrderOfTaskStatusesAs", Alias: &alias, Relation: "taskStatusList"}
+	r.Query.RelationAggregates = append(r.Query.RelationAggregates, aggregate)
+	return r
+}
+func (r *PlatformRequest) SampleVarianceDisplayOrderOfTaskStatuses() *PlatformRequest {
+	return r.SampleVarianceDisplayOrderOfTaskStatusesAs("sampleVarianceDisplayOrderOfTaskStatuses", task_status.NewTaskStatusRequest())
+}
+func (r *PlatformRequest) SampleVarianceDisplayOrderOfTaskStatusesAs(alias string, child *task_status.TaskStatusRequest) *PlatformRequest {
+	query := child.GetQuery().Clone()
+	query.Aggregates = nil
+	query.VarSamp("display_order", alias)
+	aggregate := core.NewRelationAggregate("taskStatusList", alias, query, true)
+	aggregate.Operation = &core.QueryOperation{Kind: "aggregate", Method: "SampleVarianceDisplayOrderOfTaskStatusesAs", Alias: &alias, Relation: "taskStatusList"}
+	r.Query.RelationAggregates = append(r.Query.RelationAggregates, aggregate)
+	return r
+}
+func (r *PlatformRequest) SamplePopulationVarianceDisplayOrderOfTaskStatuses() *PlatformRequest {
+	return r.SamplePopulationVarianceDisplayOrderOfTaskStatusesAs("samplePopulationVarianceDisplayOrderOfTaskStatuses", task_status.NewTaskStatusRequest())
+}
+func (r *PlatformRequest) SamplePopulationVarianceDisplayOrderOfTaskStatusesAs(alias string, child *task_status.TaskStatusRequest) *PlatformRequest {
+	query := child.GetQuery().Clone()
+	query.Aggregates = nil
+	query.VarPop("display_order", alias)
+	aggregate := core.NewRelationAggregate("taskStatusList", alias, query, true)
+	aggregate.Operation = &core.QueryOperation{Kind: "aggregate", Method: "SamplePopulationVarianceDisplayOrderOfTaskStatusesAs", Alias: &alias, Relation: "taskStatusList"}
+	r.Query.RelationAggregates = append(r.Query.RelationAggregates, aggregate)
+	return r
+}
+func (r *PlatformRequest) SumProgressOfTaskStatuses() *PlatformRequest {
+	return r.SumProgressOfTaskStatusesAs("sumProgressOfTaskStatuses", task_status.NewTaskStatusRequest())
+}
+func (r *PlatformRequest) SumProgressOfTaskStatusesAs(alias string, child *task_status.TaskStatusRequest) *PlatformRequest {
+	query := child.GetQuery().Clone()
+	query.Aggregates = nil
+	query.Sum("progress", alias)
+	aggregate := core.NewRelationAggregate("taskStatusList", alias, query, true)
+	aggregate.Operation = &core.QueryOperation{Kind: "aggregate", Method: "SumProgressOfTaskStatusesAs", Alias: &alias, Relation: "taskStatusList"}
+	r.Query.RelationAggregates = append(r.Query.RelationAggregates, aggregate)
+	return r
+}
+func (r *PlatformRequest) MinProgressOfTaskStatuses() *PlatformRequest {
+	return r.MinProgressOfTaskStatusesAs("minProgressOfTaskStatuses", task_status.NewTaskStatusRequest())
+}
+func (r *PlatformRequest) MinProgressOfTaskStatusesAs(alias string, child *task_status.TaskStatusRequest) *PlatformRequest {
+	query := child.GetQuery().Clone()
+	query.Aggregates = nil
+	query.Min("progress", alias)
+	aggregate := core.NewRelationAggregate("taskStatusList", alias, query, true)
+	aggregate.Operation = &core.QueryOperation{Kind: "aggregate", Method: "MinProgressOfTaskStatusesAs", Alias: &alias, Relation: "taskStatusList"}
+	r.Query.RelationAggregates = append(r.Query.RelationAggregates, aggregate)
+	return r
+}
+func (r *PlatformRequest) MaxProgressOfTaskStatuses() *PlatformRequest {
+	return r.MaxProgressOfTaskStatusesAs("maxProgressOfTaskStatuses", task_status.NewTaskStatusRequest())
+}
+func (r *PlatformRequest) MaxProgressOfTaskStatusesAs(alias string, child *task_status.TaskStatusRequest) *PlatformRequest {
+	query := child.GetQuery().Clone()
+	query.Aggregates = nil
+	query.Max("progress", alias)
+	aggregate := core.NewRelationAggregate("taskStatusList", alias, query, true)
+	aggregate.Operation = &core.QueryOperation{Kind: "aggregate", Method: "MaxProgressOfTaskStatusesAs", Alias: &alias, Relation: "taskStatusList"}
+	r.Query.RelationAggregates = append(r.Query.RelationAggregates, aggregate)
+	return r
+}
+func (r *PlatformRequest) AvgProgressOfTaskStatuses() *PlatformRequest {
+	return r.AvgProgressOfTaskStatusesAs("avgProgressOfTaskStatuses", task_status.NewTaskStatusRequest())
+}
+func (r *PlatformRequest) AvgProgressOfTaskStatusesAs(alias string, child *task_status.TaskStatusRequest) *PlatformRequest {
+	query := child.GetQuery().Clone()
+	query.Aggregates = nil
+	query.Avg("progress", alias)
+	aggregate := core.NewRelationAggregate("taskStatusList", alias, query, true)
+	aggregate.Operation = &core.QueryOperation{Kind: "aggregate", Method: "AvgProgressOfTaskStatusesAs", Alias: &alias, Relation: "taskStatusList"}
+	r.Query.RelationAggregates = append(r.Query.RelationAggregates, aggregate)
+	return r
+}
+func (r *PlatformRequest) StandardDeviationProgressOfTaskStatuses() *PlatformRequest {
+	return r.StandardDeviationProgressOfTaskStatusesAs("standardDeviationProgressOfTaskStatuses", task_status.NewTaskStatusRequest())
+}
+func (r *PlatformRequest) StandardDeviationProgressOfTaskStatusesAs(alias string, child *task_status.TaskStatusRequest) *PlatformRequest {
+	query := child.GetQuery().Clone()
+	query.Aggregates = nil
+	query.Stddev("progress", alias)
+	aggregate := core.NewRelationAggregate("taskStatusList", alias, query, true)
+	aggregate.Operation = &core.QueryOperation{Kind: "aggregate", Method: "StandardDeviationProgressOfTaskStatusesAs", Alias: &alias, Relation: "taskStatusList"}
+	r.Query.RelationAggregates = append(r.Query.RelationAggregates, aggregate)
+	return r
+}
+func (r *PlatformRequest) SquareRootOfPopulationStandardDeviationProgressOfTaskStatuses() *PlatformRequest {
+	return r.SquareRootOfPopulationStandardDeviationProgressOfTaskStatusesAs("squareRootOfPopulationStandardDeviationProgressOfTaskStatuses", task_status.NewTaskStatusRequest())
+}
+func (r *PlatformRequest) SquareRootOfPopulationStandardDeviationProgressOfTaskStatusesAs(alias string, child *task_status.TaskStatusRequest) *PlatformRequest {
+	query := child.GetQuery().Clone()
+	query.Aggregates = nil
+	query.StddevPop("progress", alias)
+	aggregate := core.NewRelationAggregate("taskStatusList", alias, query, true)
+	aggregate.Operation = &core.QueryOperation{Kind: "aggregate", Method: "SquareRootOfPopulationStandardDeviationProgressOfTaskStatusesAs", Alias: &alias, Relation: "taskStatusList"}
+	r.Query.RelationAggregates = append(r.Query.RelationAggregates, aggregate)
+	return r
+}
+func (r *PlatformRequest) SampleVarianceProgressOfTaskStatuses() *PlatformRequest {
+	return r.SampleVarianceProgressOfTaskStatusesAs("sampleVarianceProgressOfTaskStatuses", task_status.NewTaskStatusRequest())
+}
+func (r *PlatformRequest) SampleVarianceProgressOfTaskStatusesAs(alias string, child *task_status.TaskStatusRequest) *PlatformRequest {
+	query := child.GetQuery().Clone()
+	query.Aggregates = nil
+	query.VarSamp("progress", alias)
+	aggregate := core.NewRelationAggregate("taskStatusList", alias, query, true)
+	aggregate.Operation = &core.QueryOperation{Kind: "aggregate", Method: "SampleVarianceProgressOfTaskStatusesAs", Alias: &alias, Relation: "taskStatusList"}
+	r.Query.RelationAggregates = append(r.Query.RelationAggregates, aggregate)
+	return r
+}
+func (r *PlatformRequest) SamplePopulationVarianceProgressOfTaskStatuses() *PlatformRequest {
+	return r.SamplePopulationVarianceProgressOfTaskStatusesAs("samplePopulationVarianceProgressOfTaskStatuses", task_status.NewTaskStatusRequest())
+}
+func (r *PlatformRequest) SamplePopulationVarianceProgressOfTaskStatusesAs(alias string, child *task_status.TaskStatusRequest) *PlatformRequest {
+	query := child.GetQuery().Clone()
+	query.Aggregates = nil
+	query.VarPop("progress", alias)
+	aggregate := core.NewRelationAggregate("taskStatusList", alias, query, true)
+	aggregate.Operation = &core.QueryOperation{Kind: "aggregate", Method: "SamplePopulationVarianceProgressOfTaskStatusesAs", Alias: &alias, Relation: "taskStatusList"}
+	r.Query.RelationAggregates = append(r.Query.RelationAggregates, aggregate)
+	return r
+}
+func (r *PlatformRequest) CountTasks() *PlatformRequest {
+	return r.CountTasksAs("countTasks")
+
+}
+func (r *PlatformRequest) CountTasksAs(alias string) *PlatformRequest {
+	r.CountTasksWith(alias, task.NewTaskRequest())
+	r.Query.RelationAggregates[len(r.Query.RelationAggregates)-1].Operation = &core.QueryOperation{Kind: "count", Method: "CountTasksAs", Alias: &alias, Relation: "taskList"}
+	return r
+}
+func (r *PlatformRequest) CountTasksWith(alias string, child *task.TaskRequest) *PlatformRequest {
+	query := child.GetQuery().Clone()
+	query.Aggregates = nil
+	query.Count(alias)
+	aggregate := core.NewRelationAggregate("taskList", alias, query, true)
+	aggregate.Operation = &core.QueryOperation{Kind: "count", Method: "CountTasksWith", Alias: &alias, Relation: "taskList"}
+	r.Query.RelationAggregates = append(r.Query.RelationAggregates, aggregate)
+	return r
+}
+
+
+
+func (r *PlatformRequest) SelectTaskStatusList() *PlatformRequest {
+	return r.SelectTaskStatusListWith(task_status.NewTaskStatusRequest())
+}
+
+func (r *PlatformRequest) SelectTaskStatusListWith(child *task_status.TaskStatusRequest) *PlatformRequest {
+	r.Query.RelationQuerySelection("taskStatusList", child.GetQuerySelection())
+	r.Query.Relations[len(r.Query.Relations)-1].Operation = &core.QueryOperation{Kind: "relation", Method: "SelectTaskStatusListWith", Relation: "taskStatusList"}
+	r.relationFactories["taskStatusList"] = child.TeaqlHydrateQueryRecord
+	return r
+}
+func (r *PlatformRequest) SelectTaskList() *PlatformRequest {
+	return r.SelectTaskListWith(task.NewTaskRequest())
+}
+
+func (r *PlatformRequest) SelectTaskListWith(child *task.TaskRequest) *PlatformRequest {
+	r.Query.RelationQuerySelection("taskList", child.GetQuerySelection())
+	r.Query.Relations[len(r.Query.Relations)-1].Operation = &core.QueryOperation{Kind: "relation", Method: "SelectTaskListWith", Relation: "taskList"}
+	r.relationFactories["taskList"] = child.TeaqlHydrateQueryRecord
+	return r
+}
+
+func (r *PlatformRequest) HaveTaskStatuses() *PlatformRequest {
+	return r.WithTaskStatusListMatching(task_status.NewTaskStatusRequest())
+}
+
+func (r *PlatformRequest) HaveNoTaskStatuses() *PlatformRequest {
+	return r.WithoutTaskStatusListMatching(task_status.NewTaskStatusRequest())
+}
+
+func (r *PlatformRequest) WithTaskStatusListMatching(child *task_status.TaskStatusRequest) *PlatformRequest {
+	r.Query.AndFilter(core.ExprInSubQuery("id", child.GetEntityDescriptor(), child.GetQuery(), "platform_id"))
+	return r
+}
+
+func (r *PlatformRequest) WithoutTaskStatusListMatching(child *task_status.TaskStatusRequest) *PlatformRequest {
+	r.Query.AndFilter(core.ExprNotInSubQuery("id", child.GetEntityDescriptor(), child.GetQuery(), "platform_id"))
+	return r
+}
+func (r *PlatformRequest) HaveTasks() *PlatformRequest {
+	return r.WithTaskListMatching(task.NewTaskRequest())
+}
+
+func (r *PlatformRequest) HaveNoTasks() *PlatformRequest {
+	return r.WithoutTaskListMatching(task.NewTaskRequest())
+}
+
+func (r *PlatformRequest) WithTaskListMatching(child *task.TaskRequest) *PlatformRequest {
+	r.Query.AndFilter(core.ExprInSubQuery("id", child.GetEntityDescriptor(), child.GetQuery(), "platform_id"))
+	return r
+}
+
+func (r *PlatformRequest) WithoutTaskListMatching(child *task.TaskRequest) *PlatformRequest {
+	r.Query.AndFilter(core.ExprNotInSubQuery("id", child.GetEntityDescriptor(), child.GetQuery(), "platform_id"))
+	return r
+}
+
+func (e *ExecutablePlatformRequest) NewEntity(context *runtime.UserContext) (*Platform, error) {
+	r := e.request
+	if _, err := core.NewQueryIntent(&r.commentText, &r.purposeText); err != nil { panic(err) }
+	return NewPlatform(context)
+}
+
+func (e *ExecutablePlatformRequest) ExecuteForOne(context *runtime.UserContext) (*Platform, error) {
+	request := *e.request
+	request.Query = e.request.Query.Clone()
+	request.Query.Limit(1)
+	executable := *e
+	executable.request = &request
+	list, err := executable.ExecuteForList(context)
+	if err != nil {
+		return nil, err
+	}
+	if len(list.Data) == 0 {
+		return nil, nil // Or a specific Not Found error
+	}
+	return list.Data[0], nil
+}
+
+func (e *ExecutablePlatformRequest) ExecuteForList(context *runtime.UserContext) (*core.SmartList[*Platform], error) {
+	// Apply trusted policy once. The runtime owns the entire typed list lifecycle,
+	// including optional exact count, facets and hydration failures.
+	r := e.request
+	if _, err := core.NewQueryIntent(&r.commentText, &r.purposeText); err != nil { return nil, err }
+	query := r.Query.Clone()
+	query.Comment(r.commentText).Purpose(r.purposeText)
+	query, plan, err := runtime.CaptureQueryPlan(query, r.queryOptions)
+	if err != nil { return nil, err }
+	query = plan.WithQueryDiagnostics(query)
+	authorized, err := context.PrepareEntityQuery(query)
+	if err != nil { return nil, err }
+	dsRaw := context.GetResource("dataService")
+	ds, ok := dsRaw.(data_service.QueryExecutor)
+	if !ok { return nil, fmt.Errorf("dataService does not implement data_service.QueryExecutor") }
+	service := runtime.NewRuntimeDataService(context.Metadata, ds)
+	return runtime.ExecuteTypedList(context, service, authorized, plan, func(rec core.Record) (*Platform, error) {
+		entity, err := r.teaqlHydrateQueryRecord(rec)
+		if err != nil { return nil, err }
+		if err := runtime.CaptureEntityQueryProperties(entity, authorized); err != nil { return nil, err }
+		return entity, nil
+	})
+}
+
+// ExecuteForStream consumes a provider cursor one chunk at a time. Returning
+// an error from yield releases the database resources. runtime.ErrStopStream
+// records an intentional early stop; other callback errors remain failures.
+func (e *ExecutablePlatformRequest) ExecuteForStream(context *runtime.UserContext, chunkSize int, yield func(*Platform) error) error {
+	r := e.request
+	if _, err := core.NewQueryIntent(&r.commentText, &r.purposeText); err != nil { return err }
+	if yield == nil {
+		return fmt.Errorf("stream consumer must not be nil")
+	}
+	query := r.Query.Clone()
+	query.Comment(r.commentText).Purpose(r.purposeText)
+	query, err := runtime.CaptureStreamQuery(query, r.queryOptions)
+	if err != nil { return err }
+	authorized, err := context.PrepareEntityQuery(query)
+	if err != nil { return err }
+	dsRaw := context.GetResource("dataService")
+	ds, ok := dsRaw.(data_service.StreamQueryExecutor)
+	if !ok {
+		return fmt.Errorf("dataService does not implement data_service.StreamQueryExecutor")
+	}
+	return runtime.ExecuteTypedStream(context, ds, authorized, chunkSize, func(rec core.Record) (*Platform, error) {
+		entity := newLoadedPlatform()
+		if err := entity.FromRecord(rec); err != nil { return nil, err }
+		if err := runtime.CaptureEntityQueryProperties(entity, authorized); err != nil { return nil, err }
+		return entity, nil
+	}, yield)
+}
+
+func (e *ExecutablePlatformRequest) ExecuteRecords(context *runtime.UserContext) ([]core.Record, error) {
+	rows, _, _, err := e.executeRecords(context)
+	return rows, err
+}
+
+// executeRecords returns the same authorized snapshot used for row execution
+// so facets can derive their membership query without reapplying root policy.
+func (e *ExecutablePlatformRequest) executeRecords(context *runtime.UserContext) ([]core.Record, *core.SelectQuery, *runtime.FacetPlan, error) {
+	r := e.request
+	if _, err := core.NewQueryIntent(&r.commentText, &r.purposeText); err != nil { return nil, nil, nil, err }
+	query := r.Query.Clone()
+	query.Comment(r.commentText).Purpose(r.purposeText)
+	query, plan, err := runtime.CaptureQueryPlan(query, r.queryOptions)
+	if err != nil { return nil, nil, nil, err }
+	query = plan.WithQueryDiagnostics(query)
+	authorized, err := context.PrepareQuery(query)
+	if err != nil { return nil, nil, nil, err }
+
+	dsRaw := context.GetResource("dataService")
+	if dsRaw == nil {
+		return nil, nil, nil, fmt.Errorf("dataService not found in UserContext")
+	}
+
+	ds, ok := dsRaw.(data_service.QueryExecutor)
+	if !ok {
+		return nil, nil, nil, fmt.Errorf("dataService does not implement data_service.QueryExecutor")
+	}
+
+	rows, err := runtime.NewRuntimeDataService(context.Metadata, ds).FetchAllWithFacetPlan(context, authorized, plan)
+	if err != nil {
+		return nil, nil, nil, err
+	}
+	return rows, authorized, plan, nil
+}
+
+// ExecuteForRows preserves aggregate/group projections as records while keeping
+// the cross-language SmartList result boundary.
+func (e *ExecutablePlatformRequest) ExecuteForRows(context *runtime.UserContext) (*core.SmartList[core.Record], error) {
+	rows, err := e.ExecuteRecords(context)
+	if err != nil { return nil, err }
+	return core.NewSmartList(rows), nil
+}
+
+func (r *PlatformRequest) Count() *PlatformRequest {
+	return r.CountAs("count")
+}
+
+func (r *PlatformRequest) CountAs(alias string) *PlatformRequest {
+	r.Query.CountField("id", alias)
+	r.queryOptions.PageCountOperation = &core.QueryOperation{Kind: "count", Method: "CountAs", Alias: &alias}
+	return r
+}
+
+
+func (r *PlatformRequest) GroupById() *PlatformRequest {
+	r.Query.WithGroupBy(teaqlIdStorageKey)
+	return r
+}
+
+func (r *PlatformRequest) GroupByIdAs(alias string) *PlatformRequest {
+	r.Query.WithGroupBy(teaqlIdStorageKey)
+	r.Query.ProjectExpr(alias, core.ExprColumnNode(teaqlIdStorageKey))
+	return r
+}
+func (r *PlatformRequest) GroupByName() *PlatformRequest {
+	r.Query.WithGroupBy(teaqlNameStorageKey)
+	return r
+}
+
+func (r *PlatformRequest) GroupByNameAs(alias string) *PlatformRequest {
+	r.Query.WithGroupBy(teaqlNameStorageKey)
+	r.Query.ProjectExpr(alias, core.ExprColumnNode(teaqlNameStorageKey))
+	return r
+}
+func (r *PlatformRequest) GroupByFounded() *PlatformRequest {
+	r.Query.WithGroupBy(teaqlFoundedStorageKey)
+	return r
+}
+
+func (r *PlatformRequest) GroupByFoundedAs(alias string) *PlatformRequest {
+	r.Query.WithGroupBy(teaqlFoundedStorageKey)
+	r.Query.ProjectExpr(alias, core.ExprColumnNode(teaqlFoundedStorageKey))
+	return r
+}
+func (r *PlatformRequest) GroupByUserEmail() *PlatformRequest {
+	r.Query.WithGroupBy(teaqlUserEmailStorageKey)
+	return r
+}
+
+func (r *PlatformRequest) GroupByUserEmailAs(alias string) *PlatformRequest {
+	r.Query.WithGroupBy(teaqlUserEmailStorageKey)
+	r.Query.ProjectExpr(alias, core.ExprColumnNode(teaqlUserEmailStorageKey))
+	return r
+}
+func (r *PlatformRequest) GroupByVersion() *PlatformRequest {
+	r.Query.WithGroupBy(teaqlVersionStorageKey)
+	return r
+}
+
+func (r *PlatformRequest) GroupByVersionAs(alias string) *PlatformRequest {
+	r.Query.WithGroupBy(teaqlVersionStorageKey)
+	r.Query.ProjectExpr(alias, core.ExprColumnNode(teaqlVersionStorageKey))
+	return r
+}

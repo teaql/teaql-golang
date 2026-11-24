@@ -1,0 +1,38 @@
+{
+  "evaluatedScope": "golang-lib-core",
+  "evaluationErrors": 0,
+  "files": {
+    "catalog/behavior.go": "3d06e6c6d083269757d4de750dec8f5c814dce12c1531bfc1224a71b81e06d38",
+    "catalog/checker.go": "0972a48852e4f71474fc4bcee77b3cf9816c6f31e2cedb8545eb70780e8f837a",
+    "catalog/entity.go": "67798c086b248970e1c89925526a59c7979e84605a380bc9557c920db1ffe0c6",
+    "catalog/expression.go": "5149f0c29085f565edd4ec6124751520653eae0a6025871f7b7d669e557b949b",
+    "catalog/request.go": "eddf5fa80ddcf073bd5f2d8b84bd8d678f8d2e513dd62d802c7a7ca1e9bb27e0",
+    "e.go": "65ccb01d67a24d6f9d3379953533fd31e409ab2884fa7c98a2d60c1d1898e8b0",
+    "entity_json.go": "7a0c3fe9276e94b0393c8cfa4e2d299baaf06f625e6cd8ac7bba69b5c28ca66f",
+    "entry/behavior.go": "cc244af921cd66d01063bb232fe520fb89a3ccf25b121ddc4e174d2d3677e30d",
+    "entry/checker.go": "2999fac12938dd86397a9a79861ecb4a32a4baaea9325081068e7411c0dfdbe0",
+    "entry/entity.go": "d1c0ff301590452c9158984d431900c3793bdfc430cecaee2ab01b0d5e105a7f",
+    "entry/expression.go": "5180d29d2735df695c1dcc49b27e1e58287a5dd31e6e286b5f4e3c50375aac6a",
+    "entry/request.go": "17e0733bff584a354e2fedfcb2264d2bb62ec9e5be665e40866278ab2ce7b4e6",
+    "go.mod": "140f8032111e636819040e3ce41f1d86a80f82fc432ef6068e7a936b4e1f683d",
+    "internal/expressiongraph/graph.go": "7f7fcddb1513a6e4a3f51dd1278f10a532cbbfdc5cce9c753daf2333bfdaf8e0",
+    "internal/generatedjson/model.go": "44e6e199b2ab6c031d263bf94e6a3d03361cb3b9ea97a44f6146c05efa4b0078",
+    "internal/generatedsearch/search_models.go": "8bd32cbb54262441eb761b5bfbb2e3c08937c6939883a2c2f883b3b2bc7d9023",
+    "lib.go": "7dfb22b797225dd9d1d551348295cb849dd7b9c37fd60d06d6d5e981d1bfa639",
+    "q.go": "71b4c3f2e778dfa1f37523ef0fd967bd888d250cc2706c7cbe0a0a41c13907d6",
+    "runtime.go": "6724571aecfacf6f910ea02baea31ef0900136cb334144b011d9911495fe226e",
+    "teaql/checker-model.json": "864534402093962b4c977f6cbff6643c0dd5ab71d5bbe1c69e063561c7b57f63",
+    "teaql/model-provenance.json": "b82e242154699127699909d5c062544e0108818af22b34afd88735d451a2981a"
+  },
+  "generatorCommit": "783ff0d81751b030c1209043476e8326cc6da58b",
+  "generatorJarSHA256": "ba0a502363884c206a46b6d5da89b0854b7f3e84072dd88544b15573c0d70812",
+  "generatorRelease": "v5.0.0",
+  "language": "go",
+  "modelSha256": "9bb36d7f9d639d04cfe9344e5152ee68e1844a8552538413c16569c6e8df4f8e",
+  "previousOrigin": {
+    "commit": "d564c307d7721e6a40d05ae5bd4222870dfcf76f",
+    "path": "examples/context-derived/golang-lib-core/current-generator-fixture.json",
+    "sha256": "57ca40e50d22e2429579fee434436726553c8fa586b2e0fe6f0b7f2825af1911"
+  },
+  "schema": "teaql.current-model-scope-fixture/v1"
+}

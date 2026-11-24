@@ -1,15 +1,23 @@
 # Order Management — Go + SQLite
 
+`model.xml` owns the exact generated `golang-lib-core` and
+`golang-app-console` scopes. The original business program and intent/privacy
+regression test live under the native `src` entry directory without byte changes.
+Current scope provenance is in `showcase.json`. Run `bash verify.sh` from this
+scene for the focused gate: the original test runs two starts, then the retained
+console runs twice on another SQLite file and its stored result is checked
+independently. The verifier removes owned compilation/workspace scratch.
+
 Run from a terminal; no database server, fixture DB, model input, or generator installation is needed:
 
 ```bash
 cd examples/order-management/golang-app-console
-go run .
+go run ./src
 ```
 
 The first run creates `../.local/order.db`, ensures schema and model-owned root/constants, seeds the remaining business entities through generated mutation APIs, performs a governed query, and writes an audited preset. The second run demonstrates idempotency. To choose a fresh database path, set `TEAQL_ORDER_MANAGEMENT_DB`; the regression test does this automatically and never deletes an existing `.local/order.db`. A database made by an older generated example may have an incompatible ID-space table and is not silently migrated here.
 
-Read `golang-app-console/main.go` first (handwritten). API discovery for the generated library should use model-aware Assist; `model.xml` is retained so the library can be regenerated. The console, generated library, and local TeaQL runtime are pinned together by `go.work` for source-tree verification.
+Read `golang-app-console/src/main.go` first (handwritten). API discovery for the generated library should use model-aware Assist; `model.xml` is retained so the library can be regenerated. The console, generated library, and local TeaQL runtime are pinned together by `go.work` for source-tree verification.
 
 ## Verify the first result
 
@@ -17,7 +25,7 @@ The trace must contain both comment and purpose, followed by `WEB-2026-001`, `20
 
 ## Customize it
 
-Change `WithOrderNumberContaining`, add generated ordering, or select generated relations in `main.go`. Read the generated request before using another operator. Handwritten policy stays in `golang-app-console`; regenerate `golang-lib-core`. The shared model is not required to run the example.
+Change `WithOrderNumberContaining`, add generated ordering, or select generated relations in `src/main.go`. Request current model-aware Assist before using another operator. Handwritten policy stays in `golang-app-console`; regenerate `golang-lib-core`. The shared model is not required to run the example.
 ### Materialized-list hard limit
 
 `ExecuteForList` protects the service by applying a default hard limit of 10,000 rows. A requested page size above that ceiling fails explicitly. Trusted application code can call `HardLimit(...)` to override the outer-query ceiling. **Caution:** most applications should not override it; do so only for a reviewed, exceptional requirement. This setting does not describe streaming execution.

@@ -1,5 +1,8 @@
 # Generated graph save and loaded-view regression
 
+`model.xml` owns `golang-lib-core` and `golang-app-console`. All 28 original source/test files now live in the native workspace and keep their exact bytes. Its module consumes the named sibling library and this SDK source. The verifier materializes those scopes in owned scratch, retains all 32 original top-level race tests twice on the same stores, and keeps compact results while removing its compiler outputs. Current scope provenance is in `showcase.json`.
+
+
 ```sh
 node examples/fix-e-alignment/verify-local.cjs
 ```
@@ -149,3 +152,23 @@ adapters read already-loaded fields and list items only; they have no context,
 provider or implicit-loading capability. Generated source is refreshed from the
 evaluated model and checked against its fixture manifest, never edited by hand.
 
+## Model and workspace
+
+This showcase uses `model.xml`: Tenant owns PurchaseOrder and OrderItem.
+The generated domain library is read-only in `golang-lib-core/`; application code is
+in `golang-app-console/.`. The workspace hosts the original scenario checks and
+trusted Context/runtime setup.
+
+From the SDK repository root, run:
+
+```bash
+node examples/fix-e-alignment/verify-local.cjs
+```
+
+The verifier checks the model and exact generated-library hashes, builds the
+native workspace with the local SDK, then runs the original business cases
+twice on retained stores. Assertions cover real generated Q/E and audited
+saves, precise loaded state, rejected writes and transaction outcomes. It
+keeps compact receipts and result data and removes owned build output.
+`showcase.json` binds this model, both generation scopes and the focused result;
+the final full SDK example inventory remains a separate gate.

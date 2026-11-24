@@ -28,6 +28,12 @@ var _ = strings.Join
 
 func generatedPtr[T any](value T) *T { return &value }
 
+var generatedCheckerPresentation = func() *runtime.CheckerPresentationModel {
+	model, err := runtime.ParseCheckerPresentationModel([]byte("{\"schema\":\"teaql.checker-model/v1\",\"revision\":\"sha256:190519f693a9a9f8c5927cb428aca8f0cf7ef8528102e7b13e79498dcab0e122\",\"entities\":{\"scalar_type_probe\":{\"labels\":{\"en\":\"Scalar Type Probe\"},\"fields\":[{\"name\":\"create_time\",\"labels\":{\"en\":\"create time\"},\"aliases\":[\"CreateTime\",\"createTime\"]},{\"name\":\"id\",\"labels\":{\"en\":\"id\"},\"aliases\":[\"Id\"]},{\"name\":\"large_text\",\"labels\":{\"en\":\"large text\"},\"aliases\":[\"LargeText\",\"largeText\"]},{\"name\":\"optional_boolean\",\"labels\":{\"en\":\"optional boolean\"},\"aliases\":[\"OptionalBoolean\",\"optionalBoolean\"]},{\"name\":\"optional_date\",\"labels\":{\"en\":\"optional date\"},\"aliases\":[\"OptionalDate\",\"optionalDate\"]},{\"name\":\"optional_datetime\",\"labels\":{\"en\":\"optional datetime\"},\"aliases\":[\"OptionalDatetime\",\"optionalDatetime\"]},{\"name\":\"optional_decimal\",\"labels\":{\"en\":\"optional decimal\"},\"aliases\":[\"OptionalDecimal\",\"optionalDecimal\"]},{\"name\":\"optional_double\",\"labels\":{\"en\":\"optional double\"},\"aliases\":[\"OptionalDouble\",\"optionalDouble\"]},{\"name\":\"optional_float\",\"labels\":{\"en\":\"optional float\"},\"aliases\":[\"OptionalFloat\",\"optionalFloat\"]},{\"name\":\"optional_integer\",\"labels\":{\"en\":\"optional integer\"},\"aliases\":[\"OptionalInteger\",\"optionalInteger\"]},{\"name\":\"optional_long\",\"labels\":{\"en\":\"optional long\"},\"aliases\":[\"OptionalLong\",\"optionalLong\"]},{\"name\":\"optional_string\",\"labels\":{\"en\":\"optional string\"},\"aliases\":[\"OptionalString\",\"optionalString\"]},{\"name\":\"optional_time\",\"labels\":{\"en\":\"optional time\"},\"aliases\":[\"OptionalTime\",\"optionalTime\"]},{\"name\":\"required_boolean\",\"labels\":{\"en\":\"required boolean\"},\"aliases\":[\"RequiredBoolean\",\"requiredBoolean\"]},{\"name\":\"required_date\",\"labels\":{\"en\":\"required date\"},\"aliases\":[\"RequiredDate\",\"requiredDate\"]},{\"name\":\"required_datetime\",\"labels\":{\"en\":\"required datetime\"},\"aliases\":[\"RequiredDatetime\",\"requiredDatetime\"]},{\"name\":\"required_decimal\",\"labels\":{\"en\":\"required decimal\"},\"aliases\":[\"RequiredDecimal\",\"requiredDecimal\"]},{\"name\":\"required_double\",\"labels\":{\"en\":\"required double\"},\"aliases\":[\"RequiredDouble\",\"requiredDouble\"]},{\"name\":\"required_float\",\"labels\":{\"en\":\"required float\"},\"aliases\":[\"RequiredFloat\",\"requiredFloat\"]},{\"name\":\"required_integer\",\"labels\":{\"en\":\"required integer\"},\"aliases\":[\"RequiredInteger\",\"requiredInteger\"]},{\"name\":\"required_long\",\"labels\":{\"en\":\"required long\"},\"aliases\":[\"RequiredLong\",\"requiredLong\"]},{\"name\":\"required_string\",\"labels\":{\"en\":\"required string\"},\"aliases\":[\"RequiredString\",\"requiredString\"]},{\"name\":\"required_time\",\"labels\":{\"en\":\"required time\"},\"aliases\":[\"RequiredTime\",\"requiredTime\"]},{\"name\":\"type_platform\",\"targetType\":\"type_platform\",\"labels\":{\"en\":\"Type Platform\"},\"aliases\":[\"TypePlatform\",\"typePlatform\"]},{\"name\":\"update_time\",\"labels\":{\"en\":\"update time\"},\"aliases\":[\"UpdateTime\",\"updateTime\"]},{\"name\":\"version\",\"labels\":{\"en\":\"version\"},\"aliases\":[\"Version\"]}]},\"type_platform\":{\"labels\":{\"en\":\"Type Platform\"},\"fields\":[{\"name\":\"id\",\"labels\":{\"en\":\"id\"},\"aliases\":[\"Id\"]},{\"name\":\"name\",\"labels\":{\"en\":\"name\"},\"aliases\":[\"Name\"]},{\"name\":\"scalar_type_probe_list\",\"targetType\":\"scalar_type_probe\",\"labels\":{\"en\":\"Scalar Type Probe\"},\"aliases\":[\"ScalarTypeProbeList\",\"scalarTypeProbeList\"]},{\"name\":\"version\",\"labels\":{\"en\":\"version\"},\"aliases\":[\"Version\"]}]}}}"))
+	if err != nil { panic("Invalid generated Checker presentation metadata") }
+	return model
+}()
+
 func ensureGeneratedBootstrapOnce(context *runtime.UserContext) error {
 	previousActor := context.UserIdentifier()
 	previousCategory := context.GetResource("bootstrapCategory")
@@ -67,7 +73,7 @@ func ensureGeneratedBootstrap(context *runtime.UserContext) error {
 
 
 func Module() *runtime.RuntimeModule {
-	module := runtime.NewRuntimeModule().Checkers(&generatedCheckerRegistry{})
+	module := runtime.NewRuntimeModule().Checkers(&generatedCheckerRegistry{}).CheckerPresentation(generatedCheckerPresentation)
 	{
 		descriptor := core.NewEntityDescriptor("Type Platform").
 			TableName("type_platform_data")
@@ -104,8 +110,8 @@ func Module() *runtime.RuntimeModule {
 		descriptor.Property(core.NewPropertyDescriptor("optional_time", core.TypeTime).ColumnName("optional_time"))
 		descriptor.Property(core.NewPropertyDescriptor("required_datetime", core.TypeTimestamp).ColumnName("required_datetime").NotNull())
 		descriptor.Property(core.NewPropertyDescriptor("optional_datetime", core.TypeTimestamp).ColumnName("optional_datetime"))
-		descriptor.Property(core.NewPropertyDescriptor("create_time", core.TypeTimestamp).ColumnName("create_time").NotNull())
-		descriptor.Property(core.NewPropertyDescriptor("update_time", core.TypeTimestamp).ColumnName("update_time").NotNull())
+		descriptor.Property(core.NewPropertyDescriptor("create_time", core.TypeTimestamp).ColumnName("create_time").OnCreateFromContext("now").NotNull())
+		descriptor.Property(core.NewPropertyDescriptor("update_time", core.TypeTimestamp).ColumnName("update_time").OnCreateFromContext("now").OnUpdateFromContext("now").NotNull())
 		descriptor.Property(core.NewPropertyDescriptor("version", core.TypeI64).ColumnName("version").NotNull().Version())
 		descriptor.Property(core.NewPropertyDescriptor("type_platform_id", core.TypeU64).ColumnName("type_platform").NotNull())
 		descriptor.Relation(core.NewRelationDescriptor("typePlatformEntity", "Type Platform").CanonicalKey("type_platform").LocalKey("type_platform_id").ForeignKey("id"))
@@ -151,21 +157,14 @@ func checkTypePlatform(context *runtime.UserContext, input *runtime.CheckAndFixI
 func checkScalarTypeProbe(context *runtime.UserContext, input *runtime.CheckAndFixInput) []runtime.CheckResult {
 	results := make([]runtime.CheckResult, 0)
 	if input.Operation == core.MutationInsert {
-		if value, exists := input.Values["create_time"]; !exists || value.V == nil {
-			input.Values["create_time"] = core.ValTimestamp(input.Now.UnixMilli())
-			if err := context.RecordFixEvidence(runtime.FixEvidence{EntityType: "ScalarTypeProbe", ModelPath: "create_time", Source: runtime.FixEvidenceClock, SourceLabel: "graphClock"}); err != nil { panic(err) }
-		}
+		if failure := context.ApplyContextFix(input, "create_time", "now"); failure != nil { results = append(results, *failure) }
 	}
 
 	if input.Operation == core.MutationInsert {
-		if value, exists := input.Values["update_time"]; !exists || value.V == nil {
-			input.Values["update_time"] = core.ValTimestamp(input.Now.UnixMilli())
-			if err := context.RecordFixEvidence(runtime.FixEvidence{EntityType: "ScalarTypeProbe", ModelPath: "update_time", Source: runtime.FixEvidenceClock, SourceLabel: "graphClock"}); err != nil { panic(err) }
-		}
+		if failure := context.ApplyContextFix(input, "update_time", "now"); failure != nil { results = append(results, *failure) }
 	}
 	if input.Operation == core.MutationUpdate {
-		input.Values["update_time"] = core.ValTimestamp(input.Now.UnixMilli())
-		if err := context.RecordFixEvidence(runtime.FixEvidence{EntityType: "ScalarTypeProbe", ModelPath: "update_time", Source: runtime.FixEvidenceClock, SourceLabel: "graphClock"}); err != nil { panic(err) }
+		if failure := context.ApplyContextFix(input, "update_time", "now"); failure != nil { results = append(results, *failure) }
 	}
 
 
@@ -246,7 +245,7 @@ func checkScalarTypeProbe(context *runtime.UserContext, input *runtime.CheckAndF
 }
 
 func ModuleWithBehaviors() *runtime.RuntimeModule {
-	module := runtime.NewRuntimeModule().Checkers(&generatedCheckerRegistry{})
+	module := runtime.NewRuntimeModule().Checkers(&generatedCheckerRegistry{}).CheckerPresentation(generatedCheckerPresentation)
 	{
 		descriptor := core.NewEntityDescriptor("Type Platform").
 			TableName("type_platform_data")
@@ -286,8 +285,8 @@ func ModuleWithBehaviors() *runtime.RuntimeModule {
 		descriptor.Property(core.NewPropertyDescriptor("optional_time", core.TypeTime).ColumnName("optional_time"))
 		descriptor.Property(core.NewPropertyDescriptor("required_datetime", core.TypeTimestamp).ColumnName("required_datetime").NotNull())
 		descriptor.Property(core.NewPropertyDescriptor("optional_datetime", core.TypeTimestamp).ColumnName("optional_datetime"))
-		descriptor.Property(core.NewPropertyDescriptor("create_time", core.TypeTimestamp).ColumnName("create_time").NotNull())
-		descriptor.Property(core.NewPropertyDescriptor("update_time", core.TypeTimestamp).ColumnName("update_time").NotNull())
+		descriptor.Property(core.NewPropertyDescriptor("create_time", core.TypeTimestamp).ColumnName("create_time").OnCreateFromContext("now").NotNull())
+		descriptor.Property(core.NewPropertyDescriptor("update_time", core.TypeTimestamp).ColumnName("update_time").OnCreateFromContext("now").OnUpdateFromContext("now").NotNull())
 		descriptor.Property(core.NewPropertyDescriptor("version", core.TypeI64).ColumnName("version").NotNull().Version())
 		descriptor.Property(core.NewPropertyDescriptor("type_platform_id", core.TypeU64).ColumnName("type_platform").NotNull())
 		descriptor.Relation(core.NewRelationDescriptor("typePlatformEntity", "Type Platform").CanonicalKey("type_platform").LocalKey("type_platform_id").ForeignKey("id"))

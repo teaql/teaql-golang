@@ -1,0 +1,49 @@
+{
+  "generatedDomainLibraryHandEdited": false,
+  "goalId": "go:examples/task_board",
+  "library": {
+    "generatedFilesManifestSHA256": "b3879a287a7e8c8dfb5fc5b3cbcc98746a8613bb7e5cb6503f3f4381ed279075",
+    "root": "golang-lib-core",
+    "scope": "golang-lib-core"
+  },
+  "model": {
+    "path": "model.xml",
+    "sha256": "f2fdd5037dbdee7f71e008f3ca04db75d8dd0e3138743de7a4744c197b0b567e"
+  },
+  "producer": {
+    "generator": {
+      "artifactKind": "qualified source build",
+      "jarSHA256": "029f602cf0e2de4ec0910495c340fbeb41f11772b6aca875569f498811158e7d",
+      "qualificationReceiptSHA256": "1012520de60d49cfc1e45c7e08fcf204dd2db36a163909e1e36752065a31047a",
+      "sourceCommit": "99d6bde2351d79b7d8b1b1c5cbc78c5dc777b6f2",
+      "tag": "unreleased-source-99d6bde2"
+    },
+    "receipt": "teaql-conformance/evidence/2026-11-20-example-showcase-remediation/robot-task-board-generation/receipt.json",
+    "receiptSHA256": "7289a98fb719c2c8eece8ffa3d218725e125d766f659f78b4bc4cd2dbca3b635"
+  },
+  "qualification": {
+    "businessReceipt": "teaql-conformance/evidence/2026-11-20-example-showcase-remediation/go-robot-task-board-native/runtime/task-board/receipt.json",
+    "businessReceiptSHA256": "346fe1b3511e7c846ab30a74579bc02330dddd999e049d3fb6c97e6639940842",
+    "nativeReceipt": "teaql-conformance/evidence/2026-11-20-example-showcase-remediation/go-robot-task-board-native/receipt.json",
+    "nativeReceiptSHA256": "b5fbfc21f599cad9f73a26cb84119ef82c0d5cc3beec03179293f546432cb601",
+    "remainingFullRuntimeInventory": true,
+    "sourceCommit": "fc17a9a86daf7bd1e260108a8e678ea318a4bc1c"
+  },
+  "scene": "Robot task creation, rename and execution history",
+  "schema": "teaql.model-workspace-showcase/v1",
+  "status": "focused-verified",
+  "verification": [
+    "golang-app-console/src/main.go"
+  ],
+  "workspace": {
+    "applicationOwnedFiles": [
+      "src/main.go",
+      "src/main_test.go",
+      "go.mod",
+      "go.sum"
+    ],
+    "generatedFilesManifestSHA256": "b9efd800b61de11b3c3261aa766db4e021a2cc7c2981502b0518fc084afea9d3",
+    "root": "golang-app-console",
+    "scope": "golang-app-console"
+  }
+}
